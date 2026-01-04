@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calculator, ArrowRight } from "lucide-react";
-import { calculateProfit, formatCurrency, formatPercent } from "@/utils/profitCalculator";
+import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
 
 export default function ProfitCalculatorWidget() {
   const [price, setPrice] = useState(25);

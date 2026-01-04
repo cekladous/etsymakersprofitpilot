@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
-import { calculateProfit, formatCurrency, formatPercent } from "@/utils/profitCalculator";
+import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
 
 export default function Calculator() {
   const [inputs, setInputs] = useState({
