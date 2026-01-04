@@ -16,6 +16,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import KPICard from "@/components/dashboard/KPICard";
 import AlertCard from "@/components/dashboard/AlertCard";
 import ProfitChart from "@/components/dashboard/ProfitChart";
+import ProfitCalculatorWidget from "@/components/dashboard/ProfitCalculatorWidget";
 
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState("month");
@@ -230,12 +231,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Chart */}
-      <ProfitChart
-        data={chartData}
-        timeRange={timeRange}
-        onTimeRangeChange={setTimeRange}
-      />
+      {/* Chart and Calculator */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ProfitChart
+            data={chartData}
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+          />
+        </div>
+        <div>
+          <ProfitCalculatorWidget />
+        </div>
+      </div>
     </div>
   );
 }

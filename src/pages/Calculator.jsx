@@ -1,0 +1,294 @@
+import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import { calculateProfit, formatCurrency, formatPercent } from "@/utils/profitCalculator";
+
+export default function Calculator() {
+  const [inputs, setInputs] = useState({
+    sales_price: 25.00,
+    shipping_charged: 5.00,
+    discounts: 0,
+    refunds: 0,
+    sales_tax: 0,
+    cost_of_goods: 8.00,
+  });
+
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.list(),
+  });
+
+  const feeConfig = settings[0] || {};
+  const results = calculateProfit(inputs, feeConfig);
+
+  const handleInputChange = (field, value) => {
+    setInputs(prev => ({
+      ...prev,
+      [field]: parseFloat(value) || 0,
+    }));
+  };
+
+  const ResultCard = ({ label, value, color = "text-stone-900", icon: Icon }) => (
+    <div className="p-4 bg-stone-50 rounded-xl">
+      <div className="flex items-center gap-2 mb-1">
+        {Icon && <Icon className="w-4 h-4 text-stone-400" />}
+        <p className="text-sm text-stone-500">{label}</p>
+      </div>
+      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    </div>
+  );
+
+  const FeeBreakdownRow = ({ label, amount, highlight = false }) => (
+    <div className={`flex justify-between items-center py-2 ${highlight ? "border-t-2 border-stone-300 pt-3 mt-2" : "border-t border-stone-100"}`}>
+      <span className={`${highlight ? "font-semibold text-stone-900" : "text-stone-600"}`}>
+        {label}
+      </span>
+      <span className={`${highlight ? "font-bold text-stone-900 text-lg" : "font-medium text-stone-700"}`}>
+        {formatCurrency(amount)}
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        title="Profit Calculator"
+        description="Calculate your true profit with accurate Etsy fee breakdown"
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left: Inputs */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <DollarSign className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle>Revenue Inputs</CardTitle>
+                  <CardDescription>What you charge the customer</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Item Price *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.sales_price}
+                  onChange={(e) => handleInputChange("sales_price", e.target.value)}
+                  className="text-lg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Shipping Charged</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.shipping_charged}
+                  onChange={(e) => handleInputChange("shipping_charged", e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Discounts</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={inputs.discounts}
+                    onChange={(e) => handleInputChange("discounts", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Refunds</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={inputs.refunds}
+                    onChange={(e) => handleInputChange("refunds", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sales Tax (excluded from revenue)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.sales_tax}
+                  onChange={(e) => handleInputChange("sales_tax", e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <CalcIcon className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle>Cost Inputs</CardTitle>
+                  <CardDescription>Your production costs</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label>Cost of Goods (materials + packaging)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.cost_of_goods}
+                  onChange={(e) => handleInputChange("cost_of_goods", e.target.value)}
+                  className="text-lg"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Results */}
+        <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 gap-4">
+            <ResultCard
+              label="Gross Revenue"
+              value={formatCurrency(results.gross_revenue)}
+              color="text-blue-600"
+              icon={DollarSign}
+            />
+            <ResultCard
+              label="Total Fees"
+              value={formatCurrency(results.total_fees)}
+              color="text-rose-600"
+              icon={ArrowRight}
+            />
+          </div>
+
+          {/* Fee Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Fee Breakdown</CardTitle>
+              <CardDescription>Etsy marketplace and payment processing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                <FeeBreakdownRow
+                  label={`Listing Fee (${formatCurrency(feeConfig.etsy_listing_fee || 0.20)} per listing)`}
+                  amount={results.listing_fee}
+                />
+                <FeeBreakdownRow
+                  label={`Transaction Fee (${(feeConfig.etsy_transaction_fee_percent || 6.5).toFixed(1)}% of price + shipping)`}
+                  amount={results.transaction_fee}
+                />
+                <FeeBreakdownRow
+                  label={`Payment Processing (${(feeConfig.payment_processing_fee_percent || 3).toFixed(1)}% + ${formatCurrency(feeConfig.payment_processing_fee_fixed || 0.25)})`}
+                  amount={results.processing_fee}
+                />
+                <FeeBreakdownRow
+                  label="Total Marketplace Fees"
+                  amount={results.total_fees}
+                  highlight
+                />
+              </div>
+
+              <div className="mt-4 p-3 bg-stone-50 rounded-lg text-sm text-stone-600">
+                <p className="flex justify-between">
+                  <span>Effective Fee Rate:</span>
+                  <span className="font-semibold">{formatPercent(results.effective_fee_rate)}</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Profit Summary */}
+          <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-emerald-900">
+                <TrendingUp className="w-5 h-5" />
+                Profit Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-600">Gross Revenue</span>
+                  <span className="font-medium">{formatCurrency(results.gross_revenue)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-600">− Marketplace Fees</span>
+                  <span className="font-medium text-rose-600">-{formatCurrency(results.total_fees)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-b border-emerald-200 pb-2">
+                  <span className="text-stone-600">Net Revenue</span>
+                  <span className="font-medium">{formatCurrency(results.net_revenue)}</span>
+                </div>
+                <div className="flex justify-between text-sm pt-2">
+                  <span className="text-stone-600">− Cost of Goods</span>
+                  <span className="font-medium text-rose-600">-{formatCurrency(results.cost_of_goods)}</span>
+                </div>
+              </div>
+
+              <div className="border-t-2 border-emerald-300 pt-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-lg font-semibold text-emerald-900">Net Profit</span>
+                  <span className={`text-3xl font-bold ${results.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    {formatCurrency(results.profit, true)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-emerald-700">Profit Margin</span>
+                  <span className={`text-xl font-bold flex items-center gap-1 ${results.profit_margin >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    <Percent className="w-4 h-4" />
+                    {formatPercent(results.profit_margin)}
+                  </span>
+                </div>
+              </div>
+
+              {results.profit_margin < 20 && results.profit_margin >= 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                  ⚠️ Low margin. Consider raising price or reducing costs.
+                </div>
+              )}
+              {results.profit < 0 && (
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-800">
+                  ⚠️ Negative profit. You're losing money on this item.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Fee Configuration Notice */}
+      <Card>
+        <CardContent className="py-4">
+          <p className="text-sm text-stone-600 text-center">
+            💡 Fee rates can be configured in{" "}
+            <a href="/Settings" className="text-emerald-600 hover:text-emerald-700 font-medium">
+              Settings
+            </a>
+            {" "}to match your country and marketplace.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

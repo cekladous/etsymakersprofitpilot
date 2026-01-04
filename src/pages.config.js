@@ -1,21 +1,23 @@
 import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import Products from './pages/Products';
+import Expenses from './pages/Expenses';
 import Jobs from './pages/Jobs';
 import Materials from './pages/Materials';
-import Expenses from './pages/Expenses';
+import Orders from './pages/Orders';
+import Products from './pages/Products';
 import Settings from './pages/Settings';
+import Calculator from './pages/Calculator';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Dashboard": Dashboard,
-    "Orders": Orders,
-    "Products": Products,
+    "Expenses": Expenses,
     "Jobs": Jobs,
     "Materials": Materials,
-    "Expenses": Expenses,
+    "Orders": Orders,
+    "Products": Products,
     "Settings": Settings,
+    "Calculator": Calculator,
 }
 
 export const pagesConfig = {

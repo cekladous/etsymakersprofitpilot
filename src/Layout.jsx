@@ -9,6 +9,7 @@ import {
   Layers,
   Receipt,
   Settings,
+  Calculator,
   Menu,
   X,
   ChevronRight
@@ -16,6 +17,7 @@ import {
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
+  { name: "Calculator", icon: Calculator, page: "Calculator" },
   { name: "Orders", icon: ShoppingBag, page: "Orders" },
   { name: "Jobs", icon: Wrench, page: "Jobs" },
   { name: "Products", icon: Package, page: "Products" },

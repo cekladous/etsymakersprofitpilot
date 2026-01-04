@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { calculateProfit, formatCurrency } from "@/utils/profitCalculator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +43,32 @@ export default function OrderFormDialog({ open, onOpenChange, order, onClose }) 
   });
 
   const queryClient = useQueryClient();
+
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.list(),
+  });
+
+  // Calculate auto fees if not manually entered
+  const autoCalculateFees = () => {
+    if (!formData.gross_total) return;
+    
+    const result = calculateProfit({
+      sales_price: formData.gross_total || 0,
+      shipping_charged: formData.shipping_charged || 0,
+      discounts: formData.discounts || 0,
+      refunds: formData.refunds || 0,
+      sales_tax: formData.sales_tax || 0,
+      cost_of_goods: 0,
+    }, settings[0]);
+
+    setFormData(prev => ({
+      ...prev,
+      etsy_fees: result.listing_fee + result.transaction_fee,
+      processing_fees: result.processing_fee,
+      net_payout: result.net_revenue,
+    }));
+  };
 
   useEffect(() => {
     if (order) {
@@ -201,7 +228,17 @@ export default function OrderFormDialog({ open, onOpenChange, order, onClose }) 
 
           {/* Financial Info */}
           <div className="border-t pt-4">
-            <h4 className="font-medium text-stone-900 mb-4">Financials</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-medium text-stone-900">Financials</h4>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={autoCalculateFees}
+              >
+                Auto-Calculate Fees
+              </Button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Gross Total</Label>

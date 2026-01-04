@@ -54,6 +54,11 @@ export default function Settings() {
     monthly_overhead: 0,
     default_markup: 0,
     business_name: "",
+    etsy_listing_fee: 0.20,
+    etsy_transaction_fee_percent: 6.5,
+    payment_processing_fee_percent: 3.0,
+    payment_processing_fee_fixed: 0.25,
+    fee_country: "US",
     auto_categorization_rules: [],
   });
 
@@ -89,6 +94,11 @@ export default function Settings() {
         monthly_overhead: s.monthly_overhead || 0,
         default_markup: s.default_markup || 0,
         business_name: s.business_name || "",
+        etsy_listing_fee: s.etsy_listing_fee ?? 0.20,
+        etsy_transaction_fee_percent: s.etsy_transaction_fee_percent ?? 6.5,
+        payment_processing_fee_percent: s.payment_processing_fee_percent ?? 3.0,
+        payment_processing_fee_fixed: s.payment_processing_fee_fixed ?? 0.25,
+        fee_country: s.fee_country || "US",
         auto_categorization_rules: s.auto_categorization_rules || [],
       });
     }
@@ -242,6 +252,68 @@ export default function Settings() {
                 placeholder="My Maker Shop"
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Fee Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <CircleDollarSign className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <CardTitle>Marketplace Fee Configuration</CardTitle>
+              <CardDescription>Configure Etsy and payment processing fees for profit calculations</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Etsy Listing Fee ($)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={settingsData.etsy_listing_fee ?? 0.20}
+                onChange={(e) => setSettingsData({ ...settingsData, etsy_listing_fee: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-stone-500">Default: $0.20 per listing</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Etsy Transaction Fee (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={settingsData.etsy_transaction_fee_percent ?? 6.5}
+                onChange={(e) => setSettingsData({ ...settingsData, etsy_transaction_fee_percent: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-stone-500">Default: 6.5% of price + shipping</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Payment Processing Fee (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={settingsData.payment_processing_fee_percent ?? 3.0}
+                onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_percent: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-stone-500">Default: 3.0% (US)</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Payment Processing Fixed Fee ($)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={settingsData.payment_processing_fee_fixed ?? 0.25}
+                onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-stone-500">Default: $0.25 per order</p>
+            </div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+            💡 These rates are used in the Profit Calculator and automatically applied when calculating order profitability. Update them to match your country or marketplace.
           </div>
         </CardContent>
       </Card>
