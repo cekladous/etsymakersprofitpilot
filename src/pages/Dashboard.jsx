@@ -12,6 +12,7 @@ import {
   Percent
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, subMonths } from "date-fns";
+import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/ui/PageHeader";
 import KPICard from "@/components/dashboard/KPICard";
 import AlertCard from "@/components/dashboard/AlertCard";
@@ -20,6 +21,8 @@ import ProfitCalculatorWidget from "@/components/dashboard/ProfitCalculatorWidge
 
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState("month");
+  const [customYear, setCustomYear] = useState(new Date().getFullYear());
+  const [customMonth, setCustomMonth] = useState(new Date().getMonth());
 
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
@@ -47,29 +50,62 @@ export default function Dashboard() {
   });
 
   const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
+  
+  // Calculate date range based on selected timeRange
+  const getDateRange = () => {
+    if (timeRange === "custom_month") {
+      const customDate = new Date(customYear, customMonth, 1);
+      return {
+        start: startOfMonth(customDate),
+        end: endOfMonth(customDate),
+      };
+    } else if (timeRange === "custom_year") {
+      const customDate = new Date(customYear, 0, 1);
+      return {
+        start: new Date(customYear, 0, 1),
+        end: new Date(customYear, 11, 31, 23, 59, 59),
+      };
+    } else if (timeRange === "month") {
+      return {
+        start: startOfMonth(now),
+        end: endOfMonth(now),
+      };
+    } else if (timeRange === "quarter") {
+      const quarter = Math.floor(now.getMonth() / 3);
+      const quarterStart = new Date(now.getFullYear(), quarter * 3, 1);
+      const quarterEnd = new Date(now.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59);
+      return { start: quarterStart, end: quarterEnd };
+    } else if (timeRange === "year") {
+      return {
+        start: startOfYear(now),
+        end: new Date(now.getFullYear(), 11, 31, 23, 59, 59),
+      };
+    }
+    return { start: startOfMonth(now), end: endOfMonth(now) };
+  };
+
+  const { start: periodStart, end: periodEnd } = getDateRange();
   const yearStart = startOfYear(now);
 
   const metrics = useMemo(() => {
-    // Month calculations
-    const monthOrders = orders.filter(o => {
+    // Period calculations based on selected timeRange
+    const periodOrders = orders.filter(o => {
       const d = new Date(o.sale_date);
-      return d >= monthStart && d <= monthEnd;
+      return d >= periodStart && d <= periodEnd;
     });
     
-    const monthRevenue = monthOrders.reduce((sum, o) => 
+    const periodRevenue = periodOrders.reduce((sum, o) => 
       sum + (o.gross_total || 0) - (o.sales_tax || 0) - (o.refunds || 0), 0);
     
-    const monthFees = monthOrders.reduce((sum, o) => 
+    const periodFees = periodOrders.reduce((sum, o) => 
       sum + (o.etsy_fees || 0) + (o.processing_fees || 0), 0);
     
-    const monthExpenses = expenses
-      .filter(e => new Date(e.date) >= monthStart && new Date(e.date) <= monthEnd)
+    const periodExpenses = expenses
+      .filter(e => new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
     
-    const monthProfit = monthRevenue - monthFees - monthExpenses;
-    const monthMargin = monthRevenue > 0 ? (monthProfit / monthRevenue) * 100 : 0;
+    const periodProfit = periodRevenue - periodFees - periodExpenses;
+    const periodMargin = periodRevenue > 0 ? (periodProfit / periodRevenue) * 100 : 0;
 
     // All-time calculations
     const allTimeRevenue = orders.reduce((sum, o) => 
@@ -81,23 +117,23 @@ export default function Dashboard() {
     const allTimeExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const allTimeProfit = allTimeRevenue - allTimeFees - allTimeExpenses;
 
-    // Material spend this month
+    // Material spend for period
     const materialExpenses = expenses
-      .filter(e => e.category === "materials" && new Date(e.date) >= monthStart)
+      .filter(e => e.category === "materials" && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
 
     return {
-      monthRevenue,
-      monthFees,
-      monthExpenses,
-      monthProfit,
-      monthMargin,
+      periodRevenue,
+      periodFees,
+      periodExpenses,
+      periodProfit,
+      periodMargin,
       allTimeRevenue,
       allTimeProfit,
       materialExpenses,
-      orderCount: monthOrders.length,
+      orderCount: periodOrders.length,
     };
-  }, [orders, expenses, monthStart, monthEnd]);
+  }, [orders, expenses, periodStart, periodEnd]);
 
   // Alerts
   const ordersWithoutJobs = orders.filter(o => !o.job_id && o.status !== "shipped");
@@ -148,33 +184,62 @@ export default function Dashboard() {
     return `$${val.toFixed(0)}`;
   };
 
+  const getPeriodLabel = () => {
+    if (timeRange === "custom_month") {
+      return format(new Date(customYear, customMonth), "MMMM yyyy");
+    } else if (timeRange === "custom_year") {
+      return `${customYear}`;
+    } else if (timeRange === "month") {
+      return "This Month";
+    } else if (timeRange === "quarter") {
+      return "This Quarter";
+    } else if (timeRange === "year") {
+      return "This Year";
+    }
+    return "This Month";
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Dashboard"
-        description={format(now, "MMMM yyyy")}
-      />
+        description={getPeriodLabel()}
+      >
+        <div className="flex gap-2 flex-wrap">
+          {["month", "quarter", "year"].map((range) => (
+            <Button
+              key={range}
+              variant={timeRange === range ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange(range)}
+              className={timeRange === range ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            >
+              {range.charAt(0).toUpperCase() + range.slice(1)}
+            </Button>
+          ))}
+        </div>
+      </PageHeader>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          title="Revenue (This Month)"
-          value={formatCurrency(metrics.monthRevenue)}
+          title={`Revenue (${getPeriodLabel()})`}
+          value={formatCurrency(metrics.periodRevenue)}
           subtitle={`${metrics.orderCount} orders`}
           icon={DollarSign}
           accentColor="emerald"
           linkTo={createPageUrl("Orders")}
         />
         <KPICard
-          title="Net Profit (This Month)"
-          value={formatCurrency(metrics.monthProfit)}
+          title={`Net Profit (${getPeriodLabel()})`}
+          value={formatCurrency(metrics.periodProfit)}
           subtitle={`After fees & expenses`}
           icon={TrendingUp}
-          accentColor={metrics.monthProfit >= 0 ? "emerald" : "rose"}
+          accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"}
         />
         <KPICard
           title="Profit Margin"
-          value={`${metrics.monthMargin.toFixed(1)}%`}
+          value={`${metrics.periodMargin.toFixed(1)}%`}
           subtitle="Revenue after costs"
           icon={Percent}
           accentColor="violet"
@@ -182,7 +247,7 @@ export default function Dashboard() {
         <KPICard
           title="Material Spend"
           value={formatCurrency(metrics.materialExpenses)}
-          subtitle="This month"
+          subtitle={getPeriodLabel()}
           icon={Layers}
           accentColor="amber"
           linkTo={createPageUrl("Materials")}
