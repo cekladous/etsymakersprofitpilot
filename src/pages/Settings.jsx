@@ -279,7 +279,7 @@ export default function Settings() {
                 value={settingsData.etsy_listing_fee ?? 0.20}
                 onChange={(e) => setSettingsData({ ...settingsData, etsy_listing_fee: parseFloat(e.target.value) || 0 })}
               />
-              <p className="text-xs text-stone-500">Default: $0.20 per listing</p>
+              <p className="text-xs text-stone-500">2026 rate: $0.20 per listing</p>
             </div>
             <div className="space-y-2">
               <Label>Etsy Transaction Fee (%)</Label>
@@ -289,7 +289,7 @@ export default function Settings() {
                 value={settingsData.etsy_transaction_fee_percent ?? 6.5}
                 onChange={(e) => setSettingsData({ ...settingsData, etsy_transaction_fee_percent: parseFloat(e.target.value) || 0 })}
               />
-              <p className="text-xs text-stone-500">Default: 6.5% of price + shipping</p>
+              <p className="text-xs text-stone-500">2026 rate: 6.5% of price + shipping</p>
             </div>
             <div className="space-y-2">
               <Label>Payment Processing Fee (%)</Label>
@@ -299,7 +299,7 @@ export default function Settings() {
                 value={settingsData.payment_processing_fee_percent ?? 3.0}
                 onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_percent: parseFloat(e.target.value) || 0 })}
               />
-              <p className="text-xs text-stone-500">Default: 3.0% (US)</p>
+              <p className="text-xs text-stone-500">2026 US rate: 3.0%</p>
             </div>
             <div className="space-y-2">
               <Label>Payment Processing Fixed Fee ($)</Label>
@@ -309,11 +309,15 @@ export default function Settings() {
                 value={settingsData.payment_processing_fee_fixed ?? 0.25}
                 onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
               />
-              <p className="text-xs text-stone-500">Default: $0.25 per order</p>
+              <p className="text-xs text-stone-500">2026 US rate: $0.25 per order</p>
             </div>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            💡 These rates are used in the Profit Calculator and automatically applied when calculating order profitability. Update them to match your country or marketplace.
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 space-y-1">
+            <p className="font-semibold">💡 Current 2026 Etsy Fees (US)</p>
+            <p>• Listing: $0.20 per item</p>
+            <p>• Transaction: 6.5% of item price + shipping</p>
+            <p>• Payment Processing: 3% + $0.25</p>
+            <p className="pt-2 text-xs">These rates are used in the Profit Calculator and applied when auto-calculating order fees. Update them if you're in a different country or marketplace.</p>
           </div>
         </CardContent>
       </Card>

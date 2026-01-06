@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Wrench, CheckCircle, Clock } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Wrench, CheckCircle, Clock, List, LayoutGrid, TableIcon } from "lucide-react";
 import { format } from "date-fns";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
@@ -26,6 +26,8 @@ import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
 import JobFormDialog from "@/components/jobs/JobFormDialog";
 import JobDetailSheet from "@/components/jobs/JobDetailSheet";
+import JobKanbanView from "@/components/jobs/JobKanbanView";
+import JobSpreadsheetView from "@/components/jobs/JobSpreadsheetView";
 
 export default function Jobs() {
   const [formOpen, setFormOpen] = useState(false);
@@ -33,6 +35,7 @@ export default function Jobs() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("list"); // list, kanban, spreadsheet
   
   const queryClient = useQueryClient();
 
@@ -183,16 +186,44 @@ export default function Jobs() {
   return (
     <div className="space-y-6">
       <PageHeader title="Jobs" description="Production jobs and cost tracking">
-        <Button
-          onClick={() => {
-            setEditingJob(null);
-            setFormOpen(true);
-          }}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Job
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className={viewMode === "list" ? "bg-white shadow-sm" : ""}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("kanban")}
+              className={viewMode === "kanban" ? "bg-white shadow-sm" : ""}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "spreadsheet" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("spreadsheet")}
+              className={viewMode === "spreadsheet" ? "bg-white shadow-sm" : ""}
+            >
+              <TableIcon className="w-4 h-4" />
+            </Button>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingJob(null);
+              setFormOpen(true);
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Job
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Filters */}
@@ -219,7 +250,7 @@ export default function Jobs() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Views */}
       {jobs.length === 0 && !isLoading ? (
         <EmptyState
           icon={Wrench}
@@ -229,13 +260,45 @@ export default function Jobs() {
           onAction={() => setFormOpen(true)}
         />
       ) : (
-        <DataTable
-          columns={columns}
-          data={filteredJobs}
-          isLoading={isLoading}
-          onRowClick={(row) => setSelectedJob(row)}
-          emptyMessage="No jobs match your filters"
-        />
+        <>
+          {viewMode === "list" && (
+            <DataTable
+              columns={columns}
+              data={filteredJobs}
+              isLoading={isLoading}
+              onRowClick={(row) => setSelectedJob(row)}
+              emptyMessage="No jobs match your filters"
+            />
+          )}
+          
+          {viewMode === "kanban" && (
+            <JobKanbanView
+              jobs={filteredJobs}
+              products={products}
+              orders={orders}
+              onEditJob={(job) => {
+                setEditingJob(job);
+                setFormOpen(true);
+              }}
+              onViewDetails={(job) => setSelectedJob(job)}
+              onMarkComplete={markComplete}
+            />
+          )}
+          
+          {viewMode === "spreadsheet" && (
+            <JobSpreadsheetView
+              jobs={filteredJobs}
+              products={products}
+              orders={orders}
+              onEditJob={(job) => {
+                setEditingJob(job);
+                setFormOpen(true);
+              }}
+              onViewDetails={(job) => setSelectedJob(job)}
+              onMarkComplete={markComplete}
+            />
+          )}
+        </>
       )}
 
       <JobFormDialog
