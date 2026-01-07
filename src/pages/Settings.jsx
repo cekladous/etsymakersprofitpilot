@@ -44,7 +44,7 @@ const EXPENSE_CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
-export default function Settings() {
+export function SettingsTool() {
   const [machineFormOpen, setMachineFormOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -209,8 +209,6 @@ export default function Settings() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Settings" description="Configure business settings, fees, machines, and automation" />
-
       {/* Business Configuration */}
       <Card>
         <CardHeader>
@@ -570,3 +568,5 @@ export default function Settings() {
     </div>
   );
 }
+
+export default SettingsTool;
