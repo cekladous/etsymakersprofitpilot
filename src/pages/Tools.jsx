@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calculator, Zap, Settings as SettingsIcon } from "lucide-react";
-import PageHeader from "../components/ui/PageHeader";
+import PageHeader from "@/components/ui/PageHeader";
 
-// Import tool components (we'll create wrapper components)
-import CalculatorTool from "../components/tools/CalculatorTool";
-import RasterAssistantTool from "../components/tools/RasterAssistantTool";
-import SettingsTool from "../components/tools/SettingsTool";
+// Import tool components
+import CalculatorTool from "@/components/tools/CalculatorTool";
+import RasterAssistantTool from "@/components/tools/RasterAssistantTool";
+import SettingsTool from "@/components/tools/SettingsTool";
 
 export default function Tools() {
   const [activeTab, setActiveTab] = useState("calculator");
