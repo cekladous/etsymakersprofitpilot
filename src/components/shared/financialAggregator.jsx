@@ -48,7 +48,7 @@ export function aggregateFinancials(data, dateRange) {
     })
     .reduce((sum, e) => sum + Math.abs(e.net || 0), 0);
   
-  // 5) Custom Sales A/B/C/D - use pre_tax_amount as revenue
+  // 5) Custom Sales A/B - use pre_tax_amount as revenue
   const customSaleA = periodCustomSales
     .filter(s => s.sale_type === "A")
     .reduce((sum, s) => sum + (s.pre_tax_amount || s.gross_sale || 0), 0);
@@ -56,8 +56,6 @@ export function aggregateFinancials(data, dateRange) {
   const customSaleB = periodCustomSales
     .filter(s => s.sale_type === "B")
     .reduce((sum, s) => sum + (s.pre_tax_amount || s.gross_sale || 0), 0);
-  
-
   
   // Sales tax collected on Custom Sales (tracked separately, excluded from profit)
   const customSalesTaxCollected = periodCustomSales.reduce((sum, s) => 
@@ -214,17 +212,6 @@ export function aggregateFinancials(data, dateRange) {
     .filter(e => e.category_name === "miscellaneous_expenses")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-  // Custom expense categories
-  const customExpenseA = periodBusinessExpenses
-    .filter(e => e.category_name === "custom_expense_a")
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
-  
-  const customExpenseB = periodBusinessExpenses
-    .filter(e => e.category_name === "custom_expense_b")
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
-  
-
-
   // ==================== E) TOTALS ====================
   
   // 1) Total Expenses
@@ -232,8 +219,7 @@ export function aggregateFinancials(data, dateRange) {
   const totalProductExpenses = totalMaterialsSupplies + toolsEquipment;
   const totalBusinessExpenses = 
     advertisingMarketing + officeExpenses + professionalServices + 
-    otherBusinessExpenses + miscellaneousExpenses + 
-    customExpenseA + customExpenseB;
+    otherBusinessExpenses + miscellaneousExpenses;
   
   const totalExpenses = totalSellingExpenses + totalProductExpenses + totalBusinessExpenses;
   
@@ -301,8 +287,6 @@ export function aggregateFinancials(data, dateRange) {
       professionalServices,
       other: otherBusinessExpenses,
       miscellaneous: miscellaneousExpenses,
-      customExpenseA,
-      customExpenseB,
       total: totalBusinessExpenses,
     },
     
