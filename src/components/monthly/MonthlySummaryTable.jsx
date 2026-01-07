@@ -86,22 +86,27 @@ export default function MonthlySummaryTable({ financialData, viewMode = "month" 
   };
 
   const Row = ({ label, amount, bold = false, indent = 0, highlight = "", categoryName = null, canAdd = false }) => (
-    <div className={`flex justify-between items-center py-2 px-4 ${highlight} ${bold ? "font-semibold border-t border-b border-stone-300 bg-stone-100" : ""} group hover:bg-stone-50 transition-colors`}>
+    <div 
+      className={`flex justify-between items-center py-2 px-4 ${highlight} ${bold ? "font-semibold border-t border-b border-stone-300 bg-stone-100" : ""} group hover:bg-stone-50 transition-colors ${categoryName && amount > 0 ? "cursor-pointer" : ""}`}
+      onClick={() => {
+        if (categoryName && amount > 0) {
+          handleDrillDown(label, categoryName);
+        }
+      }}
+    >
       <span className={`text-sm ${indent > 0 ? `pl-${indent * 4}` : ""} ${bold ? "font-bold" : ""}`}>
         {label}
       </span>
       <div className="flex items-center gap-2">
         {categoryName && amount > 0 && (
-          <button
-            onClick={() => handleDrillDown(label, categoryName)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-stone-200 rounded"
-          >
-            <ChevronRight className="w-4 h-4 text-stone-600" />
-          </button>
+          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-600 transition-colors" />
         )}
         {canAdd && (
           <button
-            onClick={() => handleAddExpense(categoryName)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddExpense(categoryName);
+            }}
             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-100 rounded"
           >
             <Plus className="w-4 h-4 text-emerald-600" />
@@ -130,8 +135,6 @@ export default function MonthlySummaryTable({ financialData, viewMode = "month" 
         <Row label="Etsy Refunds" amount={revenue.etsyRefunds} />
         <Row label="Custom Sales A" amount={revenue.customSaleA} highlight="bg-green-50" />
         <Row label="Custom Sales B" amount={revenue.customSaleB} highlight="bg-green-50" />
-        <Row label="Custom Sales C" amount={revenue.customSaleC} highlight="bg-green-50" />
-        <Row label="Custom Sales D" amount={revenue.customSaleD} highlight="bg-green-50" />
         <Row label="Total Revenue" amount={totalRevenue} bold />
 
         {/* Expenses Section */}
@@ -172,7 +175,6 @@ export default function MonthlySummaryTable({ financialData, viewMode = "month" 
         <Row label="Professional Services" amount={businessExpenses.professionalServices} categoryName="professional_services" canAdd />
         <Row label="Other" amount={businessExpenses.other} categoryName="other" canAdd />
         <Row label="Miscellaneous Expenses" amount={businessExpenses.miscellaneous} categoryName="miscellaneous_expenses" canAdd />
-        <Row label="Custom Expense C" amount={businessExpenses.customExpenseC} categoryName="custom_expense_c" canAdd />
 
         <Row label="Total Expenses" amount={totalExpenses} bold />
         <Row label="Net Profit" amount={netProfit} bold highlight={netProfit >= 0 ? "bg-emerald-50" : "bg-rose-50"} />
