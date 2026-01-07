@@ -64,6 +64,7 @@ export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("table");
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const queryClient = useQueryClient();
 
@@ -89,6 +90,16 @@ export default function Expenses() {
     mutationFn: (id) => base44.entities.Expense.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all(ids.map(id => base44.entities.Expense.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      setSelectedIds([]);
     },
   });
 
@@ -233,7 +244,45 @@ export default function Expenses() {
     a.click();
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredExpenses.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredExpenses.map(e => e.id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Delete ${selectedIds.length} expense(s)?`)) {
+      bulkDeleteMutation.mutate(selectedIds);
+    }
+  };
+
   const columns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedIds.length === filteredExpenses.length && filteredExpenses.length > 0}
+          onChange={toggleSelectAll}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(row.id)}
+          onChange={() => toggleSelect(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
     {
       header: "Date",
       render: (row) => (
@@ -357,6 +406,24 @@ export default function Expenses() {
           {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""}
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      {selectedIds.length > 0 && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-sm font-medium text-emerald-900">
+            {selectedIds.length} expense{selectedIds.length !== 1 ? "s" : ""} selected
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={bulkDeleteMutation.isPending}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Selected
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
