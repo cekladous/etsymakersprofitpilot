@@ -26,11 +26,10 @@ export const DEFAULT_FEE_CONFIG = {
  * @param {number} input.refunds - Refunds issued
  * @param {number} input.sales_tax - Sales tax (excluded from revenue)
  * @param {number} input.cost_of_goods - Materials + packaging cost
- * @param {string} input.advertising_type - "none", "etsy_ads", "offsite_ads"
+ * @param {string} input.advertising_type - "none", "etsy_ads", "etsy_offsite_ads", "social_ads", "google_ads", "influencer_affiliate"
  * @param {number} input.advertising_value - Value for ads (% or $)
  * @param {string} input.advertising_value_type - "percent" or "fixed"
- * @param {number} input.offsite_ads_percent - Offsite ads percentage
- * @param {string} input.payment_method - "etsy" or "paypal"
+ * @param {string} input.payment_method - "etsy" or "paypal" or other
  * @param {Object} feeConfig - Fee configuration (optional, uses defaults if not provided)
  * @returns {Object} Detailed profit breakdown
  */
@@ -46,7 +45,6 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     advertising_type = "none",
     advertising_value = 0,
     advertising_value_type = "percent",
-    offsite_ads_percent = 15,
     payment_method = "etsy",
   } = input;
 
@@ -86,16 +84,14 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
       (config.payment_processing_fee_fixed || 0.25);
   }
   
-  // Advertising Costs
+  // Advertising Costs - all types support % or $ per order
   let advertising_cost = 0;
-  if (advertising_type === "etsy_ads") {
+  if (advertising_type !== "none") {
     if (advertising_value_type === "percent") {
       advertising_cost = (gross_revenue * advertising_value) / 100;
     } else {
       advertising_cost = advertising_value;
     }
-  } else if (advertising_type === "offsite_ads") {
-    advertising_cost = (gross_revenue * offsite_ads_percent) / 100;
   }
   
   // Total Fees (including advertising)

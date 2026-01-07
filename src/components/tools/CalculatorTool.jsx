@@ -28,7 +28,6 @@ const defaultInputs = {
   advertising_type: "none",
   advertising_value: 0,
   advertising_value_type: "percent",
-  offsite_ads_percent: 15,
   payment_method: "etsy",
 };
 
@@ -43,9 +42,6 @@ export default function CalculatorTool() {
 
   const feeConfig = settings[0] || {};
   const results = calculateProfit(inputs, feeConfig);
-
-  const feeSourceUrl = settings[0]?.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374";
-  const feesLastVerified = settings[0]?.fees_last_verified_date;
 
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
@@ -137,24 +133,13 @@ export default function CalculatorTool() {
         </div>
       </div>
 
-      {/* Fee Info Banner */}
+      {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-2 flex-1">
-            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-blue-800">
-              <span className="font-semibold">Fee Rates ({feeConfig?.fee_country || 'US'}):</span> Listing ${(feeConfig?.etsy_listing_fee || 0.20).toFixed(2)} • Transaction {(feeConfig?.etsy_transaction_fee_percent || 6.5).toFixed(1)}% • Processing {(feeConfig?.payment_processing_fee_percent || 3.0).toFixed(1)}% + ${(feeConfig?.payment_processing_fee_fixed || 0.25).toFixed(2)}
-            </div>
+        <div className="flex items-start gap-2">
+          <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-blue-800">
+            <span className="font-semibold">Using current Settings rates</span> • Fee rates, payment processors, and advertising sources are configured in the Settings tab
           </div>
-          <a
-            href={feeSourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline whitespace-nowrap"
-          >
-            <ExternalLink className="w-3 h-3" />
-            Source
-          </a>
         </div>
       </div>
 
@@ -268,50 +253,45 @@ export default function CalculatorTool() {
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="etsy_ads">Etsy Ads</SelectItem>
-                    <SelectItem value="offsite_ads">Offsite Ads</SelectItem>
+                    <SelectItem value="etsy_offsite_ads">Etsy Offsite Ads</SelectItem>
+                    <SelectItem value="social_ads">Social Ads</SelectItem>
+                    <SelectItem value="google_ads">Google Ads</SelectItem>
+                    <SelectItem value="influencer_affiliate">Influencer / Affiliate</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {inputs.advertising_type === "etsy_ads" && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Average Cost of Sale</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={inputs.advertising_value}
-                        onChange={(e) => handleInputChange("advertising_value", e.target.value)}
-                        className="h-11 flex-1"
-                      />
-                      <Select value={inputs.advertising_value_type} onValueChange={(v) => handleSelectChange("advertising_value_type", v)}>
-                        <SelectTrigger className="h-11 w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percent">%</SelectItem>
-                          <SelectItem value="fixed">$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {inputs.advertising_type === "offsite_ads" && (
+              {inputs.advertising_type !== "none" && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Offsite Ads %</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={inputs.offsite_ads_percent}
-                    onChange={(e) => handleInputChange("offsite_ads_percent", e.target.value)}
-                    className="h-11"
-                  />
+                  <Label className="text-sm font-medium">
+                    {inputs.advertising_type === "etsy_ads" && "Average Cost of Sale"}
+                    {inputs.advertising_type === "etsy_offsite_ads" && "Offsite Ads Rate"}
+                    {inputs.advertising_type === "social_ads" && "Social Ads Cost"}
+                    {inputs.advertising_type === "google_ads" && "Google Ads Cost"}
+                    {inputs.advertising_type === "influencer_affiliate" && "Commission / Fee"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={inputs.advertising_value}
+                      onChange={(e) => handleInputChange("advertising_value", e.target.value)}
+                      className="h-11 flex-1"
+                    />
+                    <Select value={inputs.advertising_value_type} onValueChange={(v) => handleSelectChange("advertising_value_type", v)}>
+                      <SelectTrigger className="h-11 w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">%</SelectItem>
+                        <SelectItem value="fixed">$</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {inputs.advertising_type === "etsy_offsite_ads" && (
+                    <p className="text-xs text-stone-500">Percentage of order revenue (excluding tax)</p>
+                  )}
                 </div>
               )}
             </CardContent>
