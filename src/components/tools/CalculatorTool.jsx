@@ -331,12 +331,15 @@ export default function CalculatorTool() {
                   <SelectContent>
                     <SelectItem value="etsy">Etsy Payments</SelectItem>
                     <SelectItem value="paypal">PayPal</SelectItem>
+                    <SelectItem value="square">Square</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-stone-500">
                   {inputs.payment_method === "etsy" 
                     ? `Etsy: ${(feeConfig?.payment_processing_fee_percent || 3).toFixed(1)}% + $${(feeConfig?.payment_processing_fee_fixed || 0.25).toFixed(2)}`
-                    : `PayPal: ${(feeConfig?.paypal_fee_percent || 3.49).toFixed(2)}% + $${(feeConfig?.paypal_fee_fixed || 0.49).toFixed(2)}`
+                    : inputs.payment_method === "paypal"
+                    ? `PayPal: ${(feeConfig?.paypal_fee_percent || 3.49).toFixed(2)}% + $${(feeConfig?.paypal_fee_fixed || 0.49).toFixed(2)}`
+                    : `Square: ${(feeConfig?.square_fee_percent || 2.9).toFixed(1)}% + $${(feeConfig?.square_fee_fixed || 0.30).toFixed(2)}`
                   }
                 </p>
               </div>

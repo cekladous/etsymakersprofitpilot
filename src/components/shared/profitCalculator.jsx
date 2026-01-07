@@ -10,6 +10,8 @@ export const DEFAULT_FEE_CONFIG = {
   payment_processing_fee_fixed: 0.25,
   paypal_fee_percent: 3.49,
   paypal_fee_fixed: 0.49,
+  square_fee_percent: 2.9,
+  square_fee_fixed: 0.30,
   country: "US",
 };
 
@@ -66,6 +68,10 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     processing_fee = 
       (payment_base * (config.paypal_fee_percent || 3.49)) / 100 + 
       (config.paypal_fee_fixed || 0.49);
+  } else if (payment_method === "square") {
+    processing_fee = 
+      (payment_base * (config.square_fee_percent || 2.9)) / 100 + 
+      (config.square_fee_fixed || 0.30);
   } else {
     processing_fee = 
       (payment_base * (config.payment_processing_fee_percent || 3)) / 100 + 

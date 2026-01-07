@@ -60,6 +60,10 @@ export default function SettingsTool() {
     etsy_transaction_fee_percent: 6.5,
     payment_processing_fee_percent: 3.0,
     payment_processing_fee_fixed: 0.25,
+    paypal_fee_percent: 3.49,
+    paypal_fee_fixed: 0.49,
+    square_fee_percent: 2.9,
+    square_fee_fixed: 0.30,
     fee_country: "US",
     fee_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
     fees_last_verified_date: "",
@@ -68,6 +72,8 @@ export default function SettingsTool() {
 
   const [machineData, setMachineData] = useState({
     name: "",
+    brand: "",
+    model: "",
     type: "laser",
     wattage: "",
     hourly_rate: "",
@@ -75,6 +81,46 @@ export default function SettingsTool() {
     purchase_date: "",
     depreciation_years: 5,
   });
+
+  const machineBrands = [
+    { value: "atomstack", label: "Atomstack" },
+    { value: "boss", label: "Boss Laser" },
+    { value: "creality", label: "Creality" },
+    { value: "epilog", label: "Epilog" },
+    { value: "fsl", label: "Full Spectrum Laser" },
+    { value: "generic", label: "Generic/K40" },
+    { value: "glowforge", label: "Glowforge" },
+    { value: "laserpecker", label: "LaserPecker" },
+    { value: "longer", label: "Longer" },
+    { value: "monport", label: "Monport" },
+    { value: "omtech", label: "OMTech" },
+    { value: "ortur", label: "Ortur" },
+    { value: "thunder", label: "Thunder Laser" },
+    { value: "trotec", label: "Trotec" },
+    { value: "wecreat", label: "WeCreat" },
+    { value: "xtool", label: "xTool" },
+    { value: "other", label: "Other" },
+  ];
+
+  const machineModels = {
+    atomstack: ["A5 M50", "A10 Pro", "A20 Pro", "X7 Pro", "S10 Pro", "P7 M40", "Other"],
+    boss: ["LS-1416", "LS-1630", "HP-1610", "HP-2440", "LS-2436", "Other"],
+    creality: ["Falcon", "Falcon 2", "CV-30", "Other"],
+    epilog: ["Zing 16", "Zing 24", "Fusion Pro", "Fusion Edge", "Other"],
+    fsl: ["Muse", "H-Series", "Pro Series", "Other"],
+    generic: ["K40", "Generic CO2", "Generic Diode", "Other"],
+    glowforge: ["Basic", "Plus", "Pro", "Aura", "Other"],
+    laserpecker: ["LP3", "LP4", "L1 Pro", "L2", "Other"],
+    longer: ["Ray5", "Laser B1", "Other"],
+    monport: ["40W", "50W", "60W", "80W", "100W", "Other"],
+    omtech: ["40W", "50W", "60W", "80W", "100W", "130W", "Other"],
+    ortur: ["LM2", "LM3", "Laser Master 3", "H10", "Other"],
+    thunder: ["Nova 24", "Nova 35", "Nova 51", "Odin", "Other"],
+    trotec: ["Speedy 100", "Speedy 300", "Speedy 400", "SP500", "Other"],
+    wecreat: ["Vision", "Other"],
+    xtool: ["D1", "D1 Pro", "M1", "P2", "P3", "S1", "F1", "F1 Ultra", "Other"],
+    other: ["Custom"],
+  };
 
   const [newRule, setNewRule] = useState({ keyword: "", category: "other" });
 
@@ -107,6 +153,10 @@ export default function SettingsTool() {
         etsy_transaction_fee_percent: s.etsy_transaction_fee_percent ?? 6.5,
         payment_processing_fee_percent: s.payment_processing_fee_percent ?? 3.0,
         payment_processing_fee_fixed: s.payment_processing_fee_fixed ?? 0.25,
+        paypal_fee_percent: s.paypal_fee_percent ?? 3.49,
+        paypal_fee_fixed: s.paypal_fee_fixed ?? 0.49,
+        square_fee_percent: s.square_fee_percent ?? 2.9,
+        square_fee_fixed: s.square_fee_fixed ?? 0.30,
         fee_country: s.fee_country || "US",
         fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
         fees_last_verified_date: s.fees_last_verified_date || "",
@@ -201,6 +251,8 @@ export default function SettingsTool() {
       setEditingMachine(machine);
       setMachineData({
         name: machine.name || "",
+        brand: machine.brand || "",
+        model: machine.model || "",
         type: machine.type || "laser",
         wattage: machine.wattage?.toString() || "",
         hourly_rate: machine.hourly_rate?.toString() || "",
@@ -212,6 +264,8 @@ export default function SettingsTool() {
       setEditingMachine(null);
       setMachineData({
         name: "",
+        brand: "",
+        model: "",
         type: "laser",
         wattage: "",
         hourly_rate: "",
@@ -293,54 +347,114 @@ export default function SettingsTool() {
                 Fee Change Log
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label>Etsy Listing Fee ($)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={settingsData.etsy_listing_fee ?? 0.20}
-                onChange={(e) => setSettingsData({ ...settingsData, etsy_listing_fee: parseFloat(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-stone-500">2026 rate: $0.20 per listing</p>
+
+            {/* Etsy Fees */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-stone-700 text-sm">Etsy Payments</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Listing Fee ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.etsy_listing_fee ?? 0.20}
+                    onChange={(e) => setSettingsData({ ...settingsData, etsy_listing_fee: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 rate: $0.20 per listing</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Transaction Fee (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={settingsData.etsy_transaction_fee_percent ?? 6.5}
+                    onChange={(e) => setSettingsData({ ...settingsData, etsy_transaction_fee_percent: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 rate: 6.5% of price + shipping</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Processing Fee (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={settingsData.payment_processing_fee_percent ?? 3.0}
+                    onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_percent: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 US rate: 3.0%</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Processing Fixed Fee ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.payment_processing_fee_fixed ?? 0.25}
+                    onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 US rate: $0.25 per order</p>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Etsy Transaction Fee (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={settingsData.etsy_transaction_fee_percent ?? 6.5}
-                onChange={(e) => setSettingsData({ ...settingsData, etsy_transaction_fee_percent: parseFloat(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-stone-500">2026 rate: 6.5% of price + shipping</p>
+
+            {/* PayPal Fees */}
+            <div className="space-y-3 pt-3 border-t border-stone-200">
+              <h4 className="font-medium text-stone-700 text-sm">PayPal</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>PayPal Fee (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.paypal_fee_percent ?? 3.49}
+                    onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_percent: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 US rate: 3.49%</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>PayPal Fixed Fee ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.paypal_fee_fixed ?? 0.49}
+                    onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_fixed: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 US rate: $0.49 per transaction</p>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Payment Processing Fee (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={settingsData.payment_processing_fee_percent ?? 3.0}
-                onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_percent: parseFloat(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-stone-500">2026 US rate: 3.0%</p>
+
+            {/* Square Fees */}
+            <div className="space-y-3 pt-3 border-t border-stone-200">
+              <h4 className="font-medium text-stone-700 text-sm">Square</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Square Fee (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.square_fee_percent ?? 2.9}
+                    onChange={(e) => setSettingsData({ ...settingsData, square_fee_percent: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 online rate: 2.9%</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Square Fixed Fee ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.square_fee_fixed ?? 0.30}
+                    onChange={(e) => setSettingsData({ ...settingsData, square_fee_fixed: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 online rate: $0.30 per transaction</p>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Payment Processing Fixed Fee ($)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={settingsData.payment_processing_fee_fixed ?? 0.25}
-                onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-stone-500">2026 US rate: $0.25 per order</p>
-            </div>
-          </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 space-y-1">
-              <p className="font-semibold">💡 Current 2026 Etsy Fees (US)</p>
-              <p>• Listing: $0.20 per item</p>
-              <p>• Transaction: 6.5% of item price + shipping</p>
-              <p>• Payment Processing: 3% + $0.25</p>
-              <p className="pt-2 text-xs">These rates are used in the Profit Calculator and applied when auto-calculating order fees. Update them if you're in a different country or marketplace.</p>
+              <p className="font-semibold">💡 Payment Processor Fees (2026)</p>
+              <p>• Etsy Payments: 3% + $0.25</p>
+              <p>• PayPal: 3.49% + $0.49</p>
+              <p>• Square: 2.9% + $0.30 (online)</p>
+              <p className="pt-2 text-xs">These rates are used in the Profit Calculator. Update them if you're in a different country or have different rates.</p>
             </div>
           </div>
 
@@ -495,13 +609,49 @@ export default function SettingsTool() {
 
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Brand *</Label>
+                <Select
+                  value={machineData.brand}
+                  onValueChange={(v) => setMachineData({ ...machineData, brand: v, model: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select brand..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {machineBrands.map((brand) => (
+                      <SelectItem key={brand.value} value={brand.value}>
+                        {brand.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Model *</Label>
+                <Select
+                  value={machineData.model}
+                  onValueChange={(v) => setMachineData({ ...machineData, model: v, name: `${machineBrands.find(b => b.value === machineData.brand)?.label || ""} ${v}`.trim() })}
+                  disabled={!machineData.brand}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {machineData.brand && machineModels[machineData.brand]?.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2 col-span-2">
-                <Label>Machine Name *</Label>
+                <Label>Machine Name (auto-generated)</Label>
                 <Input
                   value={machineData.name}
                   onChange={(e) => setMachineData({ ...machineData, name: e.target.value })}
-                  placeholder="Glowforge Pro"
-                  required
+                  placeholder="Will auto-fill from brand + model"
                 />
               </div>
               <div className="space-y-2">
@@ -582,7 +732,7 @@ export default function SettingsTool() {
             </Button>
             <Button
               onClick={() => machineMutation.mutate(machineData)}
-              disabled={machineMutation.isPending || !machineData.name}
+              disabled={machineMutation.isPending || !machineData.brand || !machineData.model}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {machineMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
