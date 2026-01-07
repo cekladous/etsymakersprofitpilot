@@ -6,7 +6,6 @@ import MonthlySummary from './pages/MonthlySummary';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Tools from './pages/Tools';
-import Inventory from './pages/Inventory';
 import __Layout from './Layout.jsx';
 
 
@@ -19,7 +18,6 @@ export const PAGES = {
     "Orders": Orders,
     "Products": Products,
     "Tools": Tools,
-    "Inventory": Inventory,
 }
 
 export const pagesConfig = {

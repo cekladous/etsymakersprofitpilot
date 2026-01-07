@@ -4,50 +4,40 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Layers, Package2, Trash2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
-import StatusBadge from "@/components/shared/StatusBadge";
 import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
-import MaterialSheetDialog from "@/components/materials/MaterialSheetDialog";
-import MaterialUsageDialog from "@/components/materials/MaterialUsageDialog";
+import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
+import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
 
 export default function Materials() {
-  const [activeTab, setActiveTab] = useState("sheets");
+  const [activeTab, setActiveTab] = useState("inventory");
   const [typeFormOpen, setTypeFormOpen] = useState(false);
-  const [sheetFormOpen, setSheetFormOpen] = useState(false);
-  const [usageFormOpen, setUsageFormOpen] = useState(false);
+  const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState(null);
-  const [editingSheet, setEditingSheet] = useState(null);
-  const [selectedSheetForUsage, setSelectedSheetForUsage] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
 
   const queryClient = useQueryClient();
-
-  // Check URL params for filters
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("filter") === "low_stock") {
-      setStockFilter("low");
-    }
-  }, []);
 
   const { data: materialTypes = [], isLoading: typesLoading } = useQuery({
     queryKey: ["materialTypes"],
     queryFn: () => base44.entities.MaterialType.list("-created_date"),
   });
 
-  const { data: sheets = [], isLoading: sheetsLoading } = useQuery({
-    queryKey: ["materialSheets"],
-    queryFn: () => base44.entities.MaterialSheet.list("-created_date"),
+  const { data: inventoryItems = [], isLoading: inventoryLoading } = useQuery({
+    queryKey: ["inventory-items"],
+    queryFn: () => base44.entities.InventoryItem.list("-last_updated", 500),
+  });
+
+  const { data: materialPurchases = [] } = useQuery({
+    queryKey: ["material-purchases"],
+    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 100),
   });
 
   const deleteTypeMutation = useMutation({
@@ -57,35 +47,79 @@ export default function Materials() {
     },
   });
 
-  const deleteSheetMutation = useMutation({
-    mutationFn: (id) => base44.entities.MaterialSheet.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["materialSheets"] });
-    },
-  });
-
-  const getTypeName = (typeId) => {
-    const type = materialTypes.find(t => t.id === typeId);
-    return type?.name || "-";
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
   };
 
-  const getSheetCount = (typeId) => {
-    return sheets.filter(s => s.material_type_id === typeId && s.status !== "depleted").length;
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
   };
 
-  const isLowStock = (sheet) => {
-    return sheet.remaining_percentage <= 20 && sheet.status !== "depleted";
-  };
-
-  const filteredSheets = sheets.filter(sheet => {
-    const type = materialTypes.find(t => t.id === sheet.material_type_id);
+  const filteredInventory = inventoryItems.filter(item => {
     const matchesSearch = !search ||
-      type?.name?.toLowerCase().includes(search.toLowerCase());
+      item.material_name?.toLowerCase().includes(search.toLowerCase());
     const matchesStock = stockFilter === "all" ||
-      (stockFilter === "low" && isLowStock(sheet)) ||
-      (stockFilter === "available" && sheet.status === "available");
+      (stockFilter === "low" && item.quantity_on_hand <= 5 && item.quantity_on_hand > 0) ||
+      (stockFilter === "out" && item.quantity_on_hand === 0);
     return matchesSearch && matchesStock;
   });
+
+  const totalInventoryValue = inventoryItems.reduce(
+    (sum, item) => sum + (item.total_value || 0),
+    0
+  );
+
+  const lowStockItems = inventoryItems.filter(
+    (item) => item.quantity_on_hand <= 5 && item.quantity_on_hand > 0
+  );
+
+  const outOfStockItems = inventoryItems.filter(
+    (item) => item.quantity_on_hand === 0
+  );
+
+  const inventoryColumns = [
+    {
+      header: "Material Name",
+      render: (row) => <span className="font-medium text-stone-900">{row.material_name}</span>,
+    },
+    {
+      header: "Quantity on Hand",
+      render: (row) => (
+        <span className={`font-medium ${row.quantity_on_hand === 0 ? "text-rose-600" : row.quantity_on_hand <= 5 ? "text-amber-600" : "text-stone-900"}`}>
+          {formatNumber(row.quantity_on_hand)}
+        </span>
+      ),
+    },
+    {
+      header: "Average Cost",
+      render: (row) => <span className="text-stone-600">{formatCurrency(row.average_cost)}</span>,
+    },
+    {
+      header: "Total Value",
+      render: (row) => <span className="font-semibold">{formatCurrency(row.total_value)}</span>,
+    },
+    {
+      header: "",
+      render: (row) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setSelectedItem(row);
+            setAdjustmentDialogOpen(true);
+          }}
+        >
+          Adjust
+        </Button>
+      ),
+    },
+  ];
 
   const typeColumns = [
     {
@@ -106,143 +140,41 @@ export default function Materials() {
       ),
     },
     {
-      header: "Size",
+      header: "Default Cost",
       render: (row) => (
-        <span className="text-stone-600">
-          {row.default_width && row.default_height
-            ? `${row.default_width}" × ${row.default_height}"`
-            : "-"}
-        </span>
-      ),
-    },
-    {
-      header: "Cost/Sheet",
-      render: (row) => (
-        <span className="font-medium">${(row.cost_per_sheet || 0).toFixed(2)}</span>
-      ),
-    },
-    {
-      header: "In Stock",
-      render: (row) => (
-        <span className="text-stone-600">{getSheetCount(row.id)} sheets</span>
+        <span className="font-medium">{formatCurrency(row.cost_per_sheet || 0)}</span>
       ),
     },
     {
       header: "",
       render: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => {
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
               setEditingType(row);
               setTypeFormOpen(true);
-            }}>
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => deleteTypeMutation.mutate(row.id)}
-              className="text-rose-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
-
-  const sheetColumns = [
-    {
-      header: "Material",
-      render: (row) => (
-        <span className="font-medium text-stone-900">{getTypeName(row.material_type_id)}</span>
-      ),
-    },
-    {
-      header: "Size",
-      render: (row) => (
-        <span className="text-stone-600">
-          {row.width && row.height ? `${row.width}" × ${row.height}"` : "-"}
-        </span>
-      ),
-    },
-    {
-      header: "Remaining",
-      render: (row) => {
-        const pct = row.remaining_percentage || 0;
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-20 h-2 bg-stone-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  pct > 50 ? "bg-emerald-500" : pct > 20 ? "bg-amber-500" : "bg-rose-500"
-                }`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <span className="text-sm text-stone-600">{pct.toFixed(0)}%</span>
-          </div>
-        );
-      },
-    },
-    {
-      header: "Remaining Value",
-      render: (row) => (
-        <span className="font-medium">${(row.remaining_value || 0).toFixed(2)}</span>
-      ),
-    },
-    {
-      header: "Status",
-      render: (row) => {
-        if (isLowStock(row)) {
-          return <StatusBadge status="low_stock" />;
-        }
-        return <StatusBadge status={row.status} />;
-      },
-    },
-    {
-      header: "",
-      render: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => {
-              setSelectedSheetForUsage(row);
-              setUsageFormOpen(true);
-            }}>
-              Log Usage
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setEditingSheet(row);
-              setSheetFormOpen(true);
-            }}>
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => deleteSheetMutation.mutate(row.id)}
-              className="text-rose-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => deleteTypeMutation.mutate(row.id)}
+            className="text-rose-600"
+          >
+            Delete
+          </Button>
+        </div>
       ),
     },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Materials" description="Track material types and individual sheets">
+      <PageHeader title="Materials & Inventory" description="Track materials, purchases, and inventory levels">
         <Button
           variant="outline"
           onClick={() => {
@@ -251,40 +183,89 @@ export default function Materials() {
           }}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Material
+          Add Material Type
         </Button>
         <Button
-          onClick={() => {
-            setEditingSheet(null);
-            setSheetFormOpen(true);
-          }}
+          onClick={() => setPurchaseFormOpen(true)}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Sheet
+          Log Purchase
         </Button>
       </PageHeader>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-100 rounded-lg">
+                <Package className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Total Inventory Value</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {formatCurrency(totalInventoryValue)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <TrendingDown className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Low Stock Items</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {lowStockItems.length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-100 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Out of Stock</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {outOfStockItems.length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-stone-100">
-          <TabsTrigger value="sheets">Sheets</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="types">Material Types</TabsTrigger>
+          <TabsTrigger value="history">Purchase History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sheets" className="mt-6 space-y-6">
+        <TabsContent value="inventory" className="mt-6 space-y-6">
           {/* Filters */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <Input
-                placeholder="Search by material..."
+                placeholder="Search materials..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
               />
             </div>
             <div className="flex gap-2">
-              {["all", "available", "low"].map((filter) => (
+              {["all", "low", "out"].map((filter) => (
                 <Button
                   key={filter}
                   variant={stockFilter === filter ? "default" : "outline"}
@@ -292,26 +273,26 @@ export default function Materials() {
                   onClick={() => setStockFilter(filter)}
                   className={stockFilter === filter ? "bg-emerald-600" : ""}
                 >
-                  {filter === "all" ? "All" : filter === "low" ? "Low Stock" : "Available"}
+                  {filter === "all" ? "All" : filter === "low" ? "Low Stock" : "Out of Stock"}
                 </Button>
               ))}
             </div>
           </div>
 
-          {sheets.length === 0 && !sheetsLoading ? (
+          {inventoryItems.length === 0 && !inventoryLoading ? (
             <EmptyState
-              icon={Package2}
-              title="No sheets tracked"
-              description="Add individual material sheets to track usage and remaining value."
-              actionLabel="Add Sheet"
-              onAction={() => setSheetFormOpen(true)}
+              icon={Box}
+              title="No inventory items"
+              description="Purchase materials to start tracking inventory."
+              actionLabel="Log Purchase"
+              onAction={() => setPurchaseFormOpen(true)}
             />
           ) : (
             <DataTable
-              columns={sheetColumns}
-              data={filteredSheets}
-              isLoading={sheetsLoading}
-              emptyMessage="No sheets match your filters"
+              columns={inventoryColumns}
+              data={filteredInventory}
+              isLoading={inventoryLoading}
+              emptyMessage="No inventory matches your filters"
             />
           )}
         </TabsContent>
@@ -319,10 +300,10 @@ export default function Materials() {
         <TabsContent value="types" className="mt-6 space-y-6">
           {materialTypes.length === 0 && !typesLoading ? (
             <EmptyState
-              icon={Layers}
+              icon={Package}
               title="No material types"
-              description="Define your material types with sizes and costs."
-              actionLabel="Add Material"
+              description="Define material types for tracking and costing."
+              actionLabel="Add Material Type"
               onAction={() => setTypeFormOpen(true)}
             />
           ) : (
@@ -332,6 +313,44 @@ export default function Materials() {
               isLoading={typesLoading}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-6">
+          <Card>
+            <CardContent className="p-6">
+              {materialPurchases.length === 0 ? (
+                <EmptyState
+                  icon={Package}
+                  title="No purchase history"
+                  description="Your material purchases will appear here."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {materialPurchases.slice(0, 20).map((purchase) => (
+                    <div
+                      key={purchase.id}
+                      className="flex items-center justify-between p-4 bg-stone-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium text-stone-900">{purchase.material_name}</p>
+                        <p className="text-sm text-stone-500">
+                          {purchase.purchase_date} • {purchase.vendor || "Unknown vendor"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-stone-900">
+                          {formatCurrency(purchase.total_cost)}
+                        </p>
+                        <p className="text-sm text-stone-500">
+                          Qty: {purchase.quantity}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -345,25 +364,15 @@ export default function Materials() {
         }}
       />
 
-      <MaterialSheetDialog
-        open={sheetFormOpen}
-        onOpenChange={setSheetFormOpen}
-        sheet={editingSheet}
-        materialTypes={materialTypes}
-        onClose={() => {
-          setSheetFormOpen(false);
-          setEditingSheet(null);
-        }}
+      <MaterialPurchaseDialog
+        open={purchaseFormOpen}
+        onOpenChange={setPurchaseFormOpen}
       />
 
-      <MaterialUsageDialog
-        open={usageFormOpen}
-        onOpenChange={setUsageFormOpen}
-        sheet={selectedSheetForUsage}
-        onClose={() => {
-          setUsageFormOpen(false);
-          setSelectedSheetForUsage(null);
-        }}
+      <InventoryAdjustmentDialog
+        open={adjustmentDialogOpen}
+        onOpenChange={setAdjustmentDialogOpen}
+        item={selectedItem}
       />
     </div>
   );
