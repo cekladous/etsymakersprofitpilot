@@ -17,8 +17,6 @@ export const EXPENSE_CATEGORY_GROUPS = {
       { name: "etsy_offsite_ads_fees", label: "Etsy Offsite Ads Fees" },
       { name: "etsy_shipping", label: "Etsy Shipping" },
       { name: "other_postage_costs", label: "Other Postage Costs" },
-      { name: "custom_expense_a", label: "Custom Expense A" },
-      { name: "custom_expense_b", label: "Custom Expense B" },
     ],
   },
   product_expenses: {
@@ -38,7 +36,6 @@ export const EXPENSE_CATEGORY_GROUPS = {
       { name: "professional_services", label: "Professional Services" },
       { name: "other", label: "Other" },
       { name: "miscellaneous_expenses", label: "Miscellaneous Expenses" },
-      { name: "custom_expense_c", label: "Custom Expense C" },
     ],
   },
 };
