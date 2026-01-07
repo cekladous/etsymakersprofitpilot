@@ -19,6 +19,7 @@ export default function Materials() {
   const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState(null);
+  const [editingPurchase, setEditingPurchase] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
@@ -228,7 +229,7 @@ export default function Materials() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Materials & Inventory" description="Track materials, purchases, and inventory levels">
+      <PageHeader title="Inventory" description="Track materials, purchases, and inventory levels">
         <Button
           variant="outline"
           onClick={() => {
@@ -250,7 +251,13 @@ export default function Materials() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => {
+            setActiveTab("inventory");
+            setStockFilter("all");
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-emerald-100 rounded-lg">
@@ -266,7 +273,13 @@ export default function Materials() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => {
+            setActiveTab("inventory");
+            setStockFilter("low");
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-yellow-100 rounded-lg">
@@ -282,7 +295,13 @@ export default function Materials() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => {
+            setActiveTab("inventory");
+            setStockFilter("out");
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-rose-100 rounded-lg">
@@ -383,7 +402,7 @@ export default function Materials() {
                   {materialPurchases.slice(0, 20).map((purchase) => (
                     <div
                       key={purchase.id}
-                      className="flex items-center justify-between p-4 bg-stone-50 rounded-lg"
+                      className="flex items-center justify-between p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
                     >
                       <div>
                         <p className="font-medium text-stone-900">{purchase.material_name}</p>
@@ -391,13 +410,25 @@ export default function Materials() {
                           {purchase.purchase_date} • {purchase.vendor || "Unknown vendor"}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-stone-900">
-                          {formatCurrency(purchase.total_cost)}
-                        </p>
-                        <p className="text-sm text-stone-500">
-                          Qty: {purchase.quantity}
-                        </p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-semibold text-stone-900">
+                            {formatCurrency(purchase.total_cost)}
+                          </p>
+                          <p className="text-sm text-stone-500">
+                            Qty: {purchase.quantity}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingPurchase(purchase);
+                            setPurchaseFormOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -420,7 +451,11 @@ export default function Materials() {
 
       <MaterialPurchaseDialog
         open={purchaseFormOpen}
-        onOpenChange={setPurchaseFormOpen}
+        onOpenChange={(open) => {
+          setPurchaseFormOpen(open);
+          if (!open) setEditingPurchase(null);
+        }}
+        purchase={editingPurchase}
       />
 
       <InventoryAdjustmentDialog
