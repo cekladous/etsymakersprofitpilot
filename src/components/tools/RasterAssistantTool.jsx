@@ -1,6 +1,9 @@
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -8,7 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Zap, Lightbulb } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Zap, Lightbulb, CheckCircle2, AlertCircle, Database } from "lucide-react";
 
 const materials = [
   { value: "wood", label: "Wood" },
@@ -53,39 +64,20 @@ const laserTypes = [
   { value: "co2", label: "CO2" },
 ];
 
-const resultTypes = [
-  { value: "light", label: "Light Marking", description: "Subtle surface etching, minimal depth" },
-  { value: "standard", label: "Standard Engraving", description: "Good contrast and visibility" },
-  { value: "deep", label: "Deep/Dark Contrast", description: "Maximum contrast, deeper engraving" },
+const operations = [
+  { value: "engrave", label: "Engrave" },
+  { value: "cut", label: "Cut" },
+  { value: "score", label: "Score" },
 ];
 
-const getRecommendations = (material, laserType, result) => {
-  if (laserType === "co2" && material === "wood") {
-    if (result === "light") return { dpiMin: 200, dpiMax: 300, dotMin: 100, dotMax: 150, tips: ["Start with lower power settings", "Good for detailed images"] };
-    else if (result === "standard") return { dpiMin: 300, dpiMax: 400, dotMin: 150, dotMax: 250, tips: ["Classic CO2 wood engraving settings", "Ideal for photos"] };
-    else return { dpiMin: 400, dpiMax: 500, dotMin: 250, dotMax: 350, tips: ["Use slower speeds", "Higher power for deeper burns"] };
-  }
-  if (laserType === "co2" && material === "acrylic") {
-    if (result === "light") return { dpiMin: 300, dpiMax: 400, dotMin: 120, dotMax: 180, tips: ["Keep power low to avoid melting", "Multiple passes work better"] };
-    else if (result === "standard") return { dpiMin: 400, dpiMax: 500, dotMin: 180, dotMax: 250, tips: ["Good for frosted effect", "Experiment with defocus"] };
-    else return { dpiMin: 500, dpiMax: 600, dotMin: 250, dotMax: 350, tips: ["High DPI for best frosting", "May need multiple passes"] };
-  }
-  if (laserType === "diode" && material === "wood") {
-    if (result === "light") return { dpiMin: 250, dpiMax: 350, dotMin: 150, dotMax: 200, tips: ["Lighter woods work better", "Use jarvis dithering"] };
-    else if (result === "standard") return { dpiMin: 350, dpiMax: 450, dotMin: 200, dotMax: 300, tips: ["Good for most hardwoods", "Slower speeds recommended"] };
-    else return { dpiMin: 450, dpiMax: 600, dotMin: 300, dotMax: 400, tips: ["Very slow speeds", "Multiple passes may be needed"] };
-  }
-  if (result === "light") return { dpiMin: 200, dpiMax: 300, dotMin: 100, dotMax: 200, tips: ["Start with test engravings", "Adjust based on material response"] };
-  else if (result === "standard") return { dpiMin: 300, dpiMax: 450, dotMin: 150, dotMax: 250, tips: ["General purpose settings", "Works for most materials"] };
-  else return { dpiMin: 400, dpiMax: 600, dotMin: 200, dotMax: 350, tips: ["Slower speeds required", "May need multiple passes"] };
-};
+
 
 export default function RasterAssistantTool() {
   const [material, setMaterial] = useState("");
   const [machineBrand, setMachineBrand] = useState("");
   const [machineModel, setMachineModel] = useState("");
   const [laserType, setLaserType] = useState("");
-  const [result, setResult] = useState("");
+  const [operation, setOperation] = useState("");
 
   const selectedMachine = machines.find(m => m.brand === machineBrand);
   const availableTypes = selectedMachine?.types || [];
@@ -98,8 +90,23 @@ export default function RasterAssistantTool() {
     }
   }, [machineBrand]);
 
-  const showResults = material && machineBrand && laserType && result;
-  const recommendations = showResults ? getRecommendations(material, laserType, result) : null;
+  // Fetch laser settings from database
+  const { data: allSettings = [], isLoading } = useQuery({
+    queryKey: ["laser-settings"],
+    queryFn: () => base44.entities.LaserSetting.list(),
+  });
+
+  // Filter settings based on selections
+  const filteredSettings = allSettings.filter(setting => {
+    if (machineBrand && setting.brand !== machineBrand) return false;
+    if (machineModel && setting.model !== machineModel) return false;
+    if (laserType && setting.laser_type !== laserType) return false;
+    if (material && !setting.material.toLowerCase().includes(material.toLowerCase())) return false;
+    if (operation && setting.operation !== operation) return false;
+    return setting.active !== false;
+  });
+
+  const showResults = filteredSettings.length > 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -224,86 +231,148 @@ export default function RasterAssistantTool() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-xl font-bold text-pink-700">5</div>
               <div>
-                <CardTitle>Desired Result</CardTitle>
-                <CardDescription>Choose the type of engraving result</CardDescription>
+                <CardTitle>Operation Type</CardTitle>
+                <CardDescription>What do you want to do?</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {resultTypes.map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setResult(type.value)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    result === type.value ? "border-emerald-500 bg-emerald-50" : "border-stone-200 hover:border-stone-300 bg-white"
-                  }`}
-                >
-                  <div className="font-semibold text-stone-900">{type.label}</div>
-                  <div className="text-sm text-stone-500 mt-1">{type.description}</div>
-                </button>
-              ))}
-            </div>
+            <Label>Operation</Label>
+            <Select value={operation} onValueChange={setOperation}>
+              <SelectTrigger className="h-11 mt-2">
+                <SelectValue placeholder="Select operation..." />
+              </SelectTrigger>
+              <SelectContent>
+                {operations.map((op) => (
+                  <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
       </div>
 
       <div>
-        {showResults ? (
+        {isLoading ? (
+          <Card className="border-2 border-stone-200">
+            <CardContent className="py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Database className="w-8 h-8 text-stone-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-stone-900 mb-2">Loading Settings...</h3>
+            </CardContent>
+          </Card>
+        ) : showResults ? (
           <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white sticky top-8">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-100 rounded-lg">
-                  <Zap className="w-5 h-5 text-emerald-600" />
+                  <Database className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-emerald-900">Recommended Settings</CardTitle>
-                  <CardDescription>
-                    {materials.find(m => m.value === material)?.label} • {machines.find(m => m.brand === machineBrand)?.label} • {laserTypes.find(l => l.value === laserType)?.label} • {resultTypes.find(r => r.value === result)?.label}
+                  <CardTitle className="text-emerald-900">Manufacturer Settings Library</CardTitle>
+                  <CardDescription className="flex items-center gap-2 mt-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    {filteredSettings.length} matching setting{filteredSettings.length !== 1 ? 's' : ''} found
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-white rounded-xl p-5 border border-emerald-100">
-                <div className="text-sm text-stone-600 mb-2">DPI Range</div>
-                <div className="text-3xl font-bold text-emerald-700">
-                  {recommendations.dpiMin} – {recommendations.dpiMax}
-                </div>
-                <div className="text-xs text-stone-500 mt-1">
-                  ≈ {Math.round(recommendations.dpiMin / 2.54)} – {Math.round(recommendations.dpiMax / 2.54)} lines/cm
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl p-5 border border-emerald-100">
-                <div className="text-sm text-stone-600 mb-2">Dot Duration</div>
-                <div className="text-3xl font-bold text-emerald-700">
-                  {recommendations.dotMin} – {recommendations.dotMax} μs
-                </div>
-                {(machineModel === "F1" || machineModel === "F1 Ultra") && (
-                  <div className="text-xs text-stone-500 mt-1">
-                    For xTool F1/F1 Ultra bitmap engraving
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">Manufacturer-Recommended Defaults</p>
+                    <p className="text-xs mt-1">These are starting points based on official documentation. Always test on scrap material and adjust for your specific conditions.</p>
                   </div>
-                )}
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-4 h-4 text-amber-600" />
-                  <span className="font-semibold text-amber-900">Tips</span>
                 </div>
-                <ul className="space-y-2 text-sm text-amber-800">
-                  {recommendations.tips.map((tip, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
 
-              <div className="text-xs text-stone-500 text-center">
-                Use these as starting points and adjust based on your results
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-stone-50">
+                      <TableHead>Material</TableHead>
+                      <TableHead>Operation</TableHead>
+                      <TableHead>Speed</TableHead>
+                      <TableHead>Power</TableHead>
+                      <TableHead>Passes</TableHead>
+                      <TableHead>DPI/LPI</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSettings.map((setting, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">
+                          <div>{setting.material}</div>
+                          {setting.material_thickness && (
+                            <div className="text-xs text-stone-500">{setting.material_thickness}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {setting.operation}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {setting.speed_mm_s ? `${setting.speed_mm_s} mm/s` : ''}
+                            {setting.speed_in_s && setting.speed_mm_s ? ' / ' : ''}
+                            {setting.speed_in_s ? `${setting.speed_in_s} in/s` : ''}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {setting.power_min === setting.power_max 
+                              ? `${setting.power_min}%`
+                              : `${setting.power_min}-${setting.power_max}%`
+                            }
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">{setting.passes || 1}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {setting.dpi && `${setting.dpi} DPI`}
+                            {setting.lpi && `${setting.lpi} LPI`}
+                            {!setting.dpi && !setting.lpi && <span className="text-stone-400">—</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="text-xs text-stone-600">
+                            {setting.notes}
+                            {setting.frequency && (
+                              <div className="text-stone-500 mt-1">Freq: {setting.frequency} Hz</div>
+                            )}
+                            {setting.air_assist && (
+                              <div className="text-emerald-600 mt-1">✓ Air assist</div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {filteredSettings.length > 0 && filteredSettings[0].source && (
+                <div className="text-xs text-stone-500 text-center pt-2 border-t">
+                  Source: {filteredSettings[0].source} | Last verified: {filteredSettings[0].last_verified || 'Unknown'}
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="w-4 h-4 text-amber-600" />
+                  <span className="font-semibold text-amber-900 text-sm">Tips</span>
+                </div>
+                <ul className="space-y-1 text-xs text-amber-800">
+                  <li>• Always run test cuts on scrap material first</li>
+                  <li>• Material variations affect results - adjust as needed</li>
+                  <li>• Clean your lens and mirrors regularly for consistent results</li>
+                  <li>• Document your successful settings for future reference</li>
+                </ul>
               </div>
             </CardContent>
           </Card>
@@ -311,11 +380,11 @@ export default function RasterAssistantTool() {
           <Card className="border-2 border-stone-200">
             <CardContent className="py-16 text-center">
               <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-8 h-8 text-stone-400" />
+                <Database className="w-8 h-8 text-stone-400" />
               </div>
-              <h3 className="text-lg font-semibold text-stone-900 mb-2">Select Your Settings</h3>
+              <h3 className="text-lg font-semibold text-stone-900 mb-2">Select Your Parameters</h3>
               <p className="text-stone-500 max-w-sm mx-auto">
-                Choose your material, machine, laser type, and desired result to get personalized recommendations
+                Choose your machine, material, and operation to see manufacturer-recommended settings from our library
               </p>
             </CardContent>
           </Card>
