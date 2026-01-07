@@ -61,8 +61,14 @@ export default function LaserSettingEditDialog({ setting, open, onOpenChange }) 
     }
   }, [setting]);
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.LaserSetting.create(data),
+  const saveMutation = useMutation({
+    mutationFn: (data) => {
+      // If editing a User setting, update it. Otherwise create new
+      if (setting?.source_type === "User" && setting?.id) {
+        return base44.entities.LaserSetting.update(setting.id, data);
+      }
+      return base44.entities.LaserSetting.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["laser-settings"] });
       onOpenChange(false);
@@ -81,7 +87,7 @@ export default function LaserSettingEditDialog({ setting, open, onOpenChange }) 
       dpi_lpi: formData.dpi_lpi ? parseFloat(formData.dpi_lpi) : null,
       frequency_hz: formData.frequency_hz ? parseFloat(formData.frequency_hz) : null,
     };
-    createMutation.mutate(payload);
+    saveMutation.mutate(payload);
   };
 
   const handleChange = (field, value) => {
@@ -94,10 +100,14 @@ export default function LaserSettingEditDialog({ setting, open, onOpenChange }) 
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Copy className="w-5 h-5 text-emerald-600" />
-            <DialogTitle>Save as My Setting</DialogTitle>
+            <DialogTitle>
+              {setting?.source_type === "User" && setting?.id ? "Edit My Setting" : "Save as My Setting"}
+            </DialogTitle>
           </div>
           <DialogDescription>
-            Copy and customize this setting for your personal library
+            {setting?.source_type === "User" && setting?.id 
+              ? "Edit your custom laser setting"
+              : "Copy and customize this setting for your personal library"}
             {setting?.source_type && (
               <Badge className="ml-2 capitalize">{setting.source_type}</Badge>
             )}
@@ -244,11 +254,11 @@ export default function LaserSettingEditDialog({ setting, open, onOpenChange }) 
             </Button>
             <Button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={saveMutation.isPending}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Save to My Settings
+              {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {setting?.source_type === "User" && setting?.id ? "Update Setting" : "Save to My Settings"}
             </Button>
           </DialogFooter>
         </form>

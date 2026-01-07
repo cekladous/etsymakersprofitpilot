@@ -26,7 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Database, ExternalLink, Copy, Filter } from "lucide-react";
+import { Database, ExternalLink, Copy, Filter, Pencil } from "lucide-react";
 import LaserSettingEditDialog from "./LaserSettingEditDialog";
 
 const machines = [
@@ -103,6 +103,11 @@ export default function MaterialsLibraryTool() {
   }, [filteredSettings]);
 
   const handleCopySetting = (setting) => {
+    setSelectedSetting(setting);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSetting = (setting) => {
     setSelectedSetting(setting);
     setEditDialogOpen(true);
   };
@@ -269,15 +274,29 @@ export default function MaterialsLibraryTool() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCopySetting(setting)}
-                                className="text-emerald-600 hover:text-emerald-700"
-                              >
-                                <Copy className="w-4 h-4 mr-1" />
-                                Copy
-                              </Button>
+                              <div className="flex gap-2">
+                                {setting.source_type === "User" ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditSetting(setting)}
+                                    className="text-blue-600 hover:text-blue-700"
+                                  >
+                                    <Pencil className="w-4 h-4 mr-1" />
+                                    Edit
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleCopySetting(setting)}
+                                    className="text-emerald-600 hover:text-emerald-700"
+                                  >
+                                    <Copy className="w-4 h-4 mr-1" />
+                                    Copy
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
