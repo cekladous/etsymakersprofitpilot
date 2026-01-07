@@ -10,12 +10,71 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import * as XLSX from "xlsx";
+
+// Helper functions for parsing Etsy CSV data
+const getVal = (row, header) => row[header];
+
+const toStringSafe = (v) => String(v ?? "").trim();
+
+const parseMoney = (v) => {
+  if (v === null || v === undefined || v === "") return 0;
+  const str = toStringSafe(v).replace(/[$,]/g, "");
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+};
+
+const parseIntSafe = (v) => {
+  if (v === null || v === undefined || v === "") return 0;
+  const num = parseInt(toStringSafe(v));
+  return isNaN(num) ? 0 : num;
+};
+
+const parseEtsyDateToISO = (v) => {
+  if (!v) return "";
+  
+  // If it's already a Date object
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return "";
+    const year = v.getFullYear();
+    const month = String(v.getMonth() + 1).padStart(2, "0");
+    const day = String(v.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  
+  // If it's an Excel serial number (days since 1900-01-01)
+  if (typeof v === "number") {
+    const date = XLSX.SSF.parse_date_code(v);
+    if (!date) return "";
+    const year = date.y;
+    const month = String(date.m).padStart(2, "0");
+    const day = String(date.d).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  
+  // If it's a string, try to parse it
+  if (typeof v === "string") {
+    const str = v.trim();
+    if (!str) return "";
+    
+    // Try parsing common formats
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      const year = parsed.getFullYear();
+      const month = String(parsed.getMonth() + 1).padStart(2, "0");
+      const day = String(parsed.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  }
+  
+  return "";
+};
 
 export default function EtsyOrderImportDialog({ open, onOpenChange }) {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [skippedRows, setSkippedRows] = useState([]);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -79,27 +138,56 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false });
 
-        // Transform to EtsyOrder schema
-        const orders = jsonData.map((row) => ({
-          sale_date: row["Order Date"] || row["Sale Date"] || row.sale_date,
-          order_id: row["Order ID"]?.toString() || row.order_id?.toString(),
-          buyer_username: row["Buyer User ID"] || row["Buyer"] || row.buyer_username,
-          buyer_full_name: row["Full Name"] || row.buyer_full_name,
-          number_of_items: parseInt(row["Number of Items"] || row.number_of_items || 1),
-          payment_method: row["Payment Method"] || row.payment_method,
-          order_value: parseFloat(row["Order Value"] || row.order_value || 0),
-          coupon_code: row["Coupon Code"] || row.coupon_code || "",
-          discount_amount: parseFloat(row["Discount Amount"] || row.discount_amount || 0),
-          shipping_charged: parseFloat(row["Shipping"] || row.shipping_charged || 0),
-          sales_tax: parseFloat(row["Sales Tax"] || row.sales_tax || 0),
-          order_total: parseFloat(row["Order Total"] || row.order_total || 0),
-          card_processing_fees: parseFloat(row["Card Processing Fees"] || row.card_processing_fees || 0),
-          order_net: parseFloat(row["Order Net"] || row.order_net || 0),
-          status: row["Status"] || row.status || "completed",
-        }));
+        // Transform to EtsyOrder schema with validation
+        const orders = [];
+        const skipped = [];
 
+        jsonData.forEach((row, index) => {
+          // Parse and validate Order Date
+          const orderDateRaw = getVal(row, "Order Date") || getVal(row, "Sale Date");
+          const sale_date = parseEtsyDateToISO(orderDateRaw);
+          
+          if (!sale_date) {
+            skipped.push({
+              rowIndex: index + 2,
+              reason: "Invalid or missing Order Date",
+              data: row,
+            });
+            return;
+          }
+
+          const order_id = toStringSafe(getVal(row, "Order ID"));
+          if (!order_id) {
+            skipped.push({
+              rowIndex: index + 2,
+              reason: "Missing Order ID",
+              data: row,
+            });
+            return;
+          }
+
+          orders.push({
+            sale_date,
+            order_id,
+            buyer_username: toStringSafe(getVal(row, "Buyer User ID")),
+            buyer_full_name: toStringSafe(getVal(row, "Full Name")),
+            number_of_items: parseIntSafe(getVal(row, "Number of Items")),
+            payment_method: toStringSafe(getVal(row, "Payment Method")),
+            order_value: parseMoney(getVal(row, "Order Value")),
+            coupon_code: toStringSafe(getVal(row, "Coupon Code")),
+            discount_amount: parseMoney(getVal(row, "Discount Amount")),
+            shipping_charged: parseMoney(getVal(row, "Shipping")),
+            sales_tax: parseMoney(getVal(row, "Sales Tax")),
+            order_total: parseMoney(getVal(row, "Order Total")),
+            card_processing_fees: parseMoney(getVal(row, "Card Processing Fees")),
+            order_net: parseMoney(getVal(row, "Order Net")),
+            status: toStringSafe(getVal(row, "Status")) || "completed",
+          });
+        });
+
+        setSkippedRows(skipped);
         importMutation.mutate({ orders, fileName: file.name });
       } catch (error) {
         setImportResult({ error: `Failed to parse file: ${error.message}` });
@@ -112,7 +200,23 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
 
   const handleClose = () => {
     setImportResult(null);
+    setSkippedRows([]);
     onOpenChange(false);
+  };
+
+  const downloadSkippedReport = () => {
+    const report = skippedRows.map(s => ({
+      "Row": s.rowIndex,
+      "Reason": s.reason,
+      "Order ID": s.data["Order ID"] || "",
+      "Order Date": s.data["Order Date"] || "",
+      "Buyer": s.data["Full Name"] || "",
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(report);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Skipped Rows");
+    XLSX.writeFile(workbook, "etsy-import-skipped-rows.xlsx");
   };
 
   return (
@@ -161,8 +265,22 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
               <div className="text-sm text-emerald-800 space-y-1">
                 <p>✓ Created: {importResult.created} orders</p>
                 <p>⊗ Skipped: {importResult.skipped} duplicates</p>
+                {skippedRows.length > 0 && (
+                  <p>⚠ Invalid rows: {skippedRows.length}</p>
+                )}
                 <p>Total: {importResult.total} rows processed</p>
               </div>
+              {skippedRows.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadSkippedReport}
+                  className="mt-3"
+                >
+                  <Download className="w-3 h-3 mr-2" />
+                  Download Skipped Rows Report
+                </Button>
+              )}
             </div>
           )}
 
