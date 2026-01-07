@@ -50,7 +50,7 @@ const machines = [
 ];
 
 export default function MaterialsLibraryTool() {
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("Manufacturer");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
 
@@ -82,9 +82,7 @@ export default function MaterialsLibraryTool() {
       });
 
       // Apply source filter
-      if (sourceFilter !== "all") {
-        machineSettings = machineSettings.filter(s => s.source_type === sourceFilter);
-      }
+      machineSettings = machineSettings.filter(s => s.source_type === sourceFilter);
 
       machineGroups[machineKey].settings = machineSettings;
     });
@@ -125,11 +123,8 @@ export default function MaterialsLibraryTool() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
                   <SelectItem value="Manufacturer">Manufacturer</SelectItem>
-                  <SelectItem value="Community">Community</SelectItem>
                   <SelectItem value="User">My Settings</SelectItem>
-                  <SelectItem value="Generic">Generic</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -175,8 +170,6 @@ export default function MaterialsLibraryTool() {
                         <TableHeader>
                           <TableRow className="bg-stone-50">
                             <TableHead>Material</TableHead>
-                            <TableHead>Model</TableHead>
-                            <TableHead>Laser Type</TableHead>
                             <TableHead>Operation</TableHead>
                             <TableHead>Speed</TableHead>
                             <TableHead>Power</TableHead>
@@ -193,12 +186,6 @@ export default function MaterialsLibraryTool() {
                                 {setting.thickness_mm && (
                                   <div className="text-xs text-stone-500">{setting.thickness_mm}mm</div>
                                 )}
-                              </TableCell>
-                              <TableCell className="text-sm">{setting.model}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="uppercase text-xs">
-                                  {setting.laser_type}
-                                </Badge>
                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline" className="capitalize">
