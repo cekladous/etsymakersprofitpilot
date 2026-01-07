@@ -433,10 +433,16 @@ export default function RasterAssistantTool() {
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold">
-                      {filteredSettings[0]?.source_type === 'Manufacturer' ? 'Manufacturer-Recommended Defaults' : 'Safe Starting Point'}
+                      {filteredSettings[0]?.source_type === 'Manufacturer' && filteredSettings[0]?.brand?.toLowerCase() === 'xtool'
+                        ? 'xTool One-Click Preset'
+                        : filteredSettings[0]?.source_type === 'Manufacturer' 
+                        ? 'Manufacturer-Recommended Defaults' 
+                        : 'Safe Starting Point'}
                     </p>
                     <p className="text-xs mt-1">
-                      {filteredSettings[0]?.source_type === 'Manufacturer' 
+                      {filteredSettings[0]?.source_type === 'Manufacturer' && filteredSettings[0]?.brand?.toLowerCase() === 'xtool'
+                        ? 'Official xTool Creative Space (XCS) EasySet Library preset. These match the One-Click Test parameters in XCS.'
+                        : filteredSettings[0]?.source_type === 'Manufacturer' 
                         ? 'These are starting points based on official documentation.' 
                         : 'Generic baseline settings for this laser type and material.'}
                       {' '}Always test on scrap material and adjust for your specific conditions.
