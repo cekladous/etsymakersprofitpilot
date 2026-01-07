@@ -545,7 +545,12 @@ export default function Expenses() {
                             <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                        <Tooltip formatter={(value, name, props) => {
+                          const actualValue = props.payload.actualValue;
+                          return actualValue < 0 
+                            ? `-$${Math.abs(actualValue).toFixed(2)} (credit)` 
+                            : `$${actualValue.toFixed(2)}`;
+                        }} />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -594,9 +599,12 @@ export default function Expenses() {
                         <span className="font-medium text-stone-900">{cat.name}</span>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-stone-900">${cat.value.toFixed(2)}</p>
+                        <p className={`font-semibold ${cat.actualValue < 0 ? "text-emerald-600" : "text-stone-900"}`}>
+                          {cat.actualValue < 0 ? "-" : ""}${cat.value.toFixed(2)}
+                          {cat.actualValue < 0 && <span className="ml-1 text-xs">(credit)</span>}
+                        </p>
                         <p className="text-xs text-stone-500">
-                          {((cat.value / totalAmount) * 100).toFixed(1)}% of total
+                          {((cat.value / Math.abs(totalAmount || 1)) * 100).toFixed(1)}% of total
                         </p>
                       </div>
                     </div>
