@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight, ExternalLink, Info, RotateCcw, Save } from "lucide-react";
+import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight, ExternalLink, Info, RotateCcw, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
 import { format } from "date-fns";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
@@ -29,11 +30,16 @@ const defaultInputs = {
   advertising_type: "none",
   advertising_value: 0,
   advertising_value_type: "percent",
+  share_save_enabled: false,
+  share_save_discount: 10,
+  share_save_discount_type: "percent",
+  share_save_fee_rate: 4,
   payment_method: "etsy",
 };
 
 export default function CalculatorTool() {
   const [inputs, setInputs] = useState(defaultInputs);
+  const [shareSaveExpanded, setShareSaveExpanded] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: settings = [] } = useQuery({
@@ -310,6 +316,107 @@ export default function CalculatorTool() {
           </Card>
 
           <Card>
+            <CardHeader 
+              className="cursor-pointer hover:bg-stone-50 transition-colors"
+              onClick={() => setShareSaveExpanded(!shareSaveExpanded)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Etsy Share & Save Calculator</CardTitle>
+                  <CardDescription className="text-xs mt-1">Optional tool to calculate Share & Save impact</CardDescription>
+                </div>
+                {shareSaveExpanded ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+              </div>
+            </CardHeader>
+            {shareSaveExpanded && (
+              <CardContent className="space-y-4 pt-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-blue-800">
+                      <span className="font-semibold">What is Share & Save?</span> Etsy's discount program charges a 4% fee on the discounted order total. This may increase conversion but reduces profit.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Enable Share & Save</Label>
+                    <p className="text-xs text-stone-500 mt-1">Toggle on to see impact on profit</p>
+                  </div>
+                  <Switch
+                    checked={inputs.share_save_enabled}
+                    onCheckedChange={(checked) => handleInputChange("share_save_enabled", checked)}
+                  />
+                </div>
+
+                {inputs.share_save_enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Share & Save Discount</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={inputs.share_save_discount}
+                          onChange={(e) => handleInputChange("share_save_discount", e.target.value)}
+                          className="h-11 flex-1"
+                        />
+                        <Select value={inputs.share_save_discount_type} onValueChange={(v) => handleSelectChange("share_save_discount_type", v)}>
+                          <SelectTrigger className="h-11 w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percent">%</SelectItem>
+                            <SelectItem value="fixed">$</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Etsy Share & Save Fee Rate (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={inputs.share_save_fee_rate}
+                        onChange={(e) => handleInputChange("share_save_fee_rate", e.target.value)}
+                        className="h-11"
+                      />
+                      <p className="text-xs text-stone-500">Percentage of discounted order total (default: 4%)</p>
+                    </div>
+
+                    {/* Share & Save Impact Summary */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-900">Share & Save Impact:</p>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-amber-700">Original Sale Price:</span>
+                          <span className="font-medium text-amber-900">{formatCurrency(results.original_sale_price)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-amber-700">Share & Save Discount:</span>
+                          <span className="font-medium text-amber-900">-{formatCurrency(results.share_save_discount_amount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-amber-700">Discounted Sale Price:</span>
+                          <span className="font-medium text-amber-900">{formatCurrency(results.discounted_sale_price)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-amber-300 pt-1 mt-1">
+                          <span className="text-amber-700">Share & Save Fee:</span>
+                          <span className="font-medium text-rose-600">{formatCurrency(results.share_save_fee)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg">Payment Method</CardTitle>
             </CardHeader>
@@ -454,6 +561,9 @@ export default function CalculatorTool() {
                 <BreakdownRow label="Payment Processing" amount={results.processing_fee} indent />
                 {results.advertising_cost > 0 && (
                   <BreakdownRow label="Advertising" amount={results.advertising_cost} indent />
+                )}
+                {results.share_save_fee > 0 && (
+                  <BreakdownRow label="Share & Save Fee" amount={results.share_save_fee} indent />
                 )}
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Fees" amount={results.total_fees} bold />

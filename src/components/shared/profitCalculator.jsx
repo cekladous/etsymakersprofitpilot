@@ -23,12 +23,17 @@ export const DEFAULT_FEE_CONFIG = {
  * @param {number} input.sales_price - Item price
  * @param {number} input.shipping_charged - Shipping charged to customer
  * @param {number} input.discounts - Discounts applied
+ * @param {string} input.discounts_type - "percent" or "fixed"
  * @param {number} input.refunds - Refunds issued
  * @param {number} input.sales_tax - Sales tax (excluded from revenue)
  * @param {number} input.cost_of_goods - Materials + packaging cost
  * @param {string} input.advertising_type - "none", "etsy_ads", "etsy_offsite_ads", "social_ads", "google_ads", "influencer_affiliate"
  * @param {number} input.advertising_value - Value for ads (% or $)
  * @param {string} input.advertising_value_type - "percent" or "fixed"
+ * @param {boolean} input.share_save_enabled - Enable Share & Save
+ * @param {number} input.share_save_discount - Share & Save discount
+ * @param {string} input.share_save_discount_type - "percent" or "fixed"
+ * @param {number} input.share_save_fee_rate - Share & Save fee rate (default 4%)
  * @param {string} input.payment_method - "etsy" or "paypal" or other
  * @param {Object} feeConfig - Fee configuration (optional, uses defaults if not provided)
  * @returns {Object} Detailed profit breakdown
@@ -46,6 +51,10 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     advertising_type = "none",
     advertising_value = 0,
     advertising_value_type = "percent",
+    share_save_enabled = false,
+    share_save_discount = 0,
+    share_save_discount_type = "percent",
+    share_save_fee_rate = 4,
     payment_method = "etsy",
   } = input;
 
@@ -59,8 +68,27 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     discount_amount = discounts;
   }
 
-  // Calculate revenue (excludes sales tax)
-  const gross_revenue = sales_price + shipping_charged - discount_amount - refunds;
+  // Calculate Share & Save discount and fee
+  let share_save_discount_amount = 0;
+  let share_save_fee = 0;
+  
+  if (share_save_enabled) {
+    if (share_save_discount_type === "percent") {
+      share_save_discount_amount = (sales_price * share_save_discount) / 100;
+    } else {
+      share_save_discount_amount = share_save_discount;
+    }
+    
+    // Ensure discount doesn't make price negative
+    share_save_discount_amount = Math.min(share_save_discount_amount, sales_price);
+    
+    // Calculate Share & Save fee on discounted sale price
+    const discounted_sale_price = sales_price - share_save_discount_amount;
+    share_save_fee = (discounted_sale_price * share_save_fee_rate) / 100;
+  }
+
+  // Calculate revenue (excludes sales tax, includes Share & Save discount)
+  const gross_revenue = sales_price + shipping_charged - discount_amount - share_save_discount_amount - refunds;
   
   // Etsy Listing Fee (flat per listing)
   const listing_fee = config.etsy_listing_fee || 0.20;
@@ -103,8 +131,8 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     }
   }
   
-  // Total Fees (including advertising)
-  const total_fees = listing_fee + transaction_fee + processing_fee + advertising_cost;
+  // Total Fees (including advertising and Share & Save fee)
+  const total_fees = listing_fee + transaction_fee + processing_fee + advertising_cost + share_save_fee;
   
   // Net revenue after fees
   const net_revenue = gross_revenue - total_fees;
@@ -128,7 +156,13 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     transaction_fee,
     processing_fee,
     advertising_cost,
+    share_save_fee,
     total_fees,
+    
+    // Share & Save Details
+    share_save_discount_amount,
+    original_sale_price: sales_price,
+    discounted_sale_price: share_save_enabled ? sales_price - share_save_discount_amount : sales_price,
     
     // Bottom Line
     net_revenue,
