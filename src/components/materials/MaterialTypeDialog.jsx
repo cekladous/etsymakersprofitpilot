@@ -50,6 +50,11 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
 
   const queryClient = useQueryClient();
 
+  const { data: materialTypes = [] } = useQuery({
+    queryKey: ["materialTypes"],
+    queryFn: () => base44.entities.MaterialType.list(),
+  });
+
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ["inventory-items"],
     queryFn: () => base44.entities.InventoryItem.list(),
