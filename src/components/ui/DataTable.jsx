@@ -24,7 +24,7 @@ export default function DataTable({
             <TableRow className="bg-stone-50">
               {columns.map((col, i) => (
                 <TableHead key={i} className="text-stone-600 font-medium">
-                  {col.header}
+                  {typeof col.header === 'function' ? col.header() : col.header}
                 </TableHead>
               ))}
             </TableRow>
@@ -64,7 +64,7 @@ export default function DataTable({
                   key={i}
                   className={`text-stone-600 font-medium ${col.className || ""}`}
                 >
-                  {col.header}
+                  {typeof col.header === 'function' ? col.header() : col.header}
                 </TableHead>
               ))}
             </TableRow>
