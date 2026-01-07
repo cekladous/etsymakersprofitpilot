@@ -4,8 +4,9 @@ import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight } from "lucide-react";
+import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight, ExternalLink, Info } from "lucide-react";
 import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
+import { format } from "date-fns";
 
 export default function CalculatorTool() {
   const [inputs, setInputs] = useState({
@@ -15,6 +16,7 @@ export default function CalculatorTool() {
     refunds: 0,
     sales_tax: 0,
     cost_of_goods: 8.00,
+    shipping_cost: 0,
   });
 
   const { data: settings = [] } = useQuery({
@@ -24,6 +26,9 @@ export default function CalculatorTool() {
 
   const feeConfig = settings[0] || {};
   const results = calculateProfit(inputs, feeConfig);
+
+  const feeSourceUrl = settings[0]?.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374";
+  const feesLastVerified = settings[0]?.fees_last_verified_date;
 
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
@@ -54,7 +59,40 @@ export default function CalculatorTool() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Fee Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-2 flex-1">
+            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="space-y-1">
+              <p className="font-semibold text-blue-900">Current Etsy Fee Rates ({feeConfig?.fee_country || 'US'})</p>
+              <div className="text-blue-800 text-sm space-y-0.5">
+                <p>• Listing Fee: ${(feeConfig?.etsy_listing_fee || 0.20).toFixed(2)} per item</p>
+                <p>• Transaction Fee: {(feeConfig?.etsy_transaction_fee_percent || 6.5).toFixed(1)}% of item price + shipping</p>
+                <p>• Payment Processing: {(feeConfig?.payment_processing_fee_percent || 3.0).toFixed(1)}% + ${(feeConfig?.payment_processing_fee_fixed || 0.25).toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <a
+              href={feeSourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline whitespace-nowrap"
+            >
+              <ExternalLink className="w-3 h-3" />
+              View Etsy Fee Source
+            </a>
+            {feesLastVerified && (
+              <div className="text-xs text-blue-700 mt-1">
+                Last verified: {format(new Date(feesLastVerified), 'MMM d, yyyy')}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left: Inputs */}
         <div className="space-y-6">
@@ -142,7 +180,7 @@ export default function CalculatorTool() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Cost of Goods (materials + packaging)</Label>
                 <Input
@@ -152,6 +190,16 @@ export default function CalculatorTool() {
                   value={inputs.cost_of_goods}
                   onChange={(e) => handleInputChange("cost_of_goods", e.target.value)}
                   className="text-lg"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Shipping Cost (optional)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.shipping_cost}
+                  onChange={(e) => handleInputChange("shipping_cost", e.target.value)}
                 />
               </div>
             </CardContent>
@@ -201,6 +249,20 @@ export default function CalculatorTool() {
                   amount={results.total_fees}
                   highlight
                 />
+                <FeeBreakdownRow
+                  label="Net Revenue (after fees)"
+                  amount={results.net_revenue}
+                />
+                <FeeBreakdownRow
+                  label="Cost of Goods"
+                  amount={results.cost_of_goods}
+                />
+                {inputs.shipping_cost > 0 && (
+                  <FeeBreakdownRow
+                    label="Shipping Cost"
+                    amount={inputs.shipping_cost}
+                  />
+                )}
               </div>
 
               <div className="mt-4 p-3 bg-stone-50 rounded-lg text-sm text-stone-600">
@@ -238,6 +300,12 @@ export default function CalculatorTool() {
                   <span className="text-stone-600">− Cost of Goods</span>
                   <span className="font-medium text-rose-600">-{formatCurrency(results.cost_of_goods)}</span>
                 </div>
+                {inputs.shipping_cost > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-stone-600">− Shipping Cost</span>
+                    <span className="font-medium text-rose-600">-{formatCurrency(inputs.shipping_cost)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="border-t-2 border-emerald-300 pt-4">
