@@ -111,7 +111,7 @@ export default function MonthlySummary() {
       etsyLedgerEntries: filterByDate(etsyLedgerEntries, "entry_date"),
       orderFees: orderFees,
     };
-  }, [etsyOrders, customSales, businessExpenses, transfers, orderFees, dateRange]);
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, dateRange]);
 
   // Export function
   const handleExport = () => {
@@ -282,6 +282,12 @@ export default function MonthlySummary() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
+
+      <EtsyLedgerImportDialog
+        open={ledgerImportDialogOpen}
+        onOpenChange={setLedgerImportDialogOpen}
+      />
+
       <CustomSaleDialog
         open={customSaleDialogOpen}
         onOpenChange={setCustomSaleDialogOpen}
