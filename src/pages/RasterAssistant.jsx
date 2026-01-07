@@ -30,6 +30,111 @@ const materials = [
   { value: "food", label: "Food" },
 ];
 
+const machines = [
+  { 
+    brand: "atomstack", 
+    label: "Atomstack",
+    types: ["diode"],
+    models: ["A5 M50", "A10 Pro", "A20 Pro", "X7 Pro", "S10 Pro", "P7 M40", "Other"]
+  },
+  { 
+    brand: "boss", 
+    label: "Boss Laser",
+    types: ["co2"],
+    models: ["LS-1416", "LS-1630", "HP-1610", "HP-2440", "LS-2436", "Other"]
+  },
+  { 
+    brand: "creality", 
+    label: "Creality",
+    types: ["diode"],
+    models: ["Falcon", "Falcon 2", "CV-30", "Other"]
+  },
+  { 
+    brand: "epilog", 
+    label: "Epilog",
+    types: ["co2"],
+    models: ["Zing 16", "Zing 24", "Fusion Pro", "Fusion Edge", "Other"]
+  },
+  { 
+    brand: "fsl", 
+    label: "Full Spectrum Laser",
+    types: ["co2", "diode"],
+    models: ["Muse", "H-Series", "Pro Series", "Other"]
+  },
+  { 
+    brand: "generic", 
+    label: "Generic/K40",
+    types: ["co2", "diode"],
+    models: ["K40", "Generic CO2", "Generic Diode", "Other"]
+  },
+  { 
+    brand: "glowforge", 
+    label: "Glowforge",
+    types: ["co2"],
+    models: ["Basic", "Plus", "Pro", "Aura", "Other"]
+  },
+  { 
+    brand: "laserpecker", 
+    label: "LaserPecker",
+    types: ["diode"],
+    models: ["LP3", "LP4", "L1 Pro", "L2", "Other"]
+  },
+  { 
+    brand: "longer", 
+    label: "Longer",
+    types: ["diode"],
+    models: ["Ray5", "Laser B1", "Other"]
+  },
+  { 
+    brand: "monport", 
+    label: "Monport",
+    types: ["co2", "diode"],
+    models: ["40W", "50W", "60W", "80W", "100W", "Other"]
+  },
+  { 
+    brand: "omtech", 
+    label: "OMTech",
+    types: ["co2"],
+    models: ["40W", "50W", "60W", "80W", "100W", "130W", "Other"]
+  },
+  { 
+    brand: "ortur", 
+    label: "Ortur",
+    types: ["diode"],
+    models: ["LM2", "LM3", "Laser Master 3", "H10", "Other"]
+  },
+  { 
+    brand: "thunder", 
+    label: "Thunder Laser",
+    types: ["co2"],
+    models: ["Nova 24", "Nova 35", "Nova 51", "Odin", "Other"]
+  },
+  { 
+    brand: "trotec", 
+    label: "Trotec",
+    types: ["co2"],
+    models: ["Speedy 100", "Speedy 300", "Speedy 400", "SP500", "Other"]
+  },
+  { 
+    brand: "wecreat", 
+    label: "WeCreat",
+    types: ["diode"],
+    models: ["Vision", "Other"]
+  },
+  { 
+    brand: "xtool", 
+    label: "xTool",
+    types: ["co2", "diode"],
+    models: ["D1", "D1 Pro", "M1", "P2", "S1", "F1", "F1 Ultra", "Other"]
+  },
+  { 
+    brand: "other", 
+    label: "Other",
+    types: ["co2", "diode"],
+    models: ["Custom"]
+  },
+];
+
 const laserTypes = [
   { value: "diode", label: "Diode" },
   { value: "co2", label: "CO2" },
@@ -171,10 +276,24 @@ const getRecommendations = (material, laserType, result) => {
 
 export default function RasterAssistant() {
   const [material, setMaterial] = useState("");
+  const [machineBrand, setMachineBrand] = useState("");
+  const [machineModel, setMachineModel] = useState("");
   const [laserType, setLaserType] = useState("");
   const [result, setResult] = useState("");
 
-  const showResults = material && laserType && result;
+  const selectedMachine = machines.find(m => m.brand === machineBrand);
+  const availableTypes = selectedMachine?.types || [];
+  
+  // Auto-select laser type if only one is available
+  React.useEffect(() => {
+    if (selectedMachine && availableTypes.length === 1) {
+      setLaserType(availableTypes[0]);
+    } else if (selectedMachine && !availableTypes.includes(laserType)) {
+      setLaserType("");
+    }
+  }, [machineBrand]);
+
+  const showResults = material && machineBrand && laserType && result;
   const recommendations = showResults ? getRecommendations(material, laserType, result) : null;
 
   return (
@@ -219,7 +338,7 @@ export default function RasterAssistant() {
             </CardContent>
           </Card>
 
-          {/* Laser Type */}
+          {/* Machine Brand */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -227,22 +346,25 @@ export default function RasterAssistant() {
                   2
                 </div>
                 <div>
-                  <CardTitle>Select Laser</CardTitle>
-                  <CardDescription>What type of laser?</CardDescription>
+                  <CardTitle>Select Machine Brand</CardTitle>
+                  <CardDescription>What laser machine do you have?</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label>Laser Type</Label>
-                <Select value={laserType} onValueChange={setLaserType}>
+                <Label>Machine Brand</Label>
+                <Select value={machineBrand} onValueChange={(v) => {
+                  setMachineBrand(v);
+                  setMachineModel("");
+                }}>
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select laser type..." />
+                    <SelectValue placeholder="Select machine..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {laserTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
+                    {machines.map((machine) => (
+                      <SelectItem key={machine.brand} value={machine.brand}>
+                        {machine.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -251,12 +373,91 @@ export default function RasterAssistant() {
             </CardContent>
           </Card>
 
+          {/* Machine Model */}
+          {machineBrand && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-xl font-bold text-violet-700">
+                    3
+                  </div>
+                  <div>
+                    <CardTitle>Select Model</CardTitle>
+                    <CardDescription>Which model do you have?</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label>Machine Model</Label>
+                  <Select value={machineModel} onValueChange={setMachineModel}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select model..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMachine?.models.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Laser Type */}
+          {machineBrand && (
+            <Card className={!selectedMachine?.types.length ? "opacity-50" : ""}>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-xl font-bold text-indigo-700">
+                    4
+                  </div>
+                  <div>
+                    <CardTitle>Laser Type</CardTitle>
+                    <CardDescription>CO2 or Diode laser?</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {laserTypes.map((type) => {
+                    const isAvailable = availableTypes.includes(type.value);
+                    return (
+                      <button
+                        key={type.value}
+                        onClick={() => isAvailable && setLaserType(type.value)}
+                        disabled={!isAvailable}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                          laserType === type.value && isAvailable
+                            ? "border-emerald-500 bg-emerald-50"
+                            : isAvailable
+                            ? "border-stone-200 hover:border-stone-300 bg-white"
+                            : "border-stone-100 bg-stone-50 opacity-40 cursor-not-allowed"
+                        }`}
+                      >
+                        <div className={`font-semibold ${isAvailable ? "text-stone-900" : "text-stone-400"}`}>
+                          {type.label}
+                        </div>
+                        {!isAvailable && (
+                          <div className="text-xs text-stone-400 mt-1">Not available for this machine</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Result Type */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-xl font-bold text-violet-700">
-                  3
+                <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-xl font-bold text-pink-700">
+                  5
                 </div>
                 <div>
                   <CardTitle>Desired Result</CardTitle>
@@ -297,7 +498,7 @@ export default function RasterAssistant() {
                   <div>
                     <CardTitle className="text-emerald-900">Recommended Settings</CardTitle>
                     <CardDescription>
-                      {materials.find(m => m.value === material)?.label} • {laserTypes.find(l => l.value === laserType)?.label} • {resultTypes.find(r => r.value === result)?.label}
+                      {materials.find(m => m.value === material)?.label} • {machines.find(m => m.brand === machineBrand)?.label} • {laserTypes.find(l => l.value === laserType)?.label} • {resultTypes.find(r => r.value === result)?.label}
                     </CardDescription>
                   </div>
                 </div>
@@ -357,7 +558,7 @@ export default function RasterAssistant() {
                   Select Your Settings
                 </h3>
                 <p className="text-stone-500 max-w-sm mx-auto">
-                  Choose your material, laser type, and desired result to get personalized recommendations
+                  Choose your material, machine, laser type, and desired result to get personalized recommendations
                 </p>
               </CardContent>
             </Card>
