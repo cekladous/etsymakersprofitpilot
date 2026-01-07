@@ -164,6 +164,23 @@ export default function MaterialsLibraryTool() {
     queryFn: () => base44.entities.Machine.list(),
   });
 
+  const filteredSettings = allSettings.filter(setting => {
+    const sourceMatch = sourceFilter === "Manufacturer" 
+      ? setting.source_type === "Manufacturer"
+      : sourceFilter === "User"
+      ? setting.source_type === "User"
+      : true;
+    
+    const categoryMatch = categoryFilter === "all" 
+      ? true 
+      : setting.material_category?.toLowerCase() === categoryFilter.toLowerCase();
+    
+    return sourceMatch && categoryMatch;
+  });
+
+  // Get unique material categories for dropdown
+  const materialCategories = [...new Set(allSettings.map(s => s.material_category).filter(Boolean))].sort();
+
   // Group settings by user's machines
   const settingsByMachine = React.useMemo(() => {
     const machineGroups = {};
@@ -175,20 +192,17 @@ export default function MaterialsLibraryTool() {
         settings: []
       };
       
-      // Find settings for this machine
-      let machineSettings = allSettings.filter(s => {
+      // Find settings for this machine with filters applied
+      let machineSettings = filteredSettings.filter(s => {
         const brandMatch = s.brand?.toLowerCase() === machine.name?.toLowerCase().split(' ')[0];
         return brandMatch && s.active !== false;
       });
-
-      // Apply source filter
-      machineSettings = machineSettings.filter(s => s.source_type === sourceFilter);
 
       machineGroups[machineKey].settings = machineSettings;
     });
 
     return machineGroups;
-  }, [userMachines, allSettings, sourceFilter]);
+  }, [userMachines, filteredSettings]);
 
   const handleCopySetting = (setting) => {
     setSelectedSetting(setting);
