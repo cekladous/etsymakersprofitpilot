@@ -66,40 +66,74 @@ export default function Materials() {
     return materialType?.low_stock_threshold || 5;
   };
 
-  const filteredInventory = inventoryItems.filter(item => {
+  // Merge MaterialType and InventoryItem data for complete inventory view
+  const mergedInventory = materialTypes.map(materialType => {
+    const inventoryItem = inventoryItems.find(i => i.material_name === materialType.name);
+    return {
+      id: materialType.id,
+      material_name: materialType.name,
+      width: materialType.default_width || 0,
+      height: materialType.default_height || 0,
+      cost_per_sheet: materialType.cost_per_sheet || 0,
+      quantity_on_hand: inventoryItem?.quantity_on_hand || 0,
+      average_cost: inventoryItem?.average_cost || materialType.cost_per_sheet || 0,
+      total_value: inventoryItem?.total_value || 0,
+      low_stock_threshold: materialType.low_stock_threshold || 5,
+      category: materialType.category,
+      inventoryItemId: inventoryItem?.id,
+    };
+  });
+
+  const filteredInventory = mergedInventory.filter(item => {
     const matchesSearch = !search ||
       item.material_name?.toLowerCase().includes(search.toLowerCase());
-    const threshold = getItemLowStockThreshold(item);
     const matchesStock = stockFilter === "all" ||
-      (stockFilter === "low" && item.quantity_on_hand <= threshold && item.quantity_on_hand > 0) ||
+      (stockFilter === "low" && item.quantity_on_hand <= item.low_stock_threshold && item.quantity_on_hand > 0) ||
       (stockFilter === "out" && item.quantity_on_hand === 0);
     return matchesSearch && matchesStock;
   });
 
-  const totalInventoryValue = inventoryItems.reduce(
+  const totalInventoryValue = mergedInventory.reduce(
     (sum, item) => sum + (item.total_value || 0),
     0
   );
 
-  const lowStockItems = inventoryItems.filter((item) => {
-    const threshold = getItemLowStockThreshold(item);
-    return item.quantity_on_hand <= threshold && item.quantity_on_hand > 0;
+  const lowStockItems = mergedInventory.filter((item) => {
+    return item.quantity_on_hand <= item.low_stock_threshold && item.quantity_on_hand > 0;
   });
 
-  const outOfStockItems = inventoryItems.filter(
+  const outOfStockItems = mergedInventory.filter(
     (item) => item.quantity_on_hand === 0
   );
 
   const inventoryColumns = [
     {
       header: "Material Name",
-      render: (row) => <span className="font-medium text-stone-900">{row.material_name}</span>,
+      render: (row) => (
+        <div>
+          <span className="font-medium text-stone-900">{row.material_name}</span>
+          {row.category && (
+            <span className="ml-2 text-xs text-stone-500 capitalize">({row.category})</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Width (in)",
+      render: (row) => <span className="text-stone-700">{formatNumber(row.width)}</span>,
+    },
+    {
+      header: "Height (in)",
+      render: (row) => <span className="text-stone-700">{formatNumber(row.height)}</span>,
+    },
+    {
+      header: "Cost/Sheet",
+      render: (row) => <span className="text-stone-700">{formatCurrency(row.cost_per_sheet)}</span>,
     },
     {
       header: "Quantity on Hand",
       render: (row) => {
-        const threshold = getItemLowStockThreshold(row);
-        const isLow = row.quantity_on_hand <= threshold && row.quantity_on_hand > 0;
+        const isLow = row.quantity_on_hand <= row.low_stock_threshold && row.quantity_on_hand > 0;
         const isOut = row.quantity_on_hand === 0;
         return (
           <span className={`font-medium ${isOut ? "text-rose-600" : isLow ? "text-amber-600" : "text-stone-900"}`}>
@@ -123,7 +157,10 @@ export default function Materials() {
           variant="ghost"
           size="sm"
           onClick={() => {
-            setSelectedItem(row);
+            const item = row.inventoryItemId 
+              ? inventoryItems.find(i => i.id === row.inventoryItemId)
+              : { id: null, material_name: row.material_name, quantity_on_hand: 0, average_cost: row.average_cost };
+            setSelectedItem(item);
             setAdjustmentDialogOpen(true);
           }}
         >
@@ -291,7 +328,7 @@ export default function Materials() {
             </div>
           </div>
 
-          {inventoryItems.length === 0 && !inventoryLoading ? (
+          {materialTypes.length === 0 && !typesLoading ? (
             <EmptyState
               icon={Box}
               title="No inventory items"
