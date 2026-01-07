@@ -18,8 +18,18 @@ export default function MonthlySummaryTable({ filteredData, viewMode = "month" }
     }).format(amount);
   };
 
-  // Calculate revenue items
-  const etsySales = filteredData.etsyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
+  // Helper to sum ledger entries by matched category
+  const sumLedgerByCategory = (category) => {
+    return (filteredData.etsyLedgerEntries || [])
+      .filter(e => e.matched_category === category)
+      .reduce((sum, e) => sum + Math.abs(e.net || 0), 0);
+  };
+
+  // Calculate revenue items (include ledger)
+  const etsySales = filteredData.etsyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0) +
+    (filteredData.etsyLedgerEntries || [])
+      .filter(e => e.matched_category === "etsy_sales")
+      .reduce((sum, e) => sum + Math.max(e.amount || 0, 0), 0);
   const etsyTax = filteredData.etsyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
   const totalEtsySales = etsySales + etsyTax;
   const etsyRefunds = 0; // TODO: implement refunds logic
@@ -38,17 +48,18 @@ export default function MonthlySummaryTable({ filteredData, viewMode = "month" }
       .reduce((sum, e) => sum + (e.amount || 0), 0);
   };
 
-  const etsyListingFees = getExpenseByCategory("etsy_listing_fees");
-  const etsyTransactionFees = getExpenseByCategory("etsy_transaction_fees");
-  const etsyProcessingFees = getExpenseByCategory("etsy_processing_fees");
-  const shareSaveRefunds = getExpenseByCategory("share_save_refunds_credits");
-  const otherFees = getExpenseByCategory("other_fees");
-  const etsyAds = getExpenseByCategory("etsy_ads");
-  const etsyOffsiteAds = getExpenseByCategory("etsy_offsite_ads_fees");
+  // Calculate Etsy fees from BusinessExpense + Ledger
+  const etsyListingFees = getExpenseByCategory("etsy_listing_fees") + sumLedgerByCategory("etsy_listing_fees");
+  const etsyTransactionFees = getExpenseByCategory("etsy_transaction_fees") + sumLedgerByCategory("etsy_transaction_fees");
+  const etsyProcessingFees = getExpenseByCategory("etsy_processing_fees") + sumLedgerByCategory("etsy_processing_fees");
+  const shareSaveRefunds = getExpenseByCategory("share_save_refunds_credits") + sumLedgerByCategory("share_save_refunds_credits");
+  const otherFees = getExpenseByCategory("other_fees") + sumLedgerByCategory("other_fees");
+  const etsyAds = getExpenseByCategory("etsy_ads") + sumLedgerByCategory("etsy_ads");
+  const etsyOffsiteAds = getExpenseByCategory("etsy_offsite_ads_fees") + sumLedgerByCategory("etsy_offsite_ads_fees");
   const totalEtsyFees = etsyListingFees + etsyTransactionFees + etsyProcessingFees + shareSaveRefunds + otherFees + etsyAds + etsyOffsiteAds;
   
-  const etsyShipping = getExpenseByCategory("etsy_shipping");
-  const otherPostage = getExpenseByCategory("other_postage_costs");
+  const etsyShipping = getExpenseByCategory("etsy_shipping") + sumLedgerByCategory("etsy_shipping");
+  const otherPostage = getExpenseByCategory("other_postage_costs") + sumLedgerByCategory("other_postage_costs");
   const customExpenseA = getExpenseByCategory("custom_expense_a");
   const customExpenseB = getExpenseByCategory("custom_expense_b");
   
@@ -66,7 +77,12 @@ export default function MonthlySummaryTable({ filteredData, viewMode = "month" }
   const miscExpenses = getExpenseByCategory("miscellaneous_expenses");
   const customExpenseC = getExpenseByCategory("custom_expense_c");
   
-  const totalExpenses = filteredData.businessExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Include ledger expenses + material purchases
+  const totalExpenses = filteredData.businessExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) +
+    materialPurchasesTotal +
+    (filteredData.etsyLedgerEntries || [])
+      .filter(e => e.status === "Matched" && e.matched_category !== "etsy_sales")
+      .reduce((sum, e) => sum + Math.abs(e.net || 0), 0);
   const netProfit = totalRevenue - totalExpenses;
 
   const ownerTransfers = filteredData.transfers.filter(t => t.type === "owner_transfer").reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -104,6 +120,19 @@ export default function MonthlySummaryTable({ filteredData, viewMode = "month" }
       }));
     
     items.push(...expenses);
+    
+    // Add EtsyLedgerEntry records (matched to this category)
+    const ledgerEntries = (filteredData.etsyLedgerEntries || [])
+      .filter(e => e.matched_category === categoryName)
+      .map(e => ({
+        date: e.entry_date,
+        description: `${e.title} - ${e.info}`,
+        vendor: "Etsy",
+        payment_source: "Etsy Payment Ledger",
+        amount: Math.abs(e.net || 0),
+      }));
+    
+    items.push(...ledgerEntries);
     
     // Sort by date descending
     items.sort((a, b) => new Date(b.date) - new Date(a.date));
