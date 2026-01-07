@@ -83,9 +83,9 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
 
         // Transform to EtsyOrder schema
         const orders = jsonData.map((row) => ({
-          sale_date: row["Sale Date"] || row.sale_date,
+          sale_date: row["Order Date"] || row["Sale Date"] || row.sale_date,
           order_id: row["Order ID"]?.toString() || row.order_id?.toString(),
-          buyer_username: row["Buyer"] || row.buyer_username,
+          buyer_username: row["Buyer User ID"] || row["Buyer"] || row.buyer_username,
           buyer_full_name: row["Full Name"] || row.buyer_full_name,
           number_of_items: parseInt(row["Number of Items"] || row.number_of_items || 1),
           payment_method: row["Payment Method"] || row.payment_method,
