@@ -54,6 +54,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [customStartDate, setCustomStartDate] = useState(null);
+  const [customEndDate, setCustomEndDate] = useState(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [ledgerImportDialogOpen, setLedgerImportDialogOpen] = useState(false);
@@ -123,10 +125,15 @@ export default function Dashboard() {
 
   const now = new Date();
   
-  // Calculate date range based on selected timeRange
+  // Calculate date range based on selected timeRange or custom dates
   const dateRange = useMemo(() => {
     let start, end;
-    if (timeRange === "month") {
+    
+    // If custom dates are set, use those
+    if (customStartDate && customEndDate) {
+      start = customStartDate;
+      end = customEndDate;
+    } else if (timeRange === "month") {
       start = startOfMonth(selectedDate);
       end = endOfMonth(selectedDate);
     } else if (timeRange === "quarter") {
@@ -137,7 +144,7 @@ export default function Dashboard() {
       end = endOfYear(selectedDate);
     }
     return { start, end };
-  }, [timeRange, selectedDate]);
+  }, [timeRange, selectedDate, customStartDate, customEndDate]);
 
   const { start: periodStart, end: periodEnd } = dateRange;
   const yearStart = startOfYear(now);
@@ -262,6 +269,9 @@ export default function Dashboard() {
   };
 
   const getPeriodLabel = () => {
+    if (customStartDate && customEndDate) {
+      return `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
+    }
     if (timeRange === "month") {
       return format(selectedDate, "MMMM yyyy");
     } else if (timeRange === "quarter") {
@@ -298,10 +308,14 @@ export default function Dashboard() {
             {["month", "quarter", "year"].map((range) => (
               <Button
                 key={range}
-                variant={timeRange === range ? "default" : "outline"}
+                variant={timeRange === range && !customStartDate ? "default" : "outline"}
                 size="sm"
-                onClick={() => setTimeRange(range)}
-                className={timeRange === range ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                onClick={() => {
+                  setTimeRange(range);
+                  setCustomStartDate(null);
+                  setCustomEndDate(null);
+                }}
+                className={timeRange === range && !customStartDate ? "bg-emerald-600 hover:bg-emerald-700" : ""}
               >
                 {range.charAt(0).toUpperCase() + range.slice(1)}
               </Button>
@@ -312,21 +326,54 @@ export default function Dashboard() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
-                {format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")}
+                {customStartDate && customEndDate 
+                  ? `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}`
+                  : format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
+                }
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setSelectedDate(date);
-                    setDatePickerOpen(false);
-                  }
-                }}
-                initialFocus
-              />
+            <PopoverContent className="w-auto p-4" align="start">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <CalendarComponent
+                    mode="single"
+                    selected={customStartDate}
+                    onSelect={(date) => setCustomStartDate(date)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Date</label>
+                  <CalendarComponent
+                    mode="single"
+                    selected={customEndDate}
+                    onSelect={(date) => setCustomEndDate(date)}
+                    disabled={(date) => customStartDate && date < customStartDate}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCustomStartDate(null);
+                      setCustomEndDate(null);
+                      setDatePickerOpen(false);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setDatePickerOpen(false)}
+                    className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                    disabled={!customStartDate || !customEndDate}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
