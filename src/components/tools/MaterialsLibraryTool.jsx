@@ -58,6 +58,7 @@ const machines = [
 
 export default function MaterialsLibraryTool() {
   const [sourceFilter, setSourceFilter] = useState("Manufacturer");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
   const fileInputRef = useRef(null);
@@ -151,10 +152,7 @@ export default function MaterialsLibraryTool() {
     }
   };
 
-  const handleCategories = () => {
-    // TODO: Implement categories management
-    alert("Categories management coming soon!");
-  };
+
 
   const { data: allSettings = [], isLoading: settingsLoading } = useQuery({
     queryKey: ["laser-settings"],
@@ -262,13 +260,28 @@ export default function MaterialsLibraryTool() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button
-                variant="outline"
-                onClick={handleCategories}
-              >
-                <FolderOpen className="w-4 h-4 mr-2" />
-                Categories
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <FolderOpen className="w-4 h-4 mr-2" />
+                    Categories
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
+                    All Categories
+                  </DropdownMenuItem>
+                  {materialCategories.map((category) => (
+                    <DropdownMenuItem 
+                      key={category} 
+                      onClick={() => setCategoryFilter(category)}
+                    >
+                      {category}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 onClick={() => {
                   setSelectedSetting(null);
