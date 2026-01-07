@@ -48,6 +48,7 @@ import EtsyLedgerImportDialog from "@/components/monthly/EtsyLedgerImportDialog"
 import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import BusinessExpenseDialog from "@/components/monthly/BusinessExpenseDialog";
 import TransferDialog from "@/components/monthly/TransferDialog";
+import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import * as XLSX from "xlsx";
 
 export default function Dashboard() {
@@ -149,27 +150,21 @@ export default function Dashboard() {
   const { start: periodStart, end: periodEnd } = dateRange;
   const yearStart = startOfYear(now);
 
-  // Filter data by date range for summary tab
-  const filteredSummaryData = useMemo(() => {
-    const { start, end } = dateRange;
-    
-    const filterByDate = (items, dateField) => {
-      return items.filter(item => {
-        const itemDate = new Date(item[dateField]);
-        return itemDate >= start && itemDate <= end;
-      });
-    };
-
-    return {
-      etsyOrders: filterByDate(etsyOrders, "sale_date"),
-      customSales: filterByDate(customSales, "date"),
-      businessExpenses: filterByDate(businessExpenses, "date"),
-      transfers: filterByDate(transfers, "date"),
-      materialPurchases: filterByDate(materialPurchases, "purchase_date"),
-      etsyLedgerEntries: filterByDate(etsyLedgerEntries, "entry_date"),
-      orderFees: orderFees,
-    };
+  // SINGLE SOURCE OF TRUTH - Use shared financial aggregator
+  const financialData = useMemo(() => {
+    return aggregateFinancials({
+      etsyOrders,
+      customSales,
+      businessExpenses,
+      transfers,
+      materialPurchases,
+      etsyLedgerEntries,
+      orderFees,
+    }, dateRange);
   }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, dateRange]);
+
+  // For backward compatibility with existing components
+  const filteredSummaryData = financialData._rawData;
 
   const metrics = useMemo(() => {
     // Period calculations based on selected timeRange
@@ -394,57 +389,74 @@ export default function Dashboard() {
 
         <TabsContent value="overview" className="space-y-8 mt-6">
 
-      {/* KPI Cards */}
+      {/* KPI Cards - CLICKABLE with drill-downs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          title={`Revenue (${getPeriodLabel()})`}
-          value={formatCurrency(metrics.periodRevenue)}
-          subtitle={`${metrics.orderCount} orders`}
-          icon={DollarSign}
-          accentColor="emerald"
-          linkTo={createPageUrl("Orders")}
-        />
-        <KPICard
-          title={`Net Profit (${getPeriodLabel()})`}
-          value={formatCurrency(metrics.periodProfit)}
-          subtitle={`After fees & expenses`}
-          icon={TrendingUp}
-          accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"}
-        />
-        <KPICard
-          title="Profit Margin"
-          value={`${metrics.periodMargin.toFixed(1)}%`}
-          subtitle="Revenue after costs"
-          icon={Percent}
-          accentColor="violet"
-        />
-        <KPICard
-          title="Material Spend"
-          value={formatCurrency(metrics.materialExpenses)}
-          subtitle={getPeriodLabel()}
-          icon={Layers}
-          accentColor="amber"
-          linkTo={createPageUrl("Materials")}
-        />
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+          <KPICard
+            title="Total Revenue"
+            value={formatCurrency(financialData.totalRevenue)}
+            subtitle={`${financialData._rawData.etsyOrders.length} orders`}
+            icon={DollarSign}
+            accentColor="emerald"
+          />
+        </div>
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+          <KPICard
+            title="Net Profit"
+            value={formatCurrency(financialData.netProfit)}
+            subtitle={`${financialData.profitMargin.toFixed(1)}% margin`}
+            icon={TrendingUp}
+            accentColor={financialData.netProfit >= 0 ? "emerald" : "rose"}
+          />
+        </div>
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+          <KPICard
+            title="Total Etsy Fees"
+            value={formatCurrency(financialData.sellingExpenses.total)}
+            subtitle="All Etsy costs"
+            icon={Receipt}
+            accentColor="amber"
+          />
+        </div>
+        <Link to={createPageUrl("Inventory") + "?filter=low"}>
+          <KPICard
+            title="Material Spend"
+            value={formatCurrency(financialData.productExpenses.materialsSupplies)}
+            subtitle={getPeriodLabel()}
+            icon={Layers}
+            accentColor="violet"
+          />
+        </Link>
       </div>
 
       {/* All Time Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white">
-          <p className="text-emerald-100 text-sm font-medium mb-1">All-Time Revenue</p>
-          <p className="text-3xl font-bold">${metrics.allTimeRevenue.toLocaleString()}</p>
+          <p className="text-emerald-100 text-sm font-medium mb-1">Deposits from Etsy</p>
+          <p className="text-3xl font-bold">${financialData.cashflow.etsyDeposits.toLocaleString()}</p>
+          <p className="text-emerald-200 text-xs mt-1">{getPeriodLabel()}</p>
         </div>
         <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-6 text-white">
-          <p className="text-violet-100 text-sm font-medium mb-1">All-Time Profit</p>
-          <p className="text-3xl font-bold">${metrics.allTimeProfit.toLocaleString()}</p>
+          <p className="text-violet-100 text-sm font-medium mb-1">Total Expenses</p>
+          <p className="text-3xl font-bold">${financialData.totalExpenses.toLocaleString()}</p>
+          <p className="text-violet-200 text-xs mt-1">{getPeriodLabel()}</p>
         </div>
       </div>
 
       {/* Alerts */}
-      {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0 || uncategorizedExpenses.length > 0) && (
+      {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0 || uncategorizedExpenses.length > 0 || financialData.unmatchedLedgerEntries.length > 0) && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-stone-900">Needs Attention</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {financialData.unmatchedLedgerEntries.length > 0 && (
+              <AlertCard
+                title="Unmatched Ledger Rows"
+                count={financialData.unmatchedLedgerEntries.length}
+                description="Review and categorize Etsy entries"
+                linkTo="#"
+                type="danger"
+              />
+            )}
             <AlertCard
               title="Orders Missing Jobs"
               count={ordersWithoutJobs.length}
@@ -452,20 +464,15 @@ export default function Dashboard() {
               linkTo={createPageUrl("Orders") + "?filter=missing_job"}
               type="warning"
             />
-            <AlertCard
-              title="Low Stock Materials"
-              count={lowStockSheets.length}
-              description="Sheets running low"
-              linkTo={createPageUrl("Materials") + "?filter=low_stock"}
-              type="warning"
-            />
-            <AlertCard
-              title="Uncategorized Expenses"
-              count={uncategorizedExpenses.length}
-              description="Review and categorize"
-              linkTo={createPageUrl("Expenses") + "?filter=uncategorized"}
-              type="info"
-            />
+            <Link to={createPageUrl("Inventory") + "?filter=low"}>
+              <AlertCard
+                title="Low Stock Materials"
+                count={lowStockSheets.length}
+                description="Sheets running low"
+                linkTo={createPageUrl("Inventory") + "?filter=low"}
+                type="warning"
+              />
+            </Link>
           </div>
         </div>
       )}
