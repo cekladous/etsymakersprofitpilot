@@ -64,6 +64,8 @@ export default function SettingsTool() {
     paypal_fee_fixed: 0.49,
     square_fee_percent: 2.9,
     square_fee_fixed: 0.30,
+    venmo_business_fee_percent: 1.9,
+    venmo_business_fee_fixed: 0.10,
     fee_country: "US",
     fee_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
     fees_last_verified_date: "",
@@ -157,6 +159,8 @@ export default function SettingsTool() {
         paypal_fee_fixed: s.paypal_fee_fixed ?? 0.49,
         square_fee_percent: s.square_fee_percent ?? 2.9,
         square_fee_fixed: s.square_fee_fixed ?? 0.30,
+        venmo_business_fee_percent: s.venmo_business_fee_percent ?? 1.9,
+        venmo_business_fee_fixed: s.venmo_business_fee_fixed ?? 0.10,
         fee_country: s.fee_country || "US",
         fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
         fees_last_verified_date: s.fees_last_verified_date || "",
@@ -449,11 +453,40 @@ export default function SettingsTool() {
               </div>
             </div>
 
+            {/* Venmo Business Fees */}
+            <div className="space-y-3 pt-3 border-t border-stone-200">
+              <h4 className="font-medium text-stone-700 text-sm">Venmo Business</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Venmo Business Fee (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.venmo_business_fee_percent ?? 1.9}
+                    onChange={(e) => setSettingsData({ ...settingsData, venmo_business_fee_percent: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 rate: 1.9%</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Venmo Business Fixed Fee ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settingsData.venmo_business_fee_fixed ?? 0.10}
+                    onChange={(e) => setSettingsData({ ...settingsData, venmo_business_fee_fixed: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-stone-500">2026 rate: $0.10 per transaction</p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 space-y-1">
               <p className="font-semibold">💡 Payment Processor Fees (2026)</p>
               <p>• Etsy Payments: 3% + $0.25</p>
               <p>• PayPal: 3.49% + $0.49</p>
               <p>• Square: 2.9% + $0.30 (online)</p>
+              <p>• Venmo Business: 1.9% + $0.10</p>
+              <p>• Venmo Personal, Zelle, Cash: $0 (no fees)</p>
               <p className="pt-2 text-xs">These rates are used in the Profit Calculator. Update them if you're in a different country or have different rates.</p>
             </div>
           </div>
