@@ -58,7 +58,7 @@ export default function LineItemDrillDown({ open, onOpenChange, title, items }) 
                       {item.description || item.material_name || "—"}
                     </TableCell>
                     <TableCell className="text-sm">{item.vendor || "—"}</TableCell>
-                    <TableCell className="text-sm">{item.payment_method || "—"}</TableCell>
+                    <TableCell className="text-sm">{item.payment_method || item.payment_source || "—"}</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(item.amount || 0)}
                     </TableCell>

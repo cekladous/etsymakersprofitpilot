@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Plus, ChevronRight } from "lucide-react";
 import LineItemDrillDown from "./LineItemDrillDown";
 import BusinessExpenseDialog from "./BusinessExpenseDialog";
+import { groupByPeriod, getPeriodKey } from "@/components/shared/periodHelpers";
 
-export default function MonthlySummaryTable({ filteredData, onAddExpense }) {
+export default function MonthlySummaryTable({ filteredData, viewMode = "month" }) {
   const [drillDownOpen, setDrillDownOpen] = useState(false);
   const [drillDownData, setDrillDownData] = useState({ title: "", items: [] });
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
@@ -85,7 +86,7 @@ export default function MonthlySummaryTable({ filteredData, onAddExpense }) {
         date: p.purchase_date,
         description: p.material_name,
         vendor: p.vendor,
-        payment_method: p.payment_method,
+        payment_source: p.payment_method,
         amount: p.total_cost,
       }));
       items.push(...purchases);
@@ -98,7 +99,7 @@ export default function MonthlySummaryTable({ filteredData, onAddExpense }) {
         date: e.date,
         description: e.description,
         vendor: e.vendor,
-        payment_method: e.payment_method,
+        payment_source: e.payment_source,
         amount: e.amount,
       }));
     

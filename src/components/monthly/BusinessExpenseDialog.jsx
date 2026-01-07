@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -50,8 +51,10 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
     amount: "",
     vendor: "",
     description: "",
-    payment_method: "",
+    payment_source: "",
     notes: "",
+    inventory_flag: false,
+    budget_amount: "",
   });
 
   // Update category when preselectedCategory changes
@@ -81,8 +84,10 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
         amount: "",
         vendor: "",
         description: "",
-        payment_method: "",
+        payment_source: "",
         notes: "",
+        inventory_flag: false,
+        budget_amount: "",
       });
     },
   });

@@ -175,7 +175,7 @@ export default function BudgetTab({ viewMode, dateRange, filteredData }) {
         date: p.purchase_date,
         description: p.material_name,
         vendor: p.vendor,
-        payment_method: p.payment_method,
+        payment_source: p.payment_method,
         amount: p.total_cost,
       })));
     }
@@ -186,7 +186,7 @@ export default function BudgetTab({ viewMode, dateRange, filteredData }) {
       date: e.date,
       description: e.description,
       vendor: e.vendor,
-      payment_method: e.payment_method,
+      payment_source: e.payment_source,
       amount: e.amount,
     })));
 

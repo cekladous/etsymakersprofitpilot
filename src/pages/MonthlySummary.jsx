@@ -216,6 +216,7 @@ export default function MonthlySummary() {
       <MonthlySummaryKPIs
         filteredData={filteredData}
         dateRange={dateRange}
+        viewMode={viewMode}
       />
 
       {/* Tabs */}
@@ -251,7 +252,6 @@ export default function MonthlySummary() {
           {/* Summary Table */}
           <MonthlySummaryTable
             filteredData={filteredData}
-            dateRange={dateRange}
             viewMode={viewMode}
           />
         </TabsContent>
