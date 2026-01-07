@@ -10,7 +10,9 @@ import * as XLSX from "xlsx";
 import { EXPENSE_CATEGORY_GROUPS } from "@/components/shared/expenseCategories";
 import LineItemDrillDown from "./LineItemDrillDown";
 
-export default function BudgetTab({ viewMode, dateRange, filteredData }) {
+export default function BudgetTab({ viewMode, dateRange, financialData }) {
+  // Extract raw filtered data for compatibility
+  const filteredData = financialData._rawData;
   const [drillDownOpen, setDrillDownOpen] = useState(false);
   const [drillDownData, setDrillDownData] = useState({ title: "", items: [] });
   const [editingCell, setEditingCell] = useState(null);
