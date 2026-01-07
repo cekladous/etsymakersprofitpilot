@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { clsx } from "clsx";
 import {
   Dialog,
   DialogContent,
@@ -182,7 +182,7 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
                         }}
                       >
                         <Check
-                          className={cn(
+                          className={clsx(
                             "mr-2 h-4 w-4",
                             formData.material_name === name ? "opacity-100" : "opacity-0"
                           )}
@@ -238,7 +238,7 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
                         }}
                       >
                         <Check
-                          className={cn(
+                          className={clsx(
                             "mr-2 h-4 w-4",
                             formData.vendor === vendor ? "opacity-100" : "opacity-0"
                           )}

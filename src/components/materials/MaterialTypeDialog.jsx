@@ -32,7 +32,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { clsx } from "clsx";
 
 export default function MaterialTypeDialog({ open, onOpenChange, materialType, onClose }) {
   const [formData, setFormData] = useState({
@@ -176,7 +176,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
                           }}
                         >
                           <Check
-                            className={cn(
+                            className={clsx(
                               "mr-2 h-4 w-4",
                               formData.name === name ? "opacity-100" : "opacity-0"
                             )}
