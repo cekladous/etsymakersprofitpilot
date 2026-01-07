@@ -26,7 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Database, ExternalLink, Copy, Filter, Pencil } from "lucide-react";
+import { Database, ExternalLink, Copy, Filter, Pencil, Plus } from "lucide-react";
 import LaserSettingEditDialog from "./LaserSettingEditDialog";
 
 const machines = [
