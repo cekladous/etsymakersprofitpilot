@@ -96,15 +96,63 @@ export default function RasterAssistantTool() {
     queryFn: () => base44.entities.LaserSetting.list(),
   });
 
-  // Filter settings based on selections
-  const filteredSettings = allSettings.filter(setting => {
-    if (machineBrand && setting.brand !== machineBrand) return false;
-    if (machineModel && setting.model !== machineModel) return false;
-    if (laserType && setting.laser_type !== laserType) return false;
-    if (material && !setting.material.toLowerCase().includes(material.toLowerCase())) return false;
-    if (operation && setting.operation !== operation) return false;
-    return setting.active !== false;
-  });
+  // Smart fallback matching system
+  const { filteredSettings, matchType } = React.useMemo(() => {
+    if (!material || !laserType || !operation) {
+      return { filteredSettings: [], matchType: null };
+    }
+
+    // Helper to check material match
+    const materialMatches = (settingMaterial, searchMaterial) => {
+      return settingMaterial.toLowerCase().includes(searchMaterial.toLowerCase());
+    };
+
+    // Level 1: Exact match (brand + model + laser type + material + operation)
+    if (machineBrand && machineModel) {
+      const exact = allSettings.filter(s => 
+        s.brand === machineBrand &&
+        s.model === machineModel &&
+        s.laser_type === laserType &&
+        materialMatches(s.material, material) &&
+        s.operation === operation &&
+        s.active !== false
+      );
+      if (exact.length > 0) return { filteredSettings: exact, matchType: 'exact' };
+    }
+
+    // Level 2: Brand match (ignore model)
+    if (machineBrand) {
+      const brandMatch = allSettings.filter(s =>
+        s.brand === machineBrand &&
+        s.laser_type === laserType &&
+        materialMatches(s.material, material) &&
+        s.operation === operation &&
+        s.active !== false
+      );
+      if (brandMatch.length > 0) return { filteredSettings: brandMatch, matchType: 'brand' };
+    }
+
+    // Level 3: Laser type match (generic settings for this laser type)
+    const laserMatch = allSettings.filter(s =>
+      s.laser_type === laserType &&
+      materialMatches(s.material, material) &&
+      s.operation === operation &&
+      s.active !== false
+    );
+    if (laserMatch.length > 0) return { filteredSettings: laserMatch, matchType: 'generic' };
+
+    // Level 4: Material category match (e.g., "wood" matches "plywood", "wood - basswood", etc.)
+    const categoryMatch = allSettings.filter(s =>
+      s.laser_type === laserType &&
+      s.operation === operation &&
+      (s.material.toLowerCase().includes(material.toLowerCase()) ||
+       material.toLowerCase().includes(s.material.toLowerCase().split(' ')[0])) &&
+      s.active !== false
+    );
+    if (categoryMatch.length > 0) return { filteredSettings: categoryMatch, matchType: 'category' };
+
+    return { filteredSettings: [], matchType: null };
+  }, [material, machineBrand, machineModel, laserType, operation, allSettings]);
 
   // Get operation counts for hints (but don't use this to disable operations)
   const operationCounts = React.useMemo(() => {
@@ -314,15 +362,49 @@ export default function RasterAssistantTool() {
                   <Database className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-emerald-900">Manufacturer Settings Library</CardTitle>
+                  <CardTitle className="text-emerald-900 flex items-center gap-2">
+                    Manufacturer Settings Library
+                    {matchType === 'exact' && (
+                      <Badge className="bg-emerald-600 text-white">Exact Match</Badge>
+                    )}
+                    {matchType === 'brand' && (
+                      <Badge className="bg-blue-600 text-white">Closest Match</Badge>
+                    )}
+                    {matchType === 'generic' && (
+                      <Badge className="bg-amber-600 text-white">Generic Starting Point</Badge>
+                    )}
+                    {matchType === 'category' && (
+                      <Badge className="bg-violet-600 text-white">Similar Material</Badge>
+                    )}
+                  </CardTitle>
                   <CardDescription className="flex items-center gap-2 mt-1">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    {filteredSettings.length} matching setting{filteredSettings.length !== 1 ? 's' : ''} found
+                    {filteredSettings.length} setting{filteredSettings.length !== 1 ? 's' : ''} found
+                    {matchType !== 'exact' && (
+                      <span className="text-amber-600 ml-1">• Using fallback match</span>
+                    )}
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {matchType !== 'exact' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">Using Fallback Match</p>
+                      <p className="text-xs mt-1">
+                        {matchType === 'brand' && "No exact model match found. Showing settings for other models from the same brand."}
+                        {matchType === 'generic' && "No brand-specific settings found. Showing generic settings for this laser type and material."}
+                        {matchType === 'category' && "No exact material match found. Showing settings for similar materials."}
+                        {" "}Always test on scrap material and adjust as needed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
