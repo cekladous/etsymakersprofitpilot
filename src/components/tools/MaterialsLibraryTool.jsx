@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import * as XLSX from "xlsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Database, ExternalLink, Copy, Filter, Pencil, Plus, Upload, Download, FolderOpen } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Database, ExternalLink, Copy, Filter, Pencil, Plus, Upload, Download, FolderOpen, ChevronDown } from "lucide-react";
 import LaserSettingEditDialog from "./LaserSettingEditDialog";
 
 const machines = [
@@ -53,22 +60,95 @@ export default function MaterialsLibraryTool() {
   const [sourceFilter, setSourceFilter] = useState("Manufacturer");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
+  const fileInputRef = useRef(null);
+  const queryClient = useQueryClient();
+
+  const importMutation = useMutation({
+    mutationFn: async (settings) => {
+      return base44.entities.LaserSetting.bulkCreate(settings);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["laser-settings"] });
+      alert("Settings imported successfully!");
+    },
+    onError: (error) => {
+      alert(`Import failed: ${error.message}`);
+    },
+  });
 
   const handleImport = () => {
-    // TODO: Implement import functionality
-    alert("Import functionality coming soon!");
+    fileInputRef.current?.click();
   };
 
-  const handleExport = () => {
-    // TODO: Implement export functionality
-    const dataStr = JSON.stringify(allSettings, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "laser-settings-export.json";
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleFileUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+        // Transform data to match LaserSetting schema
+        const settings = jsonData.map((row) => ({
+          brand: row.brand || row.Brand,
+          model: row.model || row.Model,
+          laser_type: row.laser_type || row["Laser Type"] || row.laser_type?.toLowerCase(),
+          material_category: row.material_category || row["Material Category"],
+          material_name: row.material_name || row["Material Name"],
+          thickness_mm: row.thickness_mm || row["Thickness (mm)"] ? parseFloat(row.thickness_mm || row["Thickness (mm)"]) : null,
+          operation: row.operation || row.Operation?.toLowerCase(),
+          speed_mm_s: row.speed_mm_s || row["Speed (mm/s)"] ? parseFloat(row.speed_mm_s || row["Speed (mm/s)"]) : null,
+          power_min_pct: row.power_min_pct || row["Power Min (%)"] ? parseFloat(row.power_min_pct || row["Power Min (%)"]) : null,
+          power_max_pct: row.power_max_pct || row["Power Max (%)"] ? parseFloat(row.power_max_pct || row["Power Max (%)"]) : null,
+          passes: row.passes || row.Passes ? parseInt(row.passes || row.Passes) : 1,
+          dpi_lpi: row.dpi_lpi || row["DPI/LPI"] ? parseFloat(row.dpi_lpi || row["DPI/LPI"]) : null,
+          frequency_hz: row.frequency_hz || row["Frequency (Hz)"] ? parseFloat(row.frequency_hz || row["Frequency (Hz)"]) : null,
+          notes: row.notes || row.Notes || "",
+          source_type: "User",
+          active: true,
+        }));
+
+        importMutation.mutate(settings);
+      } catch (error) {
+        alert(`Failed to parse file: ${error.message}`);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = "";
+  };
+
+  const handleExport = (format = "xlsx") => {
+    const exportData = allSettings.map((setting) => ({
+      "Brand": setting.brand,
+      "Model": setting.model,
+      "Laser Type": setting.laser_type,
+      "Material Category": setting.material_category,
+      "Material Name": setting.material_name,
+      "Thickness (mm)": setting.thickness_mm || "",
+      "Operation": setting.operation,
+      "Speed (mm/s)": setting.speed_mm_s || "",
+      "Power Min (%)": setting.power_min_pct || "",
+      "Power Max (%)": setting.power_max_pct || "",
+      "Passes": setting.passes || 1,
+      "DPI/LPI": setting.dpi_lpi || "",
+      "Frequency (Hz)": setting.frequency_hz || "",
+      "Notes": setting.notes || "",
+      "Source Type": setting.source_type,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laser Settings");
+
+    if (format === "csv") {
+      XLSX.writeFile(workbook, "laser-settings-export.csv", { bookType: "csv" });
+    } else {
+      XLSX.writeFile(workbook, "laser-settings-export.xlsx", { bookType: "xlsx" });
+    }
   };
 
   const handleCategories = () => {
@@ -151,6 +231,13 @@ export default function MaterialsLibraryTool() {
               </Select>
             </div>
             <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
               <Button
                 variant="outline"
                 onClick={handleImport}
@@ -158,13 +245,23 @@ export default function MaterialsLibraryTool() {
                 <Upload className="w-4 h-4 mr-2" />
                 Import
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleExport}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleExport("xlsx")}>
+                    Export as Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("csv")}>
+                    Export as CSV (.csv)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="outline"
                 onClick={handleCategories}
