@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -15,6 +22,31 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Copy } from "lucide-react";
+
+const machines = [
+  { brand: "atomstack", label: "Atomstack", models: ["A5 M50", "A10 Pro", "A20 Pro", "X7 Pro", "S10 Pro", "P7 M40", "Other"] },
+  { brand: "boss", label: "Boss Laser", models: ["LS-1416", "LS-1630", "HP-1610", "HP-2440", "LS-2436", "Other"] },
+  { brand: "creality", label: "Creality", models: ["Falcon", "Falcon 2", "CV-30", "Other"] },
+  { brand: "epilog", label: "Epilog", models: ["Zing 16", "Zing 24", "Fusion Pro", "Fusion Edge", "Other"] },
+  { brand: "fsl", label: "Full Spectrum Laser", models: ["Muse", "H-Series", "Pro Series", "Other"] },
+  { brand: "generic", label: "Generic/K40", models: ["K40", "Generic CO2", "Generic Diode", "Other"] },
+  { brand: "glowforge", label: "Glowforge", models: ["Basic", "Plus", "Pro", "Aura", "Other"] },
+  { brand: "laserpecker", label: "LaserPecker", models: ["LP3", "LP4", "L1 Pro", "L2", "Other"] },
+  { brand: "longer", label: "Longer", models: ["Ray5", "Laser B1", "Other"] },
+  { brand: "monport", label: "Monport", models: ["40W", "50W", "60W", "80W", "100W", "Other"] },
+  { brand: "omtech", label: "OMTech", models: ["40W", "50W", "60W", "80W", "100W", "130W", "Other"] },
+  { brand: "ortur", label: "Ortur", models: ["LM2", "LM3", "Laser Master 3", "H10", "Other"] },
+  { brand: "thunder", label: "Thunder Laser", models: ["Nova 24", "Nova 35", "Nova 51", "Odin", "Other"] },
+  { brand: "trotec", label: "Trotec", models: ["Speedy 100", "Speedy 300", "Speedy 400", "SP500", "Other"] },
+  { brand: "wecreat", label: "WeCreat", models: ["Vision", "Other"] },
+  { brand: "xtool", label: "xTool", models: ["D1", "D1 Pro", "M1", "P2", "P3", "S1", "F1", "F1 Ultra", "Other"] },
+  { brand: "other", label: "Other", models: ["Custom"] },
+];
+
+const materialCategories = [
+  "Wood", "Plywood", "MDF", "Acrylic", "Leather", "Paper", "Cardboard", 
+  "Fabric", "Foam", "Rubber", "Glass", "Metal", "Stone", "Tile", "Food"
+];
 
 export default function LaserSettingEditDialog({ setting, open, onOpenChange }) {
   const [formData, setFormData] = useState({
@@ -94,6 +126,9 @@ export default function LaserSettingEditDialog({ setting, open, onOpenChange }) 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const selectedMachine = machines.find(m => m.brand === formData.brand);
+  const availableModels = selectedMachine?.models || [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -118,49 +153,104 @@ export default function LaserSettingEditDialog({ setting, open, onOpenChange }) 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Brand *</Label>
-              <Input
+              <Select
                 value={formData.brand}
-                onChange={(e) => handleChange("brand", e.target.value)}
+                onValueChange={(value) => {
+                  handleChange("brand", value);
+                  handleChange("model", "");
+                }}
                 required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select brand..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {machines.map((machine) => (
+                    <SelectItem key={machine.brand} value={machine.brand}>
+                      {machine.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Model *</Label>
-              <Input
+              <Select
                 value={formData.model}
-                onChange={(e) => handleChange("model", e.target.value)}
+                onValueChange={(value) => handleChange("model", value)}
                 required
-              />
+                disabled={!formData.brand}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select model..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Laser Type *</Label>
-              <Input
+              <Select
                 value={formData.laser_type}
-                onChange={(e) => handleChange("laser_type", e.target.value)}
+                onValueChange={(value) => handleChange("laser_type", value)}
                 required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select laser type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="co2">CO2</SelectItem>
+                  <SelectItem value="diode">Diode</SelectItem>
+                  <SelectItem value="fiber">Fiber</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Operation *</Label>
-              <Input
+              <Select
                 value={formData.operation}
-                onChange={(e) => handleChange("operation", e.target.value)}
+                onValueChange={(value) => handleChange("operation", value)}
                 required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select operation..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cut">Cut</SelectItem>
+                  <SelectItem value="engrave">Engrave</SelectItem>
+                  <SelectItem value="score">Score</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Material Category *</Label>
-              <Input
+              <Select
                 value={formData.material_category}
-                onChange={(e) => handleChange("material_category", e.target.value)}
+                onValueChange={(value) => handleChange("material_category", value)}
                 required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select material..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {materialCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Material Name</Label>
