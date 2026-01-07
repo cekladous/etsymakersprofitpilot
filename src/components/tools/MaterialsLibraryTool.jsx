@@ -128,6 +128,16 @@ export default function MaterialsLibraryTool() {
                 </SelectContent>
               </Select>
             </div>
+            <Button
+              onClick={() => {
+                setSelectedSetting(null);
+                setEditDialogOpen(true);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Setting
+            </Button>
           </div>
 
           {machinesLoading || settingsLoading ? (
