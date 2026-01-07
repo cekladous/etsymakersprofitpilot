@@ -9,7 +9,11 @@ export default function MonthlySummaryKPIs({ filteredData }) {
   const customSalesTotal = filteredData.customSales.reduce((sum, s) => sum + (s.gross_sale || 0), 0);
   const totalRevenue = etsySales + etsyTax + customSalesTotal;
 
-  const totalExpenses = filteredData.businessExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Include MaterialPurchase in total expenses
+  const materialPurchasesTotal = filteredData.materialPurchases?.reduce((sum, p) => sum + (p.total_cost || 0), 0) || 0;
+  const businessExpensesTotal = filteredData.businessExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalExpenses = businessExpensesTotal + materialPurchasesTotal;
+  
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 

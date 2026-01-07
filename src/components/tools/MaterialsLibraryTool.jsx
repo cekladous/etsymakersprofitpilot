@@ -33,8 +33,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Database, ExternalLink, Copy, Filter, Pencil, Plus, Upload, Download, FolderOpen, ChevronDown } from "lucide-react";
+import { Database, ExternalLink, Copy, Filter, Pencil, Plus, Upload, Download, FolderOpen, ChevronDown, DollarSign } from "lucide-react";
 import LaserSettingEditDialog from "./LaserSettingEditDialog";
+import MaterialPurchaseDialog from "../monthly/MaterialPurchaseDialog";
 
 const machines = [
   { brand: "atomstack", label: "Atomstack" },
@@ -61,6 +62,7 @@ export default function MaterialsLibraryTool() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -297,6 +299,14 @@ export default function MaterialsLibraryTool() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button
+                variant="outline"
+                onClick={() => setPurchaseDialogOpen(true)}
+                className="border-pink-300 text-pink-700 hover:bg-pink-50"
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Log Purchase
+              </Button>
+              <Button
                 onClick={() => {
                   setSelectedSetting(null);
                   setEditDialogOpen(true);
@@ -448,6 +458,11 @@ export default function MaterialsLibraryTool() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
       />
-    </div>
-  );
-}
+
+      <MaterialPurchaseDialog
+        open={purchaseDialogOpen}
+        onOpenChange={setPurchaseDialogOpen}
+      />
+      </div>
+      );
+      }

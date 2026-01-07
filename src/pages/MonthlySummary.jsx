@@ -55,6 +55,11 @@ export default function MonthlySummary() {
     queryFn: () => base44.entities.Transfer.list("-date", 1000),
   });
 
+  const { data: materialPurchases = [] } = useQuery({
+    queryKey: ["material-purchases"],
+    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 1000),
+  });
+
   // Calculate date range based on view mode
   const dateRange = useMemo(() => {
     let start, end;
@@ -87,6 +92,7 @@ export default function MonthlySummary() {
       customSales: filterByDate(customSales, "date"),
       businessExpenses: filterByDate(businessExpenses, "date"),
       transfers: filterByDate(transfers, "date"),
+      materialPurchases: filterByDate(materialPurchases, "purchase_date"),
       orderFees: orderFees,
     };
   }, [etsyOrders, customSales, businessExpenses, transfers, orderFees, dateRange]);

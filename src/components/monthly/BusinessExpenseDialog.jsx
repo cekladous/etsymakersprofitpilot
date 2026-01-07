@@ -43,16 +43,23 @@ const EXPENSE_CATEGORIES = [
   { group: "business_expenses", name: "custom_expense_c", label: "Custom Expense C (Business)" },
 ];
 
-export default function BusinessExpenseDialog({ open, onOpenChange }) {
+export default function BusinessExpenseDialog({ open, onOpenChange, preselectedCategory = null }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
-    category_name: "materials_supplies",
+    category_name: preselectedCategory || "materials_supplies",
     amount: "",
     vendor: "",
     description: "",
     payment_method: "",
     notes: "",
   });
+
+  // Update category when preselectedCategory changes
+  React.useEffect(() => {
+    if (preselectedCategory && open) {
+      setFormData(prev => ({ ...prev, category_name: preselectedCategory }));
+    }
+  }, [preselectedCategory, open]);
 
   const queryClient = useQueryClient();
 

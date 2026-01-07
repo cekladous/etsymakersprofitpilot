@@ -1,7 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus, ChevronRight } from "lucide-react";
+import LineItemDrillDown from "./LineItemDrillDown";
+import BusinessExpenseDialog from "./BusinessExpenseDialog";
 
-export default function MonthlySummaryTable({ filteredData }) {
+export default function MonthlySummaryTable({ filteredData, onAddExpense }) {
+  const [drillDownOpen, setDrillDownOpen] = useState(false);
+  const [drillDownData, setDrillDownData] = useState({ title: "", items: [] });
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [preselectedCategory, setPreselectedCategory] = useState(null);
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -43,7 +51,11 @@ export default function MonthlySummaryTable({ filteredData }) {
   const customExpenseA = getExpenseByCategory("custom_expense_a");
   const customExpenseB = getExpenseByCategory("custom_expense_b");
   
-  const materialsSupplies = getExpenseByCategory("materials_supplies");
+  // Calculate materials & supplies from both MaterialPurchase and BusinessExpense
+  const materialPurchasesTotal = filteredData.materialPurchases?.reduce((sum, p) => sum + (p.total_cost || 0), 0) || 0;
+  const materialsSuppliesExpenses = getExpenseByCategory("materials_supplies");
+  const materialsSupplies = materialPurchasesTotal + materialsSuppliesExpenses;
+  
   const toolsEquipment = getExpenseByCategory("tools_equipment");
   
   const advertisingMarketing = getExpenseByCategory("advertising_marketing");
@@ -59,14 +71,72 @@ export default function MonthlySummaryTable({ filteredData }) {
   const ownerTransfers = filteredData.transfers.filter(t => t.type === "owner_transfer").reduce((sum, t) => sum + (t.amount || 0), 0);
   const etsyDeposits = filteredData.transfers.filter(t => t.type === "etsy_deposit").reduce((sum, t) => sum + (t.amount || 0), 0);
 
-  const Row = ({ label, amount, bold = false, indent = 0, highlight = "" }) => (
-    <div className={`flex justify-between items-center py-2 px-4 ${highlight} ${bold ? "font-semibold border-t border-b border-stone-300 bg-stone-100" : ""}`}>
+  const handleAddExpense = (categoryName) => {
+    setPreselectedCategory(categoryName);
+    setExpenseDialogOpen(true);
+  };
+
+  const handleDrillDown = (label, categoryName) => {
+    let items = [];
+    
+    // For materials_supplies, include MaterialPurchase records
+    if (categoryName === "materials_supplies") {
+      const purchases = (filteredData.materialPurchases || []).map(p => ({
+        date: p.purchase_date,
+        description: p.material_name,
+        vendor: p.vendor,
+        payment_method: p.payment_method,
+        amount: p.total_cost,
+      }));
+      items.push(...purchases);
+    }
+    
+    // Add BusinessExpense records
+    const expenses = filteredData.businessExpenses
+      .filter(e => e.category_name === categoryName)
+      .map(e => ({
+        date: e.date,
+        description: e.description,
+        vendor: e.vendor,
+        payment_method: e.payment_method,
+        amount: e.amount,
+      }));
+    
+    items.push(...expenses);
+    
+    // Sort by date descending
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    setDrillDownData({ title: label, items });
+    setDrillDownOpen(true);
+  };
+
+  const Row = ({ label, amount, bold = false, indent = 0, highlight = "", categoryName = null, canAdd = false }) => (
+    <div className={`flex justify-between items-center py-2 px-4 ${highlight} ${bold ? "font-semibold border-t border-b border-stone-300 bg-stone-100" : ""} group hover:bg-stone-50 transition-colors`}>
       <span className={`text-sm ${indent > 0 ? `pl-${indent * 4}` : ""} ${bold ? "font-bold" : ""}`}>
         {label}
       </span>
-      <span className={`text-sm ${bold ? "font-bold" : ""}`}>
-        {formatCurrency(amount)}
-      </span>
+      <div className="flex items-center gap-2">
+        {categoryName && amount > 0 && (
+          <button
+            onClick={() => handleDrillDown(label, categoryName)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-stone-200 rounded"
+          >
+            <ChevronRight className="w-4 h-4 text-stone-600" />
+          </button>
+        )}
+        {canAdd && (
+          <button
+            onClick={() => handleAddExpense(categoryName)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-100 rounded"
+          >
+            <Plus className="w-4 h-4 text-emerald-600" />
+          </button>
+        )}
+        <span className={`text-sm ${bold ? "font-bold" : ""}`}>
+          {formatCurrency(amount)}
+        </span>
+      </div>
     </div>
   );
 
@@ -99,38 +169,38 @@ export default function MonthlySummaryTable({ filteredData }) {
         <div className="bg-cyan-50 py-1 px-4">
           <p className="text-sm font-medium">Selling Expenses</p>
         </div>
-        <Row label="Etsy Listing Fees" amount={etsyListingFees} />
-        <Row label="Etsy Transaction Fees" amount={etsyTransactionFees} />
-        <Row label="Etsy Processing Fees" amount={etsyProcessingFees} />
-        <Row label="Share & Save Fee Refunds & Misc. Credits" amount={shareSaveRefunds} />
-        <Row label="Other Fees" amount={otherFees} />
-        <Row label="Etsy Ads" amount={etsyAds} />
-        <Row label="Etsy Offsite Ads Fees" amount={etsyOffsiteAds} />
+        <Row label="Etsy Listing Fees" amount={etsyListingFees} categoryName="etsy_listing_fees" canAdd />
+        <Row label="Etsy Transaction Fees" amount={etsyTransactionFees} categoryName="etsy_transaction_fees" canAdd />
+        <Row label="Etsy Processing Fees" amount={etsyProcessingFees} categoryName="etsy_processing_fees" canAdd />
+        <Row label="Share & Save Fee Refunds & Misc. Credits" amount={shareSaveRefunds} categoryName="share_save_refunds_credits" canAdd />
+        <Row label="Other Fees" amount={otherFees} categoryName="other_fees" canAdd />
+        <Row label="Etsy Ads" amount={etsyAds} categoryName="etsy_ads" canAdd />
+        <Row label="Etsy Offsite Ads Fees" amount={etsyOffsiteAds} categoryName="etsy_offsite_ads_fees" canAdd />
         <Row label="Total Etsy Fees" amount={totalEtsyFees} bold />
-        <Row label="Etsy Shipping" amount={etsyShipping} highlight="bg-yellow-50" />
-        <Row label="Other Postage Costs" amount={otherPostage} highlight="bg-yellow-50" />
-        <Row label="Custom Expense A" amount={customExpenseA} highlight="bg-yellow-50" />
-        <Row label="Custom Expense B" amount={customExpenseB} highlight="bg-yellow-50" />
+        <Row label="Etsy Shipping" amount={etsyShipping} highlight="bg-yellow-50" categoryName="etsy_shipping" canAdd />
+        <Row label="Other Postage Costs" amount={otherPostage} highlight="bg-yellow-50" categoryName="other_postage_costs" canAdd />
+        <Row label="Custom Expense A" amount={customExpenseA} highlight="bg-yellow-50" categoryName="custom_expense_a" canAdd />
+        <Row label="Custom Expense B" amount={customExpenseB} highlight="bg-yellow-50" categoryName="custom_expense_b" canAdd />
 
         {/* Product Expenses */}
         <div className="bg-pink-100 py-1 px-4">
           <p className="text-sm font-medium">Product Expenses</p>
         </div>
-        <Row label="Materials & Supplies" amount={materialsSupplies} />
-        <Row label="Tools & Equipment" amount={toolsEquipment} />
+        <Row label="Materials & Supplies" amount={materialsSupplies} categoryName="materials_supplies" canAdd />
+        <Row label="Tools & Equipment" amount={toolsEquipment} categoryName="tools_equipment" canAdd />
 
         {/* Business Expenses */}
         <div className="bg-purple-100 py-1 px-4">
           <p className="text-sm font-medium">Business Expenses</p>
         </div>
-        <Row label="Advertising & Marketing" amount={advertisingMarketing} />
-        <Row label="Office Expenses" amount={officeExpenses} />
-        <Row label="Professional Services" amount={professionalServices} />
-        <Row label="Other" amount={other} />
-        <Row label="Miscellaneous Expenses" amount={miscExpenses} />
-        <Row label="Custom Expense A" amount={customExpenseA} />
-        <Row label="Custom Expense B" amount={customExpenseB} />
-        <Row label="Custom Expense C" amount={customExpenseC} />
+        <Row label="Advertising & Marketing" amount={advertisingMarketing} categoryName="advertising_marketing" canAdd />
+        <Row label="Office Expenses" amount={officeExpenses} categoryName="office_expenses" canAdd />
+        <Row label="Professional Services" amount={professionalServices} categoryName="professional_services" canAdd />
+        <Row label="Other" amount={other} categoryName="other" canAdd />
+        <Row label="Miscellaneous Expenses" amount={miscExpenses} categoryName="miscellaneous_expenses" canAdd />
+        <Row label="Custom Expense A" amount={customExpenseA} categoryName="custom_expense_c" canAdd />
+        <Row label="Custom Expense B" amount={customExpenseB} categoryName="custom_expense_c" canAdd />
+        <Row label="Custom Expense C" amount={customExpenseC} categoryName="custom_expense_c" canAdd />
 
         <Row label="Total Expenses" amount={totalExpenses} bold />
         <Row label="Net Profit" amount={netProfit} bold highlight={netProfit >= 0 ? "bg-emerald-50" : "bg-rose-50"} />
@@ -141,6 +211,21 @@ export default function MonthlySummaryTable({ filteredData }) {
           <Row label="Deposits from Etsy" amount={etsyDeposits} />
         </div>
       </CardContent>
+
+      {/* Drill-down Dialog */}
+      <LineItemDrillDown
+        open={drillDownOpen}
+        onOpenChange={setDrillDownOpen}
+        title={drillDownData.title}
+        items={drillDownData.items}
+      />
+
+      {/* Expense Dialog */}
+      <BusinessExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        preselectedCategory={preselectedCategory}
+      />
     </Card>
   );
 }
