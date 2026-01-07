@@ -1,0 +1,177 @@
+import React, { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+
+const EXPENSE_CATEGORIES = [
+  { group: "selling_expenses", name: "etsy_listing_fees", label: "Etsy Listing Fees" },
+  { group: "selling_expenses", name: "etsy_transaction_fees", label: "Etsy Transaction Fees" },
+  { group: "selling_expenses", name: "etsy_processing_fees", label: "Etsy Processing Fees" },
+  { group: "selling_expenses", name: "share_save_refunds_credits", label: "Share & Save Refunds & Credits" },
+  { group: "selling_expenses", name: "other_fees", label: "Other Fees" },
+  { group: "selling_expenses", name: "etsy_ads", label: "Etsy Ads" },
+  { group: "selling_expenses", name: "etsy_offsite_ads_fees", label: "Etsy Offsite Ads Fees" },
+  { group: "selling_expenses", name: "etsy_shipping", label: "Etsy Shipping" },
+  { group: "selling_expenses", name: "other_postage_costs", label: "Other Postage Costs" },
+  { group: "selling_expenses", name: "custom_expense_a", label: "Custom Expense A (Selling)" },
+  { group: "selling_expenses", name: "custom_expense_b", label: "Custom Expense B (Selling)" },
+  { group: "product_expenses", name: "materials_supplies", label: "Materials & Supplies" },
+  { group: "product_expenses", name: "tools_equipment", label: "Tools & Equipment" },
+  { group: "business_expenses", name: "advertising_marketing", label: "Advertising & Marketing" },
+  { group: "business_expenses", name: "office_expenses", label: "Office Expenses" },
+  { group: "business_expenses", name: "professional_services", label: "Professional Services" },
+  { group: "business_expenses", name: "other", label: "Other" },
+  { group: "business_expenses", name: "miscellaneous_expenses", label: "Miscellaneous Expenses" },
+  { group: "business_expenses", name: "custom_expense_c", label: "Custom Expense C (Business)" },
+];
+
+export default function BusinessExpenseDialog({ open, onOpenChange }) {
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split("T")[0],
+    category_name: "materials_supplies",
+    amount: "",
+    vendor: "",
+    description: "",
+    payment_method: "",
+    notes: "",
+  });
+
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: async (data) => {
+      const category = EXPENSE_CATEGORIES.find(c => c.name === data.category_name);
+      return base44.entities.BusinessExpense.create({
+        ...data,
+        category_group: category?.group || "business_expenses",
+        amount: parseFloat(data.amount || 0),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
+      onOpenChange(false);
+      setFormData({
+        date: new Date().toISOString().split("T")[0],
+        category_name: "materials_supplies",
+        amount: "",
+        vendor: "",
+        description: "",
+        payment_method: "",
+        notes: "",
+      });
+    },
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    createMutation.mutate(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Business Expense</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <Input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Amount *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category *</Label>
+            <Select
+              value={formData.category_name}
+              onValueChange={(v) => setFormData({ ...formData, category_name: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.name} value={cat.name}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Vendor</Label>
+            <Input
+              value={formData.vendor}
+              onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
+              placeholder="Vendor name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Expense details"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Payment Method</Label>
+            <Input
+              value={formData.payment_method}
+              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+              placeholder="Credit Card, Cash, etc."
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700">
+              {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add Expense
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

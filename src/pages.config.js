@@ -5,6 +5,7 @@ import Materials from './pages/Materials';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Tools from './pages/Tools';
+import MonthlySummary from './pages/MonthlySummary';
 import __Layout from './Layout.jsx';
 
 
@@ -16,6 +17,7 @@ export const PAGES = {
     "Orders": Orders,
     "Products": Products,
     "Tools": Tools,
+    "MonthlySummary": MonthlySummary,
 }
 
 export const pagesConfig = {
