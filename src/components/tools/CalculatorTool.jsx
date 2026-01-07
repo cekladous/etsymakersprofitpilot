@@ -254,8 +254,8 @@ export default function CalculatorTool() {
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="etsy_ads">Etsy Ads</SelectItem>
                     <SelectItem value="etsy_offsite_ads">Etsy Offsite Ads</SelectItem>
-                    <SelectItem value="social_ads">Social Ads</SelectItem>
-                    <SelectItem value="google_ads">Google Ads</SelectItem>
+                    <SelectItem value="social_ads">Social Ads (Meta / TikTok / Pinterest paid ads)</SelectItem>
+                    <SelectItem value="google_ads">Google Ads (Search / Shopping driving to Etsy or site)</SelectItem>
                     <SelectItem value="influencer_affiliate">Influencer / Affiliate</SelectItem>
                   </SelectContent>
                 </Select>

@@ -34,7 +34,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, Megaphone } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 
 const EXPENSE_CATEGORIES = [
@@ -75,15 +75,14 @@ export default function SettingsTool() {
     fee_country: "US",
     fee_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
     fees_last_verified_date: "",
+    paypal_source_url: "https://www.paypal.com/us/webapps/mpp/merchant-fees",
+    paypal_last_verified_date: "",
+    square_source_url: "https://squareup.com/us/en/pricing",
+    square_last_verified_date: "",
+    venmo_source_url: "https://help.venmo.com/hc/en-us/articles/360016096533",
+    venmo_last_verified_date: "",
     auto_categorization_rules: [],
-    advertising_sources: {
-      etsy_ads: { source_url: "https://help.etsy.com/hc/en-us/articles/360000338367", notes: "" },
-      etsy_offsite_ads: { source_url: "https://help.etsy.com/hc/en-us/articles/360000337607", notes: "" },
-      social_ads: { source_url: "", notes: "Rates vary by platform (Meta, TikTok, etc.)" },
-      google_ads: { source_url: "https://support.google.com/google-ads/answer/6275294", notes: "" },
-      influencer_affiliate: { source_url: "", notes: "No fixed platform fees" },
-    },
-  });
+    });
 
   const [machineData, setMachineData] = useState({
     name: "",
@@ -177,15 +176,14 @@ export default function SettingsTool() {
         fee_country: s.fee_country || "US",
         fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
         fees_last_verified_date: s.fees_last_verified_date || "",
+        paypal_source_url: s.paypal_source_url || "https://www.paypal.com/us/webapps/mpp/merchant-fees",
+        paypal_last_verified_date: s.paypal_last_verified_date || "",
+        square_source_url: s.square_source_url || "https://squareup.com/us/en/pricing",
+        square_last_verified_date: s.square_last_verified_date || "",
+        venmo_source_url: s.venmo_source_url || "https://help.venmo.com/hc/en-us/articles/360016096533",
+        venmo_last_verified_date: s.venmo_last_verified_date || "",
         auto_categorization_rules: s.auto_categorization_rules || [],
-        advertising_sources: s.advertising_sources || {
-          etsy_ads: { source_url: "https://help.etsy.com/hc/en-us/articles/360000338367", notes: "" },
-          etsy_offsite_ads: { source_url: "https://help.etsy.com/hc/en-us/articles/360000337607", notes: "" },
-          social_ads: { source_url: "", notes: "Rates vary by platform (Meta, TikTok, etc.)" },
-          google_ads: { source_url: "https://support.google.com/google-ads/answer/6275294", notes: "" },
-          influencer_affiliate: { source_url: "", notes: "No fixed platform fees" },
-        },
-      });
+        });
     }
   }, [settings]);
 
@@ -500,6 +498,48 @@ export default function SettingsTool() {
                       <p className="text-xs text-stone-500">Current US rate: $0.49 per transaction</p>
                     </div>
                   </div>
+
+                  <div className="mt-4 pt-4 border-t border-blue-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Fee Source</Label>
+                      {settingsData.paypal_source_url && (
+                        <a
+                          href={settingsData.paypal_source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Official Page
+                        </a>
+                      )}
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="https://www.paypal.com/..."
+                      value={settingsData.paypal_source_url}
+                      onChange={(e) => setSettingsData({ ...settingsData, paypal_source_url: e.target.value })}
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Last Verified</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={settingsData.paypal_last_verified_date}
+                          onChange={(e) => setSettingsData({ ...settingsData, paypal_last_verified_date: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSettingsData({ ...settingsData, paypal_last_verified_date: new Date().toISOString().split('T')[0] })}
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
 
@@ -528,6 +568,48 @@ export default function SettingsTool() {
                         onChange={(e) => setSettingsData({ ...settingsData, square_fee_fixed: parseFloat(e.target.value) || 0 })}
                       />
                       <p className="text-xs text-stone-500">Current online rate: $0.30 per transaction</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Fee Source</Label>
+                      {settingsData.square_source_url && (
+                        <a
+                          href={settingsData.square_source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Official Page
+                        </a>
+                      )}
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="https://squareup.com/..."
+                      value={settingsData.square_source_url}
+                      onChange={(e) => setSettingsData({ ...settingsData, square_source_url: e.target.value })}
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Last Verified</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={settingsData.square_last_verified_date}
+                          onChange={(e) => setSettingsData({ ...settingsData, square_last_verified_date: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSettingsData({ ...settingsData, square_last_verified_date: new Date().toISOString().split('T')[0] })}
+                        >
+                          Today
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -560,6 +642,49 @@ export default function SettingsTool() {
                       <p className="text-xs text-stone-500">Current rate: $0.10 per transaction</p>
                     </div>
                   </div>
+
+                  <div className="mt-4 pt-4 border-t border-sky-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Fee Source</Label>
+                      {settingsData.venmo_source_url && (
+                        <a
+                          href={settingsData.venmo_source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Official Page
+                        </a>
+                      )}
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="https://help.venmo.com/..."
+                      value={settingsData.venmo_source_url}
+                      onChange={(e) => setSettingsData({ ...settingsData, venmo_source_url: e.target.value })}
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Last Verified</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={settingsData.venmo_last_verified_date}
+                          onChange={(e) => setSettingsData({ ...settingsData, venmo_last_verified_date: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSettingsData({ ...settingsData, venmo_last_verified_date: new Date().toISOString().split('T')[0] })}
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
                   <p className="text-xs text-stone-500 mt-3 italic">Note: Venmo Personal, Zelle, and Cash have no processing fees</p>
                 </div>
               </TabsContent>
@@ -641,229 +766,6 @@ export default function SettingsTool() {
                 No machines configured. Add your first machine to track costs.
               </div>
             )}
-          </div>
-
-          <div className="border-t border-stone-200"></div>
-
-          {/* Advertising Sources */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-purple-600" />
-              <h3 className="font-semibold text-stone-900">Advertising Platform Sources</h3>
-            </div>
-            <p className="text-sm text-stone-600">Manage source URLs and notes for each advertising type used in the Profit Calculator.</p>
-
-            <div className="space-y-3">
-              {/* Etsy Ads */}
-              <div className="p-4 bg-stone-50 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Etsy Ads</Label>
-                  {settingsData.advertising_sources?.etsy_ads?.source_url && (
-                    <a
-                      href={settingsData.advertising_sources.etsy_ads.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Official Page
-                    </a>
-                  )}
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Source URL"
-                  value={settingsData.advertising_sources?.etsy_ads?.source_url || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      etsy_ads: { ...settingsData.advertising_sources?.etsy_ads, source_url: e.target.value }
-                    }
-                  })}
-                />
-                <Input
-                  type="text"
-                  placeholder="Notes (optional)"
-                  value={settingsData.advertising_sources?.etsy_ads?.notes || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      etsy_ads: { ...settingsData.advertising_sources?.etsy_ads, notes: e.target.value }
-                    }
-                  })}
-                />
-              </div>
-
-              {/* Etsy Offsite Ads */}
-              <div className="p-4 bg-stone-50 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Etsy Offsite Ads</Label>
-                  {settingsData.advertising_sources?.etsy_offsite_ads?.source_url && (
-                    <a
-                      href={settingsData.advertising_sources.etsy_offsite_ads.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Official Page
-                    </a>
-                  )}
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Source URL"
-                  value={settingsData.advertising_sources?.etsy_offsite_ads?.source_url || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      etsy_offsite_ads: { ...settingsData.advertising_sources?.etsy_offsite_ads, source_url: e.target.value }
-                    }
-                  })}
-                />
-                <Input
-                  type="text"
-                  placeholder="Notes (optional)"
-                  value={settingsData.advertising_sources?.etsy_offsite_ads?.notes || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      etsy_offsite_ads: { ...settingsData.advertising_sources?.etsy_offsite_ads, notes: e.target.value }
-                    }
-                  })}
-                />
-              </div>
-
-              {/* Social Ads */}
-              <div className="p-4 bg-stone-50 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Social Ads (Meta, TikTok, etc.)</Label>
-                  {settingsData.advertising_sources?.social_ads?.source_url && (
-                    <a
-                      href={settingsData.advertising_sources.social_ads.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      View Link
-                    </a>
-                  )}
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Source URL (optional)"
-                  value={settingsData.advertising_sources?.social_ads?.source_url || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      social_ads: { ...settingsData.advertising_sources?.social_ads, source_url: e.target.value }
-                    }
-                  })}
-                />
-                <Input
-                  type="text"
-                  placeholder="Notes (e.g., 'Rates vary by platform')"
-                  value={settingsData.advertising_sources?.social_ads?.notes || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      social_ads: { ...settingsData.advertising_sources?.social_ads, notes: e.target.value }
-                    }
-                  })}
-                />
-              </div>
-
-              {/* Google Ads */}
-              <div className="p-4 bg-stone-50 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Google Ads</Label>
-                  {settingsData.advertising_sources?.google_ads?.source_url && (
-                    <a
-                      href={settingsData.advertising_sources.google_ads.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Official Page
-                    </a>
-                  )}
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Source URL"
-                  value={settingsData.advertising_sources?.google_ads?.source_url || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      google_ads: { ...settingsData.advertising_sources?.google_ads, source_url: e.target.value }
-                    }
-                  })}
-                />
-                <Input
-                  type="text"
-                  placeholder="Notes (optional)"
-                  value={settingsData.advertising_sources?.google_ads?.notes || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      google_ads: { ...settingsData.advertising_sources?.google_ads, notes: e.target.value }
-                    }
-                  })}
-                />
-              </div>
-
-              {/* Influencer / Affiliate */}
-              <div className="p-4 bg-stone-50 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Influencer / Affiliate</Label>
-                  {settingsData.advertising_sources?.influencer_affiliate?.source_url && (
-                    <a
-                      href={settingsData.advertising_sources.influencer_affiliate.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      View Link
-                    </a>
-                  )}
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Source URL (optional)"
-                  value={settingsData.advertising_sources?.influencer_affiliate?.source_url || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      influencer_affiliate: { ...settingsData.advertising_sources?.influencer_affiliate, source_url: e.target.value }
-                    }
-                  })}
-                />
-                <Input
-                  type="text"
-                  placeholder="Notes (e.g., 'No fixed platform fees')"
-                  value={settingsData.advertising_sources?.influencer_affiliate?.notes || ""}
-                  onChange={(e) => setSettingsData({
-                    ...settingsData,
-                    advertising_sources: {
-                      ...settingsData.advertising_sources,
-                      influencer_affiliate: { ...settingsData.advertising_sources?.influencer_affiliate, notes: e.target.value }
-                    }
-                  })}
-                />
-              </div>
-            </div>
           </div>
 
           <div className="border-t border-stone-200"></div>
