@@ -88,8 +88,9 @@ export default function Jobs() {
     return product?.name || "-";
   };
 
-  const markComplete = (job) => {
-    updateMutation.mutate({
+  const markComplete = async (job) => {
+    // Complete the job
+    await updateMutation.mutateAsync({
       id: job.id,
       data: {
         status: "completed",
@@ -99,11 +100,14 @@ export default function Jobs() {
     
     // Update linked orders
     const jobOrders = getOrdersForJob(job);
-    jobOrders.forEach(order => {
-      base44.entities.Order.update(order.id, { status: "completed" });
-    });
+    for (const order of jobOrders) {
+      await base44.entities.Order.update(order.id, { status: "completed" });
+    }
     
+    // Invalidate queries to refresh data
     queryClient.invalidateQueries({ queryKey: ["orders"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
   };
 
   const columns = [
@@ -185,7 +189,7 @@ export default function Jobs() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Jobs" description="Production jobs and cost tracking">
+      <PageHeader title="Production Jobs" description="Track work orders, material usage, and production costs">
         <div className="flex gap-2 flex-wrap">
           <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
             <Button
@@ -254,8 +258,8 @@ export default function Jobs() {
       {jobs.length === 0 && !isLoading ? (
         <EmptyState
           icon={Wrench}
-          title="No jobs yet"
-          description="Create production jobs to track costs and link orders."
+          title="No production jobs yet"
+          description="Create jobs to track material usage, production time, and costs per order."
           actionLabel="Create Job"
           onAction={() => setFormOpen(true)}
         />

@@ -147,6 +147,45 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
           });
         }
         
+        // If job is completed, create inventory transactions for material usage
+        if (data.status === "completed" && data.material_cost > 0 && data.product_id) {
+          try {
+            const product = products.find(p => p.id === data.product_id);
+            if (product && product.default_material_id) {
+              const { data: inventoryItems } = await queryClient.fetchQuery({
+                queryKey: ["inventory-items"],
+                queryFn: () => base44.entities.InventoryItem.list(),
+              });
+              
+              const materialType = await base44.entities.MaterialType.get(product.default_material_id);
+              const inventoryItem = inventoryItems.find(i => i.material_name === materialType?.name);
+              
+              if (inventoryItem) {
+                // Create usage transaction
+                await base44.entities.InventoryTransaction.create({
+                  inventory_item_id: inventoryItem.id,
+                  transaction_date: new Date().toISOString().split("T")[0],
+                  transaction_type: "usage",
+                  quantity_change: -(data.quantity || 1),
+                  unit_cost: inventoryItem.average_cost || 0,
+                  reference_id: job.id,
+                  notes: `Used for Job ${data.job_number}`,
+                });
+                
+                // Update inventory quantities
+                const newQuantity = Math.max(0, (inventoryItem.quantity_on_hand || 0) - (data.quantity || 1));
+                await base44.entities.InventoryItem.update(inventoryItem.id, {
+                  quantity_on_hand: newQuantity,
+                  total_value: newQuantity * inventoryItem.average_cost,
+                  last_updated: new Date().toISOString(),
+                });
+              }
+            }
+          } catch (error) {
+            console.error("Failed to update inventory:", error);
+          }
+        }
+        
         return result;
       }
       
@@ -161,11 +200,50 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
         });
       }
       
+      // If job is created as completed, handle inventory
+      if (data.status === "completed" && data.material_cost > 0 && data.product_id) {
+        try {
+          const product = products.find(p => p.id === data.product_id);
+          if (product && product.default_material_id) {
+            const { data: inventoryItems } = await queryClient.fetchQuery({
+              queryKey: ["inventory-items"],
+              queryFn: () => base44.entities.InventoryItem.list(),
+            });
+            
+            const materialType = await base44.entities.MaterialType.get(product.default_material_id);
+            const inventoryItem = inventoryItems.find(i => i.material_name === materialType?.name);
+            
+            if (inventoryItem) {
+              await base44.entities.InventoryTransaction.create({
+                inventory_item_id: inventoryItem.id,
+                transaction_date: new Date().toISOString().split("T")[0],
+                transaction_type: "usage",
+                quantity_change: -(data.quantity || 1),
+                unit_cost: inventoryItem.average_cost || 0,
+                reference_id: result.id,
+                notes: `Used for Job ${data.job_number}`,
+              });
+              
+              const newQuantity = Math.max(0, (inventoryItem.quantity_on_hand || 0) - (data.quantity || 1));
+              await base44.entities.InventoryItem.update(inventoryItem.id, {
+                quantity_on_hand: newQuantity,
+                total_value: newQuantity * inventoryItem.average_cost,
+                last_updated: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to update inventory:", error);
+        }
+      }
+      
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
       onClose();
     },
   });
