@@ -27,7 +27,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
 
 const EXPENSE_CATEGORIES = [
   { value: "materials", label: "Materials" },
@@ -47,6 +48,7 @@ export default function SettingsTool() {
   const [machineFormOpen, setMachineFormOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [feeChangeLogOpen, setFeeChangeLogOpen] = useState(false);
   
   const [settingsData, setSettingsData] = useState({
     electricity_rate: 0.12,
@@ -58,6 +60,8 @@ export default function SettingsTool() {
     payment_processing_fee_percent: 3.0,
     payment_processing_fee_fixed: 0.25,
     fee_country: "US",
+    fee_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
+    fees_last_verified_date: "",
     auto_categorization_rules: [],
   });
 
@@ -85,6 +89,11 @@ export default function SettingsTool() {
     queryFn: () => base44.entities.Machine.list(),
   });
 
+  const { data: feeChangeLogs = [] } = useQuery({
+    queryKey: ["fee-change-logs"],
+    queryFn: () => base44.entities.FeeChangeLog.list("-created_date", 50),
+  });
+
   useEffect(() => {
     if (settings.length > 0) {
       const s = settings[0];
@@ -98,6 +107,8 @@ export default function SettingsTool() {
         payment_processing_fee_percent: s.payment_processing_fee_percent ?? 3.0,
         payment_processing_fee_fixed: s.payment_processing_fee_fixed ?? 0.25,
         fee_country: s.fee_country || "US",
+        fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
+        fees_last_verified_date: s.fees_last_verified_date || "",
         auto_categorization_rules: s.auto_categorization_rules || [],
       });
     }
@@ -160,6 +171,11 @@ export default function SettingsTool() {
   const handleSaveSettings = () => {
     setSaving(true);
     settingsMutation.mutate(settingsData);
+  };
+
+  const handleMarkFeesVerified = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setSettingsData(prev => ({ ...prev, fees_last_verified_date: today }));
   };
 
   const handleAddRule = () => {
@@ -262,9 +278,19 @@ export default function SettingsTool() {
 
           {/* Marketplace Fees */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <CircleDollarSign className="w-4 h-4 text-blue-600" />
-              <h3 className="font-semibold text-stone-900">Marketplace Fee Configuration</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CircleDollarSign className="w-4 h-4 text-blue-600" />
+                <h3 className="font-semibold text-stone-900">Marketplace Fee Configuration</h3>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFeeChangeLogOpen(true)}
+              >
+                <History className="w-4 h-4 mr-2" />
+                Fee Change Log
+              </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -562,8 +588,76 @@ export default function SettingsTool() {
               {editingMachine ? "Save Changes" : "Add Machine"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+          </DialogContent>
+          </Dialog>
+
+          {/* Fee Change Log Dialog */}
+          <Dialog open={feeChangeLogOpen} onOpenChange={setFeeChangeLogOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Fee Change Log</DialogTitle>
+            <DialogDescription>
+              Historical record of Etsy fee changes tracked in this system
+            </DialogDescription>
+          </DialogHeader>
+
+          {feeChangeLogs.length === 0 ? (
+            <div className="text-center py-12 text-stone-500">
+              <History className="w-12 h-12 mx-auto mb-3 text-stone-400" />
+              <p>No fee changes recorded yet</p>
+              <p className="text-sm mt-1">Changes will appear here when you update fee rates</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {feeChangeLogs.map((log) => (
+                <div key={log.id} className="p-4 bg-stone-50 rounded-lg border border-stone-200">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="capitalize">
+                          {log.fee_type.replace(/_/g, ' ')}
+                        </Badge>
+                        {log.country && (
+                          <Badge variant="outline">{log.country}</Badge>
+                        )}
+                        <span className="text-xs text-stone-500">
+                          {format(new Date(log.change_date), 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm mb-1">
+                        <span className="text-stone-600">
+                          {log.fee_type.includes('percent') ? `${log.old_value}%` : `$${log.old_value}`}
+                        </span>
+                        <span className="text-stone-400">→</span>
+                        <span className="font-semibold text-stone-900">
+                          {log.fee_type.includes('percent') ? `${log.new_value}%` : `$${log.new_value}`}
+                        </span>
+                      </div>
+                      {log.notes && (
+                        <p className="text-xs text-stone-600 mt-2">{log.notes}</p>
+                      )}
+                    </div>
+                    {log.source_url && (
+                      <a
+                        href={log.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 ml-4"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setFeeChangeLogOpen(false)}>Close</Button>
+          </DialogFooter>
+          </DialogContent>
+          </Dialog>
+          </div>
+          );
+          }

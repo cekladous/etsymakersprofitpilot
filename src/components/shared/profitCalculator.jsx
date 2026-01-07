@@ -31,6 +31,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     refunds = 0,
     sales_tax = 0,
     cost_of_goods = 0,
+    shipping_cost = 0,
   } = input;
 
   const config = { ...DEFAULT_FEE_CONFIG, ...feeConfig };
@@ -57,8 +58,11 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   // Net revenue after fees
   const net_revenue = gross_revenue - total_fees;
   
+  // Total costs
+  const total_costs = cost_of_goods + shipping_cost;
+  
   // Profit
-  const profit = net_revenue - cost_of_goods;
+  const profit = net_revenue - total_costs;
   
   // Margin
   const profit_margin = gross_revenue > 0 ? (profit / gross_revenue) * 100 : 0;
@@ -77,6 +81,8 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     // Bottom Line
     net_revenue,
     cost_of_goods,
+    shipping_cost,
+    total_costs,
     profit,
     profit_margin,
     
