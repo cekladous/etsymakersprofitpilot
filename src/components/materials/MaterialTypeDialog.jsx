@@ -207,23 +207,27 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
             />
           </div>
 
-          {currentInventory && (
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm font-medium text-blue-900 mb-2">Current Inventory</p>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-blue-700">Quantity on Hand:</span>
-                  <span className="ml-2 font-semibold text-blue-900">
-                    {currentInventory.quantity_on_hand?.toFixed(2) || 0}
-                  </span>
+          {materialType && (
+            <div className={`p-4 rounded-lg border ${currentInventory ? "bg-blue-50 border-blue-200" : "bg-stone-50 border-stone-200"}`}>
+              <p className="text-sm font-medium mb-2">Current Inventory</p>
+              {currentInventory ? (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-stone-600">Quantity on Hand:</span>
+                    <span className="ml-2 font-semibold text-stone-900">
+                      {currentInventory.quantity_on_hand?.toFixed(2) || 0}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-stone-600">Total Value:</span>
+                    <span className="ml-2 font-semibold text-stone-900">
+                      ${currentInventory.total_value?.toFixed(2) || 0}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-blue-700">Total Value:</span>
-                  <span className="ml-2 font-semibold text-blue-900">
-                    ${currentInventory.total_value?.toFixed(2) || 0}
-                  </span>
-                </div>
-              </div>
+              ) : (
+                <p className="text-sm text-stone-500">No inventory tracked yet for this material</p>
+              )}
             </div>
           )}
 
