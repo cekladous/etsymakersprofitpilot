@@ -21,6 +21,7 @@ const defaultInputs = {
   sales_price: 25.00,
   shipping_charged: 5.00,
   discounts: 0,
+  discounts_type: "fixed",
   refunds: 0,
   sales_tax: 0,
   cost_of_goods: 8.00,
@@ -175,14 +176,25 @@ export default function CalculatorTool() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Discounts</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={inputs.discounts}
-                  onChange={(e) => handleInputChange("discounts", e.target.value)}
-                  className="h-11"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={inputs.discounts}
+                    onChange={(e) => handleInputChange("discounts", e.target.value)}
+                    className="h-11 flex-1"
+                  />
+                  <Select value={inputs.discounts_type || "fixed"} onValueChange={(v) => handleSelectChange("discounts_type", v)}>
+                    <SelectTrigger className="h-11 w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">%</SelectItem>
+                      <SelectItem value="fixed">$</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Refunds</Label>
