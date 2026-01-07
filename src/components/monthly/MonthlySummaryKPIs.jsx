@@ -2,36 +2,19 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, DollarSign, CreditCard, Target } from "lucide-react";
 
-export default function MonthlySummaryKPIs({ filteredData }) {
-  // Calculate totals
-  const etsySales = filteredData.etsyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
-  const etsyTax = filteredData.etsyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
-  const customSalesTotal = filteredData.customSales.reduce((sum, s) => sum + (s.gross_sale || 0), 0);
-  const totalRevenue = etsySales + etsyTax + customSalesTotal;
+export default function MonthlySummaryKPIs({ financialData }) {
+  // USE SINGLE SOURCE OF TRUTH - Extract from aggregated data
+  const {
+    totalRevenue,
+    totalExpenses,
+    netProfit,
+    profitMargin,
+    sellingExpenses,
+    businessExpenses,
+    cashflow,
+  } = financialData;
 
-  // Include MaterialPurchase in total expenses
-  const materialPurchasesTotal = filteredData.materialPurchases?.reduce((sum, p) => sum + (p.total_cost || 0), 0) || 0;
-  const businessExpensesTotal = filteredData.businessExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalExpenses = businessExpensesTotal + materialPurchasesTotal;
-  
-  const netProfit = totalRevenue - totalExpenses;
-  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-  const totalEtsyFees = filteredData.businessExpenses
-    .filter(e => e.category_group === "selling_expenses")
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
-
-  const totalAds = filteredData.businessExpenses
-    .filter(e => ["etsy_ads", "etsy_offsite_ads_fees", "advertising_marketing"].includes(e.category_name))
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
-
-  const etsyDeposits = filteredData.transfers
-    .filter(t => t.type === "etsy_deposit")
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  const ownerTransfers = filteredData.transfers
-    .filter(t => t.type === "owner_transfer")
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+  const totalAds = sellingExpenses.etsyAds + sellingExpenses.etsyOffsiteAds + businessExpenses.advertisingMarketing;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -80,7 +63,7 @@ export default function MonthlySummaryKPIs({ filteredData }) {
       />
       <KPICard
         label="Etsy Fees"
-        value={formatCurrency(totalEtsyFees)}
+        value={formatCurrency(sellingExpenses.total)}
         icon={CreditCard}
         color="text-orange-600"
       />
@@ -92,13 +75,13 @@ export default function MonthlySummaryKPIs({ filteredData }) {
       />
       <KPICard
         label="Etsy Deposits"
-        value={formatCurrency(etsyDeposits)}
+        value={formatCurrency(cashflow.etsyDeposits)}
         icon={DollarSign}
         color="text-teal-600"
       />
       <KPICard
         label="Owner Transfers"
-        value={formatCurrency(ownerTransfers)}
+        value={formatCurrency(cashflow.ownerTransfers)}
         icon={DollarSign}
         color="text-indigo-600"
       />

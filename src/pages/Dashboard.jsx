@@ -520,11 +520,7 @@ export default function Dashboard() {
           </div>
 
           {/* Summary KPIs */}
-          <MonthlySummaryKPIs
-            filteredData={filteredSummaryData}
-            dateRange={dateRange}
-            viewMode={timeRange}
-          />
+          <MonthlySummaryKPIs financialData={financialData} />
 
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap">
@@ -543,17 +539,14 @@ export default function Dashboard() {
           </div>
 
           {/* Summary Table */}
-          <MonthlySummaryTable
-            filteredData={filteredSummaryData}
-            viewMode={timeRange}
-          />
+          <MonthlySummaryTable financialData={financialData} viewMode={timeRange} />
         </TabsContent>
 
         <TabsContent value="budget" className="mt-6">
           <BudgetTab
             viewMode={timeRange}
             dateRange={dateRange}
-            filteredData={filteredSummaryData}
+            financialData={financialData}
           />
         </TabsContent>
       </Tabs>
