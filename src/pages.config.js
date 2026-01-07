@@ -2,10 +2,10 @@ import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Jobs from './pages/Jobs';
 import Materials from './pages/Materials';
+import MonthlySummary from './pages/MonthlySummary';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Tools from './pages/Tools';
-import MonthlySummary from './pages/MonthlySummary';
 import __Layout from './Layout.jsx';
 
 
@@ -14,10 +14,10 @@ export const PAGES = {
     "Expenses": Expenses,
     "Jobs": Jobs,
     "Materials": Materials,
+    "MonthlySummary": MonthlySummary,
     "Orders": Orders,
     "Products": Products,
     "Tools": Tools,
-    "MonthlySummary": MonthlySummary,
 }
 
 export const pagesConfig = {

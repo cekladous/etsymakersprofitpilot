@@ -23,6 +23,7 @@ import MonthlySummaryKPIs from "../components/monthly/MonthlySummaryKPIs";
 import MonthlySummaryTable from "../components/monthly/MonthlySummaryTable";
 import BudgetTab from "../components/monthly/BudgetTab";
 import EtsyOrderImportDialog from "../components/monthly/EtsyOrderImportDialog";
+import EtsyLedgerImportDialog from "../components/monthly/EtsyLedgerImportDialog";
 import CustomSaleDialog from "../components/monthly/CustomSaleDialog";
 import BusinessExpenseDialog from "../components/monthly/BusinessExpenseDialog";
 import TransferDialog from "../components/monthly/TransferDialog";
@@ -32,6 +33,7 @@ export default function MonthlySummary() {
   const [viewMode, setViewMode] = useState("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [ledgerImportDialogOpen, setLedgerImportDialogOpen] = useState(false);
   const [customSaleDialogOpen, setCustomSaleDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -68,6 +70,11 @@ export default function MonthlySummary() {
     queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 1000),
   });
 
+  const { data: etsyLedgerEntries = [] } = useQuery({
+    queryKey: ["etsy-ledger-entries"],
+    queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 5000),
+  });
+
   // Calculate date range based on view mode
   const dateRange = useMemo(() => {
     let start, end;
@@ -101,6 +108,7 @@ export default function MonthlySummary() {
       businessExpenses: filterByDate(businessExpenses, "date"),
       transfers: filterByDate(transfers, "date"),
       materialPurchases: filterByDate(materialPurchases, "purchase_date"),
+      etsyLedgerEntries: filterByDate(etsyLedgerEntries, "entry_date"),
       orderFees: orderFees,
     };
   }, [etsyOrders, customSales, businessExpenses, transfers, orderFees, dateRange]);
@@ -153,7 +161,11 @@ export default function MonthlySummary() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
             <Upload className="w-4 h-4 mr-2" />
-            Import Etsy Orders
+            Import Sold Orders
+          </Button>
+          <Button variant="outline" onClick={() => setLedgerImportDialogOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import Payment Ledger
           </Button>
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />

@@ -111,6 +111,10 @@ export default function BudgetTab({ viewMode, dateRange, filteredData }) {
     const expenses = filterByPeriod(filteredData.businessExpenses || [], "date");
     total += expenses.filter(e => e.category_name === categoryName).reduce((sum, e) => sum + (e.amount || 0), 0);
 
+    // Add EtsyLedgerEntry (matched to this category)
+    const ledgerEntries = filterByPeriod(filteredData.etsyLedgerEntries || [], "entry_date");
+    total += ledgerEntries.filter(e => e.matched_category === categoryName).reduce((sum, e) => sum + Math.abs(e.net || 0), 0);
+
     return total;
   };
 
