@@ -43,7 +43,7 @@ export default function MonthlySummaryTable({ filteredData }) {
   const customExpenseA = getExpenseByCategory("custom_expense_a");
   const customExpenseB = getExpenseByCategory("custom_expense_b");
   
-  const materialsSup plies = getExpenseByCategory("materials_supplies");
+  const materialsSupplies = getExpenseByCategory("materials_supplies");
   const toolsEquipment = getExpenseByCategory("tools_equipment");
   
   const advertisingMarketing = getExpenseByCategory("advertising_marketing");
