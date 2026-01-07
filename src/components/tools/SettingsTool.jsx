@@ -811,9 +811,9 @@ export default function SettingsTool() {
           <Dialog open={feeChangeLogOpen} onOpenChange={setFeeChangeLogOpen}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Fee Change Log</DialogTitle>
+            <DialogTitle>Payment Processor Fee Change Log</DialogTitle>
             <DialogDescription>
-              Historical record of Etsy fee changes tracked in this system
+              Historical record of all payment processor fee changes tracked in this system
             </DialogDescription>
           </DialogHeader>
 
