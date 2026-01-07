@@ -159,20 +159,32 @@ export default function Expenses() {
   const parseExpenseRow = (row) => {
     const date = row["Date"] || row["Transaction Date"] || row["Posted Date"] || "";
     const amountStr = row["Amount"] || row["Debit"] || row["Charge"] || row["Credit"] || "";
+    const typeStr = (row["Type"] || "sale").toLowerCase();
     
-    // Parse amount, preserving sign for credits
+    // Parse amount
     let amount = parseFloat(amountStr?.replace(/[^0-9.-]/g, "") || "0");
     
-    // If there's a separate Credit column, treat it as negative
-    if (row["Credit"] && !row["Debit"] && !row["Amount"]) {
-      amount = -Math.abs(amount);
+    // Determine transaction type
+    let type = "sale";
+    if (typeStr.includes("return") || typeStr.includes("refund") || typeStr.includes("credit")) {
+      type = "return";
+      amount = Math.abs(amount); // Returns are positive (credits)
+    } else {
+      // If there's a separate Credit column, treat it as a return
+      if (row["Credit"] && !row["Debit"] && !row["Amount"]) {
+        type = "return";
+        amount = Math.abs(amount);
+      } else {
+        amount = Math.abs(amount); // Sales are positive debits
+      }
     }
     
     return {
       transaction_id: row["Transaction ID"] || row["Reference"] || `${date}-${amountStr}`,
       date: date ? format(new Date(date), "yyyy-MM-dd") : "",
       description: row["Description"] || row["Merchant"] || row["Name"] || "",
-      amount: amount, // Preserve negative for credits
+      amount: amount,
+      type: type,
       vendor: row["Vendor"] || row["Merchant"] || "",
       payment_method: row["Card"] || row["Account"] || "",
     };
@@ -198,17 +210,21 @@ export default function Expenses() {
     });
   }, [expenses, search, categoryFilter, statusFilter]);
 
-  // Total amount (credits reduce the total)
-  const totalAmount = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalDebits = filteredExpenses.reduce((sum, e) => e.amount >= 0 ? sum + e.amount : sum, 0);
-  const totalCredits = filteredExpenses.reduce((sum, e) => e.amount < 0 ? sum + Math.abs(e.amount) : sum, 0);
+  // Total amount (returns reduce the total)
+  const totalAmount = filteredExpenses.reduce((sum, e) => {
+    const amount = e.amount || 0;
+    return e.type === "return" ? sum - amount : sum + amount;
+  }, 0);
+  const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
+  const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
 
-  // Chart data - by category (use absolute values for visualization)
+  // Chart data - by category (returns reduce category totals)
   const categoryData = useMemo(() => {
     const grouped = filteredExpenses.reduce((acc, exp) => {
       const cat = exp.category || "other";
       if (!acc[cat]) acc[cat] = 0;
-      acc[cat] += exp.amount || 0; // Credits will reduce category totals
+      const amount = exp.amount || 0;
+      acc[cat] += exp.type === "return" ? -amount : amount;
       return acc;
     }, {});
     
@@ -320,11 +336,11 @@ export default function Expenses() {
       header: "Amount",
       render: (row) => {
         const amount = row.amount || 0;
-        const isCredit = amount < 0;
+        const isReturn = row.type === "return";
         return (
-          <span className={`font-semibold ${isCredit ? "text-emerald-600" : "text-stone-900"}`}>
-            {isCredit ? "-" : ""}${Math.abs(amount).toFixed(2)}
-            {isCredit && <span className="ml-1 text-xs">(credit)</span>}
+          <span className={`font-semibold ${isReturn ? "text-emerald-600" : "text-stone-900"}`}>
+            {isReturn ? "-" : ""}${Math.abs(amount).toFixed(2)}
+            {isReturn && <span className="ml-1 text-xs">(return)</span>}
           </span>
         );
       },
@@ -432,7 +448,7 @@ export default function Expenses() {
             <span className="font-semibold text-stone-900">${totalDebits.toFixed(2)}</span>
           </div>
           <div>
-            <span className="text-stone-500">Credits: </span>
+            <span className="text-stone-500">Returns: </span>
             <span className="font-semibold text-emerald-600">-${totalCredits.toFixed(2)}</span>
           </div>
         </div>
@@ -548,7 +564,7 @@ export default function Expenses() {
                         <Tooltip formatter={(value, name, props) => {
                           const actualValue = props.payload.actualValue;
                           return actualValue < 0 
-                            ? `-$${Math.abs(actualValue).toFixed(2)} (credit)` 
+                            ? `-$${Math.abs(actualValue).toFixed(2)} (net return)` 
                             : `$${actualValue.toFixed(2)}`;
                         }} />
                       </PieChart>
@@ -601,7 +617,7 @@ export default function Expenses() {
                       <div className="text-right">
                         <p className={`font-semibold ${cat.actualValue < 0 ? "text-emerald-600" : "text-stone-900"}`}>
                           {cat.actualValue < 0 ? "-" : ""}${cat.value.toFixed(2)}
-                          {cat.actualValue < 0 && <span className="ml-1 text-xs">(credit)</span>}
+                          {cat.actualValue < 0 && <span className="ml-1 text-xs">(net return)</span>}
                         </p>
                         <p className="text-xs text-stone-500">
                           {((cat.value / Math.abs(totalAmount || 1)) * 100).toFixed(1)}% of total
