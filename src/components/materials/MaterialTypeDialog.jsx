@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,15 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
   });
 
   const queryClient = useQueryClient();
+
+  const { data: inventoryItems = [] } = useQuery({
+    queryKey: ["inventory-items"],
+    queryFn: () => base44.entities.InventoryItem.list(),
+  });
+
+  const currentInventory = materialType 
+    ? inventoryItems.find(i => i.material_name === materialType.name)
+    : null;
 
   useEffect(() => {
     if (materialType) {
@@ -197,6 +206,26 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
               rows={2}
             />
           </div>
+
+          {currentInventory && (
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm font-medium text-blue-900 mb-2">Current Inventory</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-blue-700">Quantity on Hand:</span>
+                  <span className="ml-2 font-semibold text-blue-900">
+                    {currentInventory.quantity_on_hand?.toFixed(2) || 0}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-700">Total Value:</span>
+                  <span className="ml-2 font-semibold text-blue-900">
+                    ${currentInventory.total_value?.toFixed(2) || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

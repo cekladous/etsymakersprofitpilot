@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -17,14 +29,22 @@ import { Loader2 } from "lucide-react";
 export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) {
   const [quantityChange, setQuantityChange] = useState("");
   const [notes, setNotes] = useState("");
+  const [materialName, setMaterialName] = useState("");
+  const [openCombobox, setOpenCombobox] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: inventoryItems = [] } = useQuery({
+    queryKey: ["inventory-items"],
+    queryFn: () => base44.entities.InventoryItem.list(),
+  });
 
   useEffect(() => {
     if (open) {
       setQuantityChange("");
       setNotes("");
+      setMaterialName(item?.material_name || "");
     }
-  }, [open]);
+  }, [open, item]);
 
   const adjustMutation = useMutation({
     mutationFn: async (data) => {
@@ -71,10 +91,60 @@ export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adjust Inventory: {item.material_name}</DialogTitle>
+          <DialogTitle>Adjust Inventory</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Material Name *</Label>
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                >
+                  {materialName || "Select material..."}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput
+                    placeholder="Search or type new material..."
+                    value={materialName}
+                    onValueChange={setMaterialName}
+                  />
+                  <CommandEmpty>
+                    <div className="p-2">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          setOpenCombobox(false);
+                        }}
+                      >
+                        Use "{materialName}"
+                      </Button>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {inventoryItems.map((inv) => (
+                      <CommandItem
+                        key={inv.id}
+                        onSelect={() => {
+                          setMaterialName(inv.material_name);
+                          setOpenCombobox(false);
+                        }}
+                      >
+                        {inv.material_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <div className="p-4 bg-stone-50 rounded-lg space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-stone-600">Current Quantity:</span>

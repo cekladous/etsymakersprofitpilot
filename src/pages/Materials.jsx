@@ -61,11 +61,17 @@ export default function Materials() {
     }).format(num);
   };
 
+  const getItemLowStockThreshold = (item) => {
+    const materialType = materialTypes.find(t => t.name === item.material_name);
+    return materialType?.low_stock_threshold || 5;
+  };
+
   const filteredInventory = inventoryItems.filter(item => {
     const matchesSearch = !search ||
       item.material_name?.toLowerCase().includes(search.toLowerCase());
+    const threshold = getItemLowStockThreshold(item);
     const matchesStock = stockFilter === "all" ||
-      (stockFilter === "low" && item.quantity_on_hand <= 5 && item.quantity_on_hand > 0) ||
+      (stockFilter === "low" && item.quantity_on_hand <= threshold && item.quantity_on_hand > 0) ||
       (stockFilter === "out" && item.quantity_on_hand === 0);
     return matchesSearch && matchesStock;
   });
@@ -75,9 +81,10 @@ export default function Materials() {
     0
   );
 
-  const lowStockItems = inventoryItems.filter(
-    (item) => item.quantity_on_hand <= 5 && item.quantity_on_hand > 0
-  );
+  const lowStockItems = inventoryItems.filter((item) => {
+    const threshold = getItemLowStockThreshold(item);
+    return item.quantity_on_hand <= threshold && item.quantity_on_hand > 0;
+  });
 
   const outOfStockItems = inventoryItems.filter(
     (item) => item.quantity_on_hand === 0
@@ -90,11 +97,16 @@ export default function Materials() {
     },
     {
       header: "Quantity on Hand",
-      render: (row) => (
-        <span className={`font-medium ${row.quantity_on_hand === 0 ? "text-rose-600" : row.quantity_on_hand <= 5 ? "text-amber-600" : "text-stone-900"}`}>
-          {formatNumber(row.quantity_on_hand)}
-        </span>
-      ),
+      render: (row) => {
+        const threshold = getItemLowStockThreshold(row);
+        const isLow = row.quantity_on_hand <= threshold && row.quantity_on_hand > 0;
+        const isOut = row.quantity_on_hand === 0;
+        return (
+          <span className={`font-medium ${isOut ? "text-rose-600" : isLow ? "text-amber-600" : "text-stone-900"}`}>
+            {formatNumber(row.quantity_on_hand)}
+          </span>
+        );
+      },
     },
     {
       header: "Average Cost",
