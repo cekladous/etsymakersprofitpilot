@@ -389,40 +389,40 @@ export default function Dashboard() {
 
         <TabsContent value="overview" className="space-y-8 mt-6">
 
-      {/* KPI Cards - CLICKABLE with drill-downs */}
+      {/* KPI Cards - ALL CLICKABLE */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
           <KPICard
             title="Total Revenue"
             value={formatCurrency(financialData.totalRevenue)}
-            subtitle={`${financialData._rawData.etsyOrders.length} orders`}
+            subtitle={`${financialData._rawData.etsyOrders.length} orders • Click for breakdown`}
             icon={DollarSign}
             accentColor="emerald"
           />
         </div>
-        <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
           <KPICard
             title="Net Profit"
             value={formatCurrency(financialData.netProfit)}
-            subtitle={`${financialData.profitMargin.toFixed(1)}% margin`}
+            subtitle={`${financialData.profitMargin.toFixed(1)}% margin • Click for details`}
             icon={TrendingUp}
             accentColor={financialData.netProfit >= 0 ? "emerald" : "rose"}
           />
         </div>
-        <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
           <KPICard
-            title="Total Etsy Fees"
-            value={formatCurrency(financialData.sellingExpenses.total)}
-            subtitle="All Etsy costs"
+            title="Total Expenses"
+            value={formatCurrency(financialData.totalExpenses)}
+            subtitle="All costs • Click to view breakdown"
             icon={Receipt}
             accentColor="amber"
           />
         </div>
-        <Link to={createPageUrl("Inventory") + "?filter=low"}>
+        <Link to={createPageUrl("Inventory") + "?filter=low"} className="transition-transform hover:scale-105 block">
           <KPICard
             title="Material Spend"
             value={formatCurrency(financialData.productExpenses.materialsSupplies)}
-            subtitle={getPeriodLabel()}
+            subtitle="Go to inventory"
             icon={Layers}
             accentColor="violet"
           />
@@ -431,15 +431,21 @@ export default function Dashboard() {
 
       {/* All Time Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white">
+        <div 
+          onClick={() => setActiveTab("summary")}
+          className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105"
+        >
           <p className="text-emerald-100 text-sm font-medium mb-1">Deposits from Etsy</p>
           <p className="text-3xl font-bold">${financialData.cashflow.etsyDeposits.toLocaleString()}</p>
-          <p className="text-emerald-200 text-xs mt-1">{getPeriodLabel()}</p>
+          <p className="text-emerald-200 text-xs mt-1">{getPeriodLabel()} • Click for cashflow details</p>
         </div>
-        <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-6 text-white">
-          <p className="text-violet-100 text-sm font-medium mb-1">Total Expenses</p>
+        <div 
+          onClick={() => setActiveTab("budget")}
+          className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105"
+        >
+          <p className="text-violet-100 text-sm font-medium mb-1">Budget vs Actual</p>
           <p className="text-3xl font-bold">${financialData.totalExpenses.toLocaleString()}</p>
-          <p className="text-violet-200 text-xs mt-1">{getPeriodLabel()}</p>
+          <p className="text-violet-200 text-xs mt-1">Spent • Click to view budget</p>
         </div>
       </div>
 
@@ -449,27 +455,28 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-stone-900">Needs Attention</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {financialData.unmatchedLedgerEntries.length > 0 && (
-              <AlertCard
-                title="Unmatched Ledger Rows"
-                count={financialData.unmatchedLedgerEntries.length}
-                description="Review and categorize Etsy entries"
-                linkTo="#"
-                type="danger"
-              />
+              <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
+                <AlertCard
+                  title="Unmatched Ledger Rows"
+                  count={financialData.unmatchedLedgerEntries.length}
+                  description="Review and categorize Etsy entries"
+                  type="danger"
+                />
+              </div>
             )}
-            <AlertCard
-              title="Orders Missing Jobs"
-              count={ordersWithoutJobs.length}
-              description="Create production jobs for these orders"
-              linkTo={createPageUrl("Orders") + "?filter=missing_job"}
-              type="warning"
-            />
-            <Link to={createPageUrl("Inventory") + "?filter=low"}>
+            <Link to={createPageUrl("Jobs")} className="block">
+              <AlertCard
+                title="Orders Missing Jobs"
+                count={ordersWithoutJobs.length}
+                description="Create production jobs for these orders"
+                type="warning"
+              />
+            </Link>
+            <Link to={createPageUrl("Inventory") + "?filter=low"} className="block">
               <AlertCard
                 title="Low Stock Materials"
                 count={lowStockSheets.length}
                 description="Sheets running low"
-                linkTo={createPageUrl("Inventory") + "?filter=low"}
                 type="warning"
               />
             </Link>
