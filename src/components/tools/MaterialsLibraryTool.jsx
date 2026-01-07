@@ -50,57 +50,47 @@ const machines = [
 ];
 
 export default function MaterialsLibraryTool() {
-  const [selectedBrand, setSelectedBrand] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
 
-  const { data: allSettings = [], isLoading } = useQuery({
+  const { data: allSettings = [], isLoading: settingsLoading } = useQuery({
     queryKey: ["laser-settings"],
     queryFn: () => base44.entities.LaserSetting.list(),
   });
 
-  // Get unique models for selected brand
-  const availableModels = React.useMemo(() => {
-    if (!selectedBrand) return [];
-    const models = allSettings
-      .filter(s => s.brand?.toLowerCase() === selectedBrand.toLowerCase())
-      .map(s => s.model)
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .sort();
-    return models;
-  }, [selectedBrand, allSettings]);
+  const { data: userMachines = [], isLoading: machinesLoading } = useQuery({
+    queryKey: ["machines"],
+    queryFn: () => base44.entities.Machine.list(),
+  });
 
-  // Filter settings by machine and source
-  const filteredSettings = React.useMemo(() => {
-    let filtered = allSettings;
+  // Group settings by user's machines
+  const settingsByMachine = React.useMemo(() => {
+    const machineGroups = {};
+    
+    userMachines.forEach(machine => {
+      const machineKey = `${machine.name}`;
+      machineGroups[machineKey] = {
+        machine: machine,
+        settings: []
+      };
+      
+      // Find settings for this machine
+      let machineSettings = allSettings.filter(s => {
+        const brandMatch = s.brand?.toLowerCase() === machine.name?.toLowerCase().split(' ')[0];
+        return brandMatch && s.active !== false;
+      });
 
-    if (selectedBrand) {
-      filtered = filtered.filter(s => s.brand?.toLowerCase() === selectedBrand.toLowerCase());
-    }
+      // Apply source filter
+      if (sourceFilter !== "all") {
+        machineSettings = machineSettings.filter(s => s.source_type === sourceFilter);
+      }
 
-    if (selectedModel) {
-      filtered = filtered.filter(s => s.model === selectedModel);
-    }
-
-    if (sourceFilter !== "all") {
-      filtered = filtered.filter(s => s.source_type === sourceFilter);
-    }
-
-    return filtered.filter(s => s.active !== false);
-  }, [selectedBrand, selectedModel, sourceFilter, allSettings]);
-
-  // Group by material category
-  const groupedByMaterial = React.useMemo(() => {
-    const groups = {};
-    filteredSettings.forEach(setting => {
-      const key = setting.material_category || "Other";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(setting);
+      machineGroups[machineKey].settings = machineSettings;
     });
-    return groups;
-  }, [filteredSettings]);
+
+    return machineGroups;
+  }, [userMachines, allSettings, sourceFilter]);
 
   const handleCopySetting = (setting) => {
     setSelectedSetting(setting);
