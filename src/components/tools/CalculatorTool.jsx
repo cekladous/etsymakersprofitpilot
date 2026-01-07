@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight, ExternalLink, Info, RotateCcw, Save } from "lucide-react";
 import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
 import { format } from "date-fns";
@@ -18,6 +25,11 @@ const defaultInputs = {
   sales_tax: 0,
   cost_of_goods: 8.00,
   shipping_cost: 0,
+  advertising_type: "none",
+  advertising_value: 0,
+  advertising_value_type: "percent",
+  offsite_ads_percent: 15,
+  payment_method: "etsy",
 };
 
 export default function CalculatorTool() {
@@ -38,7 +50,14 @@ export default function CalculatorTool() {
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
       ...prev,
-      [field]: parseFloat(value) || 0,
+      [field]: typeof value === 'string' && isNaN(parseFloat(value)) ? value : (parseFloat(value) || 0),
+    }));
+  };
+
+  const handleSelectChange = (field, value) => {
+    setInputs(prev => ({
+      ...prev,
+      [field]: value,
     }));
   };
 
@@ -234,6 +253,95 @@ export default function CalculatorTool() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Advertising</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Advertising Type</Label>
+                <Select value={inputs.advertising_type} onValueChange={(v) => handleSelectChange("advertising_type", v)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="etsy_ads">Etsy Ads</SelectItem>
+                    <SelectItem value="offsite_ads">Offsite Ads</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {inputs.advertising_type === "etsy_ads" && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Average Cost of Sale</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={inputs.advertising_value}
+                        onChange={(e) => handleInputChange("advertising_value", e.target.value)}
+                        className="h-11 flex-1"
+                      />
+                      <Select value={inputs.advertising_value_type} onValueChange={(v) => handleSelectChange("advertising_value_type", v)}>
+                        <SelectTrigger className="h-11 w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percent">%</SelectItem>
+                          <SelectItem value="fixed">$</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {inputs.advertising_type === "offsite_ads" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Offsite Ads %</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={inputs.offsite_ads_percent}
+                    onChange={(e) => handleInputChange("offsite_ads_percent", e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Payment Method</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Payment Processor</Label>
+                <Select value={inputs.payment_method} onValueChange={(v) => handleSelectChange("payment_method", v)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="etsy">Etsy Payments</SelectItem>
+                    <SelectItem value="paypal">PayPal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-stone-500">
+                  {inputs.payment_method === "etsy" 
+                    ? `Etsy: ${(feeConfig?.payment_processing_fee_percent || 3).toFixed(1)}% + $${(feeConfig?.payment_processing_fee_fixed || 0.25).toFixed(2)}`
+                    : `PayPal: ${(feeConfig?.paypal_fee_percent || 3.49).toFixed(2)}% + $${(feeConfig?.paypal_fee_fixed || 0.49).toFixed(2)}`
+                  }
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Column: Summary + Breakdown (7 columns) */}
@@ -334,6 +442,9 @@ export default function CalculatorTool() {
                 <BreakdownRow label="Listing Fee" amount={results.listing_fee} indent />
                 <BreakdownRow label="Transaction Fee" amount={results.transaction_fee} indent />
                 <BreakdownRow label="Payment Processing" amount={results.processing_fee} indent />
+                {results.advertising_cost > 0 && (
+                  <BreakdownRow label="Advertising" amount={results.advertising_cost} indent />
+                )}
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Fees" amount={results.total_fees} bold />
                 </div>

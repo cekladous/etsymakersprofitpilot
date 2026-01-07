@@ -8,6 +8,8 @@ export const DEFAULT_FEE_CONFIG = {
   etsy_transaction_fee_percent: 6.5,
   payment_processing_fee_percent: 3.0,
   payment_processing_fee_fixed: 0.25,
+  paypal_fee_percent: 3.49,
+  paypal_fee_fixed: 0.49,
   country: "US",
 };
 
@@ -20,6 +22,11 @@ export const DEFAULT_FEE_CONFIG = {
  * @param {number} input.refunds - Refunds issued
  * @param {number} input.sales_tax - Sales tax (excluded from revenue)
  * @param {number} input.cost_of_goods - Materials + packaging cost
+ * @param {string} input.advertising_type - "none", "etsy_ads", "offsite_ads"
+ * @param {number} input.advertising_value - Value for ads (% or $)
+ * @param {string} input.advertising_value_type - "percent" or "fixed"
+ * @param {number} input.offsite_ads_percent - Offsite ads percentage
+ * @param {string} input.payment_method - "etsy" or "paypal"
  * @param {Object} feeConfig - Fee configuration (optional, uses defaults if not provided)
  * @returns {Object} Detailed profit breakdown
  */
@@ -32,6 +39,11 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     sales_tax = 0,
     cost_of_goods = 0,
     shipping_cost = 0,
+    advertising_type = "none",
+    advertising_value = 0,
+    advertising_value_type = "percent",
+    offsite_ads_percent = 15,
+    payment_method = "etsy",
   } = input;
 
   const config = { ...DEFAULT_FEE_CONFIG, ...feeConfig };
@@ -48,12 +60,32 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   
   // Payment Processing Fee (percentage + fixed, applied to total charged to customer)
   const payment_base = gross_revenue + sales_tax; // includes tax for processing
-  const processing_fee = 
-    (payment_base * (config.payment_processing_fee_percent || 3)) / 100 + 
-    (config.payment_processing_fee_fixed || 0.25);
+  let processing_fee = 0;
   
-  // Total Fees
-  const total_fees = listing_fee + transaction_fee + processing_fee;
+  if (payment_method === "paypal") {
+    processing_fee = 
+      (payment_base * (config.paypal_fee_percent || 3.49)) / 100 + 
+      (config.paypal_fee_fixed || 0.49);
+  } else {
+    processing_fee = 
+      (payment_base * (config.payment_processing_fee_percent || 3)) / 100 + 
+      (config.payment_processing_fee_fixed || 0.25);
+  }
+  
+  // Advertising Costs
+  let advertising_cost = 0;
+  if (advertising_type === "etsy_ads") {
+    if (advertising_value_type === "percent") {
+      advertising_cost = (gross_revenue * advertising_value) / 100;
+    } else {
+      advertising_cost = advertising_value;
+    }
+  } else if (advertising_type === "offsite_ads") {
+    advertising_cost = (gross_revenue * offsite_ads_percent) / 100;
+  }
+  
+  // Total Fees (including advertising)
+  const total_fees = listing_fee + transaction_fee + processing_fee + advertising_cost;
   
   // Net revenue after fees
   const net_revenue = gross_revenue - total_fees;
@@ -76,6 +108,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     listing_fee,
     transaction_fee,
     processing_fee,
+    advertising_cost,
     total_fees,
     
     // Bottom Line
