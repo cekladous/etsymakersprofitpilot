@@ -7,6 +7,7 @@ import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Settings from './pages/Settings';
 import RasterAssistant from './pages/RasterAssistant';
+import Tools from './pages/Tools';
 import __Layout from './Layout.jsx';
 
 
@@ -20,6 +21,7 @@ export const PAGES = {
     "Products": Products,
     "Settings": Settings,
     "RasterAssistant": RasterAssistant,
+    "Tools": Tools,
 }
 
 export const pagesConfig = {
