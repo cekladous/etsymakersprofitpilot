@@ -17,8 +17,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon } from "lucide-react";
 import { format } from "date-fns";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -60,6 +63,7 @@ export default function Expenses() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("table");
 
   const queryClient = useQueryClient();
 
@@ -176,6 +180,39 @@ export default function Expenses() {
   }, [expenses, search, categoryFilter, statusFilter]);
 
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  // Chart data - by category
+  const categoryData = useMemo(() => {
+    const grouped = filteredExpenses.reduce((acc, exp) => {
+      const cat = exp.category || "other";
+      if (!acc[cat]) acc[cat] = 0;
+      acc[cat] += exp.amount || 0;
+      return acc;
+    }, {});
+    
+    return Object.entries(grouped).map(([category, amount]) => ({
+      name: CATEGORIES.find(c => c.value === category)?.label || category,
+      value: amount,
+      category,
+    })).sort((a, b) => b.value - a.value);
+  }, [filteredExpenses]);
+
+  // Top expenses by amount
+  const topExpenses = useMemo(() => {
+    return [...filteredExpenses]
+      .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+      .slice(0, 10)
+      .map(exp => ({
+        name: exp.description?.substring(0, 30) || "Unnamed",
+        amount: exp.amount || 0,
+        category: exp.category,
+      }));
+  }, [filteredExpenses]);
+
+  const CHART_COLORS = [
+    "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899",
+    "#06b6d4", "#f97316", "#84cc16", "#ef4444", "#6366f1", "#71717a"
+  ];
 
   const exportCSV = () => {
     const headers = ["Date", "Description", "Amount", "Category", "Vendor"];
@@ -357,7 +394,7 @@ export default function Expenses() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Tabs */}
       {expenses.length === 0 && !isLoading ? (
         <EmptyState
           icon={Receipt}
@@ -367,12 +404,110 @@ export default function Expenses() {
           onAction={() => setImportOpen(true)}
         />
       ) : (
-        <DataTable
-          columns={columns}
-          data={filteredExpenses}
-          isLoading={isLoading}
-          emptyMessage="No expenses match your filters"
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="table">Table</TabsTrigger>
+            <TabsTrigger value="charts">Charts</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="table">
+            <DataTable
+              columns={columns}
+              data={filteredExpenses}
+              isLoading={isLoading}
+              emptyMessage="No expenses match your filters"
+            />
+          </TabsContent>
+
+          <TabsContent value="charts" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Category Breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="w-5 h-5 text-emerald-600" />
+                    Expenses by Category
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {categoryData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-center text-stone-500 py-12">No data to display</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Top 10 Expenses */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top 10 Expenses</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {topExpenses.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={topExpenses} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" tickFormatter={(val) => `$${val}`} />
+                        <YAxis dataKey="name" type="category" width={120} />
+                        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                        <Bar dataKey="amount" fill="#10b981" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-center text-stone-500 py-12">No data to display</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Category Summary List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Category Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {categoryData.map((cat, idx) => (
+                    <div key={cat.category} className="flex items-center justify-between p-3 rounded-lg bg-stone-50">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                        />
+                        <span className="font-medium text-stone-900">{cat.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-stone-900">${cat.value.toFixed(2)}</p>
+                        <p className="text-xs text-stone-500">
+                          {((cat.value / totalAmount) * 100).toFixed(1)}% of total
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       )}
 
       <CSVImporter
