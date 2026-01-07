@@ -32,6 +32,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
 import KPICard from "@/components/dashboard/KPICard";
@@ -311,32 +312,21 @@ export default function Dashboard() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
-                {format(selectedDate, "MMM yyyy")}
+                {format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Select
-                value={format(selectedDate, "yyyy-MM")}
-                onValueChange={(v) => {
-                  setSelectedDate(parse(v + "-01", "yyyy-MM-dd", new Date()));
-                  setDatePickerOpen(false);
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    setDatePickerOpen(false);
+                  }
                 }}
-              >
-                <SelectTrigger className="border-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 36 }, (_, i) => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    return (
-                      <SelectItem key={i} value={format(date, "yyyy-MM")}>
-                        {format(date, "MMMM yyyy")}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                initialFocus
+              />
             </PopoverContent>
           </Popover>
         </div>
