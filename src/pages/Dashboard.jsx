@@ -18,6 +18,7 @@ import KPICard from "@/components/dashboard/KPICard";
 import AlertCard from "@/components/dashboard/AlertCard";
 import ProfitChart from "@/components/dashboard/ProfitChart";
 import ProfitCalculatorWidget from "@/components/dashboard/ProfitCalculatorWidget";
+import LowStockNotifications from "@/components/notifications/LowStockNotifications";
 
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState("month");
@@ -295,6 +296,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Low Stock Notifications */}
+      <LowStockNotifications />
 
       {/* Chart and Calculator */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
