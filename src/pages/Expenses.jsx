@@ -158,13 +158,21 @@ export default function Expenses() {
 
   const parseExpenseRow = (row) => {
     const date = row["Date"] || row["Transaction Date"] || row["Posted Date"] || "";
-    const amount = row["Amount"] || row["Debit"] || row["Charge"] || "";
+    const amountStr = row["Amount"] || row["Debit"] || row["Charge"] || row["Credit"] || "";
+    
+    // Parse amount, preserving sign for credits
+    let amount = parseFloat(amountStr?.replace(/[^0-9.-]/g, "") || "0");
+    
+    // If there's a separate Credit column, treat it as negative
+    if (row["Credit"] && !row["Debit"] && !row["Amount"]) {
+      amount = -Math.abs(amount);
+    }
     
     return {
-      transaction_id: row["Transaction ID"] || row["Reference"] || `${date}-${amount}`,
+      transaction_id: row["Transaction ID"] || row["Reference"] || `${date}-${amountStr}`,
       date: date ? format(new Date(date), "yyyy-MM-dd") : "",
       description: row["Description"] || row["Merchant"] || row["Name"] || "",
-      amount: Math.abs(parseFloat(amount?.replace(/[^0-9.-]/g, "") || "0")),
+      amount: amount, // Preserve negative for credits
       vendor: row["Vendor"] || row["Merchant"] || "",
       payment_method: row["Card"] || row["Account"] || "",
     };
@@ -190,22 +198,28 @@ export default function Expenses() {
     });
   }, [expenses, search, categoryFilter, statusFilter]);
 
+  // Total amount (credits reduce the total)
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalDebits = filteredExpenses.reduce((sum, e) => e.amount >= 0 ? sum + e.amount : sum, 0);
+  const totalCredits = filteredExpenses.reduce((sum, e) => e.amount < 0 ? sum + Math.abs(e.amount) : sum, 0);
 
-  // Chart data - by category
+  // Chart data - by category (use absolute values for visualization)
   const categoryData = useMemo(() => {
     const grouped = filteredExpenses.reduce((acc, exp) => {
       const cat = exp.category || "other";
       if (!acc[cat]) acc[cat] = 0;
-      acc[cat] += exp.amount || 0;
+      acc[cat] += exp.amount || 0; // Credits will reduce category totals
       return acc;
     }, {});
     
-    return Object.entries(grouped).map(([category, amount]) => ({
-      name: CATEGORIES.find(c => c.value === category)?.label || category,
-      value: amount,
-      category,
-    })).sort((a, b) => b.value - a.value);
+    return Object.entries(grouped)
+      .filter(([_, amount]) => amount !== 0) // Filter out zero amounts
+      .map(([category, amount]) => ({
+        name: CATEGORIES.find(c => c.value === category)?.label || category,
+        value: Math.abs(amount), // Use absolute for chart display
+        actualValue: amount, // Keep actual value for tooltip
+        category,
+      })).sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
 
   // Top expenses by amount
@@ -304,11 +318,16 @@ export default function Expenses() {
     },
     {
       header: "Amount",
-      render: (row) => (
-        <span className="font-semibold text-stone-900">
-          ${(row.amount || 0).toFixed(2)}
-        </span>
-      ),
+      render: (row) => {
+        const amount = row.amount || 0;
+        const isCredit = amount < 0;
+        return (
+          <span className={`font-semibold ${isCredit ? "text-emerald-600" : "text-stone-900"}`}>
+            {isCredit ? "-" : ""}${Math.abs(amount).toFixed(2)}
+            {isCredit && <span className="ml-1 text-xs">(credit)</span>}
+          </span>
+        );
+      },
     },
     {
       header: "Category",
@@ -397,13 +416,25 @@ export default function Expenses() {
       </PageHeader>
 
       {/* Summary */}
-      <div className="bg-white rounded-xl border border-stone-100 p-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm text-stone-500">Total (filtered)</p>
-          <p className="text-2xl font-bold text-stone-900">${totalAmount.toFixed(2)}</p>
+      <div className="bg-white rounded-xl border border-stone-100 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm text-stone-500">Net Total (filtered)</p>
+            <p className="text-2xl font-bold text-stone-900">${totalAmount.toFixed(2)}</p>
+          </div>
+          <div className="text-sm text-stone-500">
+            {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""}
+          </div>
         </div>
-        <div className="text-sm text-stone-500">
-          {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""}
+        <div className="flex gap-6 text-sm">
+          <div>
+            <span className="text-stone-500">Debits: </span>
+            <span className="font-semibold text-stone-900">${totalDebits.toFixed(2)}</span>
+          </div>
+          <div>
+            <span className="text-stone-500">Credits: </span>
+            <span className="font-semibold text-emerald-600">-${totalCredits.toFixed(2)}</span>
+          </div>
         </div>
       </div>
 
