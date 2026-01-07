@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Zap, Lightbulb, CheckCircle2, AlertCircle, Database } from "lucide-react";
+import { Zap, Lightbulb, CheckCircle2, AlertCircle, Database, ExternalLink } from "lucide-react";
 
 const materials = [
   { value: "wood", label: "Wood" },
@@ -102,54 +102,74 @@ export default function RasterAssistantTool() {
       return { filteredSettings: [], matchType: null };
     }
 
+    // Normalize laser_type and operation for comparison
+    const normalizeLaserType = (type) => type?.toLowerCase();
+    const normalizeOperation = (op) => op?.toLowerCase();
+
     // Helper to check material match
-    const materialMatches = (settingMaterial, searchMaterial) => {
-      return settingMaterial.toLowerCase().includes(searchMaterial.toLowerCase());
+    const materialMatches = (setting, searchMaterial) => {
+      const matCat = setting.material_category?.toLowerCase() || '';
+      const matName = setting.material_name?.toLowerCase() || '';
+      const search = searchMaterial.toLowerCase();
+      return matCat.includes(search) || matName.includes(search) || search.includes(matCat);
     };
 
-    // Level 1: Exact match (brand + model + laser type + material + operation)
+    // Level 1: Exact match (brand + model + laser type + material + thickness + operation)
     if (machineBrand && machineModel) {
       const exact = allSettings.filter(s => 
-        s.brand === machineBrand &&
+        s.brand?.toLowerCase() === machineBrand.toLowerCase() &&
         s.model === machineModel &&
-        s.laser_type === laserType &&
-        materialMatches(s.material, material) &&
-        s.operation === operation &&
+        normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
+        materialMatches(s, material) &&
+        normalizeOperation(s.operation) === normalizeOperation(operation) &&
         s.active !== false
       );
       if (exact.length > 0) return { filteredSettings: exact, matchType: 'exact' };
     }
 
-    // Level 2: Brand match (ignore model)
+    // Level 2: Ignore thickness
+    if (machineBrand && machineModel) {
+      const noThickness = allSettings.filter(s => 
+        s.brand?.toLowerCase() === machineBrand.toLowerCase() &&
+        s.model === machineModel &&
+        normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
+        materialMatches(s, material) &&
+        normalizeOperation(s.operation) === normalizeOperation(operation) &&
+        s.active !== false
+      );
+      if (noThickness.length > 0) return { filteredSettings: noThickness, matchType: 'exact' };
+    }
+
+    // Level 3: Brand match (ignore model)
     if (machineBrand) {
       const brandMatch = allSettings.filter(s =>
-        s.brand === machineBrand &&
-        s.laser_type === laserType &&
-        materialMatches(s.material, material) &&
-        s.operation === operation &&
+        s.brand?.toLowerCase() === machineBrand.toLowerCase() &&
+        normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
+        materialMatches(s, material) &&
+        normalizeOperation(s.operation) === normalizeOperation(operation) &&
         s.active !== false
       );
       if (brandMatch.length > 0) return { filteredSettings: brandMatch, matchType: 'brand' };
     }
 
-    // Level 3: Laser type match (generic settings for this laser type)
+    // Level 4: Laser type + material category (ignore brand)
     const laserMatch = allSettings.filter(s =>
-      s.laser_type === laserType &&
-      materialMatches(s.material, material) &&
-      s.operation === operation &&
+      normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
+      materialMatches(s, material) &&
+      normalizeOperation(s.operation) === normalizeOperation(operation) &&
       s.active !== false
     );
     if (laserMatch.length > 0) return { filteredSettings: laserMatch, matchType: 'generic' };
 
-    // Level 4: Material category match (e.g., "wood" matches "plywood", "wood - basswood", etc.)
-    const categoryMatch = allSettings.filter(s =>
-      s.laser_type === laserType &&
-      s.operation === operation &&
-      (s.material.toLowerCase().includes(material.toLowerCase()) ||
-       material.toLowerCase().includes(s.material.toLowerCase().split(' ')[0])) &&
+    // Level 5: Generic rows
+    const genericMatch = allSettings.filter(s =>
+      s.source_type === 'Generic' &&
+      normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
+      materialMatches(s, material) &&
+      normalizeOperation(s.operation) === normalizeOperation(operation) &&
       s.active !== false
     );
-    if (categoryMatch.length > 0) return { filteredSettings: categoryMatch, matchType: 'category' };
+    if (genericMatch.length > 0) return { filteredSettings: genericMatch, matchType: 'generic' };
 
     return { filteredSettings: [], matchType: null };
   }, [material, machineBrand, machineModel, laserType, operation, allSettings]);
@@ -159,16 +179,19 @@ export default function RasterAssistantTool() {
     if (!machineBrand || !laserType || !material) return {};
     
     const matchingSettings = allSettings.filter(setting => {
-      if (setting.brand !== machineBrand) return false;
+      if (setting.brand?.toLowerCase() !== machineBrand.toLowerCase()) return false;
       if (machineModel && setting.model !== machineModel) return false;
-      if (setting.laser_type !== laserType) return false;
-      if (!setting.material.toLowerCase().includes(material.toLowerCase())) return false;
+      if (setting.laser_type?.toLowerCase() !== laserType.toLowerCase()) return false;
+      const matCat = setting.material_category?.toLowerCase() || '';
+      const matName = setting.material_name?.toLowerCase() || '';
+      if (!matCat.includes(material.toLowerCase()) && !matName.includes(material.toLowerCase())) return false;
       return setting.active !== false;
     });
 
     const counts = {};
     matchingSettings.forEach(s => {
-      counts[s.operation] = (counts[s.operation] || 0) + 1;
+      const op = s.operation?.toLowerCase();
+      counts[op] = (counts[op] || 0) + 1;
     });
     return counts;
   }, [machineBrand, machineModel, laserType, material, allSettings]);
@@ -409,8 +432,15 @@ export default function RasterAssistantTool() {
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-semibold">Manufacturer-Recommended Defaults</p>
-                    <p className="text-xs mt-1">These are starting points based on official documentation. Always test on scrap material and adjust for your specific conditions.</p>
+                    <p className="font-semibold">
+                      {filteredSettings[0]?.source_type === 'Manufacturer' ? 'Manufacturer-Recommended Defaults' : 'Safe Starting Point'}
+                    </p>
+                    <p className="text-xs mt-1">
+                      {filteredSettings[0]?.source_type === 'Manufacturer' 
+                        ? 'These are starting points based on official documentation.' 
+                        : 'Generic baseline settings for this laser type and material.'}
+                      {' '}Always test on scrap material and adjust for your specific conditions.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -426,15 +456,16 @@ export default function RasterAssistantTool() {
                       <TableHead>Passes</TableHead>
                       <TableHead>DPI/LPI</TableHead>
                       <TableHead>Notes</TableHead>
+                      <TableHead>Source</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredSettings.map((setting, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">
-                          <div>{setting.material}</div>
-                          {setting.material_thickness && (
-                            <div className="text-xs text-stone-500">{setting.material_thickness}</div>
+                          <div>{setting.material_name || setting.material_category}</div>
+                          {setting.thickness_mm && (
+                            <div className="text-xs text-stone-500">{setting.thickness_mm}mm</div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -444,37 +475,49 @@ export default function RasterAssistantTool() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {setting.speed_mm_s ? `${setting.speed_mm_s} mm/s` : ''}
-                            {setting.speed_in_s && setting.speed_mm_s ? ' / ' : ''}
-                            {setting.speed_in_s ? `${setting.speed_in_s} in/s` : ''}
+                            {setting.speed_mm_s ? `${setting.speed_mm_s} mm/s` : <span className="text-stone-400">—</span>}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {setting.power_min === setting.power_max 
-                              ? `${setting.power_min}%`
-                              : `${setting.power_min}-${setting.power_max}%`
+                            {setting.power_min_pct && setting.power_max_pct 
+                              ? (setting.power_min_pct === setting.power_max_pct 
+                                  ? `${setting.power_max_pct}%`
+                                  : `${setting.power_min_pct}-${setting.power_max_pct}%`)
+                              : setting.power_max_pct 
+                                ? `${setting.power_max_pct}%`
+                                : <span className="text-stone-400">—</span>
                             }
                           </div>
                         </TableCell>
                         <TableCell className="text-center">{setting.passes || 1}</TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {setting.dpi && `${setting.dpi} DPI`}
-                            {setting.lpi && `${setting.lpi} LPI`}
-                            {!setting.dpi && !setting.lpi && <span className="text-stone-400">—</span>}
+                            {setting.dpi_lpi ? `${setting.dpi_lpi}` : <span className="text-stone-400">—</span>}
                           </div>
                         </TableCell>
                         <TableCell className="max-w-xs">
                           <div className="text-xs text-stone-600">
                             {setting.notes}
-                            {setting.frequency && (
-                              <div className="text-stone-500 mt-1">Freq: {setting.frequency} Hz</div>
-                            )}
-                            {setting.air_assist && (
-                              <div className="text-emerald-600 mt-1">✓ Air assist</div>
+                            {setting.frequency_hz && (
+                              <div className="text-stone-500 mt-1">Freq: {setting.frequency_hz} Hz</div>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {setting.source_reference ? (
+                            <a
+                              href={setting.source_reference}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              View Source
+                            </a>
+                          ) : (
+                            <span className="text-xs text-stone-400">Generic</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -482,11 +525,7 @@ export default function RasterAssistantTool() {
                 </Table>
               </div>
 
-              {filteredSettings.length > 0 && filteredSettings[0].source && (
-                <div className="text-xs text-stone-500 text-center pt-2 border-t">
-                  Source: {filteredSettings[0].source} | Last verified: {filteredSettings[0].last_verified || 'Unknown'}
-                </div>
-              )}
+
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
