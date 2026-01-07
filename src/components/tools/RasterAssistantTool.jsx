@@ -106,7 +106,29 @@ export default function RasterAssistantTool() {
     return setting.active !== false;
   });
 
-  const showResults = filteredSettings.length > 0;
+  // Determine which operations are available based on current selections (before operation is chosen)
+  const availableOperations = React.useMemo(() => {
+    if (!machineBrand || !laserType || !material) return operations;
+    
+    const matchingSettings = allSettings.filter(setting => {
+      if (setting.brand !== machineBrand) return false;
+      if (machineModel && setting.model !== machineModel) return false;
+      if (setting.laser_type !== laserType) return false;
+      if (!setting.material.toLowerCase().includes(material.toLowerCase())) return false;
+      return setting.active !== false;
+    });
+
+    const availableOps = new Set(matchingSettings.map(s => s.operation));
+    return operations.map(op => ({
+      ...op,
+      available: availableOps.has(op.value)
+    }));
+  }, [machineBrand, machineModel, laserType, material, allSettings]);
+
+  // Check if all required fields are selected
+  const allFieldsSelected = material && machineBrand && laserType && operation;
+  const showResults = allFieldsSelected && filteredSettings.length > 0;
+  const showNoResults = allFieldsSelected && filteredSettings.length === 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -238,16 +260,36 @@ export default function RasterAssistantTool() {
           </CardHeader>
           <CardContent>
             <Label>Operation</Label>
-            <Select value={operation} onValueChange={setOperation}>
-              <SelectTrigger className="h-11 mt-2">
-                <SelectValue placeholder="Select operation..." />
-              </SelectTrigger>
-              <SelectContent>
-                {operations.map((op) => (
-                  <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-3 mt-2">
+              {availableOperations.map((op) => {
+                const isAvailable = op.available !== false;
+                const isDisabled = !material || !machineBrand || !laserType || !isAvailable;
+                return (
+                  <button
+                    key={op.value}
+                    onClick={() => !isDisabled && setOperation(op.value)}
+                    disabled={isDisabled}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                      operation === op.value && !isDisabled
+                        ? "border-emerald-500 bg-emerald-50"
+                        : !isDisabled
+                        ? "border-stone-200 hover:border-stone-300 bg-white"
+                        : "border-stone-100 bg-stone-50 opacity-40 cursor-not-allowed"
+                    }`}
+                  >
+                    <div className={`font-semibold ${!isDisabled ? "text-stone-900" : "text-stone-400"}`}>
+                      {op.label}
+                    </div>
+                    {!isAvailable && material && machineBrand && laserType && (
+                      <div className="text-xs text-stone-400 mt-1">No settings available for this combination</div>
+                    )}
+                    {isDisabled && (!material || !machineBrand || !laserType) && (
+                      <div className="text-xs text-stone-400 mt-1">Select material, machine, and laser type first</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -372,6 +414,27 @@ export default function RasterAssistantTool() {
                   <li>• Material variations affect results - adjust as needed</li>
                   <li>• Clean your lens and mirrors regularly for consistent results</li>
                   <li>• Document your successful settings for future reference</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        ) : showNoResults ? (
+          <Card className="border-2 border-amber-200 bg-amber-50">
+            <CardContent className="py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-stone-900 mb-2">No Manufacturer Settings Found</h3>
+              <p className="text-stone-600 max-w-sm mx-auto mb-4">
+                We don't have official settings for this specific combination of material, machine, and operation.
+              </p>
+              <div className="bg-white rounded-lg p-4 max-w-md mx-auto text-left">
+                <p className="text-sm font-semibold text-stone-900 mb-2">Suggestions:</p>
+                <ul className="text-sm text-stone-600 space-y-1">
+                  <li>• Try a different material or machine</li>
+                  <li>• Check the "Other" model option</li>
+                  <li>• Look for similar materials (e.g., plywood instead of wood)</li>
+                  <li>• Consult your machine's manual for starting parameters</li>
                 </ul>
               </div>
             </CardContent>
