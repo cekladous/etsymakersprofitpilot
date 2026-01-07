@@ -1,6 +1,20 @@
 import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { Check, ChevronsUpDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +39,38 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
     payment_method: "",
     notes: "",
   });
+  const [openMaterialCombo, setOpenMaterialCombo] = useState(false);
+  const [openVendorCombo, setOpenVendorCombo] = useState(false);
 
   const queryClient = useQueryClient();
+
+  const { data: materialTypes = [] } = useQuery({
+    queryKey: ["materialTypes"],
+    queryFn: () => base44.entities.MaterialType.list(),
+  });
+
+  const { data: inventoryItems = [] } = useQuery({
+    queryKey: ["inventory-items"],
+    queryFn: () => base44.entities.InventoryItem.list(),
+  });
+
+  const { data: materialPurchases = [] } = useQuery({
+    queryKey: ["material-purchases"],
+    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 100),
+  });
+
+  // Get unique material names
+  const existingMaterialNames = Array.from(
+    new Set([
+      ...materialTypes.map(t => t.name),
+      ...inventoryItems.map(i => i.material_name)
+    ])
+  ).filter(Boolean).sort();
+
+  // Get unique vendor names
+  const existingVendors = Array.from(
+    new Set(materialPurchases.map(p => p.vendor).filter(Boolean))
+  ).sort();
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -86,34 +130,126 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Purchase Date *</Label>
-              <Input
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Vendor</Label>
-              <Input
-                value={formData.vendor}
-                onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-                placeholder="Amazon, Woodcraft, etc."
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Purchase Date *</Label>
+            <Input
+              type="date"
+              value={formData.purchase_date}
+              onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+              required
+            />
           </div>
 
           <div className="space-y-2">
             <Label>Material Name *</Label>
-            <Input
-              value={formData.material_name}
-              onChange={(e) => setFormData({ ...formData, material_name: e.target.value })}
-              placeholder="Baltic Birch Plywood 1/8 inch"
-              required
-            />
+            <Popover open={openMaterialCombo} onOpenChange={setOpenMaterialCombo}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  {formData.material_name || "Select or type material..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                  <CommandInput
+                    placeholder="Search or type new material..."
+                    value={formData.material_name}
+                    onValueChange={(value) => setFormData({ ...formData, material_name: value })}
+                  />
+                  <CommandEmpty>
+                    <div className="p-2 text-sm">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => setOpenMaterialCombo(false)}
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Use "{formData.material_name}"
+                      </Button>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {existingMaterialNames.map((name) => (
+                      <CommandItem
+                        key={name}
+                        onSelect={() => {
+                          setFormData({ ...formData, material_name: name });
+                          setOpenMaterialCombo(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            formData.material_name === name ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Vendor</Label>
+            <Popover open={openVendorCombo} onOpenChange={setOpenVendorCombo}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  {formData.vendor || "Select or type vendor..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                  <CommandInput
+                    placeholder="Search or type new vendor..."
+                    value={formData.vendor}
+                    onValueChange={(value) => setFormData({ ...formData, vendor: value })}
+                  />
+                  <CommandEmpty>
+                    <div className="p-2 text-sm">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => setOpenVendorCombo(false)}
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Use "{formData.vendor}"
+                      </Button>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {existingVendors.map((vendor) => (
+                      <CommandItem
+                        key={vendor}
+                        onSelect={() => {
+                          setFormData({ ...formData, vendor });
+                          setOpenVendorCombo(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            formData.vendor === vendor ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {vendor}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

@@ -19,7 +19,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export default function MaterialTypeDialog({ open, onOpenChange, materialType, onClose }) {
   const [formData, setFormData] = useState({
@@ -33,6 +46,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
     low_stock_threshold: 5,
     notes: "",
   });
+  const [openNameCombo, setOpenNameCombo] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -44,6 +58,14 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
   const currentInventory = materialType 
     ? inventoryItems.find(i => i.material_name === materialType.name)
     : null;
+
+  // Get all unique material names for dropdown
+  const existingMaterialNames = Array.from(
+    new Set([
+      ...materialTypes.map(t => t.name),
+      ...inventoryItems.map(i => i.material_name)
+    ])
+  ).filter(Boolean).sort();
 
   useEffect(() => {
     if (materialType) {
@@ -109,12 +131,58 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label>Material Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Baltic Birch Plywood"
-                required
-              />
+              <Popover open={openNameCombo} onOpenChange={setOpenNameCombo}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    {formData.name || "Select or type material name..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search or type new material..."
+                      value={formData.name}
+                      onValueChange={(value) => setFormData({ ...formData, name: value })}
+                    />
+                    <CommandEmpty>
+                      <div className="p-2 text-sm">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => setOpenNameCombo(false)}
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          Use "{formData.name}"
+                        </Button>
+                      </div>
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {existingMaterialNames.map((name) => (
+                        <CommandItem
+                          key={name}
+                          onSelect={() => {
+                            setFormData({ ...formData, name });
+                            setOpenNameCombo(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.name === name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
@@ -208,25 +276,40 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
           </div>
 
           {materialType && (
-            <div className={`p-4 rounded-lg border ${currentInventory ? "bg-blue-50 border-blue-200" : "bg-stone-50 border-stone-200"}`}>
-              <p className="text-sm font-medium mb-2">Current Inventory</p>
+            <div className="p-4 rounded-lg border border-stone-200 bg-stone-50">
+              <p className="text-sm font-semibold text-stone-700 mb-3">Current Inventory</p>
               {currentInventory ? (
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-stone-600">Quantity on Hand:</span>
-                    <span className="ml-2 font-semibold text-stone-900">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-stone-600">Quantity on Hand:</span>
+                    <span className={`font-semibold ${
+                      currentInventory.quantity_on_hand === 0 
+                        ? "text-rose-600" 
+                        : currentInventory.quantity_on_hand <= (materialType.low_stock_threshold || 5)
+                        ? "text-amber-600"
+                        : "text-emerald-600"
+                    }`}>
                       {currentInventory.quantity_on_hand?.toFixed(2) || 0}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-stone-600">Total Value:</span>
-                    <span className="ml-2 font-semibold text-stone-900">
-                      ${currentInventory.total_value?.toFixed(2) || 0}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-stone-600">Average Cost:</span>
+                    <span className="font-medium text-stone-900">
+                      ${currentInventory.average_cost?.toFixed(2) || "0.00"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-stone-600">Total Value:</span>
+                    <span className="font-semibold text-stone-900">
+                      ${currentInventory.total_value?.toFixed(2) || "0.00"}
                     </span>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-stone-500">No inventory tracked yet for this material</p>
+                <div className="text-center py-3">
+                  <p className="text-sm text-stone-500">Inventory: 0</p>
+                  <p className="text-xs text-stone-400 mt-1">(No inventory recorded yet)</p>
+                </div>
               )}
             </div>
           )}
