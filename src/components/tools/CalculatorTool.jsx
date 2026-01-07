@@ -429,7 +429,14 @@ export default function CalculatorTool() {
               <CardContent className="space-y-0">
                 <BreakdownRow label="Sales" amount={inputs.sales_price} indent />
                 <BreakdownRow label="Shipping Price" amount={inputs.shipping_charged} indent />
-                <BreakdownRow label="Discounts" amount={-inputs.discounts} indent />
+                <BreakdownRow 
+                  label={`Discounts${inputs.discounts_type === "percent" ? ` (${inputs.discounts}%)` : ""}`}
+                  amount={inputs.discounts_type === "percent" 
+                    ? -((inputs.sales_price + inputs.shipping_charged) * inputs.discounts / 100) 
+                    : -inputs.discounts
+                  }
+                  indent 
+                />
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Revenue" amount={results.gross_revenue} bold />
                 </div>

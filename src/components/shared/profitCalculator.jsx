@@ -38,6 +38,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     sales_price = 0,
     shipping_charged = 0,
     discounts = 0,
+    discounts_type = "fixed",
     refunds = 0,
     sales_tax = 0,
     cost_of_goods = 0,
@@ -50,8 +51,16 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
 
   const config = { ...DEFAULT_FEE_CONFIG, ...feeConfig };
 
+  // Calculate discount amount
+  let discount_amount = 0;
+  if (discounts_type === "percent") {
+    discount_amount = ((sales_price + shipping_charged) * discounts) / 100;
+  } else {
+    discount_amount = discounts;
+  }
+
   // Calculate revenue (excludes sales tax)
-  const gross_revenue = sales_price + shipping_charged - discounts - refunds;
+  const gross_revenue = sales_price + shipping_charged - discount_amount - refunds;
   
   // Etsy Listing Fee (flat per listing)
   const listing_fee = config.etsy_listing_fee || 0.20;
