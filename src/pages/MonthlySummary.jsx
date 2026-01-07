@@ -4,23 +4,31 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Download, Plus, Calendar } from "lucide-react";
+import { Upload, Download, Plus, Calendar, BarChart3, Table as TableIcon } from "lucide-react";
 import { startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, format, parse } from "date-fns";
 import * as XLSX from "xlsx";
 import MonthlySummaryKPIs from "../components/monthly/MonthlySummaryKPIs";
 import MonthlySummaryTable from "../components/monthly/MonthlySummaryTable";
+import BudgetTab from "../components/monthly/BudgetTab";
 import EtsyOrderImportDialog from "../components/monthly/EtsyOrderImportDialog";
 import CustomSaleDialog from "../components/monthly/CustomSaleDialog";
 import BusinessExpenseDialog from "../components/monthly/BusinessExpenseDialog";
 import TransferDialog from "../components/monthly/TransferDialog";
 
 export default function MonthlySummary() {
+  const [activeTab, setActiveTab] = useState("summary");
   const [viewMode, setViewMode] = useState("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -210,28 +218,52 @@ export default function MonthlySummary() {
         dateRange={dateRange}
       />
 
-      {/* Action Buttons */}
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" onClick={() => setCustomSaleDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Custom Sale
-        </Button>
-        <Button variant="outline" onClick={() => setExpenseDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Expense
-        </Button>
-        <Button variant="outline" onClick={() => setTransferDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Transfer
-        </Button>
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="summary">
+            <TableIcon className="w-4 h-4 mr-2" />
+            Net Profit
+          </TabsTrigger>
+          <TabsTrigger value="budget">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Budget vs Actual
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Summary Table */}
-      <MonthlySummaryTable
-        filteredData={filteredData}
-        dateRange={dateRange}
-        viewMode={viewMode}
-      />
+        <TabsContent value="summary" className="space-y-4 mt-6">
+          {/* Action Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setCustomSaleDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Custom Sale
+            </Button>
+            <Button variant="outline" onClick={() => setExpenseDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Expense
+            </Button>
+            <Button variant="outline" onClick={() => setTransferDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Transfer
+            </Button>
+          </div>
+
+          {/* Summary Table */}
+          <MonthlySummaryTable
+            filteredData={filteredData}
+            dateRange={dateRange}
+            viewMode={viewMode}
+          />
+        </TabsContent>
+
+        <TabsContent value="budget" className="mt-6">
+          <BudgetTab
+            viewMode={viewMode}
+            dateRange={dateRange}
+            filteredData={filteredData}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <EtsyOrderImportDialog
