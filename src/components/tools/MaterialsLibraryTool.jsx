@@ -26,7 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Database, ExternalLink, Copy, Filter, Pencil, Plus } from "lucide-react";
+import { Database, ExternalLink, Copy, Filter, Pencil, Plus, Upload, Download, FolderOpen } from "lucide-react";
 import LaserSettingEditDialog from "./LaserSettingEditDialog";
 
 const machines = [
@@ -53,6 +53,28 @@ export default function MaterialsLibraryTool() {
   const [sourceFilter, setSourceFilter] = useState("Manufacturer");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
+
+  const handleImport = () => {
+    // TODO: Implement import functionality
+    alert("Import functionality coming soon!");
+  };
+
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    const dataStr = JSON.stringify(allSettings, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "laser-settings-export.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCategories = () => {
+    // TODO: Implement categories management
+    alert("Categories management coming soon!");
+  };
 
   const { data: allSettings = [], isLoading: settingsLoading } = useQuery({
     queryKey: ["laser-settings"],
@@ -115,7 +137,7 @@ export default function MaterialsLibraryTool() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <Label>Filter by Source:</Label>
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
@@ -128,16 +150,39 @@ export default function MaterialsLibraryTool() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              onClick={() => {
-                setSelectedSetting(null);
-                setEditDialogOpen(true);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Setting
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleImport}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCategories}
+              >
+                <FolderOpen className="w-4 h-4 mr-2" />
+                Categories
+              </Button>
+              <Button
+                onClick={() => {
+                  setSelectedSetting(null);
+                  setEditDialogOpen(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Setting
+              </Button>
+            </div>
           </div>
 
           {machinesLoading || settingsLoading ? (
