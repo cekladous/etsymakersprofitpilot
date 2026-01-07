@@ -13,7 +13,7 @@ import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
 import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
 
-export default function Materials() {
+export default function Inventory() {
   const [activeTab, setActiveTab] = useState("inventory");
   const [typeFormOpen, setTypeFormOpen] = useState(false);
   const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
