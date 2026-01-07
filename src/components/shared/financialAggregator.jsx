@@ -57,20 +57,14 @@ export function aggregateFinancials(data, dateRange) {
     .filter(s => s.sale_type === "B")
     .reduce((sum, s) => sum + (s.pre_tax_amount || s.gross_sale || 0), 0);
   
-  const customSaleC = periodCustomSales
-    .filter(s => s.sale_type === "C")
-    .reduce((sum, s) => sum + (s.pre_tax_amount || s.gross_sale || 0), 0);
-  
-  const customSaleD = periodCustomSales
-    .filter(s => s.sale_type === "D")
-    .reduce((sum, s) => sum + (s.pre_tax_amount || s.gross_sale || 0), 0);
+
   
   // Sales tax collected on Custom Sales (tracked separately, excluded from profit)
   const customSalesTaxCollected = periodCustomSales.reduce((sum, s) => 
     sum + (s.sales_tax_collected || 0), 0);
   
   // 6) Total Revenue (tax excluded from profit logic)
-  const totalRevenue = (totalEtsySales - etsyRefunds) + customSaleA + customSaleB + customSaleC + customSaleD;
+  const totalRevenue = (totalEtsySales - etsyRefunds) + customSaleA + customSaleB;
 
   // ==================== B) SELLING EXPENSES ====================
   
@@ -229,9 +223,7 @@ export function aggregateFinancials(data, dateRange) {
     .filter(e => e.category_name === "custom_expense_b")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  const customExpenseC = periodBusinessExpenses
-    .filter(e => e.category_name === "custom_expense_c")
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
 
   // ==================== E) TOTALS ====================
   
@@ -241,7 +233,7 @@ export function aggregateFinancials(data, dateRange) {
   const totalBusinessExpenses = 
     advertisingMarketing + officeExpenses + professionalServices + 
     otherBusinessExpenses + miscellaneousExpenses + 
-    customExpenseA + customExpenseB + customExpenseC;
+    customExpenseA + customExpenseB;
   
   const totalExpenses = totalSellingExpenses + totalProductExpenses + totalBusinessExpenses;
   
@@ -276,8 +268,6 @@ export function aggregateFinancials(data, dateRange) {
       etsyRefunds,
       customSaleA,
       customSaleB,
-      customSaleC,
-      customSaleD,
       customSalesTaxCollected,
       total: totalRevenue,
     },
@@ -313,7 +303,6 @@ export function aggregateFinancials(data, dateRange) {
       miscellaneous: miscellaneousExpenses,
       customExpenseA,
       customExpenseB,
-      customExpenseC,
       total: totalBusinessExpenses,
     },
     

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import {
   Dialog,
@@ -152,7 +152,7 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EXPENSE_CATEGORIES.map((cat) => (
+                {categoryOptions.map((cat) => (
                   <SelectItem key={cat.name} value={cat.name}>
                     {cat.label}
                   </SelectItem>
