@@ -28,7 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 
-export default function MaterialPurchaseDialog({ open, onOpenChange }) {
+export default function MaterialPurchaseDialog({ open, onOpenChange, purchase }) {
   const [formData, setFormData] = useState({
     purchase_date: new Date().toISOString().split("T")[0],
     material_name: "",
@@ -39,6 +39,32 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
     payment_method: "",
     notes: "",
   });
+
+  React.useEffect(() => {
+    if (purchase && open) {
+      setFormData({
+        purchase_date: purchase.purchase_date || new Date().toISOString().split("T")[0],
+        material_name: purchase.material_name || "",
+        vendor: purchase.vendor || "",
+        quantity: purchase.quantity?.toString() || "",
+        unit_cost: purchase.unit_cost?.toString() || "",
+        total_cost: purchase.total_cost?.toString() || "",
+        payment_method: purchase.payment_method || "",
+        notes: purchase.notes || "",
+      });
+    } else if (!open) {
+      setFormData({
+        purchase_date: new Date().toISOString().split("T")[0],
+        material_name: "",
+        vendor: "",
+        quantity: "",
+        unit_cost: "",
+        total_cost: "",
+        payment_method: "",
+        notes: "",
+      });
+    }
+  }, [purchase, open]);
   const [openMaterialCombo, setOpenMaterialCombo] = useState(false);
   const [openVendorCombo, setOpenVendorCombo] = useState(false);
 
@@ -72,45 +98,42 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
     new Set(materialPurchases.map(p => p.vendor).filter(Boolean))
   ).sort();
 
-  const createMutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: async (data) => {
-      const purchase = await base44.entities.MaterialPurchase.create({
+      const payload = {
         ...data,
         quantity: parseFloat(data.quantity || 0),
         unit_cost: parseFloat(data.unit_cost || 0),
         total_cost: parseFloat(data.total_cost || 0),
-      });
+      };
+
+      let result;
+      if (purchase) {
+        result = await base44.entities.MaterialPurchase.update(purchase.id, payload);
+      } else {
+        result = await base44.entities.MaterialPurchase.create(payload);
+      }
       
       // Auto-update inventory
       try {
         const { processInventoryPurchase } = await import("../inventory/inventoryHelpers");
-        await processInventoryPurchase(purchase);
+        await processInventoryPurchase(result);
         queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
       } catch (error) {
         console.error("Failed to update inventory:", error);
       }
       
-      return purchase;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["material-purchases"] });
       onOpenChange(false);
-      setFormData({
-        purchase_date: new Date().toISOString().split("T")[0],
-        material_name: "",
-        vendor: "",
-        quantity: "",
-        unit_cost: "",
-        total_cost: "",
-        payment_method: "",
-        notes: "",
-      });
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    saveMutation.mutate(formData);
   };
 
   // Auto-calculate total_cost when quantity or unit_cost changes
@@ -126,7 +149,7 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Log Material Purchase</DialogTitle>
+          <DialogTitle>{purchase ? "Edit Material Purchase" : "Log Material Purchase"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -307,9 +330,9 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700">
-              {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Log Purchase
+            <Button type="submit" disabled={saveMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700">
+              {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {purchase ? "Save Changes" : "Log Purchase"}
             </Button>
           </DialogFooter>
         </form>
