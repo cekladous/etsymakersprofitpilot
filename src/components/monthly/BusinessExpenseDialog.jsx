@@ -69,13 +69,26 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const category = EXPENSE_CATEGORIES.find(c => c.name === data.category_name);
-      return base44.entities.BusinessExpense.create({
+      const expense = await base44.entities.BusinessExpense.create({
         ...data,
         category_group: category?.group || "business_expenses",
         amount: parseFloat(data.amount || 0),
         budget_amount: parseFloat(data.budget_amount || 0),
         inventory_flag: data.inventory_flag || false,
       });
+      
+      // Auto-deduct from inventory if flagged
+      if (data.inventory_flag && data.category_name === "materials_supplies") {
+        try {
+          const { processInventoryUsage } = await import("../inventory/inventoryHelpers");
+          await processInventoryUsage(expense);
+          queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+        } catch (error) {
+          console.error("Failed to update inventory:", error);
+        }
+      }
+      
+      return expense;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
