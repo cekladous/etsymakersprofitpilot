@@ -28,6 +28,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 
@@ -340,7 +346,7 @@ export default function SettingsTool() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CircleDollarSign className="w-4 h-4 text-blue-600" />
-                <h3 className="font-semibold text-stone-900">Marketplace Fee Configuration</h3>
+                <h3 className="font-semibold text-stone-900">Payment Processor Fees</h3>
               </div>
               <Button
                 variant="outline"
@@ -352,143 +358,169 @@ export default function SettingsTool() {
               </Button>
             </div>
 
-            {/* Etsy Fees */}
-            <div className="space-y-3">
-              <h4 className="font-medium text-stone-700 text-sm">Etsy Payments</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Listing Fee ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.etsy_listing_fee ?? 0.20}
-                    onChange={(e) => setSettingsData({ ...settingsData, etsy_listing_fee: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 rate: $0.20 per listing</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Transaction Fee (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={settingsData.etsy_transaction_fee_percent ?? 6.5}
-                    onChange={(e) => setSettingsData({ ...settingsData, etsy_transaction_fee_percent: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 rate: 6.5% of price + shipping</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Processing Fee (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={settingsData.payment_processing_fee_percent ?? 3.0}
-                    onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_percent: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 US rate: 3.0%</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Processing Fixed Fee ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.payment_processing_fee_fixed ?? 0.25}
-                    onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 US rate: $0.25 per order</p>
-                </div>
-              </div>
-            </div>
+            <Tabs defaultValue="etsy" className="w-full">
+              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
+                <TabsTrigger value="etsy">Etsy</TabsTrigger>
+                <TabsTrigger value="paypal">PayPal</TabsTrigger>
+                <TabsTrigger value="square">Square</TabsTrigger>
+                <TabsTrigger value="venmo">Venmo</TabsTrigger>
+                <TabsTrigger value="free" className="hidden lg:flex">Free</TabsTrigger>
+              </TabsList>
 
-            {/* PayPal Fees */}
-            <div className="space-y-3 pt-3 border-t border-stone-200">
-              <h4 className="font-medium text-stone-700 text-sm">PayPal</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>PayPal Fee (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.paypal_fee_percent ?? 3.49}
-                    onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_percent: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 US rate: 3.49%</p>
+              <TabsContent value="etsy" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-orange-50 to-white p-4 rounded-lg border border-orange-100">
+                  <h4 className="font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                    <span className="text-orange-600">🛍️</span> Etsy Payments
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Listing Fee ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.etsy_listing_fee ?? 0.20}
+                        onChange={(e) => setSettingsData({ ...settingsData, etsy_listing_fee: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: $0.20 per listing</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Transaction Fee (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settingsData.etsy_transaction_fee_percent ?? 6.5}
+                        onChange={(e) => setSettingsData({ ...settingsData, etsy_transaction_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: 6.5% of price + shipping</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Processing (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settingsData.payment_processing_fee_percent ?? 3.0}
+                        onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current US rate: 3.0%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Processing Fixed ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.payment_processing_fee_fixed ?? 0.25}
+                        onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current US rate: $0.25 per order</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>PayPal Fixed Fee ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.paypal_fee_fixed ?? 0.49}
-                    onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_fixed: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 US rate: $0.49 per transaction</p>
-                </div>
-              </div>
-            </div>
+              </TabsContent>
 
-            {/* Square Fees */}
-            <div className="space-y-3 pt-3 border-t border-stone-200">
-              <h4 className="font-medium text-stone-700 text-sm">Square</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Square Fee (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.square_fee_percent ?? 2.9}
-                    onChange={(e) => setSettingsData({ ...settingsData, square_fee_percent: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 online rate: 2.9%</p>
+              <TabsContent value="paypal" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-100">
+                  <h4 className="font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                    <span className="text-blue-600">💳</span> PayPal
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>PayPal Fee (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.paypal_fee_percent ?? 3.49}
+                        onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current US rate: 3.49%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>PayPal Fixed Fee ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.paypal_fee_fixed ?? 0.49}
+                        onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_fixed: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current US rate: $0.49 per transaction</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Square Fixed Fee ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.square_fee_fixed ?? 0.30}
-                    onChange={(e) => setSettingsData({ ...settingsData, square_fee_fixed: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 online rate: $0.30 per transaction</p>
-                </div>
-              </div>
-            </div>
+              </TabsContent>
 
-            {/* Venmo Business Fees */}
-            <div className="space-y-3 pt-3 border-t border-stone-200">
-              <h4 className="font-medium text-stone-700 text-sm">Venmo Business</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Venmo Business Fee (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.venmo_business_fee_percent ?? 1.9}
-                    onChange={(e) => setSettingsData({ ...settingsData, venmo_business_fee_percent: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 rate: 1.9%</p>
+              <TabsContent value="square" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-slate-50 to-white p-4 rounded-lg border border-slate-100">
+                  <h4 className="font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                    <span className="text-slate-600">▪️</span> Square
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Square Fee (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.square_fee_percent ?? 2.9}
+                        onChange={(e) => setSettingsData({ ...settingsData, square_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current online rate: 2.9%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Square Fixed Fee ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.square_fee_fixed ?? 0.30}
+                        onChange={(e) => setSettingsData({ ...settingsData, square_fee_fixed: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current online rate: $0.30 per transaction</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Venmo Business Fixed Fee ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settingsData.venmo_business_fee_fixed ?? 0.10}
-                    onChange={(e) => setSettingsData({ ...settingsData, venmo_business_fee_fixed: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-stone-500">2026 rate: $0.10 per transaction</p>
-                </div>
-              </div>
-            </div>
+              </TabsContent>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 space-y-1">
-              <p className="font-semibold">💡 Payment Processor Fees (2026)</p>
-              <p>• Etsy Payments: 3% + $0.25</p>
-              <p>• PayPal: 3.49% + $0.49</p>
-              <p>• Square: 2.9% + $0.30 (online)</p>
-              <p>• Venmo Business: 1.9% + $0.10</p>
-              <p>• Venmo Personal, Zelle, Cash: $0 (no fees)</p>
-              <p className="pt-2 text-xs">These rates are used in the Profit Calculator. Update them if you're in a different country or have different rates.</p>
-            </div>
+              <TabsContent value="venmo" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-sky-50 to-white p-4 rounded-lg border border-sky-100">
+                  <h4 className="font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                    <span className="text-sky-600">📱</span> Venmo Business
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Venmo Business Fee (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.venmo_business_fee_percent ?? 1.9}
+                        onChange={(e) => setSettingsData({ ...settingsData, venmo_business_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: 1.9%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Venmo Business Fixed Fee ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.venmo_business_fee_fixed ?? 0.10}
+                        onChange={(e) => setSettingsData({ ...settingsData, venmo_business_fee_fixed: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: $0.10 per transaction</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-stone-500 mt-3 italic">Note: Venmo Personal, Zelle, and Cash have no processing fees</p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="free" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-emerald-50 to-white p-6 rounded-lg border border-emerald-100 text-center">
+                  <div className="text-4xl mb-3">✅</div>
+                  <h4 className="font-semibold text-stone-900 mb-2">No-Fee Payment Methods</h4>
+                  <p className="text-stone-600 text-sm mb-4">The following payment methods have zero processing fees:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <span className="px-3 py-1 bg-white border border-emerald-200 rounded-full text-sm text-stone-700">Venmo Personal</span>
+                    <span className="px-3 py-1 bg-white border border-emerald-200 rounded-full text-sm text-stone-700">Zelle</span>
+                    <span className="px-3 py-1 bg-white border border-emerald-200 rounded-full text-sm text-stone-700">Cash</span>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="border-t border-stone-200"></div>
