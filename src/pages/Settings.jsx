@@ -209,68 +209,67 @@ export default function Settings() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Settings" description="Configure your app defaults and machines" />
+      <PageHeader title="Settings" description="Configure business settings, fees, machines, and automation" />
 
-      {/* Global Settings */}
+      {/* Business Configuration */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-100 rounded-lg">
-              <CircleDollarSign className="w-5 h-5 text-emerald-600" />
+              <SettingsIcon className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <CardTitle>Cost Settings</CardTitle>
-              <CardDescription>Configure electricity, overhead, and defaults</CardDescription>
+              <CardTitle>Business Configuration</CardTitle>
+              <CardDescription>Cost settings, marketplace fees, machines, and automation</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label>Electricity Rate ($/kWh)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={settingsData.electricity_rate}
-                onChange={(e) => setSettingsData({ ...settingsData, electricity_rate: parseFloat(e.target.value) || 0 })}
-              />
+        <CardContent className="space-y-8">
+          {/* Cost Settings */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CircleDollarSign className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-semibold text-stone-900">Cost Settings</h3>
             </div>
-            <div className="space-y-2">
-              <Label>Monthly Overhead ($)</Label>
-              <Input
-                type="number"
-                step="1"
-                value={settingsData.monthly_overhead}
-                onChange={(e) => setSettingsData({ ...settingsData, monthly_overhead: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Business Name</Label>
-              <Input
-                value={settingsData.business_name}
-                onChange={(e) => setSettingsData({ ...settingsData, business_name: e.target.value })}
-                placeholder="My Maker Shop"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label>Electricity Rate ($/kWh)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={settingsData.electricity_rate}
+                  onChange={(e) => setSettingsData({ ...settingsData, electricity_rate: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Overhead ($)</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={settingsData.monthly_overhead}
+                  onChange={(e) => setSettingsData({ ...settingsData, monthly_overhead: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Business Name</Label>
+                <Input
+                  value={settingsData.business_name}
+                  onChange={(e) => setSettingsData({ ...settingsData, business_name: e.target.value })}
+                  placeholder="My Maker Shop"
+                />
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Fee Configuration */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <CircleDollarSign className="w-5 h-5 text-blue-600" />
+          <div className="border-t border-stone-200"></div>
+
+          {/* Marketplace Fees */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CircleDollarSign className="w-4 h-4 text-blue-600" />
+              <h3 className="font-semibold text-stone-900">Marketplace Fee Configuration</h3>
             </div>
-            <div>
-              <CardTitle>Marketplace Fee Configuration</CardTitle>
-              <CardDescription>Configure Etsy and payment processing fees for profit calculations</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Etsy Listing Fee ($)</Label>
               <Input
@@ -312,38 +311,31 @@ export default function Settings() {
               <p className="text-xs text-stone-500">2026 US rate: $0.25 per order</p>
             </div>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 space-y-1">
-            <p className="font-semibold">💡 Current 2026 Etsy Fees (US)</p>
-            <p>• Listing: $0.20 per item</p>
-            <p>• Transaction: 6.5% of item price + shipping</p>
-            <p>• Payment Processing: 3% + $0.25</p>
-            <p className="pt-2 text-xs">These rates are used in the Profit Calculator and applied when auto-calculating order fees. Update them if you're in a different country or marketplace.</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Machines */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Zap className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <CardTitle>Machines</CardTitle>
-                <CardDescription>Your laser cutters and other equipment</CardDescription>
-              </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 space-y-1">
+              <p className="font-semibold">💡 Current 2026 Etsy Fees (US)</p>
+              <p>• Listing: $0.20 per item</p>
+              <p>• Transaction: 6.5% of item price + shipping</p>
+              <p>• Payment Processing: 3% + $0.25</p>
+              <p className="pt-2 text-xs">These rates are used in the Profit Calculator and applied when auto-calculating order fees. Update them if you're in a different country or marketplace.</p>
             </div>
-            <Button onClick={() => openMachineForm()} className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Machine
-            </Button>
           </div>
-        </CardHeader>
-        <CardContent>
-          {machines.length > 0 ? (
-            <Table>
+
+          <div className="border-t border-stone-200"></div>
+
+          {/* Machines */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-violet-600" />
+                <h3 className="font-semibold text-stone-900">Machines</h3>
+              </div>
+              <Button onClick={() => openMachineForm()} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Machine
+              </Button>
+            </div>
+            {machines.length > 0 ? (
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -383,32 +375,25 @@ export default function Settings() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-stone-500">
-              No machines configured. Add your first machine to track costs.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Auto-categorization Rules */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-violet-100 rounded-lg">
-              <SettingsIcon className="w-5 h-5 text-violet-600" />
-            </div>
-            <div>
-              <CardTitle>Auto-Categorization Rules</CardTitle>
-              <CardDescription>Automatically categorize imported expenses</CardDescription>
-            </div>
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-stone-400 text-sm">
+                No machines configured. Add your first machine to track costs.
+              </div>
+            )}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Add Rule */}
-          <div className="flex gap-3">
+
+          <div className="border-t border-stone-200"></div>
+
+          {/* Auto-categorization Rules */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <SettingsIcon className="w-4 h-4 text-amber-600" />
+              <h3 className="font-semibold text-stone-900">Auto-Categorization Rules</h3>
+            </div>
+            {/* Add Rule */}
+            <div className="flex gap-3">
             <Input
               placeholder="Keyword (e.g., 'Amazon')"
               value={newRule.keyword}
@@ -430,14 +415,14 @@ export default function Settings() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleAddRule} variant="outline">
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
+              <Button onClick={handleAddRule} variant="outline">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
 
-          {/* Rules List */}
-          {settingsData.auto_categorization_rules.length > 0 && (
-            <div className="space-y-2">
+            {/* Rules List */}
+            {settingsData.auto_categorization_rules.length > 0 && (
+              <div className="space-y-2">
               {settingsData.auto_categorization_rules.map((rule, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
                   <div className="flex items-center gap-3">
@@ -454,9 +439,10 @@ export default function Settings() {
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

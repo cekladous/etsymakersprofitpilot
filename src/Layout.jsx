@@ -24,12 +24,12 @@ const navItems = [
   { name: "Products", icon: Package, page: "Products" },
   { name: "Materials", icon: Layers, page: "Materials" },
   { name: "Expenses", icon: Receipt, page: "Expenses" },
+  { name: "Settings", icon: Settings, page: "Settings" },
 ];
 
 const toolsItems = [
   { name: "Profit Calculator", icon: Calculator, page: "Calculator" },
   { name: "Raster Assistant", icon: Zap, page: "RasterAssistant" },
-  { name: "Settings", icon: Settings, page: "Settings" },
 ];
 
 export default function Layout({ children, currentPageName }) {

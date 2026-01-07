@@ -125,7 +125,7 @@ const machines = [
     brand: "xtool", 
     label: "xTool",
     types: ["co2", "diode"],
-    models: ["D1", "D1 Pro", "M1", "P2", "S1", "F1", "F1 Ultra", "Other"]
+    models: ["D1", "D1 Pro", "M1", "P2", "P3", "S1", "F1", "F1 Ultra", "Other"]
   },
   { 
     brand: "other", 
@@ -521,9 +521,11 @@ export default function RasterAssistant() {
                   <div className="text-3xl font-bold text-emerald-700">
                     {recommendations.dotMin} – {recommendations.dotMax} μs
                   </div>
-                  <div className="text-xs text-stone-500 mt-1">
-                    For xTool F1/F1 Ultra bitmap engraving
-                  </div>
+                  {(machineModel === "F1" || machineModel === "F1 Ultra") && (
+                    <div className="text-xs text-stone-500 mt-1">
+                      For xTool F1/F1 Ultra bitmap engraving
+                    </div>
+                  )}
                 </div>
 
                 {/* Tips */}
