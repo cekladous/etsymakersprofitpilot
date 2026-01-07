@@ -19,7 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Zap, Lightbulb, CheckCircle2, AlertCircle, Database, ExternalLink } from "lucide-react";
+import { Zap, Lightbulb, CheckCircle2, AlertCircle, Database, ExternalLink, Copy } from "lucide-react";
+import LaserSettingEditDialog from "./LaserSettingEditDialog";
 
 const materials = [
   { value: "wood", label: "Wood" },
@@ -78,6 +79,9 @@ export default function RasterAssistantTool() {
   const [machineModel, setMachineModel] = useState("");
   const [laserType, setLaserType] = useState("");
   const [operation, setOperation] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedSetting, setSelectedSetting] = useState(null);
 
   const selectedMachine = machines.find(m => m.brand === machineBrand);
   const availableTypes = selectedMachine?.types || [];
@@ -102,6 +106,13 @@ export default function RasterAssistantTool() {
       return { filteredSettings: [], matchType: null };
     }
 
+    let availableSettings = allSettings;
+    
+    // Apply source filter
+    if (sourceFilter !== "all") {
+      availableSettings = availableSettings.filter(s => s.source_type === sourceFilter);
+    }
+
     // Normalize laser_type and operation for comparison
     const normalizeLaserType = (type) => type?.toLowerCase();
     const normalizeOperation = (op) => op?.toLowerCase();
@@ -116,7 +127,7 @@ export default function RasterAssistantTool() {
 
     // Level 1: Exact match (brand + model + laser type + material + thickness + operation)
     if (machineBrand && machineModel) {
-      const exact = allSettings.filter(s => 
+      const exact = availableSettings.filter(s => 
         s.brand?.toLowerCase() === machineBrand.toLowerCase() &&
         s.model === machineModel &&
         normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
@@ -129,7 +140,7 @@ export default function RasterAssistantTool() {
 
     // Level 2: Ignore thickness
     if (machineBrand && machineModel) {
-      const noThickness = allSettings.filter(s => 
+      const noThickness = availableSettings.filter(s => 
         s.brand?.toLowerCase() === machineBrand.toLowerCase() &&
         s.model === machineModel &&
         normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
@@ -142,7 +153,7 @@ export default function RasterAssistantTool() {
 
     // Level 3: Brand match (ignore model)
     if (machineBrand) {
-      const brandMatch = allSettings.filter(s =>
+      const brandMatch = availableSettings.filter(s =>
         s.brand?.toLowerCase() === machineBrand.toLowerCase() &&
         normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
         materialMatches(s, material) &&
@@ -153,7 +164,7 @@ export default function RasterAssistantTool() {
     }
 
     // Level 4: Laser type + material category (ignore brand)
-    const laserMatch = allSettings.filter(s =>
+    const laserMatch = availableSettings.filter(s =>
       normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
       materialMatches(s, material) &&
       normalizeOperation(s.operation) === normalizeOperation(operation) &&
@@ -162,7 +173,7 @@ export default function RasterAssistantTool() {
     if (laserMatch.length > 0) return { filteredSettings: laserMatch, matchType: 'generic' };
 
     // Level 5: Generic rows
-    const genericMatch = allSettings.filter(s =>
+    const genericMatch = availableSettings.filter(s =>
       s.source_type === 'Generic' &&
       normalizeLaserType(s.laser_type) === normalizeLaserType(laserType) &&
       materialMatches(s, material) &&
@@ -172,7 +183,7 @@ export default function RasterAssistantTool() {
     if (genericMatch.length > 0) return { filteredSettings: genericMatch, matchType: 'generic' };
 
     return { filteredSettings: [], matchType: null };
-  }, [material, machineBrand, machineModel, laserType, operation, allSettings]);
+  }, [material, machineBrand, machineModel, laserType, operation, sourceFilter, allSettings]);
 
   // Get operation counts for hints (but don't use this to disable operations)
   const operationCounts = React.useMemo(() => {
@@ -201,8 +212,32 @@ export default function RasterAssistantTool() {
   const showResults = allFieldsSelected && filteredSettings.length > 0;
   const showNoResults = allFieldsSelected && filteredSettings.length === 0;
 
+  const handleCopySetting = (setting) => {
+    setSelectedSetting(setting);
+    setEditDialogOpen(true);
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Label>Show Settings From:</Label>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="Manufacturer">Manufacturer</SelectItem>
+              <SelectItem value="Community">Community</SelectItem>
+              <SelectItem value="User">My Settings</SelectItem>
+              <SelectItem value="Generic">Generic</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -511,19 +546,28 @@ export default function RasterAssistantTool() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {setting.source_reference ? (
-                            <a
-                              href={setting.source_reference}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                          <div className="flex flex-col gap-2">
+                            {setting.source_reference ? (
+                              <a
+                                href={setting.source_reference}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                View Source
+                              </a>
+                            ) : (
+                              <span className="text-xs text-stone-400">Generic</span>
+                            )}
+                            <button
+                              onClick={() => handleCopySetting(setting)}
+                              className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
                             >
-                              <ExternalLink className="w-3 h-3" />
-                              View Source
-                            </a>
-                          ) : (
-                            <span className="text-xs text-stone-400">Generic</span>
-                          )}
+                              <Copy className="w-3 h-3" />
+                              Copy to My Settings
+                            </button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -582,6 +626,13 @@ export default function RasterAssistantTool() {
           </Card>
         )}
       </div>
+      </div>
+
+      <LaserSettingEditDialog
+        setting={selectedSetting}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
     </div>
   );
 }
