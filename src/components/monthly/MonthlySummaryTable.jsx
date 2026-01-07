@@ -156,8 +156,6 @@ export default function MonthlySummaryTable({ financialData, viewMode = "month" 
         <Row label="Total Etsy Fees" amount={sellingExpenses.total} bold />
         <Row label="Etsy Shipping" amount={sellingExpenses.etsyShipping} highlight="bg-yellow-50" categoryName="etsy_shipping" canAdd />
         <Row label="Other Postage Costs" amount={sellingExpenses.otherPostage} highlight="bg-yellow-50" categoryName="other_postage_costs" canAdd />
-        <Row label="Custom Expense A" amount={sellingExpenses.customExpenseA} highlight="bg-yellow-50" categoryName="custom_expense_a" canAdd />
-        <Row label="Custom Expense B" amount={sellingExpenses.customExpenseB} highlight="bg-yellow-50" categoryName="custom_expense_b" canAdd />
 
         {/* Product Expenses */}
         <div className="bg-pink-100 py-1 px-4">
