@@ -4,7 +4,6 @@ import Jobs from './pages/Jobs';
 import Materials from './pages/Materials';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
-import Settings from './pages/Settings';
 import Tools from './pages/Tools';
 import __Layout from './Layout.jsx';
 
@@ -16,7 +15,6 @@ export const PAGES = {
     "Materials": Materials,
     "Orders": Orders,
     "Products": Products,
-    "Settings": Settings,
     "Tools": Tools,
 }
 
