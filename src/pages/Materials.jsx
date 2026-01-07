@@ -72,6 +72,7 @@ export default function Materials() {
     return {
       id: materialType.id,
       material_name: materialType.name,
+      thickness: materialType.thickness || "",
       width: materialType.default_width || 0,
       height: materialType.default_height || 0,
       cost_per_sheet: materialType.cost_per_sheet || 0,
@@ -117,6 +118,10 @@ export default function Materials() {
           )}
         </div>
       ),
+    },
+    {
+      header: "Thickness",
+      render: (row) => <span className="text-stone-700">{row.thickness || "-"}</span>,
     },
     {
       header: "Width (in)",
