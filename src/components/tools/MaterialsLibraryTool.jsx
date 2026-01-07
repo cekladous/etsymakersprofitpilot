@@ -174,6 +174,7 @@ export default function MaterialsLibraryTool() {
                             <TableHead>Speed</TableHead>
                             <TableHead>Power</TableHead>
                             <TableHead>Passes</TableHead>
+                            <TableHead>DPI/LPI</TableHead>
                             <TableHead>Source</TableHead>
                             <TableHead>Actions</TableHead>
                           </TableRow>
@@ -199,6 +200,9 @@ export default function MaterialsLibraryTool() {
                                 {setting.power_max_pct ? `${setting.power_max_pct}%` : "—"}
                               </TableCell>
                               <TableCell className="text-center text-sm">{setting.passes || 1}</TableCell>
+                              <TableCell className="text-sm">
+                                {setting.dpi_lpi || "—"}
+                              </TableCell>
                               <TableCell>
                                 <div className="flex flex-col gap-1">
                                   <Badge className={
