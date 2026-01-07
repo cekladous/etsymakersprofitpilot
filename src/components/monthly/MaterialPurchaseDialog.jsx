@@ -30,12 +30,23 @@ export default function MaterialPurchaseDialog({ open, onOpenChange }) {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      return base44.entities.MaterialPurchase.create({
+      const purchase = await base44.entities.MaterialPurchase.create({
         ...data,
         quantity: parseFloat(data.quantity || 0),
         unit_cost: parseFloat(data.unit_cost || 0),
         total_cost: parseFloat(data.total_cost || 0),
       });
+      
+      // Auto-update inventory
+      try {
+        const { processInventoryPurchase } = await import("../inventory/inventoryHelpers");
+        await processInventoryPurchase(purchase);
+        queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+      } catch (error) {
+        console.error("Failed to update inventory:", error);
+      }
+      
+      return purchase;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["material-purchases"] });
