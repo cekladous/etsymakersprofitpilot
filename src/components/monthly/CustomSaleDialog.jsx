@@ -19,13 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
 export default function CustomSaleDialog({ open, onOpenChange }) {
@@ -33,11 +26,13 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
     sale_type: "A",
     date: new Date().toISOString().split("T")[0],
     pre_tax_amount: "",
-    sales_tax_collected: 0,
+    sales_tax_collected: "",
+    shipping_or_postage_cost: "",
     vendor: "",
     description: "",
     payment_source: "",
     notes: "",
+    budget_amount: "",
   });
 
   const queryClient = useQueryClient();
@@ -50,6 +45,8 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         pre_tax_amount: parseFloat(data.pre_tax_amount || 0),
         sales_tax_collected: parseFloat(data.sales_tax_collected || 0),
         gross_sale,
+        shipping_or_postage_cost: parseFloat(data.shipping_or_postage_cost || 0),
+        budget_amount: parseFloat(data.budget_amount || 0),
       });
     },
     onSuccess: () => {
@@ -59,11 +56,13 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         sale_type: "A",
         date: new Date().toISOString().split("T")[0],
         pre_tax_amount: "",
-        sales_tax_collected: 0,
+        sales_tax_collected: "",
+        shipping_or_postage_cost: "",
         vendor: "",
         description: "",
         payment_source: "",
         notes: "",
+        budget_amount: "",
       });
     },
   });
@@ -150,12 +149,56 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Payment Source</Label>
+              <Select
+                value={formData.payment_source}
+                onValueChange={(v) => setFormData({ ...formData, payment_source: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Check">Check</SelectItem>
+                  <SelectItem value="Zelle">Zelle</SelectItem>
+                  <SelectItem value="Venmo">Venmo</SelectItem>
+                  <SelectItem value="Square">Square</SelectItem>
+                  <SelectItem value="PayPal">PayPal</SelectItem>
+                  <SelectItem value="Etsy">Etsy</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Shipping/Postage Cost</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.shipping_or_postage_cost}
+                onChange={(e) => setFormData({ ...formData, shipping_or_postage_cost: e.target.value })}
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label>Payment Source</Label>
+            <Label>Budget (optional)</Label>
             <Input
-              value={formData.payment_source}
-              onChange={(e) => setFormData({ ...formData, payment_source: e.target.value })}
-              placeholder="Cash, Check, Venmo, etc."
+              type="number"
+              step="0.01"
+              value={formData.budget_amount}
+              onChange={(e) => setFormData({ ...formData, budget_amount: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Additional details"
             />
           </div>
 

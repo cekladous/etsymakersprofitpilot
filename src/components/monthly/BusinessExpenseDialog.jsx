@@ -73,6 +73,8 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
         ...data,
         category_group: category?.group || "business_expenses",
         amount: parseFloat(data.amount || 0),
+        budget_amount: parseFloat(data.budget_amount || 0),
+        inventory_flag: data.inventory_flag || false,
       });
     },
     onSuccess: () => {
@@ -164,12 +166,59 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Payment Source</Label>
+              <Select
+                value={formData.payment_source}
+                onValueChange={(v) => setFormData({ ...formData, payment_source: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Check">Check</SelectItem>
+                  <SelectItem value="Zelle">Zelle</SelectItem>
+                  <SelectItem value="Venmo">Venmo</SelectItem>
+                  <SelectItem value="Square">Square</SelectItem>
+                  <SelectItem value="PayPal">PayPal</SelectItem>
+                  <SelectItem value="Etsy">Etsy</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Budget (optional)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.budget_amount}
+                onChange={(e) => setFormData({ ...formData, budget_amount: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {formData.category_name === "materials_supplies" && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={formData.inventory_flag}
+                onCheckedChange={(checked) => setFormData({ ...formData, inventory_flag: checked })}
+                id="inventory_flag"
+              />
+              <Label htmlFor="inventory_flag" className="cursor-pointer">
+                Mark as Inventory
+              </Label>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label>Payment Method</Label>
-            <Input
-              value={formData.payment_method}
-              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-              placeholder="Credit Card, Cash, etc."
+            <Label>Notes</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Additional details"
             />
           </div>
 
