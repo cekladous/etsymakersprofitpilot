@@ -32,8 +32,8 @@ const EXPENSE_CATEGORIES = [
   { group: "selling_expenses", name: "etsy_offsite_ads_fees", label: "Etsy Offsite Ads Fees" },
   { group: "selling_expenses", name: "etsy_shipping", label: "Etsy Shipping" },
   { group: "selling_expenses", name: "other_postage_costs", label: "Other Postage Costs" },
-  { group: "selling_expenses", name: "custom_expense_a", label: "Custom Expense A (Selling)" },
-  { group: "selling_expenses", name: "custom_expense_b", label: "Custom Expense B (Selling)" },
+  { group: "selling_expenses", name: "custom_expense_a", label: "Custom Expense A" },
+  { group: "selling_expenses", name: "custom_expense_b", label: "Custom Expense B" },
   { group: "product_expenses", name: "materials_supplies", label: "Materials & Supplies" },
   { group: "product_expenses", name: "tools_equipment", label: "Tools & Equipment" },
   { group: "business_expenses", name: "advertising_marketing", label: "Advertising & Marketing" },
@@ -41,7 +41,6 @@ const EXPENSE_CATEGORIES = [
   { group: "business_expenses", name: "professional_services", label: "Professional Services" },
   { group: "business_expenses", name: "other", label: "Other" },
   { group: "business_expenses", name: "miscellaneous_expenses", label: "Miscellaneous Expenses" },
-  { group: "business_expenses", name: "custom_expense_c", label: "Custom Expense C (Business)" },
 ];
 
 export default function BusinessExpenseDialog({ open, onOpenChange, preselectedCategory = null }) {
@@ -84,7 +83,7 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const category = EXPENSE_CATEGORIES.find(c => c.name === data.category_name);
+      const category = categoryOptions.find(c => c.name === data.category_name);
       const expense = await base44.entities.BusinessExpense.create({
         ...data,
         category_group: category?.group || "business_expenses",
