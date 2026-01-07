@@ -534,7 +534,7 @@ export default function Expenses() {
                       <BarChart data={topExpenses} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" tickFormatter={(val) => `$${val}`} />
-                        <YAxis dataKey="name" type="category" width={120} />
+                        <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
                         <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
                         <Bar dataKey="amount" fill="#10b981" />
                       </BarChart>
