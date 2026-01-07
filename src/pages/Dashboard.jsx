@@ -9,21 +9,56 @@ import {
   Receipt,
   ShoppingBag,
   Layers,
-  Percent
+  Percent,
+  Upload,
+  Download,
+  Plus,
+  Calendar,
+  BarChart3,
+  Table as TableIcon
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfYear, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfYear, subMonths, startOfQuarter, endOfQuarter, endOfYear, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
 import KPICard from "@/components/dashboard/KPICard";
 import AlertCard from "@/components/dashboard/AlertCard";
 import ProfitChart from "@/components/dashboard/ProfitChart";
 import ProfitCalculatorWidget from "@/components/dashboard/ProfitCalculatorWidget";
 import LowStockNotifications from "@/components/notifications/LowStockNotifications";
+import MonthlySummaryKPIs from "@/components/monthly/MonthlySummaryKPIs";
+import MonthlySummaryTable from "@/components/monthly/MonthlySummaryTable";
+import BudgetTab from "@/components/monthly/BudgetTab";
+import EtsyOrderImportDialog from "@/components/monthly/EtsyOrderImportDialog";
+import EtsyLedgerImportDialog from "@/components/monthly/EtsyLedgerImportDialog";
+import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
+import BusinessExpenseDialog from "@/components/monthly/BusinessExpenseDialog";
+import TransferDialog from "@/components/monthly/TransferDialog";
+import * as XLSX from "xlsx";
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("month");
-  const [customYear, setCustomYear] = useState(new Date().getFullYear());
-  const [customMonth, setCustomMonth] = useState(new Date().getMonth());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [ledgerImportDialogOpen, setLedgerImportDialogOpen] = useState(false);
+  const [customSaleDialogOpen, setCustomSaleDialogOpen] = useState(false);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
 
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
@@ -50,43 +85,83 @@ export default function Dashboard() {
     queryFn: () => base44.entities.MaterialType.list(),
   });
 
+  const { data: etsyOrders = [] } = useQuery({
+    queryKey: ["etsy-orders"],
+    queryFn: () => base44.entities.EtsyOrder.list("-sale_date", 1000),
+  });
+
+  const { data: orderFees = [] } = useQuery({
+    queryKey: ["order-fees"],
+    queryFn: () => base44.entities.OrderFee.list(),
+  });
+
+  const { data: customSales = [] } = useQuery({
+    queryKey: ["custom-sales"],
+    queryFn: () => base44.entities.CustomSale.list("-date", 1000),
+  });
+
+  const { data: businessExpenses = [] } = useQuery({
+    queryKey: ["business-expenses"],
+    queryFn: () => base44.entities.BusinessExpense.list("-date", 1000),
+  });
+
+  const { data: transfers = [] } = useQuery({
+    queryKey: ["transfers"],
+    queryFn: () => base44.entities.Transfer.list("-date", 1000),
+  });
+
+  const { data: materialPurchases = [] } = useQuery({
+    queryKey: ["material-purchases"],
+    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 1000),
+  });
+
+  const { data: etsyLedgerEntries = [] } = useQuery({
+    queryKey: ["etsy-ledger-entries"],
+    queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 5000),
+  });
+
   const now = new Date();
   
   // Calculate date range based on selected timeRange
-  const getDateRange = () => {
-    if (timeRange === "custom_month") {
-      const customDate = new Date(customYear, customMonth, 1);
-      return {
-        start: startOfMonth(customDate),
-        end: endOfMonth(customDate),
-      };
-    } else if (timeRange === "custom_year") {
-      const customDate = new Date(customYear, 0, 1);
-      return {
-        start: new Date(customYear, 0, 1),
-        end: new Date(customYear, 11, 31, 23, 59, 59),
-      };
-    } else if (timeRange === "month") {
-      return {
-        start: startOfMonth(now),
-        end: endOfMonth(now),
-      };
+  const dateRange = useMemo(() => {
+    let start, end;
+    if (timeRange === "month") {
+      start = startOfMonth(selectedDate);
+      end = endOfMonth(selectedDate);
     } else if (timeRange === "quarter") {
-      const quarter = Math.floor(now.getMonth() / 3);
-      const quarterStart = new Date(now.getFullYear(), quarter * 3, 1);
-      const quarterEnd = new Date(now.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59);
-      return { start: quarterStart, end: quarterEnd };
+      start = startOfQuarter(selectedDate);
+      end = endOfQuarter(selectedDate);
     } else if (timeRange === "year") {
-      return {
-        start: startOfYear(now),
-        end: new Date(now.getFullYear(), 11, 31, 23, 59, 59),
-      };
+      start = startOfYear(selectedDate);
+      end = endOfYear(selectedDate);
     }
-    return { start: startOfMonth(now), end: endOfMonth(now) };
-  };
+    return { start, end };
+  }, [timeRange, selectedDate]);
 
-  const { start: periodStart, end: periodEnd } = getDateRange();
+  const { start: periodStart, end: periodEnd } = dateRange;
   const yearStart = startOfYear(now);
+
+  // Filter data by date range for summary tab
+  const filteredSummaryData = useMemo(() => {
+    const { start, end } = dateRange;
+    
+    const filterByDate = (items, dateField) => {
+      return items.filter(item => {
+        const itemDate = new Date(item[dateField]);
+        return itemDate >= start && itemDate <= end;
+      });
+    };
+
+    return {
+      etsyOrders: filterByDate(etsyOrders, "sale_date"),
+      customSales: filterByDate(customSales, "date"),
+      businessExpenses: filterByDate(businessExpenses, "date"),
+      transfers: filterByDate(transfers, "date"),
+      materialPurchases: filterByDate(materialPurchases, "purchase_date"),
+      etsyLedgerEntries: filterByDate(etsyLedgerEntries, "entry_date"),
+      orderFees: orderFees,
+    };
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, dateRange]);
 
   const metrics = useMemo(() => {
     // Period calculations based on selected timeRange
@@ -186,18 +261,29 @@ export default function Dashboard() {
   };
 
   const getPeriodLabel = () => {
-    if (timeRange === "custom_month") {
-      return format(new Date(customYear, customMonth), "MMMM yyyy");
-    } else if (timeRange === "custom_year") {
-      return `${customYear}`;
-    } else if (timeRange === "month") {
-      return "This Month";
+    if (timeRange === "month") {
+      return format(selectedDate, "MMMM yyyy");
     } else if (timeRange === "quarter") {
-      return "This Quarter";
+      const quarter = Math.floor(selectedDate.getMonth() / 3) + 1;
+      return `Q${quarter} ${format(selectedDate, "yyyy")}`;
     } else if (timeRange === "year") {
-      return "This Year";
+      return format(selectedDate, "yyyy");
     }
-    return "This Month";
+    return format(selectedDate, "MMMM yyyy");
+  };
+
+  const handleExport = () => {
+    const exportData = {
+      "Period": getPeriodLabel(),
+      "Total Revenue": metrics.periodRevenue,
+      "Total Expenses": metrics.periodExpenses,
+      "Net Profit": metrics.periodProfit,
+    };
+
+    const worksheet = XLSX.utils.json_to_sheet([exportData]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
+    XLSX.writeFile(workbook, `dashboard-${format(selectedDate, "yyyy-MM")}.xlsx`);
   };
 
   return (
@@ -207,19 +293,69 @@ export default function Dashboard() {
         description={getPeriodLabel()}
       >
         <div className="flex gap-2 flex-wrap">
-          {["month", "quarter", "year"].map((range) => (
-            <Button
-              key={range}
-              variant={timeRange === range ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange(range)}
-              className={timeRange === range ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-            >
-              {range.charAt(0).toUpperCase() + range.slice(1)}
-            </Button>
-          ))}
+          <div className="flex gap-2">
+            {["month", "quarter", "year"].map((range) => (
+              <Button
+                key={range}
+                variant={timeRange === range ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeRange(range)}
+                className={timeRange === range ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                {range.charAt(0).toUpperCase() + range.slice(1)}
+              </Button>
+            ))}
+          </div>
+          
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Calendar className="w-4 h-4 mr-2" />
+                {format(selectedDate, "MMM yyyy")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Select
+                value={format(selectedDate, "yyyy-MM")}
+                onValueChange={(v) => {
+                  setSelectedDate(parse(v + "-01", "yyyy-MM-dd", new Date()));
+                  setDatePickerOpen(false);
+                }}
+              >
+                <SelectTrigger className="border-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 36 }, (_, i) => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    return (
+                      <SelectItem key={i} value={format(date, "yyyy-MM")}>
+                        {format(date, "MMMM yyyy")}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </PopoverContent>
+          </Popover>
         </div>
       </PageHeader>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-stone-100">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="summary">
+            <TableIcon className="w-4 h-4 mr-2" />
+            Net Profit
+          </TabsTrigger>
+          <TabsTrigger value="budget">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Budget vs Actual
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-8 mt-6">
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -297,22 +433,101 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Low Stock Notifications */}
-      <LowStockNotifications />
+        {/* Low Stock Notifications */}
+        <LowStockNotifications />
 
-      {/* Chart and Calculator */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ProfitChart
-            data={chartData}
-            timeRange={timeRange}
-            onTimeRangeChange={setTimeRange}
+        {/* Chart and Calculator */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <ProfitChart
+              data={chartData}
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
+            />
+          </div>
+          <div>
+            <ProfitCalculatorWidget />
+          </div>
+        </div>
+        </TabsContent>
+
+        <TabsContent value="summary" className="space-y-6 mt-6">
+          {/* Import/Export Actions */}
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import Sold Orders
+            </Button>
+            <Button variant="outline" onClick={() => setLedgerImportDialogOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import Payment Ledger
+            </Button>
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </div>
+
+          {/* Summary KPIs */}
+          <MonthlySummaryKPIs
+            filteredData={filteredSummaryData}
+            dateRange={dateRange}
+            viewMode={timeRange}
           />
-        </div>
-        <div>
-          <ProfitCalculatorWidget />
-        </div>
-      </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setCustomSaleDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Custom Sale
+            </Button>
+            <Button variant="outline" onClick={() => setExpenseDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Expense
+            </Button>
+            <Button variant="outline" onClick={() => setTransferDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Transfer
+            </Button>
+          </div>
+
+          {/* Summary Table */}
+          <MonthlySummaryTable
+            filteredData={filteredSummaryData}
+            viewMode={timeRange}
+          />
+        </TabsContent>
+
+        <TabsContent value="budget" className="mt-6">
+          <BudgetTab
+            viewMode={timeRange}
+            dateRange={dateRange}
+            filteredData={filteredSummaryData}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialogs */}
+      <EtsyOrderImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+      />
+      <EtsyLedgerImportDialog
+        open={ledgerImportDialogOpen}
+        onOpenChange={setLedgerImportDialogOpen}
+      />
+      <CustomSaleDialog
+        open={customSaleDialogOpen}
+        onOpenChange={setCustomSaleDialogOpen}
+      />
+      <BusinessExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+      />
+      <TransferDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+      />
     </div>
   );
 }

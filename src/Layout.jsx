@@ -15,7 +15,6 @@ import {
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-  { name: "Monthly Summary", icon: Receipt, page: "MonthlySummary" },
   { name: "Orders", icon: ShoppingBag, page: "Orders" },
   { name: "Jobs", icon: Wrench, page: "Jobs" },
   { name: "Products", icon: Package, page: "Products" },
