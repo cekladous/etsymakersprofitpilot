@@ -53,7 +53,7 @@ export default function CalculatorTool() {
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
       ...prev,
-      [field]: typeof value === 'string' && isNaN(parseFloat(value)) ? value : (parseFloat(value) || 0),
+      [field]: typeof value === 'boolean' ? value : (typeof value === 'string' && isNaN(parseFloat(value)) ? value : (parseFloat(value) || 0)),
     }));
   };
 
