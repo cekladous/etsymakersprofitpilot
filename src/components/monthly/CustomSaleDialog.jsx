@@ -22,6 +22,17 @@ import {
 import { Loader2 } from "lucide-react";
 
 export default function CustomSaleDialog({ open, onOpenChange }) {
+  const queryClient = useQueryClient();
+  
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.list(),
+  });
+  
+  const appSettings = settings[0] || {};
+  const customSaleALabel = appSettings.custom_sale_a_label || "Custom Sale A";
+  const customSaleBLabel = appSettings.custom_sale_b_label || "Custom Sale B";
+  
   const [formData, setFormData] = useState({
     sale_type: "A",
     date: new Date().toISOString().split("T")[0],
@@ -34,8 +45,6 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
     notes: "",
     budget_amount: "",
   });
-
-  const queryClient = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -91,10 +100,8 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="A">Custom Sale A</SelectItem>
-                  <SelectItem value="B">Custom Sale B</SelectItem>
-                  <SelectItem value="C">Custom Sale C</SelectItem>
-                  <SelectItem value="D">Custom Sale D</SelectItem>
+                  <SelectItem value="A">{customSaleALabel}</SelectItem>
+                  <SelectItem value="B">{customSaleBLabel}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

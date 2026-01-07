@@ -45,6 +45,24 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function BusinessExpenseDialog({ open, onOpenChange, preselectedCategory = null }) {
+  const queryClient = useQueryClient();
+  
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.list(),
+  });
+  
+  const appSettings = settings[0] || {};
+  const customExpenseALabel = appSettings.custom_expense_a_label || "Custom Expense A";
+  const customExpenseBLabel = appSettings.custom_expense_b_label || "Custom Expense B";
+  
+  // Update category labels with custom names
+  const categoryOptions = EXPENSE_CATEGORIES.map(cat => {
+    if (cat.name === "custom_expense_a") return { ...cat, label: customExpenseALabel };
+    if (cat.name === "custom_expense_b") return { ...cat, label: customExpenseBLabel };
+    return cat;
+  });
+  
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     category_name: preselectedCategory || "materials_supplies",
@@ -63,8 +81,6 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
       setFormData(prev => ({ ...prev, category_name: preselectedCategory }));
     }
   }, [preselectedCategory, open]);
-
-  const queryClient = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
