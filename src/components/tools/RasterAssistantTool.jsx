@@ -106,9 +106,9 @@ export default function RasterAssistantTool() {
     return setting.active !== false;
   });
 
-  // Determine which operations are available based on current selections (before operation is chosen)
-  const availableOperations = React.useMemo(() => {
-    if (!machineBrand || !laserType || !material) return operations;
+  // Get operation counts for hints (but don't use this to disable operations)
+  const operationCounts = React.useMemo(() => {
+    if (!machineBrand || !laserType || !material) return {};
     
     const matchingSettings = allSettings.filter(setting => {
       if (setting.brand !== machineBrand) return false;
@@ -118,11 +118,11 @@ export default function RasterAssistantTool() {
       return setting.active !== false;
     });
 
-    const availableOps = new Set(matchingSettings.map(s => s.operation));
-    return operations.map(op => ({
-      ...op,
-      available: availableOps.has(op.value)
-    }));
+    const counts = {};
+    matchingSettings.forEach(s => {
+      counts[s.operation] = (counts[s.operation] || 0) + 1;
+    });
+    return counts;
   }, [machineBrand, machineModel, laserType, material, allSettings]);
 
   // Check if all required fields are selected
@@ -261,9 +261,9 @@ export default function RasterAssistantTool() {
           <CardContent>
             <Label>Operation</Label>
             <div className="space-y-3 mt-2">
-              {availableOperations.map((op) => {
-                const isAvailable = op.available !== false;
-                const isDisabled = !material || !machineBrand || !laserType || !isAvailable;
+              {operations.map((op) => {
+                const isDisabled = !material || !machineBrand || !laserType;
+                const count = operationCounts[op.value] || 0;
                 return (
                   <button
                     key={op.value}
@@ -277,13 +277,15 @@ export default function RasterAssistantTool() {
                         : "border-stone-100 bg-stone-50 opacity-40 cursor-not-allowed"
                     }`}
                   >
-                    <div className={`font-semibold ${!isDisabled ? "text-stone-900" : "text-stone-400"}`}>
-                      {op.label}
+                    <div className="flex items-center justify-between">
+                      <div className={`font-semibold ${!isDisabled ? "text-stone-900" : "text-stone-400"}`}>
+                        {op.label}
+                      </div>
+                      {!isDisabled && count > 0 && (
+                        <span className="text-xs text-emerald-600 font-medium">{count} setting{count !== 1 ? 's' : ''}</span>
+                      )}
                     </div>
-                    {!isAvailable && material && machineBrand && laserType && (
-                      <div className="text-xs text-stone-400 mt-1">No settings available for this combination</div>
-                    )}
-                    {isDisabled && (!material || !machineBrand || !laserType) && (
+                    {isDisabled && (
                       <div className="text-xs text-stone-400 mt-1">Select material, machine, and laser type first</div>
                     )}
                   </button>
