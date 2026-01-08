@@ -329,23 +329,16 @@ export default function Dashboard() {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-4" align="start">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Start Date</label>
-                  <CalendarComponent
-                    mode="single"
-                    selected={customStartDate}
-                    onSelect={(date) => setCustomStartDate(date)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">End Date</label>
-                  <CalendarComponent
-                    mode="single"
-                    selected={customEndDate}
-                    onSelect={(date) => setCustomEndDate(date)}
-                    disabled={(date) => customStartDate && date < customStartDate}
-                  />
-                </div>
+                <p className="text-sm text-stone-500">Select start and end dates</p>
+                <CalendarComponent
+                  mode="range"
+                  selected={{ from: customStartDate, to: customEndDate }}
+                  onSelect={(range) => {
+                    setCustomStartDate(range?.from || null);
+                    setCustomEndDate(range?.to || null);
+                  }}
+                  numberOfMonths={1}
+                />
                 <div className="flex gap-2">
                   <Button
                     size="sm"
