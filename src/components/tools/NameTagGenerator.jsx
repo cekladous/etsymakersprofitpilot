@@ -339,7 +339,6 @@ export default function NameTagGenerator() {
               <Button onClick={downloadSVG} className="bg-cyan-500 hover:bg-cyan-600">
                 <Download className="w-4 h-4 mr-2" />
                 Download SVG
-                <span className="ml-2 bg-cyan-700 px-2 py-0.5 rounded text-xs">PRO</span>
               </Button>
             </div>
           </CardContent>
