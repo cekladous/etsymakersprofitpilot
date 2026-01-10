@@ -33,6 +33,10 @@ export default function NameTagGenerator() {
   const [holeOffsetV, setHoleOffsetV] = useState(0.05);
   const [holeOverlap, setHoleOverlap] = useState(0.05);
   
+  const [bridgeWidth, setBridgeWidth] = useState(0.08);
+  const [connectorShape, setConnectorShape] = useState("rounded");
+  const [attachmentPoint, setAttachmentPoint] = useState("outer");
+  
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [debugInfo, setDebugInfo] = useState(null);
 
@@ -75,7 +79,7 @@ export default function NameTagGenerator() {
 
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, bridgeWidth, connectorShape, attachmentPoint]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -293,18 +297,43 @@ export default function NameTagGenerator() {
             const dotCenterX = xPos + charWidth / 2;
             const dotCenterY = y + pixelSize * 0.15;
             const dotRadius = strokeWidth * 1.8;
-            const stemTopY = y + pixelSize * 0.42;
-            const bridgeWidth = Math.max(strokeWidth * 1.5, 0.08 * dpi);
+            const stemTopY = y + pixelSize * (attachmentPoint === "outer" ? 0.42 : 0.5);
+            const bridgeWidthPx = Math.max(bridgeWidth * dpi, strokeWidth * 1.2);
             
             // Draw FILLED bridge (solid connection)
             ctx.fillStyle = "#ef4444";
             ctx.beginPath();
-            ctx.rect(
-              dotCenterX - bridgeWidth / 2,
-              dotCenterY + dotRadius,
-              bridgeWidth,
-              stemTopY - (dotCenterY + dotRadius)
-            );
+            
+            if (connectorShape === "capsule") {
+              const bridgeHeight = stemTopY - (dotCenterY + dotRadius);
+              const radius = bridgeWidthPx / 2;
+              ctx.arc(dotCenterX, dotCenterY + dotRadius + radius, radius, Math.PI, 0);
+              ctx.lineTo(dotCenterX + radius, stemTopY - radius);
+              ctx.arc(dotCenterX, stemTopY - radius, radius, 0, Math.PI);
+              ctx.closePath();
+            } else if (connectorShape === "tab") {
+              ctx.rect(
+                dotCenterX - bridgeWidthPx / 2,
+                dotCenterY + dotRadius,
+                bridgeWidthPx,
+                stemTopY - (dotCenterY + dotRadius)
+              );
+            } else { // rounded
+              const radius = bridgeWidthPx * 0.2;
+              const x = dotCenterX - bridgeWidthPx / 2;
+              const yStart = dotCenterY + dotRadius;
+              const h = stemTopY - yStart;
+              ctx.moveTo(x + radius, yStart);
+              ctx.lineTo(x + bridgeWidthPx - radius, yStart);
+              ctx.quadraticCurveTo(x + bridgeWidthPx, yStart, x + bridgeWidthPx, yStart + radius);
+              ctx.lineTo(x + bridgeWidthPx, yStart + h - radius);
+              ctx.quadraticCurveTo(x + bridgeWidthPx, yStart + h, x + bridgeWidthPx - radius, yStart + h);
+              ctx.lineTo(x + radius, yStart + h);
+              ctx.quadraticCurveTo(x, yStart + h, x, yStart + h - radius);
+              ctx.lineTo(x, yStart + radius);
+              ctx.quadraticCurveTo(x, yStart, x + radius, yStart);
+              ctx.closePath();
+            }
             ctx.fill();
             
             // Draw FILLED dot
@@ -362,7 +391,7 @@ export default function NameTagGenerator() {
         
         const outerRadius = holeDiameterPx / 2 + holeThicknessPx;
         const innerRadius = holeDiameterPx / 2;
-        const bridgeWidth = Math.max(holeThicknessPx * 1.5, 0.08 * dpi);
+        const bridgeWidthPx = Math.max(bridgeWidth * dpi, holeThicknessPx * 1.2);
         
         // Draw FILLED ring
         ctx.fillStyle = "#ef4444";
@@ -376,20 +405,58 @@ export default function NameTagGenerator() {
         ctx.beginPath();
         if (holeSide === "left" || holeSide === "right") {
           const edgeX = holeX + (holeSide === "left" ? outerRadius : -outerRadius);
-          ctx.rect(
-            Math.min(edgeX, connectionX),
-            holeY - bridgeWidth / 2,
-            Math.abs(connectionX - edgeX),
-            bridgeWidth
-          );
+          const distance = Math.abs(connectionX - edgeX);
+          const startX = Math.min(edgeX, connectionX);
+          
+          if (connectorShape === "capsule") {
+            const radius = bridgeWidthPx / 2;
+            ctx.arc(startX + radius, holeY, radius, Math.PI / 2, -Math.PI / 2);
+            ctx.lineTo(startX + distance - radius, holeY - radius);
+            ctx.arc(startX + distance - radius, holeY, radius, -Math.PI / 2, Math.PI / 2);
+            ctx.closePath();
+          } else if (connectorShape === "tab") {
+            ctx.rect(startX, holeY - bridgeWidthPx / 2, distance, bridgeWidthPx);
+          } else { // rounded
+            const radius = bridgeWidthPx * 0.3;
+            const y = holeY - bridgeWidthPx / 2;
+            ctx.moveTo(startX + radius, y);
+            ctx.lineTo(startX + distance - radius, y);
+            ctx.quadraticCurveTo(startX + distance, y, startX + distance, y + radius);
+            ctx.lineTo(startX + distance, y + bridgeWidthPx - radius);
+            ctx.quadraticCurveTo(startX + distance, y + bridgeWidthPx, startX + distance - radius, y + bridgeWidthPx);
+            ctx.lineTo(startX + radius, y + bridgeWidthPx);
+            ctx.quadraticCurveTo(startX, y + bridgeWidthPx, startX, y + bridgeWidthPx - radius);
+            ctx.lineTo(startX, y + radius);
+            ctx.quadraticCurveTo(startX, y, startX + radius, y);
+            ctx.closePath();
+          }
         } else {
           const edgeY = holeY + (holeSide === "top" ? outerRadius : -outerRadius);
-          ctx.rect(
-            holeX - bridgeWidth / 2,
-            Math.min(edgeY, connectionY),
-            bridgeWidth,
-            Math.abs(connectionY - edgeY)
-          );
+          const distance = Math.abs(connectionY - edgeY);
+          const startY = Math.min(edgeY, connectionY);
+          
+          if (connectorShape === "capsule") {
+            const radius = bridgeWidthPx / 2;
+            ctx.arc(holeX, startY + radius, radius, Math.PI, 0);
+            ctx.lineTo(holeX + radius, startY + distance - radius);
+            ctx.arc(holeX, startY + distance - radius, radius, 0, Math.PI);
+            ctx.closePath();
+          } else if (connectorShape === "tab") {
+            ctx.rect(holeX - bridgeWidthPx / 2, startY, bridgeWidthPx, distance);
+          } else { // rounded
+            const radius = bridgeWidthPx * 0.3;
+            const x = holeX - bridgeWidthPx / 2;
+            ctx.moveTo(x + radius, startY);
+            ctx.lineTo(x + bridgeWidthPx - radius, startY);
+            ctx.quadraticCurveTo(x + bridgeWidthPx, startY, x + bridgeWidthPx, startY + radius);
+            ctx.lineTo(x + bridgeWidthPx, startY + distance - radius);
+            ctx.quadraticCurveTo(x + bridgeWidthPx, startY + distance, x + bridgeWidthPx - radius, startY + distance);
+            ctx.lineTo(x + radius, startY + distance);
+            ctx.quadraticCurveTo(x, startY + distance, x, startY + distance - radius);
+            ctx.lineTo(x, startY + radius);
+            ctx.quadraticCurveTo(x, startY, x + radius, startY);
+            ctx.closePath();
+          }
         }
         ctx.fill();
         
@@ -677,6 +744,66 @@ Tags: ${debugInfo.tags}`}
                     </SelectContent>
                   </Select>
                 </div>
+
+                <Collapsible>
+                  <CollapsibleTrigger className="text-xs font-medium text-stone-600 cursor-pointer hover:text-stone-900 mt-2">
+                    Connector Options
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-2">
+                    <div>
+                      <Label className="text-xs">Bridge Width</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.02"
+                          max="0.5"
+                          value={bridgeWidth}
+                          onChange={(e) => setBridgeWidth(parseFloat(e.target.value) || 0.08)}
+                          className="flex-1"
+                        />
+                        <Select value="in" disabled>
+                          <SelectTrigger className="w-16">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="in">in</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-stone-500 mt-1">Width of connector bridges (default: 0.08 in)</p>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Connector Shape</Label>
+                      <Select value={connectorShape} onValueChange={setConnectorShape}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rounded">Rounded Rectangle</SelectItem>
+                          <SelectItem value="capsule">Capsule</SelectItem>
+                          <SelectItem value="tab">Simple Tab</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-stone-500 mt-1">Shape style for dot and hole connectors</p>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Attachment Point</Label>
+                      <Select value={attachmentPoint} onValueChange={setAttachmentPoint}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="outer">Outer Strokes (Preferred)</SelectItem>
+                          <SelectItem value="center">Center Balance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-stone-500 mt-1">Where to attach connectors on the text</p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <Collapsible>
                   <CollapsibleTrigger className="text-xs font-medium text-stone-600 cursor-pointer hover:text-stone-900">
