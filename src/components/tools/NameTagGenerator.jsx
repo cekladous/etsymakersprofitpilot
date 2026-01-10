@@ -81,20 +81,60 @@ export default function NameTagGenerator() {
     const pixelSize = getFontSizeInPixels();
     const nameList = names.split("\n").filter(n => n.trim());
     
-    const padding = 60;
-    const gridSize = dpi * 5;
-    
+    // First pass: measure all content to compute bounding box
     ctx.font = `italic ${pixelSize}px ${fontFamily}`;
-    let maxTextWidth = 0;
-    nameList.forEach(name => {
-      const width = ctx.measureText(name).width;
-      maxTextWidth = Math.max(maxTextWidth, width);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    const measurements = nameList.map((name, index) => {
+      const metrics = ctx.measureText(name);
+      const textWidth = metrics.width;
+      const yOffset = index * (pixelSize * 2);
+      
+      let bounds = {
+        x: 0,
+        y: yOffset,
+        width: textWidth,
+        height: pixelSize
+      };
+      
+      // Include hole in bounds if enabled
+      if (includeHole) {
+        const holeOffsetHPx = holeOffsetH * dpi;
+        const holeOffsetVPx = holeOffsetV * dpi;
+        const holeDiameterPx = holeDiameter * dpi;
+        const holeThicknessPx = holeThickness * dpi;
+        const holeRadius = holeDiameterPx / 2 + holeThicknessPx;
+        
+        if (holeSide === "left") {
+          bounds.x = Math.min(bounds.x, holeOffsetHPx - holeRadius);
+          bounds.width = Math.max(bounds.width, textWidth - holeOffsetHPx + holeRadius);
+        } else if (holeSide === "right") {
+          bounds.width = Math.max(bounds.width, textWidth + holeOffsetHPx + holeRadius);
+        } else if (holeSide === "top") {
+          bounds.y = Math.min(bounds.y, yOffset - holeOffsetVPx - holeRadius);
+          bounds.height = Math.max(bounds.height, pixelSize + holeOffsetVPx + holeRadius);
+        } else if (holeSide === "bottom") {
+          bounds.height = Math.max(bounds.height, pixelSize + holeOffsetVPx + holeRadius);
+        }
+      }
+      
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+      
+      return { name, textWidth, yOffset };
     });
     
-    const holeSpace = includeHole ? Math.abs(holeOffsetH) * dpi + (holeDiameter + holeThickness) * dpi : 0;
+    // Calculate padding (5% of width or 0.25in minimum)
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    const padding = Math.max(0.25 * dpi, contentWidth * 0.05);
+    const gridSize = dpi * 5;
     
-    canvas.width = maxTextWidth + padding * 2 + holeSpace + 100;
-    canvas.height = Math.max(400, nameList.length * (pixelSize * 1.8) + padding * 2);
+    // Set canvas size with padding
+    canvas.width = Math.max(800, contentWidth + padding * 2);
+    canvas.height = Math.max(500, contentHeight + padding * 2);
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -163,17 +203,14 @@ export default function NameTagGenerator() {
     }
 
     let maxWidth = 0;
+    const textStartX = padding - minX;
 
-    const textStartX = padding + (includeHole && holeSide === "left" ? holeSpace / 2 : 0);
-
-    nameList.forEach((name, index) => {
-      const yOffset = padding + index * (pixelSize * 1.8);
+    measurements.forEach(({ name, textWidth, yOffset }, index) => {
+      const yPos = padding + yOffset - minY;
       
       ctx.font = `italic ${pixelSize}px ${fontFamily}`;
       ctx.textBaseline = "alphabetic";
       
-      const metrics = ctx.measureText(name);
-      const textWidth = metrics.width;
       maxWidth = Math.max(maxWidth, textWidth);
       
       const baseStrokeWidth = pixelSize * 0.05;
@@ -183,7 +220,7 @@ export default function NameTagGenerator() {
       ctx.lineWidth = strokeWidth;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
-      ctx.strokeText(name, textStartX, yOffset + pixelSize * 0.75);
+      ctx.strokeText(name, textStartX, yPos + pixelSize * 0.75);
       
       if (connectMode === "dots and letters") {
         const chars = name.split("");
@@ -195,21 +232,29 @@ export default function NameTagGenerator() {
           
           if (lowerChar === "i" || lowerChar === "j" || char === "!") {
             const dotCenterX = xPos + charWidth / 2;
-            const dotCenterY = yOffset + pixelSize * 0.15;
-            const dotRadius = strokeWidth * 1.2;
-            const stemTopY = yOffset + pixelSize * 0.4;
-            const bridgeWidth = strokeWidth * 0.6;
+            const dotCenterY = yPos + pixelSize * 0.15;
+            const dotRadius = strokeWidth * 1.5;
+            const stemTopY = yPos + pixelSize * 0.42;
+            const bridgeWidth = Math.max(strokeWidth * 1.2, 0.08 * dpi);
             
+            // Draw filled bridge connector (no stroke, solid fill)
+            ctx.fillStyle = "#ef4444";
             ctx.beginPath();
             ctx.moveTo(dotCenterX - bridgeWidth / 2, dotCenterY + dotRadius);
             ctx.lineTo(dotCenterX - bridgeWidth / 2, stemTopY);
             ctx.lineTo(dotCenterX + bridgeWidth / 2, stemTopY);
             ctx.lineTo(dotCenterX + bridgeWidth / 2, dotCenterY + dotRadius);
             ctx.closePath();
-            ctx.strokeStyle = "#ef4444";
-            ctx.lineWidth = strokeWidth;
-            ctx.stroke();
+            ctx.fill();
             
+            // Draw filled dot (no stroke)
+            ctx.beginPath();
+            ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw outline on top
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = strokeWidth * 0.5;
             ctx.beginPath();
             ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
             ctx.stroke();
@@ -230,60 +275,75 @@ export default function NameTagGenerator() {
         switch (holeSide) {
           case "left":
             holeX = textStartX + holeOffsetHPx;
-            holeY = yOffset + holeOffsetVPx + pixelSize * 0.4;
+            holeY = yPos + holeOffsetVPx + pixelSize * 0.4;
             connectionX = textStartX;
-            connectionY = yOffset + pixelSize * 0.4;
+            connectionY = yPos + pixelSize * 0.4;
             break;
           case "right":
             holeX = textStartX + textWidth + holeOffsetHPx;
-            holeY = yOffset + holeOffsetVPx + pixelSize * 0.4;
+            holeY = yPos + holeOffsetVPx + pixelSize * 0.4;
             connectionX = textStartX + textWidth;
-            connectionY = yOffset + pixelSize * 0.4;
+            connectionY = yPos + pixelSize * 0.4;
             break;
           case "top":
             holeX = textStartX + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset - holeOffsetVPx;
+            holeY = yPos - holeOffsetVPx;
             connectionX = textStartX + textWidth / 2;
-            connectionY = yOffset + pixelSize * 0.2;
+            connectionY = yPos + pixelSize * 0.2;
             break;
           case "bottom":
             holeX = textStartX + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset + pixelSize + holeOffsetVPx;
+            holeY = yPos + pixelSize + holeOffsetVPx;
             connectionX = textStartX + textWidth / 2;
-            connectionY = yOffset + pixelSize * 0.8;
+            connectionY = yPos + pixelSize * 0.8;
             break;
         }
         
-        ctx.strokeStyle = "#ef4444";
-        ctx.lineWidth = strokeWidth;
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
-        ctx.stroke();
+        const outerRadius = holeDiameterPx / 2 + holeThicknessPx;
+        const innerRadius = holeDiameterPx / 2;
+        const bridgeWidth = Math.max(holeThicknessPx * 1.2, 0.08 * dpi);
         
+        // Draw filled ring (outer - inner)
+        ctx.fillStyle = "#ef4444";
         ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(holeX, holeY, outerRadius, 0, Math.PI * 2);
+        ctx.arc(holeX, holeY, innerRadius, 0, Math.PI * 2, true);
+        ctx.fill();
         
-        const bridgeWidth = holeThicknessPx * 0.8;
+        // Draw filled bridge connector
+        ctx.fillStyle = "#ef4444";
         ctx.beginPath();
         if (holeSide === "left" || holeSide === "right") {
-          ctx.moveTo(holeX + (holeSide === "left" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)), holeY - bridgeWidth / 2);
+          const edgeX = holeX + (holeSide === "left" ? outerRadius : -outerRadius);
+          ctx.moveTo(edgeX, holeY - bridgeWidth / 2);
           ctx.lineTo(connectionX, connectionY - bridgeWidth / 2);
           ctx.lineTo(connectionX, connectionY + bridgeWidth / 2);
-          ctx.lineTo(holeX + (holeSide === "left" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)), holeY + bridgeWidth / 2);
+          ctx.lineTo(edgeX, holeY + bridgeWidth / 2);
         } else {
-          ctx.moveTo(holeX - bridgeWidth / 2, holeY + (holeSide === "top" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)));
+          const edgeY = holeY + (holeSide === "top" ? outerRadius : -outerRadius);
+          ctx.moveTo(holeX - bridgeWidth / 2, edgeY);
           ctx.lineTo(connectionX - bridgeWidth / 2, connectionY);
           ctx.lineTo(connectionX + bridgeWidth / 2, connectionY);
-          ctx.lineTo(holeX + bridgeWidth / 2, holeY + (holeSide === "top" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)));
+          ctx.lineTo(holeX + bridgeWidth / 2, edgeY);
         }
         ctx.closePath();
+        ctx.fill();
+        
+        // Draw outlines
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = strokeWidth * 0.5;
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, outerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, innerRadius, 0, Math.PI * 2);
         ctx.stroke();
         
+        // Draw green indicator
         ctx.fillStyle = "#22c55e";
         ctx.globalAlpha = 0.3;
         ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx + 5, 0, Math.PI * 2);
+        ctx.arc(holeX, holeY, outerRadius + 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
         ctx.strokeStyle = "#16a34a";
@@ -292,8 +352,8 @@ export default function NameTagGenerator() {
       }
     });
 
-    const widthInches = (maxWidth / dpi).toFixed(2);
-    const heightInches = ((nameList.length * pixelSize * 1.2) / dpi).toFixed(2);
+    const widthInches = (contentWidth / dpi).toFixed(2);
+    const heightInches = (contentHeight / dpi).toFixed(2);
     setDimensions({ width: widthInches, height: heightInches });
     
     ctx.fillStyle = "#57534e";
