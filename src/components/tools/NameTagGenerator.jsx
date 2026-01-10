@@ -19,7 +19,7 @@ export default function NameTagGenerator() {
   const [customFonts, setCustomFonts] = useState([]);
   const [thicken, setThicken] = useState(0);
   const [connectMode, setConnectMode] = useState("letters");
-  const [letterSpacing, setLetterSpacing] = useState(0);
+
   const [cornerRounding, setCornerRounding] = useState(0);
   const [includeHole, setIncludeHole] = useState(false);
   const [holeDiameter, setHoleDiameter] = useState(0.25);
@@ -143,7 +143,7 @@ export default function NameTagGenerator() {
   // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background, letterSpacing]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -155,10 +155,10 @@ export default function NameTagGenerator() {
     const nameList = names.split("\n").filter(n => n.trim());
     
     // Set canvas size to accommodate all names with grid
-    const padding = 50;
+    const padding = 100; // Increased padding to prevent cutoff
     const gridSize = dpi; // 1 inch grid
     canvas.width = 1200;
-    canvas.height = Math.max(400, nameList.length * pixelSize * 2 + padding * 2);
+    canvas.height = Math.max(400, nameList.length * pixelSize * 2.5 + padding * 2);
 
     // Clear and draw background
     if (background === "light") {
@@ -204,7 +204,7 @@ export default function NameTagGenerator() {
     const newWarnings = [];
 
     nameList.forEach((name, index) => {
-      const yOffset = padding + index * pixelSize * 2;
+      const yOffset = padding + index * pixelSize * 2.5;
       
       // Configure text
       ctx.font = `${pixelSize}px ${fontFamily}`;
@@ -239,13 +239,14 @@ export default function NameTagGenerator() {
           let xPos = padding;
           chars.forEach((char) => {
             const charWidth = ctx.measureText(char).width;
-            if (char === "i" || char === "j" || char === "!" || char === "I" || char === "í" || char === "ï") {
-              // Draw connecting line from dot to stem
+            if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
+              // Draw thin vertical line connecting dot to stem
               ctx.beginPath();
-              ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.2);
-              ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.12);
-              ctx.lineWidth = Math.max(pixelSize * 0.04, 2);
+              ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.25);
+              ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.05);
+              ctx.lineWidth = Math.max(pixelSize * 0.03, 2);
               ctx.strokeStyle = textColor;
+              ctx.lineCap = "round";
               ctx.stroke();
             }
             xPos += charWidth;
@@ -381,19 +382,20 @@ export default function NameTagGenerator() {
         ctx.strokeText(name, margin, yOffset);
       }
       
-      // Connect dots for i, j, ! if mode is "dots and letters"
+      // Connect dots for i, j if mode is "dots and letters"
       if (connectMode === "dots and letters") {
         const chars = name.split("");
         let xPos = margin;
         chars.forEach((char) => {
           const charWidth = ctx.measureText(char).width;
-          if (char === "i" || char === "j" || char === "!" || char === "I" || char === "í" || char === "ï") {
-            // Draw connecting line from dot to stem
+          if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
+            // Draw thin vertical line connecting dot to stem
             ctx.beginPath();
-            ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.2);
-            ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.12);
-            ctx.lineWidth = Math.max(pixelSize * 0.04, 2);
+            ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.25);
+            ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.05);
+            ctx.lineWidth = Math.max(pixelSize * 0.03, 2);
             ctx.strokeStyle = "#000000";
+            ctx.lineCap = "round";
             ctx.stroke();
           }
           xPos += charWidth;
