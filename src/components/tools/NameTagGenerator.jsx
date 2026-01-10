@@ -175,20 +175,18 @@ export default function NameTagGenerator() {
   };
 
   const generateTextPath = async (text, x, y, size) => {
-    // For now, use canvas to measure and create a simple path
-    // This is a placeholder - real implementation would use opentype.js to generate proper vector paths
+    // Measure text width
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     ctx.font = `${size}px ${fontFamily}`;
     const metrics = ctx.measureText(text);
     const width = metrics.width * (1 + letterSpacing / 100);
 
-    // Simple text rendering as path (placeholder)
-    // Real implementation: use opentype.js to get glyph paths, apply thickening, welding, etc.
-    const pathD = `M ${x} ${y} L ${x + width} ${y} L ${x + width} ${y + size} L ${x} ${y + size} Z`;
+    // Render text with proper styling
+    const letterSpacingStyle = letterSpacing !== 0 ? `letter-spacing="${letterSpacing * size / 100}px"` : '';
     
     return {
-      path: `<path d="${pathD}" stroke="#ef4444" stroke-width="2" fill="none" />`,
+      path: `<text x="${x}" y="${y + size * 0.8}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2" ${letterSpacingStyle}>${text}</text>`,
       width: width,
       height: size
     };
