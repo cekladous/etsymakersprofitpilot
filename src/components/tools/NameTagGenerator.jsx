@@ -16,6 +16,9 @@ export default function NameTagGenerator() {
   const [names, setNames] = useState("Denise");
   const [fontSize, setFontSize] = useState(2.0); // Default in inches
   const [fontUnit, setFontUnit] = useState("in"); // Default to inches
+  
+  // Clamp font size to prevent blank preview
+  const clampedFontSize = Math.max(0.25, Math.min(12, fontSize));
   const [fontFamily, setFontFamily] = useState("Tempting");
   const [customFont, setCustomFont] = useState(null);
   const [thicken, setThicken] = useState(1.5);
@@ -44,10 +47,11 @@ export default function NameTagGenerator() {
 
   const getFontSizeInPixels = () => {
     const dpi = 96;
+    const size = clampedFontSize;
     if (fontUnit === "pt") {
-      return (fontSize * dpi) / 72;
+      return (size * dpi) / 72;
     } else {
-      return fontSize * dpi;
+      return size * dpi;
     }
   };
 
@@ -81,6 +85,12 @@ export default function NameTagGenerator() {
     const dpi = 96;
     const pixelSize = getFontSizeInPixels();
     const nameList = names.split("\n").filter(n => n.trim());
+    
+    // Validate pixelSize
+    if (!pixelSize || !isFinite(pixelSize) || pixelSize <= 0) {
+      console.error("Invalid pixel size:", pixelSize);
+      return;
+    }
     
     // STEP 1: Measure all text and compute FINAL geometry bounds
     ctx.font = `italic ${pixelSize}px ${fontFamily}`;
@@ -156,13 +166,28 @@ export default function NameTagGenerator() {
     const contentWidth = globalMaxX - globalMinX;
     const contentHeight = globalMaxY - globalMinY;
     
+    // Validate bounding box
+    if (!isFinite(contentWidth) || !isFinite(contentHeight) || contentWidth <= 0 || contentHeight <= 0) {
+      console.error("Invalid bbox:", { contentWidth, contentHeight, globalMinX, globalMinY, globalMaxX, globalMaxY });
+      // Fallback to safe defaults
+      canvas.width = 800;
+      canvas.height = 500;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Error: Unable to compute preview", canvas.width / 2, canvas.height / 2);
+      return;
+    }
+    
     // STEP 3: Add padding (max of 0.35in or 8% of largest dimension)
     const paddingIn = Math.max(0.35, 0.08 * Math.max(contentWidth / dpi, contentHeight / dpi));
     const padding = paddingIn * dpi;
     
     // STEP 4: Set canvas size to fit all content with padding
-    canvas.width = Math.max(800, contentWidth + padding * 2);
-    canvas.height = Math.max(500, contentHeight + padding * 2);
+    canvas.width = Math.max(800, Math.min(4000, contentWidth + padding * 2));
+    canvas.height = Math.max(500, Math.min(4000, contentHeight + padding * 2));
     
     // STEP 5: Clear and setup background
     ctx.fillStyle = "#ffffff";
@@ -516,11 +541,13 @@ Tags: ${debugInfo.tags}`}
                 <Input
                   type="number"
                   step={fontUnit === "pt" ? "1" : "0.1"}
-                  min={fontUnit === "pt" ? "1" : "0.1"}
-                  value={fontUnit === "pt" ? Math.round(fontSize * 72) : fontSize}
+                  min={fontUnit === "pt" ? "18" : "0.25"}
+                  max={fontUnit === "pt" ? "864" : "12"}
+                  value={fontUnit === "pt" ? Math.round(fontSize * 72) : fontSize.toFixed(1)}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0.1;
-                    setFontSize(fontUnit === "pt" ? val / 72 : val);
+                    const val = parseFloat(e.target.value) || 0.25;
+                    const inchVal = fontUnit === "pt" ? val / 72 : val;
+                    setFontSize(Math.max(0.25, Math.min(12, inchVal)));
                   }}
                   className="flex-1 bg-green-100"
                 />
@@ -543,11 +570,14 @@ Tags: ${debugInfo.tags}`}
               </div>
               <p className="text-xs text-stone-500 mt-1">
                 {fontUnit === "in" 
-                  ? `≈ ${Math.round(fontSize * 72)} pt` 
-                  : `≈ ${(fontSize / 72).toFixed(2)} in`}
+                  ? `≈ ${Math.round(clampedFontSize * 72)} pt` 
+                  : `≈ ${clampedFontSize.toFixed(2)} in`}
+                {clampedFontSize !== fontSize && (
+                  <span className="text-amber-600 ml-1">(clamped to valid range)</span>
+                )}
               </p>
               <p className="text-xs text-stone-500">
-                Font size for the connected text. This determines the overall size for the item.
+                Font size for the connected text. Range: 0.25–12 in
               </p>
             </div>
 
