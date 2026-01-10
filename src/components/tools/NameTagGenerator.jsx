@@ -94,11 +94,11 @@ export default function NameTagGenerator() {
     const nameList = names.split("\n").filter(n => n.trim());
     
     // Calculate required canvas size
-    const padding = 100;
-    const gridSize = dpi; // 1 inch grid
+    const padding = 80;
+    const gridSize = dpi * 5; // 5 inch grid
     
     // Measure maximum text width
-    ctx.font = `${pixelSize}px ${fontFamily}`;
+    ctx.font = `italic ${pixelSize}px ${fontFamily}`;
     let maxTextWidth = 0;
     nameList.forEach(name => {
       const width = ctx.measureText(name).width;
@@ -108,16 +108,16 @@ export default function NameTagGenerator() {
     // Add extra space for holes if enabled
     const holeSpace = includeHole ? (holeDiameter + holeOffsetH + holeThickness) * dpi * 2 : 0;
     
-    canvas.width = Math.max(1200, maxTextWidth + padding * 2 + holeSpace);
-    canvas.height = Math.max(400, nameList.length * (pixelSize * 1.5) + padding * 2);
+    canvas.width = Math.max(1000, maxTextWidth + padding * 2 + holeSpace);
+    canvas.height = Math.max(600, nameList.length * (pixelSize * 1.8) + padding * 2);
 
     // Clear and draw background
-    ctx.fillStyle = "#fafaf9";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid
-    ctx.strokeStyle = "#e7e5e4";
-    ctx.lineWidth = 1;
+    // Draw major grid lines (5 inch intervals)
+    ctx.strokeStyle = "#d6d3d1";
+    ctx.lineWidth = 1.5;
     for (let x = padding; x < canvas.width; x += gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -131,16 +131,54 @@ export default function NameTagGenerator() {
       ctx.stroke();
     }
 
-    // Draw ruler marks
-    ctx.fillStyle = "#78716c";
-    ctx.font = "10px sans-serif";
-    for (let x = padding; x < canvas.width; x += gridSize) {
-      const inch = Math.round((x - padding) / dpi);
-      ctx.fillText(`${inch}"`, x + 2, 12);
+    // Draw minor grid lines (1 inch intervals)
+    ctx.strokeStyle = "#e7e5e4";
+    ctx.lineWidth = 0.5;
+    for (let x = padding; x < canvas.width; x += dpi) {
+      if ((x - padding) % gridSize !== 0) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
     }
-    for (let y = padding; y < canvas.height; y += gridSize) {
+    for (let y = padding; y < canvas.height; y += dpi) {
+      if ((y - padding) % gridSize !== 0) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    // Draw ruler marks on top
+    ctx.fillStyle = "#57534e";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    for (let x = padding; x < canvas.width; x += dpi) {
+      const inch = Math.round((x - padding) / dpi);
+      ctx.fillText(`${inch}in`, x, 14);
+      // Draw tick mark
+      ctx.beginPath();
+      ctx.moveTo(x, 18);
+      ctx.lineTo(x, 25);
+      ctx.strokeStyle = "#78716c";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    
+    // Draw ruler marks on left
+    ctx.textAlign = "right";
+    for (let y = padding; y < canvas.height; y += dpi) {
       const inch = Math.round((y - padding) / dpi);
-      ctx.fillText(`${inch}"`, 5, y - 2);
+      ctx.fillText(`${inch}in`, 35, y + 4);
+      // Draw tick mark
+      ctx.beginPath();
+      ctx.moveTo(38, y);
+      ctx.lineTo(45, y);
+      ctx.strokeStyle = "#78716c";
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
     // Render each name
@@ -149,10 +187,10 @@ export default function NameTagGenerator() {
     const newWarnings = [];
 
     nameList.forEach((name, index) => {
-      const yOffset = padding + index * (pixelSize * 1.5);
+      const yOffset = padding + index * (pixelSize * 1.8);
       
       // Configure text
-      ctx.font = `bold ${pixelSize}px ${fontFamily}`;
+      ctx.font = `italic ${pixelSize}px ${fontFamily}`;
       ctx.textBaseline = "alphabetic";
       
       // Measure text
@@ -160,22 +198,18 @@ export default function NameTagGenerator() {
       const textWidth = metrics.width;
       maxWidth = Math.max(maxWidth, textWidth);
       
-      // Apply thickening via stroke
-      const strokeWidth = Math.max(2, (pixelSize * thicken) / 100);
+      // Calculate stroke width based on thicken
+      const baseStrokeWidth = pixelSize * 0.05; // Base stroke
+      const strokeWidth = baseStrokeWidth + (baseStrokeWidth * thicken / 100);
       
-      ctx.fillStyle = "#1c1917";
-      ctx.strokeStyle = "#1c1917";
+      // Draw text as RED OUTLINE only (like reference)
+      ctx.strokeStyle = "#ef4444";
       ctx.lineWidth = strokeWidth;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
+      ctx.strokeText(name, padding, yOffset + pixelSize * 0.75);
       
-      // Draw text with stroke first for thickness
-      if (strokeWidth > 0) {
-        ctx.strokeText(name, padding, yOffset + pixelSize * 0.8);
-      }
-      ctx.fillText(name, padding, yOffset + pixelSize * 0.8);
-      
-      // Connect dots for i, j, and ! to letter body
+      // Connect dots for i, j, and ! to letter body with bridge
       if (connectMode === "dots and letters") {
         const chars = name.split("");
         let xPos = padding;
@@ -185,24 +219,36 @@ export default function NameTagGenerator() {
           const lowerChar = char.toLowerCase();
           
           if (lowerChar === "i" || lowerChar === "j" || char === "!") {
-            // Draw thicker connecting line from letter to dot
+            const dotCenterX = xPos + charWidth / 2;
+            const dotCenterY = yOffset + pixelSize * 0.15;
+            const dotRadius = strokeWidth * 1.2;
+            
+            // Find connection point on letter body (top of stem)
+            const stemTopY = yOffset + pixelSize * 0.4;
+            
+            // Draw bridge connector (small nub from dot to letter)
+            const bridgeWidth = strokeWidth * 0.6;
             ctx.beginPath();
-            ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.5);
-            ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.1);
-            ctx.lineWidth = Math.max(strokeWidth * 0.8, 2);
+            ctx.moveTo(dotCenterX - bridgeWidth / 2, dotCenterY + dotRadius);
+            ctx.lineTo(dotCenterX - bridgeWidth / 2, stemTopY);
+            ctx.lineTo(dotCenterX + bridgeWidth / 2, stemTopY);
+            ctx.lineTo(dotCenterX + bridgeWidth / 2, dotCenterY + dotRadius);
+            ctx.closePath();
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = strokeWidth;
             ctx.stroke();
             
-            // Fill the dot area
+            // Draw the dot outline
             ctx.beginPath();
-            ctx.arc(xPos + charWidth / 2, yOffset + pixelSize * 0.1, strokeWidth * 1.5, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
+            ctx.stroke();
           }
           
           xPos += charWidth;
         });
       }
       
-      // Draw hole if enabled
+      // Draw hole with bridge connector if enabled
       if (includeHole) {
         const holeDiameterPx = holeDiameter * dpi;
         const holeThicknessPx = holeThickness * dpi;
@@ -210,62 +256,90 @@ export default function NameTagGenerator() {
         const holeOffsetVPx = holeOffsetV * dpi;
         const holeOverlapPx = holeOverlap * dpi;
         
-        let holeX, holeY;
+        let holeX, holeY, connectionX, connectionY;
         
         switch (holeSide) {
           case "left":
-            holeX = padding - holeOffsetHPx + holeOverlapPx;
+            holeX = padding - holeOffsetHPx;
             holeY = yOffset + holeOffsetVPx;
+            connectionX = padding;
+            connectionY = yOffset + pixelSize * 0.4;
             break;
           case "right":
-            holeX = padding + textWidth + holeOffsetHPx - holeOverlapPx;
+            holeX = padding + textWidth + holeOffsetHPx;
             holeY = yOffset + holeOffsetVPx;
+            connectionX = padding + textWidth;
+            connectionY = yOffset + pixelSize * 0.4;
             break;
           case "top":
             holeX = padding + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
+            holeY = yOffset - holeOffsetVPx;
+            connectionX = padding + textWidth / 2;
+            connectionY = yOffset + pixelSize * 0.2;
             break;
           case "bottom":
             holeX = padding + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
+            holeY = yOffset + pixelSize + holeOffsetVPx;
+            connectionX = padding + textWidth / 2;
+            connectionY = yOffset + pixelSize * 0.8;
             break;
         }
         
-        // Draw outer circle
+        // Draw outer circle outline
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = strokeWidth;
         ctx.beginPath();
         ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
-        ctx.fillStyle = "#1c1917";
-        ctx.fill();
+        ctx.stroke();
         
-        // Cut out inner circle
-        ctx.globalCompositeOperation = "destination-out";
+        // Draw inner circle (the actual hole)
         ctx.beginPath();
         ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = "source-over";
+        ctx.stroke();
         
-        // Draw connecting line to text
-        ctx.strokeStyle = "#1c1917";
-        ctx.lineWidth = holeThicknessPx;
-        ctx.lineCap = "round";
+        // Draw bridge connector (small tab connecting hole to text)
+        const bridgeWidth = holeThicknessPx * 0.8;
         ctx.beginPath();
         if (holeSide === "left" || holeSide === "right") {
-          ctx.moveTo(holeX, holeY);
-          ctx.lineTo(holeSide === "left" ? padding : padding + textWidth, yOffset + pixelSize / 2);
+          const midX = (holeX + connectionX) / 2;
+          ctx.moveTo(holeX + (holeSide === "left" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)), holeY - bridgeWidth / 2);
+          ctx.lineTo(connectionX, connectionY - bridgeWidth / 2);
+          ctx.lineTo(connectionX, connectionY + bridgeWidth / 2);
+          ctx.lineTo(holeX + (holeSide === "left" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)), holeY + bridgeWidth / 2);
         } else {
-          ctx.moveTo(holeX, holeY);
-          ctx.lineTo(padding + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
+          ctx.moveTo(holeX - bridgeWidth / 2, holeY + (holeSide === "top" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)));
+          ctx.lineTo(connectionX - bridgeWidth / 2, connectionY);
+          ctx.lineTo(connectionX + bridgeWidth / 2, connectionY);
+          ctx.lineTo(holeX + bridgeWidth / 2, holeY + (holeSide === "top" ? (holeDiameterPx / 2 + holeThicknessPx) : -(holeDiameterPx / 2 + holeThicknessPx)));
         }
+        ctx.closePath();
+        ctx.stroke();
+        
+        // Draw hole indicator (green circle like in reference)
+        ctx.fillStyle = "#22c55e";
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx + 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "#16a34a";
+        ctx.lineWidth = 2;
         ctx.stroke();
       }
       
       totalHeight = yOffset + pixelSize - padding;
     });
 
-    // Calculate dimensions in inches
+    // Calculate dimensions in inches (actual text bounds)
     const widthInches = (maxWidth / dpi).toFixed(2);
-    const heightInches = (totalHeight / dpi).toFixed(2);
+    const heightInches = ((nameList.length * pixelSize * 1.2) / dpi).toFixed(2);
     setDimensions({ width: widthInches, height: heightInches });
+    
+    // Draw dimensions at bottom left
+    ctx.fillStyle = "#57534e";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(`↔ ${widthInches} in   ↕ ${heightInches} in`, 50, canvas.height - 20);
 
     // Validation
     if (thicken > 0 && thicken < 5) {
@@ -363,12 +437,7 @@ export default function NameTagGenerator() {
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Live Preview</CardTitle>
-              <div className="text-sm text-stone-600">
-                {dimensions.width}" × {dimensions.height}"
-              </div>
-            </div>
+            <CardTitle>Live Preview</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white" style={{ maxHeight: "600px" }}>
@@ -413,29 +482,40 @@ export default function NameTagGenerator() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Label className="text-xs">Font Size</Label>
+                <div>
+                  <Label className="text-xs">Size</Label>
+                  <div className="flex gap-2 mt-1">
                     <Input
                       type="number"
-                      step="0.1"
-                      min="0.5"
-                      value={fontSize}
-                      onChange={(e) => setFontSize(parseFloat(e.target.value) || 1)}
+                      step="1"
+                      min="1"
+                      value={Math.round(fontSize * (fontUnit === "pt" ? 72 : 1))}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 1;
+                        setFontSize(fontUnit === "pt" ? val / 72 : val);
+                      }}
+                      className="flex-1"
                     />
-                  </div>
-                  <div className="w-20">
-                    <Label className="text-xs">Unit</Label>
-                    <Select value={fontUnit} onValueChange={setFontUnit}>
-                      <SelectTrigger>
+                    <Select value={fontUnit} onValueChange={(v) => {
+                      if (v === "pt" && fontUnit === "in") {
+                        setFontSize(fontSize * 72);
+                      } else if (v === "in" && fontUnit === "pt") {
+                        setFontSize(fontSize / 72);
+                      }
+                      setFontUnit(v);
+                    }}>
+                      <SelectTrigger className="w-16">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="in">in</SelectItem>
                         <SelectItem value="pt">pt</SelectItem>
+                        <SelectItem value="in">in</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                  <p className="text-xs text-stone-500 mt-1">
+                    {fontUnit === "pt" ? `${(fontSize / 72).toFixed(2)} in` : `${Math.round(fontSize * 72)} pt`}
+                  </p>
                 </div>
               </CardContent>
             </CollapsibleContent>
@@ -516,17 +596,22 @@ export default function NameTagGenerator() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label className="text-xs">Corner Rounding: {cornerRounding}%</Label>
-                  <Slider
-                    value={[cornerRounding]}
-                    onValueChange={([v]) => setCornerRounding(v)}
-                    min={0}
-                    max={100}
-                    step={10}
-                    className="mt-2"
-                  />
-                </div>
+                <details className="mt-2">
+                  <summary className="text-xs font-medium cursor-pointer text-stone-700 hover:text-stone-900">
+                    Show More Options
+                  </summary>
+                  <div className="mt-3">
+                    <Label className="text-xs">Corner Rounding: {cornerRounding}%</Label>
+                    <Slider
+                      value={[cornerRounding]}
+                      onValueChange={([v]) => setCornerRounding(v)}
+                      min={0}
+                      max={100}
+                      step={5}
+                      className="mt-2"
+                    />
+                  </div>
+                </details>
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
