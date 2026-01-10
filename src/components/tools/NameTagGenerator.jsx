@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import opentype from "opentype.js";
+import paper from "paper";
 
 export default function NameTagGenerator() {
   const [names, setNames] = useState("Christina");
@@ -175,21 +176,283 @@ export default function NameTagGenerator() {
   };
 
   const generateTextPath = async (text, x, y, size) => {
-    // Measure text width
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.font = `${size}px ${fontFamily}`;
-    const metrics = ctx.measureText(text);
-    const width = metrics.width * (1 + letterSpacing / 100);
+    try {
+      // Load font
+      let font;
+      if (loadedFonts[fontFamily]) {
+        font = loadedFonts[fontFamily];
+      } else {
+        // Use system fonts - create a temporary canvas to render
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = `${size}px ${fontFamily}`;
+        const metrics = ctx.measureText(text);
+        const width = metrics.width * (1 + letterSpacing / 100);
+        
+        // For now, render as text element (will be replaced with proper vector paths)
+        const letterSpacingValue = letterSpacing * size / 100;
+        
+        return {
+          path: `<text x="${x}" y="${y + size}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2" letter-spacing="${letterSpacingValue}" dominant-baseline="alphabetic">${text}</text>`,
+          width: width,
+          height: size
+        };
+      }
 
-    // Render text with proper styling - using dominant-baseline for better positioning
-    const letterSpacingValue = letterSpacing * size / 100;
-    
-    return {
-      path: `<text x="${x}" y="${y + size}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2" letter-spacing="${letterSpacingValue}" dominant-baseline="alphabetic">${text}</text>`,
-      width: width,
-      height: size
-    };
+      // Generate paths from loaded font using opentype.js
+      const path = font.getPath(text, x, y + size, size);
+      const pathData = path.toPathData(2);
+      
+      // Apply letter spacing if needed
+      let adjustedPath = pathData;
+      if (letterSpacing !== 0) {
+        const glyphs = font.stringToGlyphs(text);
+        let currentX = x;
+        const paths = [];
+        
+        glyphs.forEach((glyph, i) => {
+          const glyphPath = glyph.getPath(currentX, y + size, size);
+          paths.push(glyphPath.toPathData(2));
+          currentX += glyph.advanceWidth * (size / font.unitsPerEm) * (1 + letterSpacing / 100);
+        });
+        
+        adjustedPath = paths.join(' ');
+      }
+
+      // Apply welding if connect mode is "connect all (welded)"
+      let finalPath = adjustedPath;
+      if (connectMode === "connect all (welded)") {
+        finalPath = await weldPath(adjustedPath, font, text, x, y, size);
+      } else if (connectMode === "dots and letters") {
+        finalPath = await connectDotsToLetters(adjustedPath, font, text, x, y, size);
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = `${size}px ${fontFamily}`;
+      const metrics = ctx.measureText(text);
+      const width = metrics.width * (1 + letterSpacing / 100);
+
+      return {
+        path: `<path d="${finalPath}" fill="none" stroke="#ef4444" stroke-width="2" />`,
+        width: width,
+        height: size
+      };
+    } catch (error) {
+      console.error("Error generating text path:", error);
+      // Fallback to simple text rendering
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = `${size}px ${fontFamily}`;
+      const metrics = ctx.measureText(text);
+      const width = metrics.width * (1 + letterSpacing / 100);
+      
+      return {
+        path: `<text x="${x}" y="${y + size}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2">${text}</text>`,
+        width: width,
+        height: size
+      };
+    }
+  };
+
+  const weldPath = async (pathData, font, text, x, y, size) => {
+    try {
+      // Setup paper.js
+      const canvas = document.createElement('canvas');
+      canvas.width = 2000;
+      canvas.height = 1000;
+      paper.setup(canvas);
+
+      // Import the path
+      const mainPath = new paper.Path(pathData);
+      
+      // Get all separate components (disconnected parts)
+      const components = [];
+      mainPath.children?.forEach(child => {
+        if (child instanceof paper.Path) {
+          components.push(child);
+        }
+      });
+
+      if (components.length === 0) {
+        components.push(mainPath);
+      }
+
+      // Detect i and j dots (typically small, separate components above letters)
+      const dots = [];
+      const letters = [];
+      
+      components.forEach(comp => {
+        const bounds = comp.bounds;
+        if (bounds.width < size * 0.3 && bounds.height < size * 0.3) {
+          dots.push(comp);
+        } else {
+          letters.push(comp);
+        }
+      });
+
+      // Connect dots to their stems with filled nubs
+      dots.forEach(dot => {
+        const dotCenter = dot.bounds.center;
+        
+        // Find closest point on letter stems
+        let closestPoint = null;
+        let minDistance = Infinity;
+        
+        letters.forEach(letter => {
+          const point = letter.getNearestPoint(dotCenter);
+          const distance = dotCenter.getDistance(point);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPoint = point;
+          }
+        });
+
+        if (closestPoint && minDistance < size) {
+          // Create a small rounded nub/tab between dot and letter
+          const nubWidth = size * 0.08; // Small nub width
+          const midPoint = new paper.Point(
+            (dotCenter.x + closestPoint.x) / 2,
+            (dotCenter.y + closestPoint.y) / 2
+          );
+          
+          // Create capsule shape (rounded rectangle)
+          const nub = new paper.Path.Rectangle({
+            from: [dotCenter.x - nubWidth/2, dotCenter.y],
+            to: [dotCenter.x + nubWidth/2, closestPoint.y],
+            radius: nubWidth / 2
+          });
+          
+          // Union the nub with the dot
+          dot = dot.unite(nub);
+          nub.remove();
+        }
+      });
+
+      // Union all components together
+      let result = null;
+      [...letters, ...dots].forEach(comp => {
+        if (!result) {
+          result = comp;
+        } else {
+          const united = result.unite(comp);
+          result.remove();
+          comp.remove();
+          result = united;
+        }
+      });
+
+      // If there are still disconnected parts, add minimal connectors
+      if (result && result.children && result.children.length > 1) {
+        const allParts = result.children.slice();
+        let unified = allParts[0];
+        
+        for (let i = 1; i < allParts.length; i++) {
+          const part = allParts[i];
+          
+          // Find closest points between parts
+          const point1 = unified.bounds.rightCenter;
+          const point2 = part.bounds.leftCenter;
+          
+          // Create thin connector
+          const connector = new paper.Path.Rectangle({
+            from: point1,
+            to: point2,
+            radius: size * 0.05
+          });
+          
+          unified = unified.unite(part).unite(connector);
+          connector.remove();
+        }
+        
+        result = unified;
+      }
+
+      const exportedPath = result ? result.pathData : pathData;
+      
+      // Cleanup
+      paper.project.clear();
+      
+      return exportedPath;
+    } catch (error) {
+      console.error("Welding error:", error);
+      return pathData;
+    }
+  };
+
+  const connectDotsToLetters = async (pathData, font, text, x, y, size) => {
+    // Similar to weldPath but only connects dots, doesn't weld letters together
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2000;
+      canvas.height = 1000;
+      paper.setup(canvas);
+
+      const mainPath = new paper.Path(pathData);
+      const components = [];
+      
+      mainPath.children?.forEach(child => {
+        if (child instanceof paper.Path) {
+          components.push(child);
+        }
+      });
+
+      if (components.length === 0) {
+        components.push(mainPath);
+      }
+
+      // Detect dots
+      const dots = [];
+      const letters = [];
+      
+      components.forEach(comp => {
+        const bounds = comp.bounds;
+        if (bounds.width < size * 0.3 && bounds.height < size * 0.3) {
+          dots.push(comp);
+        } else {
+          letters.push(comp);
+        }
+      });
+
+      // Connect dots to stems
+      dots.forEach(dot => {
+        const dotCenter = dot.bounds.center;
+        let closestPoint = null;
+        let minDistance = Infinity;
+        
+        letters.forEach(letter => {
+          const point = letter.getNearestPoint(dotCenter);
+          const distance = dotCenter.getDistance(point);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPoint = point;
+          }
+        });
+
+        if (closestPoint && minDistance < size) {
+          const nubWidth = size * 0.08;
+          const nub = new paper.Path.Rectangle({
+            from: [dotCenter.x - nubWidth/2, dotCenter.y],
+            to: [dotCenter.x + nubWidth/2, closestPoint.y],
+            radius: nubWidth / 2
+          });
+          
+          dot = dot.unite(nub);
+          nub.remove();
+        }
+      });
+
+      // Export all paths together
+      let result = new paper.CompoundPath({ children: [...letters, ...dots] });
+      const exportedPath = result.pathData;
+      
+      paper.project.clear();
+      
+      return exportedPath;
+    } catch (error) {
+      console.error("Dot connection error:", error);
+      return pathData;
+    }
   };
 
   const downloadSVG = () => {
