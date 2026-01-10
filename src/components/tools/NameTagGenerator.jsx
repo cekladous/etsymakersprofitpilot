@@ -341,9 +341,9 @@ export default function NameTagGenerator() {
             ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
             ctx.fill();
             
-            // Draw outline
-            ctx.strokeStyle = "#ef4444";
-            ctx.lineWidth = strokeWidth * 0.3;
+            // Optional: Draw subtle outline
+            ctx.strokeStyle = "#dc2626";
+            ctx.lineWidth = strokeWidth * 0.2;
             ctx.beginPath();
             ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
             ctx.stroke();
@@ -460,25 +460,14 @@ export default function NameTagGenerator() {
         }
         ctx.fill();
         
-        // Draw outlines
-        ctx.strokeStyle = "#ef4444";
-        ctx.lineWidth = strokeWidth * 0.3;
+        // Draw subtle outlines only
+        ctx.strokeStyle = "#dc2626";
+        ctx.lineWidth = strokeWidth * 0.2;
         ctx.beginPath();
         ctx.arc(holeX, holeY, outerRadius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(holeX, holeY, innerRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // Green indicator
-        ctx.fillStyle = "#22c55e";
-        ctx.globalAlpha = 0.25;
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, outerRadius + 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = "#16a34a";
-        ctx.lineWidth = 2;
         ctx.stroke();
       }
     });
@@ -502,17 +491,216 @@ export default function NameTagGenerator() {
     ctx.textAlign = "left";
     ctx.fillText(`↔ ${widthInches} in (${widthMm} mm)   ↕ ${heightInches} in (${heightMm} mm)`, 10, canvas.height - 10);
     
-    // Debug info
+    // Debug info (collapsed by default)
     setDebugInfo({
       bbox: `(${globalMinX.toFixed(1)}, ${globalMinY.toFixed(1)}) → (${globalMaxX.toFixed(1)}, ${globalMaxY.toFixed(1)})`,
       padding: `${paddingIn.toFixed(2)} in`,
       thickness: `${thicken.toFixed(1)}%`,
-      tags: tags.length
+      tags: tags.length,
+      canvasSize: `${canvas.width}×${canvas.height}px`
     });
   };
 
   const downloadSVG = () => {
-    alert("SVG export with proper path offsetting coming soon!");
+    if (!names.trim()) return;
+    
+    const dpi = 96;
+    const pixelSize = getFontSizeInPixels();
+    const nameList = names.split("\n").filter(n => n.trim());
+    
+    // Create temporary canvas for text path extraction
+    const tempCanvas = document.createElement("canvas");
+    const ctx = tempCanvas.getContext("2d");
+    ctx.font = `italic ${pixelSize}px ${fontFamily}`;
+    
+    // Calculate bounds (same logic as preview)
+    const tags = nameList.map((name, index) => {
+      const metrics = ctx.measureText(name);
+      const textWidth = metrics.width;
+      const textHeight = pixelSize;
+      const thicknessOffset = (pixelSize * thicken) / 100;
+      
+      let minX = -thicknessOffset;
+      let minY = -thicknessOffset;
+      let maxX = textWidth + thicknessOffset;
+      let maxY = textHeight + thicknessOffset;
+      
+      if (includeHole) {
+        const holeDiameterPx = holeDiameter * dpi;
+        const holeThicknessPx = holeThickness * dpi;
+        const holeOffsetHPx = holeOffsetH * dpi;
+        const holeOffsetVPx = holeOffsetV * dpi;
+        const holeRadius = holeDiameterPx / 2 + holeThicknessPx;
+        
+        let holeX = 0, holeY = 0;
+        switch (holeSide) {
+          case "left":
+            holeX = holeOffsetHPx;
+            holeY = textHeight * 0.4 + holeOffsetVPx;
+            break;
+          case "right":
+            holeX = textWidth + holeOffsetHPx;
+            holeY = textHeight * 0.4 + holeOffsetVPx;
+            break;
+          case "top":
+            holeX = textWidth / 2 + holeOffsetHPx;
+            holeY = -holeOffsetVPx;
+            break;
+          case "bottom":
+            holeX = textWidth / 2 + holeOffsetHPx;
+            holeY = textHeight + holeOffsetVPx;
+            break;
+        }
+        
+        minX = Math.min(minX, holeX - holeRadius);
+        minY = Math.min(minY, holeY - holeRadius);
+        maxX = Math.max(maxX, holeX + holeRadius);
+        maxY = Math.max(maxY, holeY + holeRadius);
+      }
+      
+      return {
+        name,
+        textWidth,
+        textHeight,
+        bounds: { minX, minY, maxX, maxY },
+        yOffset: index * (pixelSize * 2.2)
+      };
+    });
+    
+    let globalMinX = Infinity, globalMinY = Infinity;
+    let globalMaxX = -Infinity, globalMaxY = -Infinity;
+    
+    tags.forEach(tag => {
+      globalMinX = Math.min(globalMinX, tag.bounds.minX);
+      globalMinY = Math.min(globalMinY, tag.bounds.minY + tag.yOffset);
+      globalMaxX = Math.max(globalMaxX, tag.bounds.maxX);
+      globalMaxY = Math.max(globalMaxY, tag.bounds.maxY + tag.yOffset);
+    });
+    
+    const contentWidth = globalMaxX - globalMinX;
+    const contentHeight = globalMaxY - globalMinY;
+    const paddingIn = Math.max(0.35, 0.08 * Math.max(contentWidth / dpi, contentHeight / dpi));
+    const padding = paddingIn * dpi;
+    
+    const svgWidth = contentWidth + padding * 2;
+    const svgHeight = contentHeight + padding * 2;
+    const offsetX = padding - globalMinX;
+    const offsetY = padding - globalMinY;
+    
+    // Build SVG
+    let svgPaths = [];
+    const strokeWidth = pixelSize * 0.05 + (pixelSize * 0.05 * thicken / 10);
+    
+    tags.forEach((tag) => {
+      const x = offsetX;
+      const y = offsetY + tag.yOffset;
+      
+      // Simple approximation: create stroked text as filled path
+      svgPaths.push(`<text x="${x}" y="${y + pixelSize * 0.75}" font-family="${fontFamily}" font-size="${pixelSize}" font-style="italic" fill="none" stroke="#ef4444" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round">${tag.name}</text>`);
+      
+      // Add dot connectors if enabled
+      if (connectMode === "dots and letters") {
+        const chars = tag.name.split("");
+        let xPos = x;
+        
+        chars.forEach((char) => {
+          const charWidth = ctx.measureText(char).width;
+          const lowerChar = char.toLowerCase();
+          
+          if (lowerChar === "i" || lowerChar === "j" || char === "!") {
+            const dotCenterX = xPos + charWidth / 2;
+            const dotCenterY = y + pixelSize * 0.15;
+            const dotRadius = strokeWidth * 1.8;
+            const stemTopY = y + pixelSize * (attachmentPoint === "outer" ? 0.42 : 0.5);
+            const bridgeWidthPx = Math.max(bridgeWidth * dpi, strokeWidth * 1.2);
+            
+            // Add bridge
+            svgPaths.push(`<rect x="${dotCenterX - bridgeWidthPx/2}" y="${dotCenterY + dotRadius}" width="${bridgeWidthPx}" height="${stemTopY - (dotCenterY + dotRadius)}" fill="#ef4444"/>`);
+            
+            // Add dot
+            svgPaths.push(`<circle cx="${dotCenterX}" cy="${dotCenterY}" r="${dotRadius}" fill="#ef4444"/>`);
+          }
+          
+          xPos += charWidth;
+        });
+      }
+      
+      // Add hole if enabled
+      if (includeHole) {
+        const holeDiameterPx = holeDiameter * dpi;
+        const holeThicknessPx = holeThickness * dpi;
+        const holeOffsetHPx = holeOffsetH * dpi;
+        const holeOffsetVPx = holeOffsetV * dpi;
+        
+        let holeX, holeY, connectionX, connectionY;
+        
+        switch (holeSide) {
+          case "left":
+            holeX = x + holeOffsetHPx;
+            holeY = y + pixelSize * 0.4 + holeOffsetVPx;
+            connectionX = x;
+            connectionY = y + pixelSize * 0.4;
+            break;
+          case "right":
+            holeX = x + tag.textWidth + holeOffsetHPx;
+            holeY = y + pixelSize * 0.4 + holeOffsetVPx;
+            connectionX = x + tag.textWidth;
+            connectionY = y + pixelSize * 0.4;
+            break;
+          case "top":
+            holeX = x + tag.textWidth / 2 + holeOffsetHPx;
+            holeY = y - holeOffsetVPx;
+            connectionX = x + tag.textWidth / 2;
+            connectionY = y + pixelSize * 0.2;
+            break;
+          case "bottom":
+            holeX = x + tag.textWidth / 2 + holeOffsetHPx;
+            holeY = y + pixelSize + holeOffsetVPx;
+            connectionX = x + tag.textWidth / 2;
+            connectionY = y + pixelSize * 0.8;
+            break;
+        }
+        
+        const outerRadius = holeDiameterPx / 2 + holeThicknessPx;
+        const innerRadius = holeDiameterPx / 2;
+        const bridgeWidthPx = Math.max(bridgeWidth * dpi, holeThicknessPx * 1.2);
+        
+        // Hole ring (filled with inner cutout)
+        svgPaths.push(`<circle cx="${holeX}" cy="${holeY}" r="${outerRadius}" fill="#ef4444"/>`);
+        svgPaths.push(`<circle cx="${holeX}" cy="${holeY}" r="${innerRadius}" fill="#ffffff"/>`);
+        
+        // Bridge connector
+        if (holeSide === "left" || holeSide === "right") {
+          const edgeX = holeX + (holeSide === "left" ? outerRadius : -outerRadius);
+          const startX = Math.min(edgeX, connectionX);
+          const distance = Math.abs(connectionX - edgeX);
+          svgPaths.push(`<rect x="${startX}" y="${holeY - bridgeWidthPx/2}" width="${distance}" height="${bridgeWidthPx}" fill="#ef4444"/>`);
+        } else {
+          const edgeY = holeY + (holeSide === "top" ? outerRadius : -outerRadius);
+          const startY = Math.min(edgeY, connectionY);
+          const distance = Math.abs(connectionY - edgeY);
+          svgPaths.push(`<rect x="${holeX - bridgeWidthPx/2}" y="${startY}" width="${bridgeWidthPx}" height="${distance}" fill="#ef4444"/>`);
+        }
+      }
+    });
+    
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
+  <g id="name-tags">
+    ${svgPaths.join("\n    ")}
+  </g>
+</svg>`;
+    
+    // Download
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `name-tag-${names.split("\n")[0].replace(/\s+/g, "-").toLowerCase()}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleZoomToFit = () => {
@@ -546,25 +734,24 @@ export default function NameTagGenerator() {
                 <Maximize2 className="w-4 h-4" />
               </Button>
             </div>
-            <div className="mt-3 flex justify-between items-center">
-              <div className="text-xs text-stone-600">
-                {debugInfo && (
-                  <details className="cursor-pointer">
-                    <summary className="hover:text-stone-900">Debug Info</summary>
-                    <pre className="mt-1 text-[10px] bg-stone-100 p-2 rounded">
-{`BBox: ${debugInfo.bbox}
-Padding: ${debugInfo.padding}
-Thickness: ${debugInfo.thickness}
-Tags: ${debugInfo.tags}`}
-                    </pre>
-                  </details>
-                )}
-              </div>
-              <Button onClick={downloadSVG} className="bg-cyan-500 hover:bg-cyan-600">
+            <div className="mt-3 flex justify-end items-center gap-3">
+              <Button onClick={downloadSVG} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                 <Download className="w-4 h-4 mr-2" />
                 Download SVG
               </Button>
             </div>
+            {debugInfo && (
+              <details className="mt-2 text-xs text-stone-600 cursor-pointer">
+                <summary className="hover:text-stone-900">Debug Info</summary>
+                <pre className="mt-1 text-[10px] bg-stone-100 p-2 rounded border border-stone-200">
+{`BBox: ${debugInfo.bbox}
+Padding: ${debugInfo.padding}
+Thickness: ${debugInfo.thickness}
+Tags: ${debugInfo.tags}
+Canvas: ${debugInfo.canvasSize}`}
+                </pre>
+              </details>
+            )}
           </CardContent>
         </Card>
 
