@@ -336,35 +336,49 @@ export default function NameTagGenerator() {
   const downloadSVG = () => {
     const nameList = names.split("\n").filter(n => n.trim());
     const dpi = 96;
+    const pixelSize = getFontSizeInPixels();
     
-    // Create SVG for each name
-    nameList.forEach((name, index) => {
-      const pixelSize = getFontSizeInPixels();
-      const tempCanvas = document.createElement("canvas");
-      const ctx = tempCanvas.getContext("2d");
-      
-      // Set up temporary canvas with transparent background
-      ctx.font = `${pixelSize}px ${fontFamily}`;
+    // Calculate dimensions for all names
+    const tempCanvas = document.createElement("canvas");
+    const ctx = tempCanvas.getContext("2d");
+    ctx.font = `${pixelSize}px ${fontFamily}`;
+    
+    let maxWidth = 0;
+    const nameWidths = nameList.map(name => {
       const metrics = ctx.measureText(name);
-      const textWidth = metrics.width;
-      const margin = includeHole ? holeDiameter * dpi + holeOffsetH * dpi : 20;
+      maxWidth = Math.max(maxWidth, metrics.width);
+      return metrics.width;
+    });
+    
+    const margin = includeHole ? holeDiameter * dpi + holeOffsetH * dpi : 20;
+    const spacing = pixelSize * 0.5; // Space between names
+    
+    // Calculate total canvas size
+    const canvasWidth = maxWidth + margin * 2;
+    const canvasHeight = nameList.length * (pixelSize * 1.5 + spacing) + margin * 2;
+    
+    tempCanvas.width = canvasWidth;
+    tempCanvas.height = canvasHeight;
+    
+    // Draw all names on one canvas
+    ctx.font = `${pixelSize}px ${fontFamily}`;
+    ctx.fillStyle = "#000000";
+    ctx.textBaseline = "top";
+    
+    const strokeWidth = (pixelSize * thicken) / 100;
+    
+    nameList.forEach((name, index) => {
+      const yOffset = margin + index * (pixelSize * 1.5 + spacing);
       
-      tempCanvas.width = textWidth + margin * 2;
-      tempCanvas.height = pixelSize * 1.5 + margin * 2;
+      // Draw text
+      ctx.fillText(name, margin, yOffset);
       
-      // Draw text on transparent canvas
-      ctx.font = `${pixelSize}px ${fontFamily}`;
-      ctx.fillStyle = "#000000";
-      ctx.textBaseline = "top";
-      ctx.fillText(name, margin, margin);
-      
-      const strokeWidth = (pixelSize * thicken) / 100;
       if (strokeWidth > 0) {
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = strokeWidth;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
-        ctx.strokeText(name, margin, margin);
+        ctx.strokeText(name, margin, yOffset);
       }
       
       // Draw hole if enabled
@@ -376,22 +390,24 @@ export default function NameTagGenerator() {
         const holeOverlapPx = holeOverlap * dpi;
         
         let holeX, holeY;
+        const textWidth = nameWidths[index];
+        
         switch (holeSide) {
           case "left":
             holeX = margin - holeOffsetHPx + holeOverlapPx;
-            holeY = margin + holeOffsetVPx;
+            holeY = yOffset + holeOffsetVPx;
             break;
           case "right":
             holeX = margin + textWidth + holeOffsetHPx - holeOverlapPx;
-            holeY = margin + holeOffsetVPx;
+            holeY = yOffset + holeOffsetVPx;
             break;
           case "top":
             holeX = margin + textWidth / 2 + holeOffsetHPx;
-            holeY = margin - holeOffsetVPx + holeOverlapPx;
+            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
             break;
           case "bottom":
             holeX = margin + textWidth / 2 + holeOffsetHPx;
-            holeY = margin + pixelSize + holeOffsetVPx - holeOverlapPx;
+            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
             break;
         }
         
@@ -412,38 +428,38 @@ export default function NameTagGenerator() {
         ctx.beginPath();
         if (holeSide === "left" || holeSide === "right") {
           ctx.moveTo(holeX, holeY);
-          ctx.lineTo(holeSide === "left" ? margin : margin + textWidth, margin + pixelSize / 2);
+          ctx.lineTo(holeSide === "left" ? margin : margin + textWidth, yOffset + pixelSize / 2);
         } else {
           ctx.moveTo(holeX, holeY);
-          ctx.lineTo(margin + textWidth / 2, holeSide === "top" ? margin : margin + pixelSize);
+          ctx.lineTo(margin + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
         }
         ctx.stroke();
       }
-      
-      // Create clean SVG with transparent background
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("width", `${(tempCanvas.width / dpi).toFixed(3)}in`);
-      svg.setAttribute("height", `${(tempCanvas.height / dpi).toFixed(3)}in`);
-      svg.setAttribute("viewBox", `0 0 ${tempCanvas.width} ${tempCanvas.height}`);
-      svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
-      
-      const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-      image.setAttribute("xlink:href", tempCanvas.toDataURL("image/png"));
-      image.setAttribute("width", tempCanvas.width);
-      image.setAttribute("height", tempCanvas.height);
-      svg.appendChild(image);
-      
-      // Download
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${name.toLowerCase().replace(/\s+/g, "-")}-nametag.svg`;
-      link.click();
-      URL.revokeObjectURL(url);
     });
+    
+    // Create clean SVG with transparent background
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", `${(canvasWidth / dpi).toFixed(3)}in`);
+    svg.setAttribute("height", `${(canvasHeight / dpi).toFixed(3)}in`);
+    svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`);
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+    
+    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    image.setAttribute("xlink:href", tempCanvas.toDataURL("image/png"));
+    image.setAttribute("width", canvasWidth);
+    image.setAttribute("height", canvasHeight);
+    svg.appendChild(image);
+    
+    // Download
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nametags-${nameList.length}.svg`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // Download PNG
