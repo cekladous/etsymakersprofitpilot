@@ -16,7 +16,7 @@ export default function NameTagGenerator() {
   const [fontSize, setFontSize] = useState(2);
   const [fontUnit, setFontUnit] = useState("in");
   const [fontFamily, setFontFamily] = useState("Brush Script MT");
-  const [customFont, setCustomFont] = useState(null);
+  const [customFonts, setCustomFonts] = useState([]);
   const [thicken, setThicken] = useState(0);
   const [connectMode, setConnectMode] = useState("letters");
   const [cornerRounding, setCornerRounding] = useState(0);
@@ -38,17 +38,49 @@ export default function NameTagGenerator() {
   const svgRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const scriptFonts = [
-    "Brush Script MT",
-    "Lucida Handwriting",
-    "Edwardian Script ITC",
-    "Freestyle Script",
-    "French Script MT",
-    "Kunstler Script",
-    "Mistral",
-    "Script MT Bold",
-    "cursive",
-  ];
+  const fontCategories = {
+    script: [
+      { name: "Brush Script MT", label: "Brush Script" },
+      { name: "Lucida Handwriting", label: "Lucida Handwriting" },
+      { name: "Edwardian Script ITC", label: "Edwardian Script" },
+      { name: "Freestyle Script", label: "Freestyle Script" },
+      { name: "French Script MT", label: "French Script" },
+      { name: "Kunstler Script", label: "Kunstler Script" },
+      { name: "Mistral", label: "Mistral" },
+      { name: "Script MT Bold", label: "Script Bold" },
+    ],
+    cursive: [
+      { name: "cursive", label: "Default Cursive" },
+    ],
+    serif: [
+      { name: "serif", label: "Serif" },
+      { name: "Georgia", label: "Georgia" },
+    ],
+    modern: [
+      { name: "sans-serif", label: "Sans Serif" },
+      { name: "Arial", label: "Arial" },
+    ]
+  };
+
+  // Load custom fonts from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('nametag-custom-fonts');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setCustomFonts(parsed);
+        // Reload fonts into browser
+        parsed.forEach(font => {
+          const fontFace = new FontFace(font.name, `url(${font.data})`);
+          fontFace.load().then(loadedFont => {
+            document.fonts.add(loadedFont);
+          }).catch(err => console.error("Font reload failed:", err));
+        });
+      } catch (e) {
+        console.error("Failed to load custom fonts:", e);
+      }
+    }
+  }, []);
 
   // Convert font size to pixels
   const getFontSizeInPixels = () => {
@@ -66,11 +98,26 @@ export default function NameTagGenerator() {
     if (file && (file.name.endsWith(".ttf") || file.name.endsWith(".otf"))) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const fontFace = new FontFace("CustomUploadedFont", `url(${event.target.result})`);
+        const fontName = file.name.replace(/\.(ttf|otf)$/, '').replace(/[^a-zA-Z0-9]/g, '');
+        const uniqueFontName = `Custom_${fontName}_${Date.now()}`;
+        
+        const fontFace = new FontFace(uniqueFontName, `url(${event.target.result})`);
         fontFace.load().then((loadedFont) => {
           document.fonts.add(loadedFont);
-          setCustomFont("CustomUploadedFont");
-          setFontFamily("CustomUploadedFont");
+          
+          // Store in state and localStorage
+          const newFont = {
+            name: uniqueFontName,
+            displayName: file.name.replace(/\.(ttf|otf)$/, ''),
+            data: event.target.result,
+            uploadedAt: new Date().toISOString()
+          };
+          
+          const updatedFonts = [...customFonts, newFont];
+          setCustomFonts(updatedFonts);
+          localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
+          
+          setFontFamily(uniqueFontName);
         }).catch((err) => {
           console.error("Font loading failed:", err);
         });
@@ -79,10 +126,22 @@ export default function NameTagGenerator() {
     }
   };
 
+  // Delete custom font
+  const deleteCustomFont = (fontName) => {
+    const updatedFonts = customFonts.filter(f => f.name !== fontName);
+    setCustomFonts(updatedFonts);
+    localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
+    
+    // If deleted font was selected, switch to default
+    if (fontFamily === fontName) {
+      setFontFamily("Brush Script MT");
+    }
+  };
+
   // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -445,12 +504,56 @@ export default function NameTagGenerator() {
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      {scriptFonts.map(font => (
-                        <SelectItem key={font} value={font}>{font}</SelectItem>
+                    <SelectContent className="max-h-96">
+                      {Object.entries(fontCategories).map(([category, fonts]) => (
+                        <div key={category}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-stone-500 uppercase">
+                            {category}
+                          </div>
+                          {fonts.map(font => (
+                            <SelectItem 
+                              key={font.name} 
+                              value={font.name}
+                              style={{ fontFamily: font.name }}
+                              className="pl-6"
+                            >
+                              <span style={{ fontFamily: font.name }}>
+                                {font.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </div>
                       ))}
-                      {customFont && (
-                        <SelectItem value={customFont}>Custom Font</SelectItem>
+                      
+                      {customFonts.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-stone-500 uppercase">
+                            My Custom Fonts
+                          </div>
+                          {customFonts.map(font => (
+                            <div key={font.name} className="flex items-center group">
+                              <SelectItem 
+                                value={font.name}
+                                style={{ fontFamily: font.name }}
+                                className="pl-6 flex-1"
+                              >
+                                <span style={{ fontFamily: font.name }}>
+                                  {font.displayName}
+                                </span>
+                              </SelectItem>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteCustomFont(font.name);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 px-2 py-1 text-red-600 hover:text-red-700 text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </SelectContent>
                   </Select>
