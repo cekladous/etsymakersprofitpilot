@@ -1,64 +1,66 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Download, Upload, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Download, Upload, RotateCcw, ChevronDown, Maximize2 } from "lucide-react";
 
 export default function NameTagGenerator() {
-  const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
-  
   const [names, setNames] = useState("Denise");
-  const [fontSize, setFontSize] = useState(2.0); // Default in inches
-  const [fontUnit, setFontUnit] = useState("in"); // Default to inches
-  
-  // Clamp font size to prevent blank preview
-  const clampedFontSize = Math.max(0.25, Math.min(12, fontSize));
-  const [fontFamily, setFontFamily] = useState("Tempting");
+  const [fontSize, setFontSize] = useState(2);
+  const [fontUnit, setFontUnit] = useState("in");
+  const [fontFamily, setFontFamily] = useState("Brush Script MT");
   const [customFont, setCustomFont] = useState(null);
-  const [thicken, setThicken] = useState(1.5);
-  const [connectMode, setConnectMode] = useState("dots and letters");
-  const [cornerRounding, setCornerRounding] = useState(0.5);
-  
+  const [thicken, setThicken] = useState(0);
+  const [connectMode, setConnectMode] = useState("letters");
+  const [cornerRounding, setCornerRounding] = useState(0);
   const [includeHole, setIncludeHole] = useState(false);
-  const [holeDiameter, setHoleDiameter] = useState(0.19);
-  const [holeThickness, setHoleThickness] = useState(0.12);
+  const [holeDiameter, setHoleDiameter] = useState(0.25);
+  const [holeThickness, setHoleThickness] = useState(0.125);
   const [holeSide, setHoleSide] = useState("left");
-  const [holeOffsetH, setHoleOffsetH] = useState(-0.50);
-  const [holeOffsetV, setHoleOffsetV] = useState(0.05);
-  const [holeOverlap, setHoleOverlap] = useState(0.05);
-  
-  const [bridgeWidth, setBridgeWidth] = useState(0.08);
-  const [connectorShape, setConnectorShape] = useState("rounded");
-  const [attachmentPoint, setAttachmentPoint] = useState("outer");
-  
+  const [holeOffsetH, setHoleOffsetH] = useState(0.25);
+  const [holeOffsetV, setHoleOffsetV] = useState(0.5);
+  const [holeOverlap, setHoleOverlap] = useState(0.1);
+  const [warnings, setWarnings] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [debugInfo, setDebugInfo] = useState(null);
+  
+  const [fontOpen, setFontOpen] = useState(true);
+  const [sizeOpen, setSizeOpen] = useState(true);
+  const [holeOpen, setHoleOpen] = useState(false);
+  
+  const canvasRef = useRef(null);
+  const svgRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scriptFonts = [
-    "Tempting",
     "Brush Script MT",
     "Lucida Handwriting",
+    "Edwardian Script ITC",
+    "Freestyle Script",
+    "French Script MT",
+    "Kunstler Script",
+    "Mistral",
+    "Script MT Bold",
     "cursive",
-    "serif",
-    "sans-serif",
   ];
 
+  // Convert font size to pixels
   const getFontSizeInPixels = () => {
     const dpi = 96;
-    const size = clampedFontSize;
     if (fontUnit === "pt") {
-      return (size * dpi) / 72;
+      return (fontSize * dpi) / 72;
     } else {
-      return size * dpi;
+      return fontSize * dpi;
     }
   };
 
+  // Handle custom font upload
   const handleFontUpload = (e) => {
     const file = e.target.files[0];
     if (file && (file.name.endsWith(".ttf") || file.name.endsWith(".otf"))) {
@@ -77,9 +79,10 @@ export default function NameTagGenerator() {
     }
   };
 
+  // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, bridgeWidth, connectorShape, attachmentPoint]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -90,1057 +93,554 @@ export default function NameTagGenerator() {
     const pixelSize = getFontSizeInPixels();
     const nameList = names.split("\n").filter(n => n.trim());
     
-    // Validate pixelSize
-    if (!pixelSize || !isFinite(pixelSize) || pixelSize <= 0) {
-      console.error("Invalid pixel size:", pixelSize);
-      return;
-    }
-    
-    // STEP 1: Measure all text and compute FINAL geometry bounds
-    ctx.font = `italic ${pixelSize}px ${fontFamily}`;
-    
-    const tags = nameList.map((name, index) => {
-      const metrics = ctx.measureText(name);
-      const textWidth = metrics.width;
-      const textHeight = pixelSize;
-      
-      // Apply thickness offset (simulate path expansion)
-      const thicknessOffset = (pixelSize * thicken) / 100;
-      
-      // Base text bounds with thickness
-      let minX = -thicknessOffset;
-      let minY = -thicknessOffset;
-      let maxX = textWidth + thicknessOffset;
-      let maxY = textHeight + thicknessOffset;
-      
-      // Include hole bounds if enabled
-      if (includeHole) {
-        const holeDiameterPx = holeDiameter * dpi;
-        const holeThicknessPx = holeThickness * dpi;
-        const holeOffsetHPx = holeOffsetH * dpi;
-        const holeOffsetVPx = holeOffsetV * dpi;
-        const holeRadius = holeDiameterPx / 2 + holeThicknessPx;
-        
-        let holeX = 0, holeY = 0;
-        switch (holeSide) {
-          case "left":
-            holeX = holeOffsetHPx;
-            holeY = textHeight * 0.4 + holeOffsetVPx;
-            break;
-          case "right":
-            holeX = textWidth + holeOffsetHPx;
-            holeY = textHeight * 0.4 + holeOffsetVPx;
-            break;
-          case "top":
-            holeX = textWidth / 2 + holeOffsetHPx;
-            holeY = -holeOffsetVPx;
-            break;
-          case "bottom":
-            holeX = textWidth / 2 + holeOffsetHPx;
-            holeY = textHeight + holeOffsetVPx;
-            break;
-        }
-        
-        minX = Math.min(minX, holeX - holeRadius);
-        minY = Math.min(minY, holeY - holeRadius);
-        maxX = Math.max(maxX, holeX + holeRadius);
-        maxY = Math.max(maxY, holeY + holeRadius);
-      }
-      
-      return {
-        name,
-        textWidth,
-        textHeight,
-        bounds: { minX, minY, maxX, maxY },
-        yOffset: index * (pixelSize * 2.2)
-      };
-    });
-    
-    // STEP 2: Compute overall bounding box
-    let globalMinX = Infinity, globalMinY = Infinity;
-    let globalMaxX = -Infinity, globalMaxY = -Infinity;
-    
-    tags.forEach(tag => {
-      globalMinX = Math.min(globalMinX, tag.bounds.minX);
-      globalMinY = Math.min(globalMinY, tag.bounds.minY + tag.yOffset);
-      globalMaxX = Math.max(globalMaxX, tag.bounds.maxX);
-      globalMaxY = Math.max(globalMaxY, tag.bounds.maxY + tag.yOffset);
-    });
-    
-    const contentWidth = globalMaxX - globalMinX;
-    const contentHeight = globalMaxY - globalMinY;
-    
-    // Validate bounding box
-    if (!isFinite(contentWidth) || !isFinite(contentHeight) || contentWidth <= 0 || contentHeight <= 0) {
-      console.error("Invalid bbox:", { contentWidth, contentHeight, globalMinX, globalMinY, globalMaxX, globalMaxY });
-      // Fallback to safe defaults
-      canvas.width = 800;
-      canvas.height = 500;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#ef4444";
-      ctx.font = "16px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("Error: Unable to compute preview", canvas.width / 2, canvas.height / 2);
-      return;
-    }
-    
-    // STEP 3: Add padding (max of 0.35in or 8% of largest dimension)
-    const paddingIn = Math.max(0.35, 0.08 * Math.max(contentWidth / dpi, contentHeight / dpi));
-    const padding = paddingIn * dpi;
-    
-    // STEP 4: Set canvas size to fit all content with padding
-    canvas.width = Math.max(800, Math.min(4000, contentWidth + padding * 2));
-    canvas.height = Math.max(500, Math.min(4000, contentHeight + padding * 2));
-    
-    // STEP 5: Clear and setup background
-    ctx.fillStyle = "#ffffff";
+    // Set canvas size to accommodate all names with grid
+    const padding = 50;
+    const gridSize = dpi; // 1 inch grid
+    canvas.width = 1200;
+    canvas.height = Math.max(400, nameList.length * pixelSize * 2 + padding * 2);
+
+    // Clear and draw background
+    ctx.fillStyle = "#fafaf9";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw grid (5 inch major, 1 inch minor)
-    const gridSize = dpi * 5;
-    ctx.strokeStyle = "#d6d3d1";
-    ctx.lineWidth = 1.5;
-    for (let x = 0; x < canvas.width; x += gridSize) {
+
+    // Draw grid
+    ctx.strokeStyle = "#e7e5e4";
+    ctx.lineWidth = 1;
+    for (let x = padding; x < canvas.width; x += gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvas.height);
       ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += gridSize) {
+    for (let y = padding; y < canvas.height; y += gridSize) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(canvas.width, y);
       ctx.stroke();
     }
-    
-    // Minor grid
-    ctx.strokeStyle = "#e7e5e4";
-    ctx.lineWidth = 0.5;
-    for (let x = 0; x < canvas.width; x += dpi) {
-      if (x % gridSize !== 0) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-    }
-    for (let y = 0; y < canvas.height; y += dpi) {
-      if (y % gridSize !== 0) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-    }
-    
-    // Ruler marks
-    ctx.fillStyle = "#57534e";
-    ctx.font = "11px sans-serif";
-    ctx.textAlign = "center";
-    for (let x = 0; x < canvas.width; x += dpi) {
-      const inch = Math.round(x / dpi);
-      ctx.fillText(`${inch}in`, x, 14);
-      ctx.beginPath();
-      ctx.moveTo(x, 18);
-      ctx.lineTo(x, 25);
-      ctx.strokeStyle = "#78716c";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    
-    ctx.textAlign = "right";
-    for (let y = 0; y < canvas.height; y += dpi) {
-      const inch = Math.round(y / dpi);
-      ctx.fillText(`${inch}in`, 35, y + 4);
-      ctx.beginPath();
-      ctx.moveTo(38, y);
-      ctx.lineTo(45, y);
-      ctx.strokeStyle = "#78716c";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    
-    // STEP 6: Calculate transform to center content
-    const offsetX = padding - globalMinX;
-    const offsetY = padding - globalMinY;
-    
-    // STEP 7: Render each tag with proper thickness
-    tags.forEach((tag) => {
-      const x = offsetX;
-      const y = offsetY + tag.yOffset;
-      
-      ctx.font = `italic ${pixelSize}px ${fontFamily}`;
-      ctx.textBaseline = "alphabetic";
-      
-      // Calculate effective stroke width based on thickness
-      const baseStrokeWidth = pixelSize * 0.05;
-      const strokeWidth = baseStrokeWidth + (baseStrokeWidth * thicken / 10); // Scale properly
-      
-      // Draw text outline (RED)
-      ctx.strokeStyle = "#ef4444";
-      ctx.lineWidth = strokeWidth;
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      ctx.strokeText(tag.name, x, y + pixelSize * 0.75);
-      
-      // Connect dots with SOLID bridges (no floating islands)
-      if (connectMode === "dots and letters") {
-        const chars = tag.name.split("");
-        let xPos = x;
-        
-        chars.forEach((char) => {
-          const charWidth = ctx.measureText(char).width;
-          const lowerChar = char.toLowerCase();
-          
-          if (lowerChar === "i" || lowerChar === "j" || char === "!") {
-            const dotCenterX = xPos + charWidth / 2;
-            const dotCenterY = y + pixelSize * 0.15;
-            const dotRadius = strokeWidth * 1.8;
-            const stemTopY = y + pixelSize * (attachmentPoint === "outer" ? 0.42 : 0.5);
-            const bridgeWidthPx = Math.max(bridgeWidth * dpi, strokeWidth * 1.2);
-            
-            // Draw FILLED bridge (solid connection)
-            ctx.fillStyle = "#ef4444";
-            ctx.beginPath();
-            
-            if (connectorShape === "capsule") {
-              const bridgeHeight = stemTopY - (dotCenterY + dotRadius);
-              const radius = bridgeWidthPx / 2;
-              ctx.arc(dotCenterX, dotCenterY + dotRadius + radius, radius, Math.PI, 0);
-              ctx.lineTo(dotCenterX + radius, stemTopY - radius);
-              ctx.arc(dotCenterX, stemTopY - radius, radius, 0, Math.PI);
-              ctx.closePath();
-            } else if (connectorShape === "tab") {
-              ctx.rect(
-                dotCenterX - bridgeWidthPx / 2,
-                dotCenterY + dotRadius,
-                bridgeWidthPx,
-                stemTopY - (dotCenterY + dotRadius)
-              );
-            } else { // rounded
-              const radius = bridgeWidthPx * 0.2;
-              const x = dotCenterX - bridgeWidthPx / 2;
-              const yStart = dotCenterY + dotRadius;
-              const h = stemTopY - yStart;
-              ctx.moveTo(x + radius, yStart);
-              ctx.lineTo(x + bridgeWidthPx - radius, yStart);
-              ctx.quadraticCurveTo(x + bridgeWidthPx, yStart, x + bridgeWidthPx, yStart + radius);
-              ctx.lineTo(x + bridgeWidthPx, yStart + h - radius);
-              ctx.quadraticCurveTo(x + bridgeWidthPx, yStart + h, x + bridgeWidthPx - radius, yStart + h);
-              ctx.lineTo(x + radius, yStart + h);
-              ctx.quadraticCurveTo(x, yStart + h, x, yStart + h - radius);
-              ctx.lineTo(x, yStart + radius);
-              ctx.quadraticCurveTo(x, yStart, x + radius, yStart);
-              ctx.closePath();
-            }
-            ctx.fill();
-            
-            // Draw FILLED dot
-            ctx.beginPath();
-            ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Optional: Draw subtle outline
-            ctx.strokeStyle = "#dc2626";
-            ctx.lineWidth = strokeWidth * 0.2;
-            ctx.beginPath();
-            ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-          
-          xPos += charWidth;
-        });
-      }
-      
-      // Draw hole with SOLID bridge connector (no floating islands)
-      if (includeHole) {
-        const holeDiameterPx = holeDiameter * dpi;
-        const holeThicknessPx = holeThickness * dpi;
-        const holeOffsetHPx = holeOffsetH * dpi;
-        const holeOffsetVPx = holeOffsetV * dpi;
-        
-        let holeX, holeY, connectionX, connectionY;
-        
-        switch (holeSide) {
-          case "left":
-            holeX = x + holeOffsetHPx;
-            holeY = y + pixelSize * 0.4 + holeOffsetVPx;
-            connectionX = x;
-            connectionY = y + pixelSize * 0.4;
-            break;
-          case "right":
-            holeX = x + tag.textWidth + holeOffsetHPx;
-            holeY = y + pixelSize * 0.4 + holeOffsetVPx;
-            connectionX = x + tag.textWidth;
-            connectionY = y + pixelSize * 0.4;
-            break;
-          case "top":
-            holeX = x + tag.textWidth / 2 + holeOffsetHPx;
-            holeY = y - holeOffsetVPx;
-            connectionX = x + tag.textWidth / 2;
-            connectionY = y + pixelSize * 0.2;
-            break;
-          case "bottom":
-            holeX = x + tag.textWidth / 2 + holeOffsetHPx;
-            holeY = y + pixelSize + holeOffsetVPx;
-            connectionX = x + tag.textWidth / 2;
-            connectionY = y + pixelSize * 0.8;
-            break;
-        }
-        
-        const outerRadius = holeDiameterPx / 2 + holeThicknessPx;
-        const innerRadius = holeDiameterPx / 2;
-        const bridgeWidthPx = Math.max(bridgeWidth * dpi, holeThicknessPx * 1.2);
-        
-        // Draw FILLED ring
-        ctx.fillStyle = "#ef4444";
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, outerRadius, 0, Math.PI * 2);
-        ctx.arc(holeX, holeY, innerRadius, 0, Math.PI * 2, true);
-        ctx.fill();
-        
-        // Draw FILLED bridge connector (solid, no gaps)
-        ctx.fillStyle = "#ef4444";
-        ctx.beginPath();
-        if (holeSide === "left" || holeSide === "right") {
-          const edgeX = holeX + (holeSide === "left" ? outerRadius : -outerRadius);
-          const distance = Math.abs(connectionX - edgeX);
-          const startX = Math.min(edgeX, connectionX);
-          
-          if (connectorShape === "capsule") {
-            const radius = bridgeWidthPx / 2;
-            ctx.arc(startX + radius, holeY, radius, Math.PI / 2, -Math.PI / 2);
-            ctx.lineTo(startX + distance - radius, holeY - radius);
-            ctx.arc(startX + distance - radius, holeY, radius, -Math.PI / 2, Math.PI / 2);
-            ctx.closePath();
-          } else if (connectorShape === "tab") {
-            ctx.rect(startX, holeY - bridgeWidthPx / 2, distance, bridgeWidthPx);
-          } else { // rounded
-            const radius = bridgeWidthPx * 0.3;
-            const y = holeY - bridgeWidthPx / 2;
-            ctx.moveTo(startX + radius, y);
-            ctx.lineTo(startX + distance - radius, y);
-            ctx.quadraticCurveTo(startX + distance, y, startX + distance, y + radius);
-            ctx.lineTo(startX + distance, y + bridgeWidthPx - radius);
-            ctx.quadraticCurveTo(startX + distance, y + bridgeWidthPx, startX + distance - radius, y + bridgeWidthPx);
-            ctx.lineTo(startX + radius, y + bridgeWidthPx);
-            ctx.quadraticCurveTo(startX, y + bridgeWidthPx, startX, y + bridgeWidthPx - radius);
-            ctx.lineTo(startX, y + radius);
-            ctx.quadraticCurveTo(startX, y, startX + radius, y);
-            ctx.closePath();
-          }
-        } else {
-          const edgeY = holeY + (holeSide === "top" ? outerRadius : -outerRadius);
-          const distance = Math.abs(connectionY - edgeY);
-          const startY = Math.min(edgeY, connectionY);
-          
-          if (connectorShape === "capsule") {
-            const radius = bridgeWidthPx / 2;
-            ctx.arc(holeX, startY + radius, radius, Math.PI, 0);
-            ctx.lineTo(holeX + radius, startY + distance - radius);
-            ctx.arc(holeX, startY + distance - radius, radius, 0, Math.PI);
-            ctx.closePath();
-          } else if (connectorShape === "tab") {
-            ctx.rect(holeX - bridgeWidthPx / 2, startY, bridgeWidthPx, distance);
-          } else { // rounded
-            const radius = bridgeWidthPx * 0.3;
-            const x = holeX - bridgeWidthPx / 2;
-            ctx.moveTo(x + radius, startY);
-            ctx.lineTo(x + bridgeWidthPx - radius, startY);
-            ctx.quadraticCurveTo(x + bridgeWidthPx, startY, x + bridgeWidthPx, startY + radius);
-            ctx.lineTo(x + bridgeWidthPx, startY + distance - radius);
-            ctx.quadraticCurveTo(x + bridgeWidthPx, startY + distance, x + bridgeWidthPx - radius, startY + distance);
-            ctx.lineTo(x + radius, startY + distance);
-            ctx.quadraticCurveTo(x, startY + distance, x, startY + distance - radius);
-            ctx.lineTo(x, startY + radius);
-            ctx.quadraticCurveTo(x, startY, x + radius, startY);
-            ctx.closePath();
-          }
-        }
-        ctx.fill();
-        
-        // Draw subtle outlines only
-        ctx.strokeStyle = "#dc2626";
-        ctx.lineWidth = strokeWidth * 0.2;
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, outerRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, innerRadius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    });
-    
-    // Update dimensions display
-    const widthInches = (contentWidth / dpi).toFixed(2);
-    const heightInches = (contentHeight / dpi).toFixed(2);
-    const widthMm = (contentWidth / dpi * 25.4).toFixed(1);
-    const heightMm = (contentHeight / dpi * 25.4).toFixed(1);
-    
-    setDimensions({ 
-      width: widthInches, 
-      height: heightInches,
-      widthMm,
-      heightMm
-    });
-    
-    // Draw dimensions
-    ctx.fillStyle = "#57534e";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(`↔ ${widthInches} in (${widthMm} mm)   ↕ ${heightInches} in (${heightMm} mm)`, 10, canvas.height - 10);
-    
-    // Debug info (collapsed by default)
-    setDebugInfo({
-      bbox: `(${globalMinX.toFixed(1)}, ${globalMinY.toFixed(1)}) → (${globalMaxX.toFixed(1)}, ${globalMaxY.toFixed(1)})`,
-      padding: `${paddingIn.toFixed(2)} in`,
-      thickness: `${thicken.toFixed(1)}%`,
-      tags: tags.length,
-      canvasSize: `${canvas.width}×${canvas.height}px`
-    });
-  };
 
-  const downloadSVG = () => {
-    if (!names.trim()) return;
-    
-    const dpi = 96;
-    const pixelSize = getFontSizeInPixels();
-    const nameList = names.split("\n").filter(n => n.trim());
-    
-    // Create temporary canvas for text path extraction
-    const tempCanvas = document.createElement("canvas");
-    const ctx = tempCanvas.getContext("2d");
-    ctx.font = `italic ${pixelSize}px ${fontFamily}`;
-    
-    // Calculate bounds (same logic as preview)
-    const tags = nameList.map((name, index) => {
+    // Draw ruler marks
+    ctx.fillStyle = "#78716c";
+    ctx.font = "10px sans-serif";
+    for (let x = padding; x < canvas.width; x += gridSize) {
+      const inch = Math.round((x - padding) / dpi);
+      ctx.fillText(`${inch}"`, x + 2, 12);
+    }
+    for (let y = padding; y < canvas.height; y += gridSize) {
+      const inch = Math.round((y - padding) / dpi);
+      ctx.fillText(`${inch}"`, 5, y - 2);
+    }
+
+    // Render each name
+    let maxWidth = 0;
+    let totalHeight = 0;
+    const newWarnings = [];
+
+    nameList.forEach((name, index) => {
+      const yOffset = padding + index * pixelSize * 2;
+      
+      // Configure text
+      ctx.font = `${pixelSize}px ${fontFamily}`;
+      ctx.textBaseline = "top";
+      
+      // Measure text
       const metrics = ctx.measureText(name);
       const textWidth = metrics.width;
-      const textHeight = pixelSize;
-      const thicknessOffset = (pixelSize * thicken) / 100;
+      maxWidth = Math.max(maxWidth, textWidth);
       
-      let minX = -thicknessOffset;
-      let minY = -thicknessOffset;
-      let maxX = textWidth + thicknessOffset;
-      let maxY = textHeight + thicknessOffset;
+      // Apply thickening via stroke
+      const strokeWidth = (pixelSize * thicken) / 100;
       
+      // Draw text with connection logic
+      if (connectMode === "letters" || connectMode === "dots and letters") {
+        ctx.fillStyle = "#1c1917";
+        ctx.strokeStyle = "#1c1917";
+        ctx.lineWidth = strokeWidth;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        
+        // Draw filled text
+        ctx.fillText(name, padding, yOffset);
+        
+        // Add stroke for thickness
+        if (strokeWidth > 0) {
+          ctx.strokeText(name, padding, yOffset);
+        }
+        
+        // Connect dots for i and j if mode is "dots and letters"
+        if (connectMode === "dots and letters") {
+          const chars = name.split("");
+          let xPos = padding;
+          chars.forEach(char => {
+            if (char === "i" || char === "j" || char === "!" || char === "I") {
+              const charWidth = ctx.measureText(char).width;
+              // Draw connecting line to dot
+              ctx.beginPath();
+              ctx.moveTo(xPos + charWidth / 2, yOffset);
+              ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.2);
+              ctx.lineWidth = Math.max(2, strokeWidth / 2);
+              ctx.stroke();
+            }
+            xPos += ctx.measureText(char).width;
+          });
+        }
+      }
+      
+      // Draw hole if enabled
       if (includeHole) {
         const holeDiameterPx = holeDiameter * dpi;
         const holeThicknessPx = holeThickness * dpi;
         const holeOffsetHPx = holeOffsetH * dpi;
         const holeOffsetVPx = holeOffsetV * dpi;
-        const holeRadius = holeDiameterPx / 2 + holeThicknessPx;
+        const holeOverlapPx = holeOverlap * dpi;
         
-        let holeX = 0, holeY = 0;
-        switch (holeSide) {
-          case "left":
-            holeX = holeOffsetHPx;
-            holeY = textHeight * 0.4 + holeOffsetVPx;
-            break;
-          case "right":
-            holeX = textWidth + holeOffsetHPx;
-            holeY = textHeight * 0.4 + holeOffsetVPx;
-            break;
-          case "top":
-            holeX = textWidth / 2 + holeOffsetHPx;
-            holeY = -holeOffsetVPx;
-            break;
-          case "bottom":
-            holeX = textWidth / 2 + holeOffsetHPx;
-            holeY = textHeight + holeOffsetVPx;
-            break;
-        }
-        
-        minX = Math.min(minX, holeX - holeRadius);
-        minY = Math.min(minY, holeY - holeRadius);
-        maxX = Math.max(maxX, holeX + holeRadius);
-        maxY = Math.max(maxY, holeY + holeRadius);
-      }
-      
-      return {
-        name,
-        textWidth,
-        textHeight,
-        bounds: { minX, minY, maxX, maxY },
-        yOffset: index * (pixelSize * 2.2)
-      };
-    });
-    
-    let globalMinX = Infinity, globalMinY = Infinity;
-    let globalMaxX = -Infinity, globalMaxY = -Infinity;
-    
-    tags.forEach(tag => {
-      globalMinX = Math.min(globalMinX, tag.bounds.minX);
-      globalMinY = Math.min(globalMinY, tag.bounds.minY + tag.yOffset);
-      globalMaxX = Math.max(globalMaxX, tag.bounds.maxX);
-      globalMaxY = Math.max(globalMaxY, tag.bounds.maxY + tag.yOffset);
-    });
-    
-    const contentWidth = globalMaxX - globalMinX;
-    const contentHeight = globalMaxY - globalMinY;
-    const paddingIn = Math.max(0.35, 0.08 * Math.max(contentWidth / dpi, contentHeight / dpi));
-    const padding = paddingIn * dpi;
-    
-    const svgWidth = contentWidth + padding * 2;
-    const svgHeight = contentHeight + padding * 2;
-    const offsetX = padding - globalMinX;
-    const offsetY = padding - globalMinY;
-    
-    // Build SVG
-    let svgPaths = [];
-    const strokeWidth = pixelSize * 0.05 + (pixelSize * 0.05 * thicken / 10);
-    
-    tags.forEach((tag) => {
-      const x = offsetX;
-      const y = offsetY + tag.yOffset;
-      
-      // Simple approximation: create stroked text as filled path
-      svgPaths.push(`<text x="${x}" y="${y + pixelSize * 0.75}" font-family="${fontFamily}" font-size="${pixelSize}" font-style="italic" fill="none" stroke="#ef4444" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round">${tag.name}</text>`);
-      
-      // Add dot connectors if enabled
-      if (connectMode === "dots and letters") {
-        const chars = tag.name.split("");
-        let xPos = x;
-        
-        chars.forEach((char) => {
-          const charWidth = ctx.measureText(char).width;
-          const lowerChar = char.toLowerCase();
-          
-          if (lowerChar === "i" || lowerChar === "j" || char === "!") {
-            const dotCenterX = xPos + charWidth / 2;
-            const dotCenterY = y + pixelSize * 0.15;
-            const dotRadius = strokeWidth * 1.8;
-            const stemTopY = y + pixelSize * (attachmentPoint === "outer" ? 0.42 : 0.5);
-            const bridgeWidthPx = Math.max(bridgeWidth * dpi, strokeWidth * 1.2);
-            
-            // Add bridge
-            svgPaths.push(`<rect x="${dotCenterX - bridgeWidthPx/2}" y="${dotCenterY + dotRadius}" width="${bridgeWidthPx}" height="${stemTopY - (dotCenterY + dotRadius)}" fill="#ef4444"/>`);
-            
-            // Add dot
-            svgPaths.push(`<circle cx="${dotCenterX}" cy="${dotCenterY}" r="${dotRadius}" fill="#ef4444"/>`);
-          }
-          
-          xPos += charWidth;
-        });
-      }
-      
-      // Add hole if enabled
-      if (includeHole) {
-        const holeDiameterPx = holeDiameter * dpi;
-        const holeThicknessPx = holeThickness * dpi;
-        const holeOffsetHPx = holeOffsetH * dpi;
-        const holeOffsetVPx = holeOffsetV * dpi;
-        
-        let holeX, holeY, connectionX, connectionY;
+        let holeX, holeY;
         
         switch (holeSide) {
           case "left":
-            holeX = x + holeOffsetHPx;
-            holeY = y + pixelSize * 0.4 + holeOffsetVPx;
-            connectionX = x;
-            connectionY = y + pixelSize * 0.4;
+            holeX = padding - holeOffsetHPx + holeOverlapPx;
+            holeY = yOffset + holeOffsetVPx;
             break;
           case "right":
-            holeX = x + tag.textWidth + holeOffsetHPx;
-            holeY = y + pixelSize * 0.4 + holeOffsetVPx;
-            connectionX = x + tag.textWidth;
-            connectionY = y + pixelSize * 0.4;
+            holeX = padding + textWidth + holeOffsetHPx - holeOverlapPx;
+            holeY = yOffset + holeOffsetVPx;
             break;
           case "top":
-            holeX = x + tag.textWidth / 2 + holeOffsetHPx;
-            holeY = y - holeOffsetVPx;
-            connectionX = x + tag.textWidth / 2;
-            connectionY = y + pixelSize * 0.2;
+            holeX = padding + textWidth / 2 + holeOffsetHPx;
+            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
             break;
           case "bottom":
-            holeX = x + tag.textWidth / 2 + holeOffsetHPx;
-            holeY = y + pixelSize + holeOffsetVPx;
-            connectionX = x + tag.textWidth / 2;
-            connectionY = y + pixelSize * 0.8;
+            holeX = padding + textWidth / 2 + holeOffsetHPx;
+            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
             break;
         }
         
-        const outerRadius = holeDiameterPx / 2 + holeThicknessPx;
-        const innerRadius = holeDiameterPx / 2;
-        const bridgeWidthPx = Math.max(bridgeWidth * dpi, holeThicknessPx * 1.2);
+        // Draw outer circle
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
+        ctx.fillStyle = "#1c1917";
+        ctx.fill();
         
-        // Hole ring (filled with inner cutout)
-        svgPaths.push(`<circle cx="${holeX}" cy="${holeY}" r="${outerRadius}" fill="#ef4444"/>`);
-        svgPaths.push(`<circle cx="${holeX}" cy="${holeY}" r="${innerRadius}" fill="#ffffff"/>`);
+        // Cut out inner circle
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
         
-        // Bridge connector
+        // Draw connecting line to text
+        ctx.strokeStyle = "#1c1917";
+        ctx.lineWidth = holeThicknessPx;
+        ctx.lineCap = "round";
+        ctx.beginPath();
         if (holeSide === "left" || holeSide === "right") {
-          const edgeX = holeX + (holeSide === "left" ? outerRadius : -outerRadius);
-          const startX = Math.min(edgeX, connectionX);
-          const distance = Math.abs(connectionX - edgeX);
-          svgPaths.push(`<rect x="${startX}" y="${holeY - bridgeWidthPx/2}" width="${distance}" height="${bridgeWidthPx}" fill="#ef4444"/>`);
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(holeSide === "left" ? padding : padding + textWidth, yOffset + pixelSize / 2);
         } else {
-          const edgeY = holeY + (holeSide === "top" ? outerRadius : -outerRadius);
-          const startY = Math.min(edgeY, connectionY);
-          const distance = Math.abs(connectionY - edgeY);
-          svgPaths.push(`<rect x="${holeX - bridgeWidthPx/2}" y="${startY}" width="${bridgeWidthPx}" height="${distance}" fill="#ef4444"/>`);
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(padding + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
         }
+        ctx.stroke();
       }
+      
+      totalHeight = yOffset + pixelSize - padding;
     });
-    
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
-  <g id="name-tags">
-    ${svgPaths.join("\n    ")}
-  </g>
-</svg>`;
-    
-    // Download
-    const blob = new Blob([svg], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `name-tag-${names.split("\n")[0].replace(/\s+/g, "-").toLowerCase()}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+
+    // Calculate dimensions in inches
+    const widthInches = (maxWidth / dpi).toFixed(2);
+    const heightInches = (totalHeight / dpi).toFixed(2);
+    setDimensions({ width: widthInches, height: heightInches });
+
+    // Validation
+    if (thicken > 0 && thicken < 5) {
+      newWarnings.push("Thicken percentage below 5% may be too thin for reliable laser cutting");
+    }
+    if (fontSize < 1 && fontUnit === "in") {
+      newWarnings.push("Font size below 1 inch may produce fragile results");
+    }
+    if (fontSize < 72 && fontUnit === "pt") {
+      newWarnings.push("Font size below 72pt may produce fragile results");
+    }
+    setWarnings(newWarnings);
   };
 
-  const handleZoomToFit = () => {
-    generatePreview();
+  // Download SVG
+  const downloadSVG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const nameList = names.split("\n").filter(n => n.trim());
+    const dpi = 96;
+    
+    // Create SVG for each name
+    nameList.forEach((name, index) => {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const pixelSize = getFontSizeInPixels();
+      const tempCanvas = document.createElement("canvas");
+      const ctx = tempCanvas.getContext("2d");
+      
+      // Set up temporary canvas
+      ctx.font = `${pixelSize}px ${fontFamily}`;
+      const metrics = ctx.measureText(name);
+      const textWidth = metrics.width;
+      const margin = includeHole ? holeDiameter * dpi + holeOffsetH * dpi : 20;
+      
+      tempCanvas.width = textWidth + margin * 2;
+      tempCanvas.height = pixelSize * 1.5 + margin * 2;
+      
+      // Redraw on temp canvas
+      ctx.font = `${pixelSize}px ${fontFamily}`;
+      ctx.fillStyle = "#000000";
+      ctx.fillText(name, margin, margin);
+      
+      const strokeWidth = (pixelSize * thicken) / 100;
+      if (strokeWidth > 0) {
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = strokeWidth;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.strokeText(name, margin, margin);
+      }
+      
+      // Convert to SVG
+      svg.setAttribute("width", tempCanvas.width);
+      svg.setAttribute("height", tempCanvas.height);
+      svg.setAttribute("viewBox", `0 0 ${tempCanvas.width} ${tempCanvas.height}`);
+      svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      
+      const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+      image.setAttribute("href", tempCanvas.toDataURL());
+      image.setAttribute("width", tempCanvas.width);
+      image.setAttribute("height", tempCanvas.height);
+      svg.appendChild(image);
+      
+      // Download
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgData], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${name.toLowerCase().replace(/\s+/g, "-")}-nametag.svg`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  // Download PNG
+  const downloadPNG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "nametags-preview.png";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-stone-50 border border-stone-200 rounded-lg p-3">
-        <p className="text-xs text-stone-700">
-          Make single layer stocking or gift tags. Or size down for earrings! You can list multiple names to generate multiple tags. Dots on i's are connected and customizable hole is placed automatically.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
-        {/* Live Preview - LEFT */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left Panel - Canvas Preview */}
+      <div className="lg:col-span-2">
         <Card>
-          <CardContent className="p-4">
-            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white relative" style={{ height: "600px" }}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Live Preview</CardTitle>
+              <div className="text-sm text-stone-600">
+                {dimensions.width}" × {dimensions.height}"
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white">
               <canvas
                 ref={canvasRef}
-                style={{ display: "block", maxWidth: "none" }}
+                className="w-full h-auto"
+                style={{ minHeight: "400px" }}
               />
-              <Button
-                onClick={handleZoomToFit}
-                className="absolute top-2 right-2 bg-white/90 hover:bg-white"
-                size="icon"
-                variant="outline"
-                title="Zoom to Fit"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </Button>
             </div>
-            <div className="mt-3 flex justify-end items-center gap-3">
-              <Button onClick={downloadSVG} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Download className="w-4 h-4 mr-2" />
-                Download SVG
-              </Button>
-            </div>
-            {debugInfo && (
-              <details className="mt-2 text-xs text-stone-600 cursor-pointer">
-                <summary className="hover:text-stone-900">Debug Info</summary>
-                <pre className="mt-1 text-[10px] bg-stone-100 p-2 rounded border border-stone-200">
-{`BBox: ${debugInfo.bbox}
-Padding: ${debugInfo.padding}
-Thickness: ${debugInfo.thickness}
-Tags: ${debugInfo.tags}
-Canvas: ${debugInfo.canvasSize}`}
-                </pre>
-              </details>
-            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right Panel - Controls */}
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Names</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={names}
+              onChange={(e) => setNames(e.target.value)}
+              placeholder="Enter names (one per line)"
+              className="font-mono"
+              rows={6}
+            />
+            <p className="text-xs text-stone-500 mt-2">
+              Each line generates a separate tag
+            </p>
           </CardContent>
         </Card>
 
-        {/* Controls - RIGHT */}
         <Card>
-          <CardContent className="p-4 space-y-4">
-            {/* Names */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <Label className="text-sm font-medium">Names</Label>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <Download className="w-3 h-3" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={() => setNames("Denise")}
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </Button>
+          <Collapsible open={sizeOpen} onOpenChange={setSizeOpen}>
+            <CollapsibleTrigger className="w-full">
+              <CardHeader className="cursor-pointer hover:bg-stone-50">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Sizing</CardTitle>
+                  {sizeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
-              </div>
-              <Textarea
-                value={names}
-                onChange={(e) => setNames(e.target.value)}
-                placeholder="Enter names..."
-                rows={3}
-                className="text-lg font-medium resize-none"
-              />
-              <p className="text-xs text-stone-500 mt-1">
-                You can create multiple keychains by listing names on separate lines.
-              </p>
-            </div>
-
-            {/* Size */}
-            <div>
-              <Label className="text-sm font-medium">Size</Label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  type="number"
-                  step={fontUnit === "pt" ? "1" : "0.1"}
-                  min={fontUnit === "pt" ? "18" : "0.25"}
-                  max={fontUnit === "pt" ? "864" : "12"}
-                  value={fontUnit === "pt" ? Math.round(fontSize * 72) : fontSize.toFixed(1)}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0.25;
-                    const inchVal = fontUnit === "pt" ? val / 72 : val;
-                    setFontSize(Math.max(0.25, Math.min(12, inchVal)));
-                  }}
-                  className="flex-1 bg-green-100"
-                />
-                <Select value={fontUnit} onValueChange={(v) => {
-                  if (v === "in" && fontUnit === "pt") {
-                    // Converting from pt to in, keep same value
-                  } else if (v === "pt" && fontUnit === "in") {
-                    // Converting from in to pt, keep same value
-                  }
-                  setFontUnit(v);
-                }}>
-                  <SelectTrigger className="w-16">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in">in</SelectItem>
-                    <SelectItem value="pt">pt</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <p className="text-xs text-stone-500 mt-1">
-                {fontUnit === "in" 
-                  ? `≈ ${Math.round(clampedFontSize * 72)} pt` 
-                  : `≈ ${clampedFontSize.toFixed(2)} in`}
-                {clampedFontSize !== fontSize && (
-                  <span className="text-amber-600 ml-1">(clamped to valid range)</span>
-                )}
-              </p>
-              <p className="text-xs text-stone-500">
-                Font size for the connected text. Range: 0.25–12 in
-              </p>
-            </div>
-
-            {/* Font */}
-            <Collapsible>
-              <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium text-stone-700 hover:text-stone-900">
-                <span>Font</span>
-                <ChevronDown className="w-4 h-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-2">
-                <div>
-                  <Label className="text-xs">Font</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Select value={fontFamily} onValueChange={setFontFamily}>
-                      <SelectTrigger className="flex-1 bg-green-100">
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Label className="text-xs">Font Size</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0.5"
+                      value={fontSize}
+                      onChange={(e) => setFontSize(parseFloat(e.target.value) || 1)}
+                    />
+                  </div>
+                  <div className="w-20">
+                    <Label className="text-xs">Unit</Label>
+                    <Select value={fontUnit} onValueChange={setFontUnit}>
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {scriptFonts.map(font => (
-                          <SelectItem key={font} value={font}>
-                            {font === "Tempting" ? "Tempting (Regular)" : font}
-                          </SelectItem>
-                        ))}
-                        {customFont && (
-                          <SelectItem value={customFont}>Custom Font</SelectItem>
-                        )}
+                        <SelectItem value="in">in</SelectItem>
+                        <SelectItem value="pt">pt</SelectItem>
                       </SelectContent>
                     </Select>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".ttf,.otf"
-                      onChange={handleFontUpload}
-                      className="hidden"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="bg-cyan-500 text-white hover:bg-cyan-600"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => {
-                        setFontFamily("Tempting");
-                        setThicken(1.5);
-                      }}
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
                   </div>
                 </div>
-                
-                <div>
-                  <Label className="text-xs">Thicken: {thicken.toFixed(1)}%</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Slider
-                      value={[thicken]}
-                      onValueChange={([v]) => setThicken(v)}
-                      min={0}
-                      max={20}
-                      step={0.1}
-                      className="flex-1"
-                      onWheel={(e) => {
-                        e.preventDefault();
-                        const delta = e.deltaY < 0 ? 0.1 : -0.1;
-                        setThicken(Math.max(0, Math.min(20, thicken + delta)));
-                      }}
-                    />
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6"
-                      onClick={() => setThicken(1.5)}
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Scroll over slider to adjust thickness
-                  </p>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        <Card>
+          <Collapsible open={fontOpen} onOpenChange={setFontOpen}>
+            <CollapsibleTrigger className="w-full">
+              <CardHeader className="cursor-pointer hover:bg-stone-50">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Font Controls</CardTitle>
+                  {fontOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
-                
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-xs">Connect</Label>
-                  <Select value={connectMode} onValueChange={setConnectMode}>
-                    <SelectTrigger className="mt-1">
+                  <Label className="text-xs">Font</Label>
+                  <Select value={fontFamily} onValueChange={setFontFamily}>
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
+                      {scriptFonts.map(font => (
+                        <SelectItem key={font} value={font}>{font}</SelectItem>
+                      ))}
+                      {customFont && (
+                        <SelectItem value={customFont}>Custom Font</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Upload Custom Font</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".ttf,.otf"
+                    onChange={handleFontUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full mt-1"
+                    size="sm"
+                  >
+                    <Upload className="w-3 h-3 mr-2" />
+                    Upload TTF/OTF
+                  </Button>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Thicken: {thicken}%</Label>
+                  <Slider
+                    value={[thicken]}
+                    onValueChange={([v]) => setThicken(v)}
+                    min={0}
+                    max={50}
+                    step={5}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs">Connect Mode</Label>
+                  <Select value={connectMode} onValueChange={setConnectMode}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
                       <SelectItem value="letters">Letters Only</SelectItem>
                       <SelectItem value="dots and letters">Dots and Letters</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <Collapsible>
-                  <CollapsibleTrigger className="text-xs font-medium text-stone-600 cursor-pointer hover:text-stone-900 mt-2">
-                    Connector Options
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 pt-2">
-                    <div>
-                      <Label className="text-xs">Bridge Width</Label>
-                      <div className="flex gap-2 mt-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.02"
-                          max="0.5"
-                          value={bridgeWidth}
-                          onChange={(e) => setBridgeWidth(parseFloat(e.target.value) || 0.08)}
-                          className="flex-1"
-                        />
-                        <Select value="in" disabled>
-                          <SelectTrigger className="w-16">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="in">in</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <p className="text-xs text-stone-500 mt-1">Width of connector bridges (default: 0.08 in)</p>
-                    </div>
+                <div>
+                  <Label className="text-xs">Corner Rounding: {cornerRounding}%</Label>
+                  <Slider
+                    value={[cornerRounding]}
+                    onValueChange={([v]) => setCornerRounding(v)}
+                    min={0}
+                    max={100}
+                    step={10}
+                    className="mt-2"
+                  />
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
 
-                    <div>
-                      <Label className="text-xs">Connector Shape</Label>
-                      <Select value={connectorShape} onValueChange={setConnectorShape}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="rounded">Rounded Rectangle</SelectItem>
-                          <SelectItem value="capsule">Capsule</SelectItem>
-                          <SelectItem value="tab">Simple Tab</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-stone-500 mt-1">Shape style for dot and hole connectors</p>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Attachment Point</Label>
-                      <Select value={attachmentPoint} onValueChange={setAttachmentPoint}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="outer">Outer Strokes (Preferred)</SelectItem>
-                          <SelectItem value="center">Center Balance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-stone-500 mt-1">Where to attach connectors on the text</p>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                <Collapsible>
-                  <CollapsibleTrigger className="text-xs font-medium text-stone-600 cursor-pointer hover:text-stone-900">
-                    Show More Options
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2">
-                    <Label className="text-xs">Corner Rounding: {cornerRounding.toFixed(1)}%</Label>
-                    <Slider
-                      value={[cornerRounding]}
-                      onValueChange={([v]) => setCornerRounding(v)}
-                      min={0}
-                      max={10}
-                      step={0.1}
-                      className="mt-2"
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Hole Options */}
-            <Collapsible>
-              <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium text-stone-700 hover:text-stone-900 border-t pt-3">
-                <span>Hole Size</span>
-                <ChevronDown className="w-4 h-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-2">
+        <Card>
+          <Collapsible open={holeOpen} onOpenChange={setHoleOpen}>
+            <CollapsibleTrigger className="w-full">
+              <CardHeader className="cursor-pointer hover:bg-stone-50">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Hole Options</CardTitle>
+                  {holeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">Include Hole</Label>
-                  <input
-                    type="checkbox"
-                    checked={includeHole}
-                    onChange={(e) => setIncludeHole(e.target.checked)}
-                    className="h-4 w-4 rounded"
-                  />
+                  <Switch checked={includeHole} onCheckedChange={setIncludeHole} />
                 </div>
 
                 {includeHole && (
                   <>
                     <div>
-                      <Label className="text-xs">Hole Size</Label>
-                      <div className="flex gap-2 mt-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={holeDiameter}
-                          onChange={(e) => setHoleDiameter(parseFloat(e.target.value) || 0)}
-                          className="flex-1"
-                        />
-                        <Select value="in" disabled>
-                          <SelectTrigger className="w-16">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="in">in</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <p className="text-xs text-stone-500 mt-1">Size (diameter) of the opening.</p>
+                      <Label className="text-xs">Hole Diameter (in)</Label>
+                      <Input
+                        type="number"
+                        step="0.0625"
+                        min="0.125"
+                        value={holeDiameter}
+                        onChange={(e) => setHoleDiameter(parseFloat(e.target.value) || 0.25)}
+                      />
                     </div>
 
                     <div>
-                      <Label className="text-xs">Hole Thickness</Label>
-                      <div className="flex gap-2 mt-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={holeThickness}
-                          onChange={(e) => setHoleThickness(parseFloat(e.target.value) || 0)}
-                          className="flex-1"
-                        />
-                        <Select value="in" disabled>
-                          <SelectTrigger className="w-16">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="in">in</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <p className="text-xs text-stone-500 mt-1">Amount of material around the hole.</p>
+                      <Label className="text-xs">Hole Thickness (in)</Label>
+                      <Input
+                        type="number"
+                        step="0.0625"
+                        min="0.0625"
+                        value={holeThickness}
+                        onChange={(e) => setHoleThickness(parseFloat(e.target.value) || 0.125)}
+                      />
                     </div>
 
-                    <Collapsible>
-                      <CollapsibleTrigger className="text-xs font-medium text-stone-600 cursor-pointer hover:text-stone-900">
-                        Hole Position
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="space-y-2 pt-2">
-                        <div>
-                          <Label className="text-xs">Hole Side</Label>
-                          <Select value={holeSide} onValueChange={setHoleSide}>
-                            <SelectTrigger className="mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="left">left</SelectItem>
-                              <SelectItem value="right">right</SelectItem>
-                              <SelectItem value="top">top</SelectItem>
-                              <SelectItem value="bottom">bottom</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    <div>
+                      <Label className="text-xs">Position</Label>
+                      <Select value={holeSide} onValueChange={setHoleSide}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="left">Left</SelectItem>
+                          <SelectItem value="right">Right</SelectItem>
+                          <SelectItem value="top">Top</SelectItem>
+                          <SelectItem value="bottom">Bottom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div>
-                          <Label className="text-xs">Hole Position</Label>
-                          <div className="flex gap-2 mt-1">
-                            <Input
-                              type="number"
-                              step="0.1"
-                              value={holeOffsetH}
-                              onChange={(e) => setHoleOffsetH(parseFloat(e.target.value) || 0)}
-                              className="flex-1"
-                            />
-                            <Select value="in" disabled>
-                              <SelectTrigger className="w-16">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="in">in</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                    <div>
+                      <Label className="text-xs">Horizontal Offset (in)</Label>
+                      <Input
+                        type="number"
+                        step="0.0625"
+                        value={holeOffsetH}
+                        onChange={(e) => setHoleOffsetH(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
 
-                        <div>
-                          <Label className="text-xs">Hole Overlap</Label>
-                          <div className="flex gap-2 mt-1">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={holeOverlap}
-                              onChange={(e) => setHoleOverlap(parseFloat(e.target.value) || 0)}
-                              className="flex-1"
-                            />
-                            <Select value="in" disabled>
-                              <SelectTrigger className="w-16">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="in">in</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                    <div>
+                      <Label className="text-xs">Vertical Offset (in)</Label>
+                      <Input
+                        type="number"
+                        step="0.0625"
+                        value={holeOffsetV}
+                        onChange={(e) => setHoleOffsetV(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Overlap (in)</Label>
+                      <Input
+                        type="number"
+                        step="0.0625"
+                        min="0"
+                        value={holeOverlap}
+                        onChange={(e) => setHoleOverlap(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
                   </>
                 )}
-              </CollapsibleContent>
-            </Collapsible>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {warnings.length > 0 && (
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertDescription>
+              <div className="space-y-1">
+                {warnings.map((warning, i) => (
+                  <p key={i} className="text-xs text-amber-800">{warning}</p>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Export</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button onClick={downloadSVG} className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              Download SVG
+            </Button>
+            <Button onClick={downloadPNG} variant="outline" className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              Download PNG Preview
+            </Button>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+              <p className="text-xs text-blue-800">
+                <span className="font-semibold">Laser Ready:</span> SVG exports are optimized for cutting with clean paths and no overlaps.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
