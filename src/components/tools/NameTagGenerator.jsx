@@ -229,43 +229,50 @@ export default function NameTagGenerator() {
           <CardHeader>
             <CardTitle>Live Preview</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="border-2 border-stone-300 rounded-lg bg-white p-4">
+          <CardContent className="p-0">
+            <div className="relative bg-white">
               <svg 
                 ref={svgRef}
                 width="100%" 
                 height="500" 
                 viewBox="0 0 1200 500"
                 className="w-full"
+                style={{ backgroundColor: '#fafafa' }}
               >
                 {/* Grid */}
                 <defs>
                   <pattern id="grid" width={DPI} height={DPI} patternUnits="userSpaceOnUse">
-                    <path d={`M ${DPI} 0 L 0 0 0 ${DPI}`} fill="none" stroke="#e7e5e4" strokeWidth="1"/>
+                    <path d={`M ${DPI} 0 L 0 0 0 ${DPI}`} fill="none" stroke="#d4d4d8" strokeWidth="0.5"/>
                   </pattern>
                 </defs>
                 <rect width="100%" height="100%" fill="url(#grid)" />
                 
-                {/* Rulers */}
-                {[...Array(12)].map((_, i) => (
-                  <g key={`ruler-${i}`}>
-                    <text x={i * DPI + 5} y="15" fontSize="10" fill="#78716c">{i}"</text>
-                    <text x="5" y={i * DPI + 15} fontSize="10" fill="#78716c">{i}"</text>
-                  </g>
+                {/* Rulers - horizontal */}
+                {[...Array(13)].map((_, i) => (
+                  <text key={`ruler-h-${i}`} x={i * DPI + 2} y="12" fontSize="9" fill="#a8a29e" fontFamily="monospace">{i}"</text>
+                ))}
+                
+                {/* Rulers - vertical */}
+                {[...Array(6)].map((_, i) => (
+                  <text key={`ruler-v-${i}`} x="2" y={i * DPI + 12} fontSize="9" fill="#a8a29e" fontFamily="monospace">{i}"</text>
                 ))}
                 
                 {/* Preview content */}
                 <g transform="translate(50, 50)" dangerouslySetInnerHTML={{ __html: svgPaths }} />
+                
+                {/* Dimensions readout - bottom left */}
+                <text x="10" y="485" fontSize="11" fill="#78716c" fontFamily="monospace">
+                  {dimensions.width}" × {dimensions.height}"
+                </text>
               </svg>
-            </div>
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-stone-600">
-                {dimensions.width}" × {dimensions.height}"
+              
+              {/* Download button overlay */}
+              <div className="absolute bottom-4 right-4">
+                <Button onClick={downloadSVG} size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download SVG
+                </Button>
               </div>
-              <Button onClick={downloadSVG}>
-                <Download className="w-4 h-4 mr-2" />
-                Download SVG
-              </Button>
             </div>
           </CardContent>
         </Card>
