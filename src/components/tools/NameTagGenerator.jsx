@@ -5,57 +5,82 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Download, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Download, Upload, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import opentype from "opentype.js";
-import paper from "paper";
 
 export default function NameTagGenerator() {
-  const [names, setNames] = useState("Christina");
+  const [names, setNames] = useState("Denise");
   const [fontSize, setFontSize] = useState(2);
   const [fontUnit, setFontUnit] = useState("in");
-  const [fontFamily, setFontFamily] = useState("cursive");
+  const [fontFamily, setFontFamily] = useState("Brush Script MT");
   const [customFonts, setCustomFonts] = useState([]);
-  const [loadedFonts, setLoadedFonts] = useState({});
-  
-  const [thicken, setThicken] = useState(1.2);
+  const [thicken, setThicken] = useState(0);
   const [letterSpacing, setLetterSpacing] = useState(0);
   const [lineHeight, setLineHeight] = useState(100);
-  const [connectMode, setConnectMode] = useState("dots and letters");
+  const [connectMode, setConnectMode] = useState("letters");
   const [capitalize, setCapitalize] = useState("none");
   const [ligatures, setLigatures] = useState("none");
-  const [showFewerOptions, setShowFewerOptions] = useState(true);
-  const [cornerRounding, setCornerRounding] = useState(0.5);
-  
-  const [includeHole, setIncludeHole] = useState(true);
-  const [holeDiameter, setHoleDiameter] = useState(0.19);
-  const [holeThickness, setHoleThickness] = useState(0.12);
+  const [showFewerOptions, setShowFewerOptions] = useState(false);
+  const [cornerRounding, setCornerRounding] = useState(0);
+  const [includeHole, setIncludeHole] = useState(false);
+  const [holeDiameter, setHoleDiameter] = useState(0.25);
+  const [holeThickness, setHoleThickness] = useState(0.125);
   const [holeSide, setHoleSide] = useState("left");
-  const [holePosition, setHolePosition] = useState(-0.5);
-  const [holeOverlap, setHoleOverlap] = useState(0.85);
-  
+  const [holeOffsetH, setHoleOffsetH] = useState(0.25);
+  const [holeOffsetV, setHoleOffsetV] = useState(0.5);
+  const [holeOverlap, setHoleOverlap] = useState(0.1);
+  const [warnings, setWarnings] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [svgPaths, setSvgPaths] = useState("");
+  const [background, setBackground] = useState("transparent");
   
   const [fontOpen, setFontOpen] = useState(true);
+  const [sizeOpen, setSizeOpen] = useState(true);
   const [holeOpen, setHoleOpen] = useState(false);
   
+  const canvasRef = useRef(null);
   const svgRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const DPI = 96;
+  const fontCategories = {
+    script: [
+      { name: "Brush Script MT", label: "Brush Script" },
+      { name: "Lucida Handwriting", label: "Lucida Handwriting" },
+      { name: "Edwardian Script ITC", label: "Edwardian Script" },
+      { name: "Freestyle Script", label: "Freestyle Script" },
+      { name: "French Script MT", label: "French Script" },
+      { name: "Kunstler Script", label: "Kunstler Script" },
+      { name: "Mistral", label: "Mistral" },
+      { name: "Script MT Bold", label: "Script Bold" },
+    ],
+    cursive: [
+      { name: "cursive", label: "Default Cursive" },
+    ],
+    serif: [
+      { name: "serif", label: "Serif" },
+      { name: "Georgia", label: "Georgia" },
+    ],
+    modern: [
+      { name: "sans-serif", label: "Sans Serif" },
+      { name: "Arial", label: "Arial" },
+    ]
+  };
 
-  // Load custom fonts from localStorage
+  // Load custom fonts from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem('nametag-custom-fonts');
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         setCustomFonts(parsed);
-        // Load fonts
+        // Reload fonts into browser
         parsed.forEach(font => {
-          loadCustomFont(font);
+          const fontFace = new FontFace(font.name, `url(${font.data})`);
+          fontFace.load().then(loadedFont => {
+            document.fonts.add(loadedFont);
+          }).catch(err => console.error("Font reload failed:", err));
         });
       } catch (e) {
         console.error("Failed to load custom fonts:", e);
@@ -63,17 +88,17 @@ export default function NameTagGenerator() {
     }
   }, []);
 
-  const loadCustomFont = async (fontData) => {
-    try {
-      const response = await fetch(fontData.data);
-      const arrayBuffer = await response.arrayBuffer();
-      const font = opentype.parse(arrayBuffer);
-      setLoadedFonts(prev => ({ ...prev, [fontData.name]: font }));
-    } catch (e) {
-      console.error("Failed to parse font:", e);
+  // Convert font size to pixels
+  const getFontSizeInPixels = () => {
+    const dpi = 96;
+    if (fontUnit === "pt") {
+      return (fontSize * dpi) / 72;
+    } else {
+      return fontSize * dpi;
     }
   };
 
+  // Handle custom font upload
   const handleFontUpload = (e) => {
     const file = e.target.files[0];
     if (file && (file.name.endsWith(".ttf") || file.name.endsWith(".otf"))) {
@@ -82,407 +107,356 @@ export default function NameTagGenerator() {
         const fontName = file.name.replace(/\.(ttf|otf)$/, '').replace(/[^a-zA-Z0-9]/g, '');
         const uniqueFontName = `Custom_${fontName}_${Date.now()}`;
         
-        const newFont = {
-          name: uniqueFontName,
-          displayName: file.name.replace(/\.(ttf|otf)$/, ''),
-          data: event.target.result,
-          uploadedAt: new Date().toISOString()
-        };
-        
-        const updatedFonts = [...customFonts, newFont];
-        setCustomFonts(updatedFonts);
-        localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
-        loadCustomFont(newFont);
-        setFontFamily(uniqueFontName);
+        const fontFace = new FontFace(uniqueFontName, `url(${event.target.result})`);
+        fontFace.load().then((loadedFont) => {
+          document.fonts.add(loadedFont);
+          
+          // Store in state and localStorage
+          const newFont = {
+            name: uniqueFontName,
+            displayName: file.name.replace(/\.(ttf|otf)$/, ''),
+            data: event.target.result,
+            uploadedAt: new Date().toISOString()
+          };
+          
+          const updatedFonts = [...customFonts, newFont];
+          setCustomFonts(updatedFonts);
+          localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
+          
+          setFontFamily(uniqueFontName);
+        }).catch((err) => {
+          console.error("Font loading failed:", err);
+        });
       };
       reader.readAsDataURL(file);
     }
   };
 
+  // Delete custom font
   const deleteCustomFont = (fontName) => {
     const updatedFonts = customFonts.filter(f => f.name !== fontName);
     setCustomFonts(updatedFonts);
     localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
-    const newLoadedFonts = { ...loadedFonts };
-    delete newLoadedFonts[fontName];
-    setLoadedFonts(newLoadedFonts);
+    
+    // If deleted font was selected, switch to default
     if (fontFamily === fontName) {
-      setFontFamily("cursive");
+      setFontFamily("Brush Script MT");
     }
   };
 
-  const getFontSizeInPixels = () => {
-    if (fontUnit === "pt") {
-      return (fontSize * DPI) / 72;
-    } else {
-      return fontSize * DPI;
-    }
-  };
-
-  const applyCapitalization = (text) => {
-    switch (capitalize) {
-      case "uppercase": return text.toUpperCase();
-      case "lowercase": return text.toLowerCase();
-      case "title": return text.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-      default: return text;
-    }
-  };
-
-  // Generate preview whenever inputs change
+  // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, ligatures, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holePosition, holeOverlap, loadedFonts]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, ligatures, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
 
-  const generatePreview = async () => {
-    if (!names.trim()) {
-      setSvgPaths("");
-      setDimensions({ width: 0, height: 0 });
-      return;
+  const generatePreview = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !names.trim()) return;
+
+    const ctx = canvas.getContext("2d");
+    const dpi = 96;
+    const pixelSize = getFontSizeInPixels();
+    const nameList = names.split("\n").filter(n => n.trim());
+    
+    // Set canvas size to accommodate all names with grid
+    const padding = 100; // Increased padding to prevent cutoff
+    const gridSize = dpi; // 1 inch grid
+    canvas.width = 1200;
+    canvas.height = Math.max(400, nameList.length * pixelSize * 2.5 + padding * 2);
+
+    // Clear and draw background
+    if (background === "light") {
+      ctx.fillStyle = "#fafaf9";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (background === "dark") {
+      ctx.fillStyle = "#1c1917";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // For transparent, skip background fill
+
+    // Draw grid
+    ctx.strokeStyle = background === "dark" ? "#44403c" : "#e7e5e4";
+    ctx.lineWidth = 1;
+    for (let x = padding; x < canvas.width; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = padding; y < canvas.height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
     }
 
-    const nameList = names.split("\n").filter(n => n.trim()).map(n => applyCapitalization(n.trim()));
+    // Draw ruler marks
+    ctx.fillStyle = background === "dark" ? "#a8a29e" : "#78716c";
+    ctx.font = "10px sans-serif";
+    for (let x = padding; x < canvas.width; x += gridSize) {
+      const inch = Math.round((x - padding) / dpi);
+      ctx.fillText(`${inch}"`, x + 2, 12);
+    }
+    for (let y = padding; y < canvas.height; y += gridSize) {
+      const inch = Math.round((y - padding) / dpi);
+      ctx.fillText(`${inch}"`, 5, y - 2);
+    }
+
+    // Render each name
+    let maxWidth = 0;
+    let totalHeight = 0;
+    const newWarnings = [];
+
+    nameList.forEach((name, index) => {
+      const yOffset = padding + index * pixelSize * 2.5;
+      
+      // Configure text
+      ctx.font = `${pixelSize}px ${fontFamily}`;
+      ctx.textBaseline = "top";
+      
+      // Measure text
+      const metrics = ctx.measureText(name);
+      const textWidth = metrics.width;
+      maxWidth = Math.max(maxWidth, textWidth);
+      
+      // Apply thickening via stroke
+      const strokeWidth = (pixelSize * thicken) / 100;
+      
+      // Draw text with stroke for outline
+      const textColor = background === "dark" ? "#fafaf9" : "#1c1917";
+      ctx.strokeStyle = textColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      
+      // Only draw outline for preview
+      if (strokeWidth > 0) {
+        ctx.strokeText(name, padding, yOffset);
+      } else {
+        // Draw filled text if no stroke
+        ctx.fillStyle = textColor;
+        ctx.fillText(name, padding, yOffset);
+      }
+      
+      // Draw hole if enabled
+      if (includeHole) {
+        const holeDiameterPx = holeDiameter * dpi;
+        const holeThicknessPx = holeThickness * dpi;
+        const holeOffsetHPx = holeOffsetH * dpi;
+        const holeOffsetVPx = holeOffsetV * dpi;
+        const holeOverlapPx = holeOverlap * dpi;
+        
+        let holeX, holeY;
+        
+        switch (holeSide) {
+          case "left":
+            holeX = padding - holeOffsetHPx + holeOverlapPx;
+            holeY = yOffset + holeOffsetVPx;
+            break;
+          case "right":
+            holeX = padding + textWidth + holeOffsetHPx - holeOverlapPx;
+            holeY = yOffset + holeOffsetVPx;
+            break;
+          case "top":
+            holeX = padding + textWidth / 2 + holeOffsetHPx;
+            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
+            break;
+          case "bottom":
+            holeX = padding + textWidth / 2 + holeOffsetHPx;
+            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
+            break;
+        }
+        
+        // Draw outer circle
+        const holeColor = background === "dark" ? "#fafaf9" : "#1c1917";
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
+        ctx.fillStyle = holeColor;
+        ctx.fill();
+        
+        // Cut out inner circle
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        
+        // Draw connecting line to text
+        ctx.strokeStyle = holeColor;
+        ctx.lineWidth = holeThicknessPx;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        if (holeSide === "left" || holeSide === "right") {
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(holeSide === "left" ? padding : padding + textWidth, yOffset + pixelSize / 2);
+        } else {
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(padding + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
+        }
+        ctx.stroke();
+      }
+      
+      totalHeight = yOffset + pixelSize - padding;
+    });
+
+    // Calculate dimensions in inches
+    const widthInches = (maxWidth / dpi).toFixed(2);
+    const heightInches = (totalHeight / dpi).toFixed(2);
+    setDimensions({ width: widthInches, height: heightInches });
+
+    // Validation
+    if (thicken > 0 && thicken < 5) {
+      newWarnings.push("Thicken percentage below 5% may be too thin for reliable laser cutting");
+    }
+    if (fontSize < 1 && fontUnit === "in") {
+      newWarnings.push("Font size below 1 inch may produce fragile results");
+    }
+    if (fontSize < 72 && fontUnit === "pt") {
+      newWarnings.push("Font size below 72pt may produce fragile results");
+    }
+    setWarnings(newWarnings);
+  };
+
+  // Download SVG
+  const downloadSVG = () => {
+    const nameList = names.split("\n").filter(n => n.trim());
+    const dpi = 96;
     const pixelSize = getFontSizeInPixels();
     
-    try {
-      // Generate SVG paths for all names
-      let allPaths = [];
-      let maxWidth = 0;
-      let yOffset = 0;
-
-      for (let i = 0; i < nameList.length; i++) {
-        const name = nameList[i];
-        const pathData = await generateTextPath(name, 0, yOffset, pixelSize);
-        
-        if (pathData) {
-          allPaths.push(pathData);
-          maxWidth = Math.max(maxWidth, pathData.width);
-          yOffset += pixelSize * (lineHeight / 100) * 1.2;
-        }
-      }
-
-      // Calculate dimensions
-      const totalHeight = yOffset;
-      const widthInches = (maxWidth / DPI).toFixed(2);
-      const heightInches = (totalHeight / DPI).toFixed(2);
-      setDimensions({ width: widthInches, height: heightInches });
-
-      // Create SVG paths string
-      const pathsString = allPaths.map(p => p.path).join('\n');
-      setSvgPaths(pathsString);
-      
-    } catch (error) {
-      console.error("Preview generation failed:", error);
-    }
-  };
-
-  const generateTextPath = async (text, x, y, size) => {
-    try {
-      // Load font
-      let font;
-      if (loadedFonts[fontFamily]) {
-        font = loadedFonts[fontFamily];
-      } else {
-        // Use system fonts - create a temporary canvas to render
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.font = `${size}px ${fontFamily}`;
-        const metrics = ctx.measureText(text);
-        const width = metrics.width * (1 + letterSpacing / 100);
-        
-        // For now, render as text element (will be replaced with proper vector paths)
-        const letterSpacingValue = letterSpacing * size / 100;
-        
-        return {
-          path: `<text x="${x}" y="${y + size}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2" letter-spacing="${letterSpacingValue}" dominant-baseline="alphabetic">${text}</text>`,
-          width: width,
-          height: size
-        };
-      }
-
-      // Generate paths from loaded font using opentype.js
-      const path = font.getPath(text, x, y + size, size);
-      const pathData = path.toPathData(2);
-      
-      // Apply letter spacing if needed
-      let adjustedPath = pathData;
-      if (letterSpacing !== 0) {
-        const glyphs = font.stringToGlyphs(text);
-        let currentX = x;
-        const paths = [];
-        
-        glyphs.forEach((glyph, i) => {
-          const glyphPath = glyph.getPath(currentX, y + size, size);
-          paths.push(glyphPath.toPathData(2));
-          currentX += glyph.advanceWidth * (size / font.unitsPerEm) * (1 + letterSpacing / 100);
-        });
-        
-        adjustedPath = paths.join(' ');
-      }
-
-      // Apply welding if connect mode is "connect all (welded)"
-      let finalPath = adjustedPath;
-      if (connectMode === "connect all (welded)") {
-        finalPath = await weldPath(adjustedPath, font, text, x, y, size);
-      } else if (connectMode === "dots and letters") {
-        finalPath = await connectDotsToLetters(adjustedPath, font, text, x, y, size);
-      }
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      ctx.font = `${size}px ${fontFamily}`;
-      const metrics = ctx.measureText(text);
-      const width = metrics.width * (1 + letterSpacing / 100);
-
-      return {
-        path: `<path d="${finalPath}" fill="none" stroke="#ef4444" stroke-width="2" />`,
-        width: width,
-        height: size
-      };
-    } catch (error) {
-      console.error("Error generating text path:", error);
-      // Fallback to simple text rendering
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      ctx.font = `${size}px ${fontFamily}`;
-      const metrics = ctx.measureText(text);
-      const width = metrics.width * (1 + letterSpacing / 100);
-      
-      return {
-        path: `<text x="${x}" y="${y + size}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2">${text}</text>`,
-        width: width,
-        height: size
-      };
-    }
-  };
-
-  const weldPath = async (pathData, font, text, x, y, size) => {
-    try {
-      // Setup paper.js
-      const canvas = document.createElement('canvas');
-      canvas.width = 2000;
-      canvas.height = 1000;
-      paper.setup(canvas);
-
-      // Import the path
-      const mainPath = new paper.Path(pathData);
-      
-      // Get all separate components (disconnected parts)
-      const components = [];
-      mainPath.children?.forEach(child => {
-        if (child instanceof paper.Path) {
-          components.push(child);
-        }
-      });
-
-      if (components.length === 0) {
-        components.push(mainPath);
-      }
-
-      // Detect i and j dots (typically small, separate components above letters)
-      const dots = [];
-      const letters = [];
-      
-      components.forEach(comp => {
-        const bounds = comp.bounds;
-        if (bounds.width < size * 0.3 && bounds.height < size * 0.3) {
-          dots.push(comp);
-        } else {
-          letters.push(comp);
-        }
-      });
-
-      // Connect dots to their stems with filled nubs
-      dots.forEach(dot => {
-        const dotCenter = dot.bounds.center;
-        
-        // Find closest point on letter stems
-        let closestPoint = null;
-        let minDistance = Infinity;
-        
-        letters.forEach(letter => {
-          const point = letter.getNearestPoint(dotCenter);
-          const distance = dotCenter.getDistance(point);
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestPoint = point;
-          }
-        });
-
-        if (closestPoint && minDistance < size) {
-          // Create a small rounded nub/tab between dot and letter
-          const nubWidth = size * 0.08; // Small nub width
-          const midPoint = new paper.Point(
-            (dotCenter.x + closestPoint.x) / 2,
-            (dotCenter.y + closestPoint.y) / 2
-          );
-          
-          // Create capsule shape (rounded rectangle)
-          const nub = new paper.Path.Rectangle({
-            from: [dotCenter.x - nubWidth/2, dotCenter.y],
-            to: [dotCenter.x + nubWidth/2, closestPoint.y],
-            radius: nubWidth / 2
-          });
-          
-          // Union the nub with the dot
-          dot = dot.unite(nub);
-          nub.remove();
-        }
-      });
-
-      // Union all components together
-      let result = null;
-      [...letters, ...dots].forEach(comp => {
-        if (!result) {
-          result = comp;
-        } else {
-          const united = result.unite(comp);
-          result.remove();
-          comp.remove();
-          result = united;
-        }
-      });
-
-      // If there are still disconnected parts, add minimal connectors
-      if (result && result.children && result.children.length > 1) {
-        const allParts = result.children.slice();
-        let unified = allParts[0];
-        
-        for (let i = 1; i < allParts.length; i++) {
-          const part = allParts[i];
-          
-          // Find closest points between parts
-          const point1 = unified.bounds.rightCenter;
-          const point2 = part.bounds.leftCenter;
-          
-          // Create thin connector
-          const connector = new paper.Path.Rectangle({
-            from: point1,
-            to: point2,
-            radius: size * 0.05
-          });
-          
-          unified = unified.unite(part).unite(connector);
-          connector.remove();
-        }
-        
-        result = unified;
-      }
-
-      const exportedPath = result ? result.pathData : pathData;
-      
-      // Cleanup
-      paper.project.clear();
-      
-      return exportedPath;
-    } catch (error) {
-      console.error("Welding error:", error);
-      return pathData;
-    }
-  };
-
-  const connectDotsToLetters = async (pathData, font, text, x, y, size) => {
-    // Similar to weldPath but only connects dots, doesn't weld letters together
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 2000;
-      canvas.height = 1000;
-      paper.setup(canvas);
-
-      const mainPath = new paper.Path(pathData);
-      const components = [];
-      
-      mainPath.children?.forEach(child => {
-        if (child instanceof paper.Path) {
-          components.push(child);
-        }
-      });
-
-      if (components.length === 0) {
-        components.push(mainPath);
-      }
-
-      // Detect dots
-      const dots = [];
-      const letters = [];
-      
-      components.forEach(comp => {
-        const bounds = comp.bounds;
-        if (bounds.width < size * 0.3 && bounds.height < size * 0.3) {
-          dots.push(comp);
-        } else {
-          letters.push(comp);
-        }
-      });
-
-      // Connect dots to stems
-      dots.forEach(dot => {
-        const dotCenter = dot.bounds.center;
-        let closestPoint = null;
-        let minDistance = Infinity;
-        
-        letters.forEach(letter => {
-          const point = letter.getNearestPoint(dotCenter);
-          const distance = dotCenter.getDistance(point);
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestPoint = point;
-          }
-        });
-
-        if (closestPoint && minDistance < size) {
-          const nubWidth = size * 0.08;
-          const nub = new paper.Path.Rectangle({
-            from: [dotCenter.x - nubWidth/2, dotCenter.y],
-            to: [dotCenter.x + nubWidth/2, closestPoint.y],
-            radius: nubWidth / 2
-          });
-          
-          dot = dot.unite(nub);
-          nub.remove();
-        }
-      });
-
-      // Export all paths together
-      let result = new paper.CompoundPath({ children: [...letters, ...dots] });
-      const exportedPath = result.pathData;
-      
-      paper.project.clear();
-      
-      return exportedPath;
-    } catch (error) {
-      console.error("Dot connection error:", error);
-      return pathData;
-    }
-  };
-
-  const downloadSVG = () => {
-    if (!svgPaths) {
-      alert("No SVG to download. Please generate a preview first.");
-      return;
-    }
-
-    const margin = 20;
-    const width = parseFloat(dimensions.width) * DPI + margin * 2;
-    const height = parseFloat(dimensions.height) * DPI + margin * 2;
-
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${dimensions.width}in" height="${dimensions.height}in" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-  <g transform="translate(${margin}, ${margin})">
-    ${svgPaths}
-  </g>
-</svg>`;
+    // Calculate dimensions for all names
+    const tempCanvas = document.createElement("canvas");
+    const ctx = tempCanvas.getContext("2d");
+    ctx.font = `${pixelSize}px ${fontFamily}`;
     
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    let maxWidth = 0;
+    const nameWidths = nameList.map(name => {
+      const metrics = ctx.measureText(name);
+      maxWidth = Math.max(maxWidth, metrics.width);
+      return metrics.width;
+    });
+    
+    const margin = includeHole ? holeDiameter * dpi + holeOffsetH * dpi : 20;
+    const spacing = pixelSize * 0.5; // Space between names
+    
+    // Calculate total canvas size
+    const canvasWidth = maxWidth + margin * 2;
+    const canvasHeight = nameList.length * (pixelSize * 1.5 + spacing) + margin * 2;
+    
+    tempCanvas.width = canvasWidth;
+    tempCanvas.height = canvasHeight;
+    
+    // Draw all names on one canvas
+    ctx.font = `${pixelSize}px ${fontFamily}`;
+    ctx.fillStyle = "#000000";
+    ctx.textBaseline = "top";
+    
+    const strokeWidth = (pixelSize * thicken) / 100;
+    
+    nameList.forEach((name, index) => {
+      const yOffset = margin + index * (pixelSize * 1.5 + spacing);
+      
+      // Draw text outline only for SVG export
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = strokeWidth > 0 ? strokeWidth : pixelSize * 0.02;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeText(name, margin, yOffset);
+      
+      // Draw hole if enabled
+      if (includeHole) {
+        const holeDiameterPx = holeDiameter * dpi;
+        const holeThicknessPx = holeThickness * dpi;
+        const holeOffsetHPx = holeOffsetH * dpi;
+        const holeOffsetVPx = holeOffsetV * dpi;
+        const holeOverlapPx = holeOverlap * dpi;
+        
+        let holeX, holeY;
+        const textWidth = nameWidths[index];
+        
+        switch (holeSide) {
+          case "left":
+            holeX = margin - holeOffsetHPx + holeOverlapPx;
+            holeY = yOffset + holeOffsetVPx;
+            break;
+          case "right":
+            holeX = margin + textWidth + holeOffsetHPx - holeOverlapPx;
+            holeY = yOffset + holeOffsetVPx;
+            break;
+          case "top":
+            holeX = margin + textWidth / 2 + holeOffsetHPx;
+            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
+            break;
+          case "bottom":
+            holeX = margin + textWidth / 2 + holeOffsetHPx;
+            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
+            break;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
+        ctx.fillStyle = "#000000";
+        ctx.fill();
+        
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = holeThicknessPx;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        if (holeSide === "left" || holeSide === "right") {
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(holeSide === "left" ? margin : margin + textWidth, yOffset + pixelSize / 2);
+        } else {
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(margin + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
+        }
+        ctx.stroke();
+      }
+    });
+    
+    // Create clean SVG with transparent background
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", `${(canvasWidth / dpi).toFixed(3)}in`);
+    svg.setAttribute("height", `${(canvasHeight / dpi).toFixed(3)}in`);
+    svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`);
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+    
+    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    image.setAttribute("xlink:href", tempCanvas.toDataURL("image/png"));
+    image.setAttribute("width", canvasWidth);
+    image.setAttribute("height", canvasHeight);
+    svg.appendChild(image);
+    
+    // Download
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    const nameList = names.split("\n").filter(n => n.trim());
     link.download = `nametags-${nameList.length}.svg`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
-  const ptEquivalent = fontUnit === "in" ? Math.round(fontSize * 72) : Math.round(fontSize);
+  // Download PNG
+  const downloadPNG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "nametags-preview.png";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -490,52 +464,32 @@ export default function NameTagGenerator() {
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Live Preview</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="relative bg-white">
-              <svg 
-                ref={svgRef}
-                width="100%" 
-                height="500" 
-                viewBox="0 0 1200 500"
-                className="w-full"
-                style={{ backgroundColor: '#fafafa' }}
-              >
-                {/* Grid */}
-                <defs>
-                  <pattern id="grid" width={DPI} height={DPI} patternUnits="userSpaceOnUse">
-                    <path d={`M ${DPI} 0 L 0 0 0 ${DPI}`} fill="none" stroke="#d4d4d8" strokeWidth="0.5"/>
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-                
-                {/* Rulers - horizontal */}
-                {[...Array(13)].map((_, i) => (
-                  <text key={`ruler-h-${i}`} x={i * DPI + 2} y="12" fontSize="9" fill="#a8a29e" fontFamily="monospace">{i}"</text>
-                ))}
-                
-                {/* Rulers - vertical */}
-                {[...Array(6)].map((_, i) => (
-                  <text key={`ruler-v-${i}`} x="2" y={i * DPI + 12} fontSize="9" fill="#a8a29e" fontFamily="monospace">{i}"</text>
-                ))}
-                
-                {/* Preview content */}
-                <g transform="translate(50, 50)" dangerouslySetInnerHTML={{ __html: svgPaths }} />
-                
-                {/* Dimensions readout - bottom left */}
-                <text x="10" y="485" fontSize="11" fill="#78716c" fontFamily="monospace">
+            <div className="flex items-center justify-between">
+              <CardTitle>Live Preview</CardTitle>
+              <div className="flex items-center gap-3">
+                <Select value={background} onValueChange={setBackground}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="transparent">Transparent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-sm text-stone-600">
                   {dimensions.width}" × {dimensions.height}"
-                </text>
-              </svg>
-              
-              {/* Download button overlay */}
-              <div className="absolute bottom-4 right-4">
-                <Button onClick={downloadSVG} size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download SVG
-                </Button>
+                </div>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white">
+              <canvas
+                ref={canvasRef}
+                className="w-full h-auto"
+                style={{ minHeight: "400px" }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -570,9 +524,9 @@ export default function NameTagGenerator() {
               <div className="flex-1">
                 <Input
                   type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={fontUnit === "pt" ? ptEquivalent : fontSize}
+                  step="1"
+                  min="1"
+                  value={fontUnit === "pt" ? fontSize * 72 : fontSize}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value) || 1;
                     setFontSize(fontUnit === "pt" ? val / 72 : val);
@@ -585,13 +539,13 @@ export default function NameTagGenerator() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="in">in</SelectItem>
                   <SelectItem value="pt">pt</SelectItem>
+                  <SelectItem value="in">in</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <p className="text-xs text-stone-400">
-              {fontUnit === "in" ? `${ptEquivalent} pt` : `${(fontSize).toFixed(2)} in`} • Font size for the connected text
+              Font size for the connected text. This determines the overall size for the item.
             </p>
           </CardContent>
         </Card>
@@ -601,7 +555,7 @@ export default function NameTagGenerator() {
             <CollapsibleTrigger className="w-full">
               <CardHeader className="cursor-pointer hover:bg-stone-50">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Font</CardTitle>
+                  <CardTitle className="text-base">Font Controls</CardTitle>
                   {fontOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </CardHeader>
@@ -611,25 +565,45 @@ export default function NameTagGenerator() {
                 <div>
                   <Label className="text-xs">Font</Label>
                   <Select value={fontFamily} onValueChange={setFontFamily}>
-                    <SelectTrigger className="h-8 mt-1">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-96">
-                      <SelectItem value="cursive">Cursive</SelectItem>
-                      <SelectItem value="'Brush Script MT'">Brush Script</SelectItem>
-                      <SelectItem value="'Lucida Handwriting'">Lucida Handwriting</SelectItem>
-                      <SelectItem value="Georgia">Georgia</SelectItem>
-                      <SelectItem value="Arial">Arial</SelectItem>
+                      {Object.entries(fontCategories).map(([category, fonts]) => (
+                        <div key={category}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-stone-500 uppercase">
+                            {category}
+                          </div>
+                          {fonts.map(font => (
+                            <SelectItem 
+                              key={font.name} 
+                              value={font.name}
+                              style={{ fontFamily: font.name }}
+                              className="pl-6"
+                            >
+                              <span style={{ fontFamily: font.name }}>
+                                {font.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))}
                       
                       {customFonts.length > 0 && (
-                        <>
+                        <div>
                           <div className="px-2 py-1.5 text-xs font-semibold text-stone-500 uppercase">
-                            Custom Fonts
+                            My Custom Fonts
                           </div>
                           {customFonts.map(font => (
                             <div key={font.name} className="flex items-center group">
-                              <SelectItem value={font.name} className="pl-6 flex-1">
-                                {font.displayName}
+                              <SelectItem 
+                                value={font.name}
+                                style={{ fontFamily: font.name }}
+                                className="pl-6 flex-1"
+                              >
+                                <span style={{ fontFamily: font.name }}>
+                                  {font.displayName}
+                                </span>
                               </SelectItem>
                               <button
                                 onClick={(e) => {
@@ -643,13 +617,14 @@ export default function NameTagGenerator() {
                               </button>
                             </div>
                           ))}
-                        </>
+                        </div>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
+                  <Label className="text-xs">Upload Custom Font</Label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -660,10 +635,11 @@ export default function NameTagGenerator() {
                   <Button
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-8 text-xs"
+                    className="w-full mt-1"
+                    size="sm"
                   >
                     <Upload className="w-3 h-3 mr-2" />
-                    MY FONT
+                    Upload TTF/OTF
                   </Button>
                 </div>
 
@@ -675,8 +651,8 @@ export default function NameTagGenerator() {
                       step="0.1"
                       min="0"
                       max="10"
-                      value={thicken}
-                      onChange={(e) => setThicken(parseFloat(e.target.value) || 0)}
+                      value={(thicken / 10).toFixed(1)}
+                      onChange={(e) => setThicken(parseFloat(e.target.value) * 10 || 0)}
                       className="h-8"
                     />
                     <span className="text-xs text-stone-500">%</span>
@@ -689,8 +665,8 @@ export default function NameTagGenerator() {
                     <Input
                       type="number"
                       step="0.1"
-                      value={letterSpacing}
-                      onChange={(e) => setLetterSpacing(parseFloat(e.target.value) || 0)}
+                      value={(letterSpacing / 10).toFixed(1)}
+                      onChange={(e) => setLetterSpacing(parseFloat(e.target.value) * 10 || 0)}
                       className="h-8"
                     />
                     <span className="text-xs text-stone-500">%</span>
@@ -722,7 +698,6 @@ export default function NameTagGenerator() {
                     <SelectContent>
                       <SelectItem value="letters">letters</SelectItem>
                       <SelectItem value="dots and letters">dots and letters</SelectItem>
-                      <SelectItem value="connect all (welded)">connect all (welded)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -784,8 +759,8 @@ export default function NameTagGenerator() {
                 step="0.1"
                 min="0"
                 max="10"
-                value={cornerRounding}
-                onChange={(e) => setCornerRounding(parseFloat(e.target.value) || 0)}
+                value={(cornerRounding / 10).toFixed(1)}
+                onChange={(e) => setCornerRounding(parseFloat(e.target.value) * 10 || 0)}
                 className="h-8"
               />
               <span className="text-xs text-stone-500">%</span>
@@ -825,6 +800,7 @@ export default function NameTagGenerator() {
                         />
                         <span className="text-xs text-stone-500">in</span>
                       </div>
+                      <p className="text-xs text-stone-400 mt-1">Size (diameter) of the opening.</p>
                     </div>
 
                     <div>
@@ -840,6 +816,7 @@ export default function NameTagGenerator() {
                         />
                         <span className="text-xs text-stone-500">in</span>
                       </div>
+                      <p className="text-xs text-stone-400 mt-1">Amount of material around the hole.</p>
                     </div>
 
                     <div className="pt-2">
@@ -855,6 +832,8 @@ export default function NameTagGenerator() {
                         <SelectContent>
                           <SelectItem value="left">left</SelectItem>
                           <SelectItem value="right">right</SelectItem>
+                          <SelectItem value="top">top</SelectItem>
+                          <SelectItem value="bottom">bottom</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -865,8 +844,8 @@ export default function NameTagGenerator() {
                         <Input
                           type="number"
                           step="0.01"
-                          value={holePosition}
-                          onChange={(e) => setHolePosition(parseFloat(e.target.value) || 0)}
+                          value={holeOffsetV}
+                          onChange={(e) => setHoleOffsetV(parseFloat(e.target.value) || 0)}
                           className="h-8"
                         />
                         <span className="text-xs text-stone-500">in</span>
@@ -892,6 +871,40 @@ export default function NameTagGenerator() {
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
+        </Card>
+
+        {warnings.length > 0 && (
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertDescription>
+              <div className="space-y-1">
+                {warnings.map((warning, i) => (
+                  <p key={i} className="text-xs text-amber-800">{warning}</p>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Export</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button onClick={downloadSVG} className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              Download SVG
+            </Button>
+            <Button onClick={downloadPNG} variant="outline" className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              Download PNG Preview
+            </Button>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+              <p className="text-xs text-blue-800">
+                <span className="font-semibold">Laser Ready:</span> SVG exports are optimized for cutting with clean paths and no overlaps.
+              </p>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>
