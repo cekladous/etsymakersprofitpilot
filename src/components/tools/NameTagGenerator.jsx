@@ -233,7 +233,7 @@ export default function NameTagGenerator() {
           ctx.strokeText(name, padding, yOffset);
         }
         
-        // Connect dots for i, j, ! if mode is "dots and letters"
+        // Connect dots for i, j if mode is "dots and letters"
         if (connectMode === "dots and letters") {
           const chars = name.split("");
           let xPos = padding;
@@ -241,10 +241,11 @@ export default function NameTagGenerator() {
             const charWidth = ctx.measureText(char).width;
             if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
               // Draw thin vertical line connecting dot to stem
+              const connectionWidth = Math.max(pixelSize * 0.06, 3);
               ctx.beginPath();
-              ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.25);
-              ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.05);
-              ctx.lineWidth = Math.max(pixelSize * 0.03, 2);
+              ctx.moveTo(xPos + charWidth / 2, yOffset - pixelSize * 0.25);
+              ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.3);
+              ctx.lineWidth = connectionWidth;
               ctx.strokeStyle = textColor;
               ctx.lineCap = "round";
               ctx.stroke();
@@ -390,10 +391,11 @@ export default function NameTagGenerator() {
           const charWidth = ctx.measureText(char).width;
           if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
             // Draw thin vertical line connecting dot to stem
+            const connectionWidth = Math.max(pixelSize * 0.06, 3);
             ctx.beginPath();
-            ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.25);
-            ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.05);
-            ctx.lineWidth = Math.max(pixelSize * 0.03, 2);
+            ctx.moveTo(xPos + charWidth / 2, yOffset - pixelSize * 0.25);
+            ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.3);
+            ctx.lineWidth = connectionWidth;
             ctx.strokeStyle = "#000000";
             ctx.lineCap = "round";
             ctx.stroke();
