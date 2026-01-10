@@ -182,11 +182,11 @@ export default function NameTagGenerator() {
     const metrics = ctx.measureText(text);
     const width = metrics.width * (1 + letterSpacing / 100);
 
-    // Render text with proper styling
-    const letterSpacingStyle = letterSpacing !== 0 ? `letter-spacing="${letterSpacing * size / 100}px"` : '';
+    // Render text with proper styling - using dominant-baseline for better positioning
+    const letterSpacingValue = letterSpacing * size / 100;
     
     return {
-      path: `<text x="${x}" y="${y + size * 0.8}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2" ${letterSpacingStyle}>${text}</text>`,
+      path: `<text x="${x}" y="${y + size}" font-family="${fontFamily}" font-size="${size}" fill="none" stroke="#ef4444" stroke-width="2" letter-spacing="${letterSpacingValue}" dominant-baseline="alphabetic">${text}</text>`,
       width: width,
       height: size
     };
