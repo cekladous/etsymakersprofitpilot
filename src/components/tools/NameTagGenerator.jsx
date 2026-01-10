@@ -18,8 +18,12 @@ export default function NameTagGenerator() {
   const [fontFamily, setFontFamily] = useState("Brush Script MT");
   const [customFonts, setCustomFonts] = useState([]);
   const [thicken, setThicken] = useState(0);
+  const [letterSpacing, setLetterSpacing] = useState(0);
+  const [lineHeight, setLineHeight] = useState(100);
   const [connectMode, setConnectMode] = useState("letters");
-
+  const [capitalize, setCapitalize] = useState("none");
+  const [ligatures, setLigatures] = useState("none");
+  const [showFewerOptions, setShowFewerOptions] = useState(false);
   const [cornerRounding, setCornerRounding] = useState(0);
   const [includeHole, setIncludeHole] = useState(false);
   const [holeDiameter, setHoleDiameter] = useState(0.25);
@@ -143,7 +147,7 @@ export default function NameTagGenerator() {
   // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, ligatures, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -503,53 +507,47 @@ export default function NameTagGenerator() {
               onChange={(e) => setNames(e.target.value)}
               placeholder="Enter names (one per line)"
               className="font-mono"
-              rows={6}
+              rows={3}
             />
-            <p className="text-xs text-stone-500 mt-2">
-              Each line generates a separate tag
+            <p className="text-xs text-stone-400 mt-2">
+              You can create multiple keychains by listing names on separate lines.
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <Collapsible open={sizeOpen} onOpenChange={setSizeOpen}>
-            <CollapsibleTrigger className="w-full">
-              <CardHeader className="cursor-pointer hover:bg-stone-50">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Sizing</CardTitle>
-                  {sizeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Label className="text-xs">Font Size</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0.5"
-                      value={fontSize}
-                      onChange={(e) => setFontSize(parseFloat(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="w-20">
-                    <Label className="text-xs">Unit</Label>
-                    <Select value={fontUnit} onValueChange={setFontUnit}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="in">in</SelectItem>
-                        <SelectItem value="pt">pt</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
+          <CardHeader>
+            <CardTitle className="text-base">Size</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  type="number"
+                  step="1"
+                  min="1"
+                  value={fontUnit === "pt" ? fontSize * 72 : fontSize}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 1;
+                    setFontSize(fontUnit === "pt" ? val / 72 : val);
+                  }}
+                  className="h-9"
+                />
+              </div>
+              <Select value={fontUnit} onValueChange={setFontUnit}>
+                <SelectTrigger className="w-20 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pt">pt</SelectItem>
+                  <SelectItem value="in">in</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-stone-400">
+              Font size for the connected text. This determines the overall size for the item.
+            </p>
+          </CardContent>
         </Card>
 
         <Card>
@@ -662,9 +660,39 @@ export default function NameTagGenerator() {
                 </div>
 
                 <div>
+                  <Label className="text-xs">Letter Spacing</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={(letterSpacing / 10).toFixed(1)}
+                      onChange={(e) => setLetterSpacing(parseFloat(e.target.value) * 10 || 0)}
+                      className="h-8"
+                    />
+                    <span className="text-xs text-stone-500">%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Line Height</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      step="1"
+                      min="50"
+                      max="200"
+                      value={lineHeight}
+                      onChange={(e) => setLineHeight(parseFloat(e.target.value) || 100)}
+                      className="h-8"
+                    />
+                    <span className="text-xs text-stone-500">%</span>
+                  </div>
+                </div>
+
+                <div>
                   <Label className="text-xs">Connect</Label>
                   <Select value={connectMode} onValueChange={setConnectMode}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -673,9 +701,71 @@ export default function NameTagGenerator() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {!showFewerOptions && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Capitalize</Label>
+                      <Select value={capitalize} onValueChange={setCapitalize}>
+                        <SelectTrigger className="h-8 mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">none</SelectItem>
+                          <SelectItem value="uppercase">UPPERCASE</SelectItem>
+                          <SelectItem value="lowercase">lowercase</SelectItem>
+                          <SelectItem value="title">Title Case</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Ligatures</Label>
+                      <Select value={ligatures} onValueChange={setLigatures}>
+                        <SelectTrigger className="h-8 mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">none</SelectItem>
+                          <SelectItem value="standard">standard</SelectItem>
+                          <SelectItem value="discretionary">discretionary</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowFewerOptions(!showFewerOptions)}
+                  className="w-full text-xs text-stone-500 hover:text-stone-700"
+                >
+                  {showFewerOptions ? "Show More Options" : "Show Fewer Options"}
+                </Button>
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Corner Rounding</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={(cornerRounding / 10).toFixed(1)}
+                onChange={(e) => setCornerRounding(parseFloat(e.target.value) * 10 || 0)}
+                className="h-8"
+              />
+              <span className="text-xs text-stone-500">%</span>
+            </div>
+          </CardContent>
         </Card>
 
         <Card>
@@ -683,7 +773,7 @@ export default function NameTagGenerator() {
             <CollapsibleTrigger className="w-full">
               <CardHeader className="cursor-pointer hover:bg-stone-50">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Hole Options</CardTitle>
+                  <CardTitle className="text-base">Hole Size</CardTitle>
                   {holeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </CardHeader>
