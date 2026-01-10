@@ -233,25 +233,8 @@ export default function NameTagGenerator() {
           ctx.strokeText(name, padding, yOffset);
         }
         
-        // Connect dots for i, j if mode is "dots and letters"
-        if (connectMode === "dots and letters") {
-          const chars = name.split("");
-          let xPos = padding;
-          chars.forEach((char) => {
-            const charWidth = ctx.measureText(char).width;
-            if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
-              // Fill the gap between dot and stem with subtle connection
-              ctx.fillStyle = textColor;
-              const connectionSize = Math.max(pixelSize * 0.05, 2);
-              for (let y = yOffset - pixelSize * 0.2; y <= yOffset + pixelSize * 0.25; y += connectionSize / 2) {
-                ctx.beginPath();
-                ctx.arc(xPos + charWidth / 2, y, connectionSize, 0, Math.PI * 2);
-                ctx.fill();
-              }
-            }
-            xPos += charWidth;
-          });
-        }
+        // Simply draw i/j with their natural form - the font already connects them
+        // No additional drawing needed for connect mode with cursive fonts
       }
       
       // Draw hole if enabled
@@ -382,21 +365,26 @@ export default function NameTagGenerator() {
         ctx.strokeText(name, margin, yOffset);
       }
       
-      // Connect dots for i, j if mode is "dots and letters"
+      // Connect dots for i, j if mode is "dots and letters"  
       if (connectMode === "dots and letters") {
         const chars = name.split("");
         let xPos = margin;
         chars.forEach((char) => {
           const charWidth = ctx.measureText(char).width;
           if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
-            // Fill the gap between dot and stem with subtle connection
+            // Extend the dot downward to meet the stem
+            const dotRadius = pixelSize * 0.08;
+            const stemTop = yOffset + pixelSize * 0.15;
+            const dotBottom = yOffset - pixelSize * 0.15;
+            
+            // Fill the space between dot and stem
             ctx.fillStyle = "#000000";
-            const connectionSize = Math.max(pixelSize * 0.05, 2);
-            for (let y = yOffset - pixelSize * 0.2; y <= yOffset + pixelSize * 0.25; y += connectionSize / 2) {
-              ctx.beginPath();
-              ctx.arc(xPos + charWidth / 2, y, connectionSize, 0, Math.PI * 2);
-              ctx.fill();
-            }
+            ctx.fillRect(
+              xPos + charWidth / 2 - dotSize / 2,
+              yOffset - pixelSize * 0.15,
+              Math.max(pixelSize * 0.08, 3),
+              pixelSize * 0.4
+            );
           }
           xPos += charWidth;
         });
