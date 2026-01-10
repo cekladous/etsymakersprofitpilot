@@ -81,7 +81,7 @@ export default function NameTagGenerator() {
     const pixelSize = getFontSizeInPixels();
     const nameList = names.split("\n").filter(n => n.trim());
     
-    const padding = 80;
+    const padding = 60;
     const gridSize = dpi * 5;
     
     ctx.font = `italic ${pixelSize}px ${fontFamily}`;
@@ -91,10 +91,10 @@ export default function NameTagGenerator() {
       maxTextWidth = Math.max(maxTextWidth, width);
     });
     
-    const holeSpace = includeHole ? (holeDiameter + Math.abs(holeOffsetH) + holeThickness) * dpi * 2 : 0;
+    const holeSpace = includeHole ? Math.abs(holeOffsetH) * dpi + (holeDiameter + holeThickness) * dpi : 0;
     
-    canvas.width = Math.max(1000, maxTextWidth + padding * 2 + holeSpace);
-    canvas.height = Math.max(600, nameList.length * (pixelSize * 1.8) + padding * 2);
+    canvas.width = maxTextWidth + padding * 2 + holeSpace + 100;
+    canvas.height = Math.max(400, nameList.length * (pixelSize * 1.8) + padding * 2);
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -164,6 +164,8 @@ export default function NameTagGenerator() {
 
     let maxWidth = 0;
 
+    const textStartX = padding + (includeHole && holeSide === "left" ? holeSpace / 2 : 0);
+
     nameList.forEach((name, index) => {
       const yOffset = padding + index * (pixelSize * 1.8);
       
@@ -181,11 +183,11 @@ export default function NameTagGenerator() {
       ctx.lineWidth = strokeWidth;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
-      ctx.strokeText(name, padding, yOffset + pixelSize * 0.75);
+      ctx.strokeText(name, textStartX, yOffset + pixelSize * 0.75);
       
       if (connectMode === "dots and letters") {
         const chars = name.split("");
-        let xPos = padding;
+        let xPos = textStartX;
         
         chars.forEach((char) => {
           const charWidth = ctx.measureText(char).width;
@@ -227,27 +229,27 @@ export default function NameTagGenerator() {
         
         switch (holeSide) {
           case "left":
-            holeX = padding + holeOffsetHPx;
+            holeX = textStartX + holeOffsetHPx;
             holeY = yOffset + holeOffsetVPx + pixelSize * 0.4;
-            connectionX = padding;
+            connectionX = textStartX;
             connectionY = yOffset + pixelSize * 0.4;
             break;
           case "right":
-            holeX = padding + textWidth + holeOffsetHPx;
+            holeX = textStartX + textWidth + holeOffsetHPx;
             holeY = yOffset + holeOffsetVPx + pixelSize * 0.4;
-            connectionX = padding + textWidth;
+            connectionX = textStartX + textWidth;
             connectionY = yOffset + pixelSize * 0.4;
             break;
           case "top":
-            holeX = padding + textWidth / 2 + holeOffsetHPx;
+            holeX = textStartX + textWidth / 2 + holeOffsetHPx;
             holeY = yOffset - holeOffsetVPx;
-            connectionX = padding + textWidth / 2;
+            connectionX = textStartX + textWidth / 2;
             connectionY = yOffset + pixelSize * 0.2;
             break;
           case "bottom":
-            holeX = padding + textWidth / 2 + holeOffsetHPx;
+            holeX = textStartX + textWidth / 2 + holeOffsetHPx;
             holeY = yOffset + pixelSize + holeOffsetVPx;
-            connectionX = padding + textWidth / 2;
+            connectionX = textStartX + textWidth / 2;
             connectionY = yOffset + pixelSize * 0.8;
             break;
         }
