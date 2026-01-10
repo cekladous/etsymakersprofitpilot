@@ -5,7 +5,6 @@ import Jobs from './pages/Jobs';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Tools from './pages/Tools';
-import NameTagGenerator from './pages/NameTagGenerator';
 import __Layout from './Layout.jsx';
 
 
@@ -17,7 +16,6 @@ export const PAGES = {
     "Orders": Orders,
     "Products": Products,
     "Tools": Tools,
-    "NameTagGenerator": NameTagGenerator,
 }
 
 export const pagesConfig = {
