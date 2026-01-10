@@ -218,23 +218,20 @@ export default function NameTagGenerator() {
       // Apply thickening via stroke
       const strokeWidth = (pixelSize * thicken) / 100;
       
-      // Draw text with connection logic
-      if (connectMode === "letters" || connectMode === "dots and letters") {
-        const textColor = background === "dark" ? "#fafaf9" : "#1c1917";
+      // Draw text with stroke for outline
+      const textColor = background === "dark" ? "#fafaf9" : "#1c1917";
+      ctx.strokeStyle = textColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      
+      // Only draw outline for preview
+      if (strokeWidth > 0) {
+        ctx.strokeText(name, padding, yOffset);
+      } else {
+        // Draw filled text if no stroke
         ctx.fillStyle = textColor;
-        ctx.strokeStyle = textColor;
-        ctx.lineWidth = strokeWidth;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        
-        // Draw the full text as one connected piece
         ctx.fillText(name, padding, yOffset);
-        if (strokeWidth > 0) {
-          ctx.strokeText(name, padding, yOffset);
-        }
-        
-        // Simply draw i/j with their natural form - the font already connects them
-        // No additional drawing needed for connect mode with cursive fonts
       }
       
       // Draw hole if enabled
@@ -354,41 +351,12 @@ export default function NameTagGenerator() {
     nameList.forEach((name, index) => {
       const yOffset = margin + index * (pixelSize * 1.5 + spacing);
       
-      // Draw text as connected
-      ctx.fillText(name, margin, yOffset);
-      
-      if (strokeWidth > 0) {
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = strokeWidth;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.strokeText(name, margin, yOffset);
-      }
-      
-      // Connect dots for i, j if mode is "dots and letters"  
-      if (connectMode === "dots and letters") {
-        const chars = name.split("");
-        let xPos = margin;
-        chars.forEach((char) => {
-          const charWidth = ctx.measureText(char).width;
-          if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
-            // Extend the dot downward to meet the stem
-            const dotRadius = pixelSize * 0.08;
-            const stemTop = yOffset + pixelSize * 0.15;
-            const dotBottom = yOffset - pixelSize * 0.15;
-            
-            // Fill the space between dot and stem
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(
-              xPos + charWidth / 2 - dotSize / 2,
-              yOffset - pixelSize * 0.15,
-              Math.max(pixelSize * 0.08, 3),
-              pixelSize * 0.4
-            );
-          }
-          xPos += charWidth;
-        });
-      }
+      // Draw text outline only for SVG export
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = strokeWidth > 0 ? strokeWidth : pixelSize * 0.02;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeText(name, margin, yOffset);
       
       // Draw hole if enabled
       if (includeHole) {
@@ -678,45 +646,32 @@ export default function NameTagGenerator() {
                 </div>
 
                 <div>
-                  <Label className="text-xs">Thicken: {thicken}%</Label>
-                  <Slider
-                    value={[thicken]}
-                    onValueChange={([v]) => setThicken(v)}
-                    min={0}
-                    max={50}
-                    step={5}
-                    className="mt-2"
-                  />
+                  <Label className="text-xs">Thicken</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="10"
+                      value={(thicken / 10).toFixed(1)}
+                      onChange={(e) => setThicken(parseFloat(e.target.value) * 10 || 0)}
+                      className="h-8"
+                    />
+                    <span className="text-xs text-stone-500">%</span>
+                  </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Connect Mode</Label>
+                  <Label className="text-xs">Connect</Label>
                   <Select value={connectMode} onValueChange={setConnectMode}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="letters">Letters Only</SelectItem>
-                      <SelectItem value="dots and letters">Connect All (Welded)</SelectItem>
+                      <SelectItem value="letters">letters</SelectItem>
+                      <SelectItem value="dots and letters">dots and letters</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-stone-500 mt-1">
-                    {connectMode === "dots and letters" ? "Bridges connect letters for single-cut path" : "Individual letters"}
-                  </p>
-                </div>
-
-
-
-                <div>
-                  <Label className="text-xs">Corner Rounding: {cornerRounding}%</Label>
-                  <Slider
-                    value={[cornerRounding]}
-                    onValueChange={([v]) => setCornerRounding(v)}
-                    min={0}
-                    max={100}
-                    step={10}
-                    className="mt-2"
-                  />
                 </div>
               </CardContent>
             </CollapsibleContent>
@@ -743,71 +698,83 @@ export default function NameTagGenerator() {
                 {includeHole && (
                   <>
                     <div>
-                      <Label className="text-xs">Hole Diameter (in)</Label>
-                      <Input
-                        type="number"
-                        step="0.0625"
-                        min="0.125"
-                        value={holeDiameter}
-                        onChange={(e) => setHoleDiameter(parseFloat(e.target.value) || 0.25)}
-                      />
+                      <Label className="text-xs">Hole Size</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={holeDiameter}
+                          onChange={(e) => setHoleDiameter(parseFloat(e.target.value) || 0.19)}
+                          className="h-8"
+                        />
+                        <span className="text-xs text-stone-500">in</span>
+                      </div>
+                      <p className="text-xs text-stone-400 mt-1">Size (diameter) of the opening.</p>
                     </div>
 
                     <div>
-                      <Label className="text-xs">Hole Thickness (in)</Label>
-                      <Input
-                        type="number"
-                        step="0.0625"
-                        min="0.0625"
-                        value={holeThickness}
-                        onChange={(e) => setHoleThickness(parseFloat(e.target.value) || 0.125)}
-                      />
+                      <Label className="text-xs">Hole Thickness</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={holeThickness}
+                          onChange={(e) => setHoleThickness(parseFloat(e.target.value) || 0.12)}
+                          className="h-8"
+                        />
+                        <span className="text-xs text-stone-500">in</span>
+                      </div>
+                      <p className="text-xs text-stone-400 mt-1">Amount of material around the hole.</p>
+                    </div>
+
+                    <div className="pt-2">
+                      <Label className="text-xs font-semibold text-stone-600">Hole Position</Label>
                     </div>
 
                     <div>
-                      <Label className="text-xs">Position</Label>
+                      <Label className="text-xs">Hole Side</Label>
                       <Select value={holeSide} onValueChange={setHoleSide}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="left">Left</SelectItem>
-                          <SelectItem value="right">Right</SelectItem>
-                          <SelectItem value="top">Top</SelectItem>
-                          <SelectItem value="bottom">Bottom</SelectItem>
+                          <SelectItem value="left">left</SelectItem>
+                          <SelectItem value="right">right</SelectItem>
+                          <SelectItem value="top">top</SelectItem>
+                          <SelectItem value="bottom">bottom</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div>
-                      <Label className="text-xs">Horizontal Offset (in)</Label>
-                      <Input
-                        type="number"
-                        step="0.0625"
-                        value={holeOffsetH}
-                        onChange={(e) => setHoleOffsetH(parseFloat(e.target.value) || 0)}
-                      />
+                      <Label className="text-xs">Hole Position</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={holeOffsetV}
+                          onChange={(e) => setHoleOffsetV(parseFloat(e.target.value) || 0)}
+                          className="h-8"
+                        />
+                        <span className="text-xs text-stone-500">in</span>
+                      </div>
                     </div>
 
                     <div>
-                      <Label className="text-xs">Vertical Offset (in)</Label>
-                      <Input
-                        type="number"
-                        step="0.0625"
-                        value={holeOffsetV}
-                        onChange={(e) => setHoleOffsetV(parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Overlap (in)</Label>
-                      <Input
-                        type="number"
-                        step="0.0625"
-                        min="0"
-                        value={holeOverlap}
-                        onChange={(e) => setHoleOverlap(parseFloat(e.target.value) || 0)}
-                      />
+                      <Label className="text-xs">Hole Overlap</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={holeOverlap}
+                          onChange={(e) => setHoleOverlap(parseFloat(e.target.value) || 0)}
+                          className="h-8"
+                        />
+                        <span className="text-xs text-stone-500">in</span>
+                      </div>
                     </div>
                   </>
                 )}
