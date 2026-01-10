@@ -240,15 +240,14 @@ export default function NameTagGenerator() {
           chars.forEach((char) => {
             const charWidth = ctx.measureText(char).width;
             if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
-              // Draw thin vertical line connecting dot to stem
-              const connectionWidth = Math.max(pixelSize * 0.06, 3);
-              ctx.beginPath();
-              ctx.moveTo(xPos + charWidth / 2, yOffset - pixelSize * 0.25);
-              ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.3);
-              ctx.lineWidth = connectionWidth;
-              ctx.strokeStyle = textColor;
-              ctx.lineCap = "round";
-              ctx.stroke();
+              // Fill the gap between dot and stem with subtle connection
+              ctx.fillStyle = textColor;
+              const connectionSize = Math.max(pixelSize * 0.05, 2);
+              for (let y = yOffset - pixelSize * 0.2; y <= yOffset + pixelSize * 0.25; y += connectionSize / 2) {
+                ctx.beginPath();
+                ctx.arc(xPos + charWidth / 2, y, connectionSize, 0, Math.PI * 2);
+                ctx.fill();
+              }
             }
             xPos += charWidth;
           });
@@ -390,15 +389,14 @@ export default function NameTagGenerator() {
         chars.forEach((char) => {
           const charWidth = ctx.measureText(char).width;
           if (char.toLowerCase() === "i" || char.toLowerCase() === "j") {
-            // Draw thin vertical line connecting dot to stem
-            const connectionWidth = Math.max(pixelSize * 0.06, 3);
-            ctx.beginPath();
-            ctx.moveTo(xPos + charWidth / 2, yOffset - pixelSize * 0.25);
-            ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.3);
-            ctx.lineWidth = connectionWidth;
-            ctx.strokeStyle = "#000000";
-            ctx.lineCap = "round";
-            ctx.stroke();
+            // Fill the gap between dot and stem with subtle connection
+            ctx.fillStyle = "#000000";
+            const connectionSize = Math.max(pixelSize * 0.05, 2);
+            for (let y = yOffset - pixelSize * 0.2; y <= yOffset + pixelSize * 0.25; y += connectionSize / 2) {
+              ctx.beginPath();
+              ctx.arc(xPos + charWidth / 2, y, connectionSize, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
           xPos += charWidth;
         });
