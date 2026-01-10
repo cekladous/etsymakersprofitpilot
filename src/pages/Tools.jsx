@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, Zap, Settings as SettingsIcon, Database } from "lucide-react";
+import { Calculator, Zap, Settings as SettingsIcon, Database, Tag } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
 // Import tool components
@@ -8,6 +8,7 @@ import CalculatorTool from "@/components/tools/CalculatorTool";
 import RasterAssistantTool from "@/components/tools/RasterAssistantTool";
 import SettingsTool from "@/components/tools/SettingsTool";
 import MaterialsLibraryTool from "@/components/tools/MaterialsLibraryTool";
+import NameTagGenerator from "@/components/tools/NameTagGenerator";
 
 export default function Tools() {
   const [activeTab, setActiveTab] = useState("calculator");
@@ -20,10 +21,14 @@ export default function Tools() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-3xl grid-cols-5">
           <TabsTrigger value="calculator" className="flex items-center gap-2">
             <Calculator className="w-4 h-4" />
             <span className="hidden sm:inline">Calculator</span>
+          </TabsTrigger>
+          <TabsTrigger value="nametag" className="flex items-center gap-2">
+            <Tag className="w-4 h-4" />
+            <span className="hidden sm:inline">Name Tags</span>
           </TabsTrigger>
           <TabsTrigger value="raster" className="flex items-center gap-2">
             <Zap className="w-4 h-4" />
@@ -31,7 +36,7 @@ export default function Tools() {
           </TabsTrigger>
           <TabsTrigger value="materials" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
-            <span className="hidden sm:inline">Materials Library</span>
+            <span className="hidden sm:inline">Materials</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
@@ -41,6 +46,10 @@ export default function Tools() {
 
         <TabsContent value="calculator" className="mt-6">
           <CalculatorTool />
+        </TabsContent>
+
+        <TabsContent value="nametag" className="mt-6">
+          <NameTagGenerator />
         </TabsContent>
 
         <TabsContent value="raster" className="mt-6">
