@@ -5,46 +5,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Upload, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import opentype from "opentype.js";
+import paper from "paper";
 
 export default function NameTagGenerator() {
-  const [names, setNames] = useState("Denise");
+  const [names, setNames] = useState("Christina");
   const [fontSize, setFontSize] = useState(2);
   const [fontUnit, setFontUnit] = useState("in");
   const [fontFamily, setFontFamily] = useState("Brush Script MT");
   const [customFonts, setCustomFonts] = useState([]);
-  const [thicken, setThicken] = useState(0);
+  const [loadedFont, setLoadedFont] = useState(null);
+  const [thicken, setThicken] = useState(1.2);
   const [letterSpacing, setLetterSpacing] = useState(0);
   const [lineHeight, setLineHeight] = useState(100);
-  const [connectMode, setConnectMode] = useState("letters");
+  const [connectMode, setConnectMode] = useState("dots and letters");
   const [capitalize, setCapitalize] = useState("none");
   const [ligatures, setLigatures] = useState("none");
   const [showFewerOptions, setShowFewerOptions] = useState(false);
-  const [cornerRounding, setCornerRounding] = useState(0);
+  const [cornerRounding, setCornerRounding] = useState(0.5);
   const [includeHole, setIncludeHole] = useState(false);
-  const [holeDiameter, setHoleDiameter] = useState(0.25);
-  const [holeThickness, setHoleThickness] = useState(0.125);
+  const [holeDiameter, setHoleDiameter] = useState(0.19);
+  const [holeThickness, setHoleThickness] = useState(0.12);
   const [holeSide, setHoleSide] = useState("left");
-  const [holeOffsetH, setHoleOffsetH] = useState(0.25);
-  const [holeOffsetV, setHoleOffsetV] = useState(0.5);
-  const [holeOverlap, setHoleOverlap] = useState(0.1);
+  const [holeOffsetV, setHoleOffsetV] = useState(-0.5);
+  const [holeOverlap, setHoleOverlap] = useState(0.05);
   const [warnings, setWarnings] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [background, setBackground] = useState("transparent");
   
   const [fontOpen, setFontOpen] = useState(true);
-  const [sizeOpen, setSizeOpen] = useState(true);
   const [holeOpen, setHoleOpen] = useState(false);
   
   const canvasRef = useRef(null);
-  const svgRef = useRef(null);
   const fileInputRef = useRef(null);
+  const paperScopeRef = useRef(null);
 
-  const fontCategories = {
+  const systemFonts = {
     script: [
       { name: "Brush Script MT", label: "Brush Script" },
       { name: "Lucida Handwriting", label: "Lucida Handwriting" },
@@ -75,7 +74,6 @@ export default function NameTagGenerator() {
       try {
         const parsed = JSON.parse(stored);
         setCustomFonts(parsed);
-        // Reload fonts into browser
         parsed.forEach(font => {
           const fontFace = new FontFace(font.name, `url(${font.data})`);
           fontFace.load().then(loadedFont => {
@@ -88,7 +86,30 @@ export default function NameTagGenerator() {
     }
   }, []);
 
-  // Convert font size to pixels
+  // Initialize Paper.js
+  useEffect(() => {
+    if (canvasRef.current && !paperScopeRef.current) {
+      paperScopeRef.current = new paper.PaperScope();
+      paperScopeRef.current.setup(canvasRef.current);
+    }
+  }, []);
+
+  // Load font for vector rendering
+  useEffect(() => {
+    const customFont = customFonts.find(f => f.name === fontFamily);
+    if (customFont) {
+      fetch(customFont.data)
+        .then(res => res.arrayBuffer())
+        .then(buffer => {
+          const font = opentype.parse(buffer);
+          setLoadedFont(font);
+        })
+        .catch(err => console.error("Failed to load custom font:", err));
+    } else {
+      setLoadedFont(null);
+    }
+  }, [fontFamily, customFonts]);
+
   const getFontSizeInPixels = () => {
     const dpi = 96;
     if (fontUnit === "pt") {
@@ -98,7 +119,6 @@ export default function NameTagGenerator() {
     }
   };
 
-  // Handle custom font upload
   const handleFontUpload = (e) => {
     const file = e.target.files[0];
     if (file && (file.name.endsWith(".ttf") || file.name.endsWith(".otf"))) {
@@ -111,7 +131,6 @@ export default function NameTagGenerator() {
         fontFace.load().then((loadedFont) => {
           document.fonts.add(loadedFont);
           
-          // Store in state and localStorage
           const newFont = {
             name: uniqueFontName,
             displayName: file.name.replace(/\.(ttf|otf)$/, ''),
@@ -132,50 +151,49 @@ export default function NameTagGenerator() {
     }
   };
 
-  // Delete custom font
   const deleteCustomFont = (fontName) => {
     const updatedFonts = customFonts.filter(f => f.name !== fontName);
     setCustomFonts(updatedFonts);
     localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
     
-    // If deleted font was selected, switch to default
     if (fontFamily === fontName) {
       setFontFamily("Brush Script MT");
     }
   };
 
-  // Generate preview and SVG
+  const applyCapitalization = (text) => {
+    if (capitalize === "uppercase") return text.toUpperCase();
+    if (capitalize === "lowercase") return text.toLowerCase();
+    if (capitalize === "title") return text.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    return text;
+  };
+
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, ligatures, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, ligatures, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetV, holeOverlap, loadedFont]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
-    if (!canvas || !names.trim()) return;
+    const scope = paperScopeRef.current;
+    if (!canvas || !scope || !names.trim()) return;
 
     const ctx = canvas.getContext("2d");
     const dpi = 96;
     const pixelSize = getFontSizeInPixels();
-    const nameList = names.split("\n").filter(n => n.trim());
+    const nameList = names.split("\n").filter(n => n.trim()).map(n => applyCapitalization(n));
     
-    // Set canvas size to accommodate all names with grid
-    const padding = 100; // Increased padding to prevent cutoff
+    const padding = dpi; // 1 inch padding
     const gridSize = dpi; // 1 inch grid
+    
     canvas.width = 1200;
-    canvas.height = Math.max(400, nameList.length * pixelSize * 2.5 + padding * 2);
+    canvas.height = Math.max(400, nameList.length * pixelSize * (lineHeight / 100) * 1.5 + padding * 2);
 
-    // Clear and draw background
-    if (background === "light") {
-      ctx.fillStyle = "#fafaf9";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (background === "dark") {
-      ctx.fillStyle = "#1c1917";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // For transparent, skip background fill
+    // Clear canvas with white background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw grid
-    ctx.strokeStyle = background === "dark" ? "#44403c" : "#e7e5e4";
+    ctx.strokeStyle = "#e7e5e4";
     ctx.lineWidth = 1;
     for (let x = padding; x < canvas.width; x += gridSize) {
       ctx.beginPath();
@@ -191,7 +209,7 @@ export default function NameTagGenerator() {
     }
 
     // Draw ruler marks
-    ctx.fillStyle = background === "dark" ? "#a8a29e" : "#78716c";
+    ctx.fillStyle = "#78716c";
     ctx.font = "10px sans-serif";
     for (let x = padding; x < canvas.width; x += gridSize) {
       const inch = Math.round((x - padding) / dpi);
@@ -202,260 +220,137 @@ export default function NameTagGenerator() {
       ctx.fillText(`${inch}"`, 5, y - 2);
     }
 
-    // Render each name
+    // Render each name with red outline
     let maxWidth = 0;
     let totalHeight = 0;
-    const newWarnings = [];
 
     nameList.forEach((name, index) => {
-      const yOffset = padding + index * pixelSize * 2.5;
+      const yOffset = padding + index * pixelSize * (lineHeight / 100) * 1.5;
       
-      // Configure text
       ctx.font = `${pixelSize}px ${fontFamily}`;
       ctx.textBaseline = "top";
       
-      // Measure text
       const metrics = ctx.measureText(name);
       const textWidth = metrics.width;
       maxWidth = Math.max(maxWidth, textWidth);
       
-      // Apply thickening via stroke
-      const strokeWidth = (pixelSize * thicken) / 100;
-      
-      // Draw text with stroke for outline
-      const textColor = background === "dark" ? "#fafaf9" : "#1c1917";
-      ctx.strokeStyle = textColor;
-      ctx.lineWidth = strokeWidth;
+      // Draw red outline
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = Math.max(2, pixelSize * (thicken / 100));
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
-      
-      // Only draw outline for preview
-      if (strokeWidth > 0) {
-        ctx.strokeText(name, padding, yOffset);
-      } else {
-        // Draw filled text if no stroke
-        ctx.fillStyle = textColor;
-        ctx.fillText(name, padding, yOffset);
-      }
-      
-      // Draw hole if enabled
-      if (includeHole) {
-        const holeDiameterPx = holeDiameter * dpi;
-        const holeThicknessPx = holeThickness * dpi;
-        const holeOffsetHPx = holeOffsetH * dpi;
-        const holeOffsetVPx = holeOffsetV * dpi;
-        const holeOverlapPx = holeOverlap * dpi;
-        
-        let holeX, holeY;
-        
-        switch (holeSide) {
-          case "left":
-            holeX = padding - holeOffsetHPx + holeOverlapPx;
-            holeY = yOffset + holeOffsetVPx;
-            break;
-          case "right":
-            holeX = padding + textWidth + holeOffsetHPx - holeOverlapPx;
-            holeY = yOffset + holeOffsetVPx;
-            break;
-          case "top":
-            holeX = padding + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
-            break;
-          case "bottom":
-            holeX = padding + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
-            break;
-        }
-        
-        // Draw outer circle
-        const holeColor = background === "dark" ? "#fafaf9" : "#1c1917";
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
-        ctx.fillStyle = holeColor;
-        ctx.fill();
-        
-        // Cut out inner circle
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = "source-over";
-        
-        // Draw connecting line to text
-        ctx.strokeStyle = holeColor;
-        ctx.lineWidth = holeThicknessPx;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        if (holeSide === "left" || holeSide === "right") {
-          ctx.moveTo(holeX, holeY);
-          ctx.lineTo(holeSide === "left" ? padding : padding + textWidth, yOffset + pixelSize / 2);
-        } else {
-          ctx.moveTo(holeX, holeY);
-          ctx.lineTo(padding + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
-        }
-        ctx.stroke();
-      }
+      ctx.strokeText(name, padding, yOffset);
       
       totalHeight = yOffset + pixelSize - padding;
     });
 
-    // Calculate dimensions in inches
     const widthInches = (maxWidth / dpi).toFixed(2);
     const heightInches = (totalHeight / dpi).toFixed(2);
     setDimensions({ width: widthInches, height: heightInches });
 
     // Validation
-    if (thicken > 0 && thicken < 5) {
-      newWarnings.push("Thicken percentage below 5% may be too thin for reliable laser cutting");
+    const newWarnings = [];
+    if (thicken < 0.5) {
+      newWarnings.push("Thicken percentage below 0.5% may be too thin for reliable laser cutting");
     }
     if (fontSize < 1 && fontUnit === "in") {
       newWarnings.push("Font size below 1 inch may produce fragile results");
     }
-    if (fontSize < 72 && fontUnit === "pt") {
-      newWarnings.push("Font size below 72pt may produce fragile results");
-    }
     setWarnings(newWarnings);
   };
 
-  // Download SVG
   const downloadSVG = () => {
-    const nameList = names.split("\n").filter(n => n.trim());
+    if (!paperScopeRef.current || !names.trim()) return;
+
+    const scope = paperScopeRef.current;
+    scope.activate();
+    scope.project.clear();
+
     const dpi = 96;
     const pixelSize = getFontSizeInPixels();
+    const nameList = names.split("\n").filter(n => n.trim()).map(n => applyCapitalization(n));
     
-    // Calculate dimensions for all names
-    const tempCanvas = document.createElement("canvas");
-    const ctx = tempCanvas.getContext("2d");
-    ctx.font = `${pixelSize}px ${fontFamily}`;
+    const padding = 20;
+    const spacing = pixelSize * (lineHeight / 100) * 1.5;
     
+    let allShapes = [];
     let maxWidth = 0;
-    const nameWidths = nameList.map(name => {
-      const metrics = ctx.measureText(name);
-      maxWidth = Math.max(maxWidth, metrics.width);
-      return metrics.width;
-    });
-    
-    const margin = includeHole ? holeDiameter * dpi + holeOffsetH * dpi : 20;
-    const spacing = pixelSize * 0.5; // Space between names
-    
-    // Calculate total canvas size
-    const canvasWidth = maxWidth + margin * 2;
-    const canvasHeight = nameList.length * (pixelSize * 1.5 + spacing) + margin * 2;
-    
-    tempCanvas.width = canvasWidth;
-    tempCanvas.height = canvasHeight;
-    
-    // Draw all names on one canvas
-    ctx.font = `${pixelSize}px ${fontFamily}`;
-    ctx.fillStyle = "#000000";
-    ctx.textBaseline = "top";
-    
-    const strokeWidth = (pixelSize * thicken) / 100;
-    
+    let totalHeight = 0;
+
     nameList.forEach((name, index) => {
-      const yOffset = margin + index * (pixelSize * 1.5 + spacing);
+      const yOffset = padding + index * spacing;
       
-      // Draw text outline only for SVG export
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = strokeWidth > 0 ? strokeWidth : pixelSize * 0.02;
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      ctx.strokeText(name, margin, yOffset);
+      // Create text path using canvas measurement as fallback
+      const tempCanvas = document.createElement("canvas");
+      const ctx = tempCanvas.getContext("2d");
+      ctx.font = `${pixelSize}px ${fontFamily}`;
+      const textWidth = ctx.measureText(name).width;
+      maxWidth = Math.max(maxWidth, textWidth);
       
-      // Draw hole if enabled
-      if (includeHole) {
-        const holeDiameterPx = holeDiameter * dpi;
-        const holeThicknessPx = holeThickness * dpi;
-        const holeOffsetHPx = holeOffsetH * dpi;
-        const holeOffsetVPx = holeOffsetV * dpi;
-        const holeOverlapPx = holeOverlap * dpi;
+      // Create text as compound path
+      const textPath = new scope.CompoundPath({
+        children: []
+      });
+      
+      // Draw each character
+      let xPos = padding;
+      for (let i = 0; i < name.length; i++) {
+        const char = name[i];
+        const charPath = new scope.PointText({
+          point: [xPos, yOffset],
+          content: char,
+          fontSize: pixelSize,
+          fontFamily: fontFamily
+        });
         
-        let holeX, holeY;
-        const textWidth = nameWidths[index];
-        
-        switch (holeSide) {
-          case "left":
-            holeX = margin - holeOffsetHPx + holeOverlapPx;
-            holeY = yOffset + holeOffsetVPx;
-            break;
-          case "right":
-            holeX = margin + textWidth + holeOffsetHPx - holeOverlapPx;
-            holeY = yOffset + holeOffsetVPx;
-            break;
-          case "top":
-            holeX = margin + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset - holeOffsetVPx + holeOverlapPx;
-            break;
-          case "bottom":
-            holeX = margin + textWidth / 2 + holeOffsetHPx;
-            holeY = yOffset + pixelSize + holeOffsetVPx - holeOverlapPx;
-            break;
+        const outline = charPath.toPath(false);
+        if (outline) {
+          textPath.addChild(outline);
         }
+        charPath.remove();
         
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
-        ctx.fillStyle = "#000000";
-        ctx.fill();
-        
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = "source-over";
-        
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = holeThicknessPx;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        if (holeSide === "left" || holeSide === "right") {
-          ctx.moveTo(holeX, holeY);
-          ctx.lineTo(holeSide === "left" ? margin : margin + textWidth, yOffset + pixelSize / 2);
-        } else {
-          ctx.moveTo(holeX, holeY);
-          ctx.lineTo(margin + textWidth / 2, holeSide === "top" ? yOffset : yOffset + pixelSize);
-        }
-        ctx.stroke();
+        const charWidth = ctx.measureText(char).width;
+        xPos += charWidth * (1 + letterSpacing / 100);
       }
+      
+      // Apply thickening via offset
+      if (thicken > 0) {
+        const offsetAmount = (pixelSize * thicken) / 100;
+        const expanded = textPath.unite(textPath.clone().scale(1 + offsetAmount / 100));
+        textPath.remove();
+        allShapes.push(expanded);
+      } else {
+        allShapes.push(textPath);
+      }
+      
+      totalHeight = yOffset + pixelSize;
     });
-    
-    // Create clean SVG with transparent background
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", `${(canvasWidth / dpi).toFixed(3)}in`);
-    svg.setAttribute("height", `${(canvasHeight / dpi).toFixed(3)}in`);
-    svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`);
-    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
-    
-    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-    image.setAttribute("xlink:href", tempCanvas.toDataURL("image/png"));
-    image.setAttribute("width", canvasWidth);
-    image.setAttribute("height", canvasHeight);
-    svg.appendChild(image);
-    
-    // Download
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+
+    // Unite all shapes if "connect all" mode
+    let finalShape;
+    if (connectMode === "dots and letters" && allShapes.length > 0) {
+      finalShape = allShapes[0];
+      for (let i = 1; i < allShapes.length; i++) {
+        const united = finalShape.unite(allShapes[i]);
+        finalShape.remove();
+        allShapes[i].remove();
+        finalShape = united;
+      }
+    } else {
+      finalShape = new scope.Group(allShapes);
+    }
+
+    // Export as SVG
+    const svgString = scope.project.exportSVG({ asString: true });
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `nametags-${nameList.length}.svg`;
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  // Download PNG
-  const downloadPNG = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "nametags-preview.png";
-      link.click();
-      URL.revokeObjectURL(url);
-    });
+    
+    scope.project.clear();
   };
 
   return (
@@ -463,33 +358,22 @@ export default function NameTagGenerator() {
       {/* Left Panel - Canvas Preview */}
       <div className="lg:col-span-2">
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Live Preview</CardTitle>
-              <div className="flex items-center gap-3">
-                <Select value={background} onValueChange={setBackground}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="transparent">Transparent</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="text-sm text-stone-600">
-                  {dimensions.width}" × {dimensions.height}"
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white">
+          <CardContent className="p-4">
+            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white relative">
               <canvas
                 ref={canvasRef}
                 className="w-full h-auto"
                 style={{ minHeight: "400px" }}
               />
+              <div className="absolute bottom-2 left-2 bg-white/90 px-2 py-1 rounded text-xs font-mono border border-stone-300">
+                {dimensions.width}" × {dimensions.height}"
+              </div>
+            </div>
+            <div className="mt-3">
+              <Button onClick={downloadSVG} className="w-full bg-blue-500 hover:bg-blue-600">
+                <Download className="w-4 h-4 mr-2" />
+                Download SVG
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -498,8 +382,8 @@ export default function NameTagGenerator() {
       {/* Right Panel - Controls */}
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Names</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Names</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -516,17 +400,17 @@ export default function NameTagGenerator() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-base">Size</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <Input
                   type="number"
                   step="1"
                   min="1"
-                  value={fontUnit === "pt" ? fontSize * 72 : fontSize}
+                  value={fontUnit === "pt" ? Math.round(fontSize * 72) : fontSize}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value) || 1;
                     setFontSize(fontUnit === "pt" ? val / 72 : val);
@@ -553,9 +437,9 @@ export default function NameTagGenerator() {
         <Card>
           <Collapsible open={fontOpen} onOpenChange={setFontOpen}>
             <CollapsibleTrigger className="w-full">
-              <CardHeader className="cursor-pointer hover:bg-stone-50">
+              <CardHeader className="cursor-pointer hover:bg-stone-50 pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Font Controls</CardTitle>
+                  <CardTitle className="text-base">Font</CardTitle>
                   {fontOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </CardHeader>
@@ -565,11 +449,11 @@ export default function NameTagGenerator() {
                 <div>
                   <Label className="text-xs">Font</Label>
                   <Select value={fontFamily} onValueChange={setFontFamily}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-96">
-                      {Object.entries(fontCategories).map(([category, fonts]) => (
+                      {Object.entries(systemFonts).map(([category, fonts]) => (
                         <div key={category}>
                           <div className="px-2 py-1.5 text-xs font-semibold text-stone-500 uppercase">
                             {category}
@@ -581,9 +465,7 @@ export default function NameTagGenerator() {
                               style={{ fontFamily: font.name }}
                               className="pl-6"
                             >
-                              <span style={{ fontFamily: font.name }}>
-                                {font.label}
-                              </span>
+                              {font.label}
                             </SelectItem>
                           ))}
                         </div>
@@ -595,27 +477,14 @@ export default function NameTagGenerator() {
                             My Custom Fonts
                           </div>
                           {customFonts.map(font => (
-                            <div key={font.name} className="flex items-center group">
-                              <SelectItem 
-                                value={font.name}
-                                style={{ fontFamily: font.name }}
-                                className="pl-6 flex-1"
-                              >
-                                <span style={{ fontFamily: font.name }}>
-                                  {font.displayName}
-                                </span>
-                              </SelectItem>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  deleteCustomFont(font.name);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 px-2 py-1 text-red-600 hover:text-red-700 text-xs"
-                              >
-                                ×
-                              </button>
-                            </div>
+                            <SelectItem 
+                              key={font.name}
+                              value={font.name}
+                              style={{ fontFamily: font.name }}
+                              className="pl-6"
+                            >
+                              {font.displayName}
+                            </SelectItem>
                           ))}
                         </div>
                       )}
@@ -624,7 +493,6 @@ export default function NameTagGenerator() {
                 </div>
 
                 <div>
-                  <Label className="text-xs">Upload Custom Font</Label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -635,7 +503,7 @@ export default function NameTagGenerator() {
                   <Button
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full mt-1"
+                    className="w-full"
                     size="sm"
                   >
                     <Upload className="w-3 h-3 mr-2" />
@@ -651,8 +519,8 @@ export default function NameTagGenerator() {
                       step="0.1"
                       min="0"
                       max="10"
-                      value={(thicken / 10).toFixed(1)}
-                      onChange={(e) => setThicken(parseFloat(e.target.value) * 10 || 0)}
+                      value={thicken.toFixed(1)}
+                      onChange={(e) => setThicken(parseFloat(e.target.value) || 0)}
                       className="h-8"
                     />
                     <span className="text-xs text-stone-500">%</span>
@@ -665,8 +533,8 @@ export default function NameTagGenerator() {
                     <Input
                       type="number"
                       step="0.1"
-                      value={(letterSpacing / 10).toFixed(1)}
-                      onChange={(e) => setLetterSpacing(parseFloat(e.target.value) * 10 || 0)}
+                      value={letterSpacing.toFixed(1)}
+                      onChange={(e) => setLetterSpacing(parseFloat(e.target.value) || 0)}
                       className="h-8"
                     />
                     <span className="text-xs text-stone-500">%</span>
@@ -749,7 +617,7 @@ export default function NameTagGenerator() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-base">Corner Rounding</CardTitle>
           </CardHeader>
           <CardContent>
@@ -759,8 +627,8 @@ export default function NameTagGenerator() {
                 step="0.1"
                 min="0"
                 max="10"
-                value={(cornerRounding / 10).toFixed(1)}
-                onChange={(e) => setCornerRounding(parseFloat(e.target.value) * 10 || 0)}
+                value={cornerRounding.toFixed(1)}
+                onChange={(e) => setCornerRounding(parseFloat(e.target.value) || 0)}
                 className="h-8"
               />
               <span className="text-xs text-stone-500">%</span>
@@ -771,7 +639,7 @@ export default function NameTagGenerator() {
         <Card>
           <Collapsible open={holeOpen} onOpenChange={setHoleOpen}>
             <CollapsibleTrigger className="w-full">
-              <CardHeader className="cursor-pointer hover:bg-stone-50">
+              <CardHeader className="cursor-pointer hover:bg-stone-50 pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Hole Size</CardTitle>
                   {holeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -832,8 +700,6 @@ export default function NameTagGenerator() {
                         <SelectContent>
                           <SelectItem value="left">left</SelectItem>
                           <SelectItem value="right">right</SelectItem>
-                          <SelectItem value="top">top</SelectItem>
-                          <SelectItem value="bottom">bottom</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -885,27 +751,6 @@ export default function NameTagGenerator() {
             </AlertDescription>
           </Alert>
         )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Export</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button onClick={downloadSVG} className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Download SVG
-            </Button>
-            <Button onClick={downloadPNG} variant="outline" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Download PNG Preview
-            </Button>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-              <p className="text-xs text-blue-800">
-                <span className="font-semibold">Laser Ready:</span> SVG exports are optimized for cutting with clean paths and no overlaps.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
