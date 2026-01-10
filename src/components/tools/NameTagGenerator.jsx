@@ -9,8 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Upload, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import opentype from "opentype.js";
-import paper from "paper";
+import * as opentype from "opentype.js";
+import * as paper from "paper";
 
 export default function NameTagGenerator() {
   const [names, setNames] = useState("Christina");
