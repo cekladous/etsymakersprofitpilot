@@ -29,6 +29,7 @@ export default function NameTagGenerator() {
   const [holeOverlap, setHoleOverlap] = useState(0.1);
   const [warnings, setWarnings] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [background, setBackground] = useState("light");
   
   const [fontOpen, setFontOpen] = useState(true);
   const [sizeOpen, setSizeOpen] = useState(true);
@@ -141,7 +142,7 @@ export default function NameTagGenerator() {
   // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -159,11 +160,17 @@ export default function NameTagGenerator() {
     canvas.height = Math.max(400, nameList.length * pixelSize * 2 + padding * 2);
 
     // Clear and draw background
-    ctx.fillStyle = "#fafaf9";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (background === "light") {
+      ctx.fillStyle = "#fafaf9";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (background === "dark") {
+      ctx.fillStyle = "#1c1917";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // For transparent, skip background fill
 
     // Draw grid
-    ctx.strokeStyle = "#e7e5e4";
+    ctx.strokeStyle = background === "dark" ? "#44403c" : "#e7e5e4";
     ctx.lineWidth = 1;
     for (let x = padding; x < canvas.width; x += gridSize) {
       ctx.beginPath();
@@ -179,7 +186,7 @@ export default function NameTagGenerator() {
     }
 
     // Draw ruler marks
-    ctx.fillStyle = "#78716c";
+    ctx.fillStyle = background === "dark" ? "#a8a29e" : "#78716c";
     ctx.font = "10px sans-serif";
     for (let x = padding; x < canvas.width; x += gridSize) {
       const inch = Math.round((x - padding) / dpi);
@@ -212,8 +219,9 @@ export default function NameTagGenerator() {
       
       // Draw text with connection logic
       if (connectMode === "letters" || connectMode === "dots and letters") {
-        ctx.fillStyle = "#1c1917";
-        ctx.strokeStyle = "#1c1917";
+        const textColor = background === "dark" ? "#fafaf9" : "#1c1917";
+        ctx.fillStyle = textColor;
+        ctx.strokeStyle = textColor;
         ctx.lineWidth = strokeWidth;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
@@ -275,9 +283,10 @@ export default function NameTagGenerator() {
         }
         
         // Draw outer circle
+        const holeColor = background === "dark" ? "#fafaf9" : "#1c1917";
         ctx.beginPath();
         ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
-        ctx.fillStyle = "#1c1917";
+        ctx.fillStyle = holeColor;
         ctx.fill();
         
         // Cut out inner circle
@@ -288,7 +297,7 @@ export default function NameTagGenerator() {
         ctx.globalCompositeOperation = "source-over";
         
         // Draw connecting line to text
-        ctx.strokeStyle = "#1c1917";
+        ctx.strokeStyle = holeColor;
         ctx.lineWidth = holeThicknessPx;
         ctx.lineCap = "round";
         ctx.beginPath();
@@ -325,20 +334,16 @@ export default function NameTagGenerator() {
 
   // Download SVG
   const downloadSVG = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     const nameList = names.split("\n").filter(n => n.trim());
     const dpi = 96;
     
     // Create SVG for each name
     nameList.forEach((name, index) => {
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       const pixelSize = getFontSizeInPixels();
       const tempCanvas = document.createElement("canvas");
       const ctx = tempCanvas.getContext("2d");
       
-      // Set up temporary canvas
+      // Set up temporary canvas with transparent background
       ctx.font = `${pixelSize}px ${fontFamily}`;
       const metrics = ctx.measureText(name);
       const textWidth = metrics.width;
@@ -347,9 +352,10 @@ export default function NameTagGenerator() {
       tempCanvas.width = textWidth + margin * 2;
       tempCanvas.height = pixelSize * 1.5 + margin * 2;
       
-      // Redraw on temp canvas
+      // Draw text on transparent canvas
       ctx.font = `${pixelSize}px ${fontFamily}`;
       ctx.fillStyle = "#000000";
+      ctx.textBaseline = "top";
       ctx.fillText(name, margin, margin);
       
       const strokeWidth = (pixelSize * thicken) / 100;
@@ -361,21 +367,76 @@ export default function NameTagGenerator() {
         ctx.strokeText(name, margin, margin);
       }
       
-      // Convert to SVG
-      svg.setAttribute("width", tempCanvas.width);
-      svg.setAttribute("height", tempCanvas.height);
+      // Draw hole if enabled
+      if (includeHole) {
+        const holeDiameterPx = holeDiameter * dpi;
+        const holeThicknessPx = holeThickness * dpi;
+        const holeOffsetHPx = holeOffsetH * dpi;
+        const holeOffsetVPx = holeOffsetV * dpi;
+        const holeOverlapPx = holeOverlap * dpi;
+        
+        let holeX, holeY;
+        switch (holeSide) {
+          case "left":
+            holeX = margin - holeOffsetHPx + holeOverlapPx;
+            holeY = margin + holeOffsetVPx;
+            break;
+          case "right":
+            holeX = margin + textWidth + holeOffsetHPx - holeOverlapPx;
+            holeY = margin + holeOffsetVPx;
+            break;
+          case "top":
+            holeX = margin + textWidth / 2 + holeOffsetHPx;
+            holeY = margin - holeOffsetVPx + holeOverlapPx;
+            break;
+          case "bottom":
+            holeX = margin + textWidth / 2 + holeOffsetHPx;
+            holeY = margin + pixelSize + holeOffsetVPx - holeOverlapPx;
+            break;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2 + holeThicknessPx, 0, Math.PI * 2);
+        ctx.fillStyle = "#000000";
+        ctx.fill();
+        
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeDiameterPx / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = holeThicknessPx;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        if (holeSide === "left" || holeSide === "right") {
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(holeSide === "left" ? margin : margin + textWidth, margin + pixelSize / 2);
+        } else {
+          ctx.moveTo(holeX, holeY);
+          ctx.lineTo(margin + textWidth / 2, holeSide === "top" ? margin : margin + pixelSize);
+        }
+        ctx.stroke();
+      }
+      
+      // Create clean SVG with transparent background
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("width", `${(tempCanvas.width / dpi).toFixed(3)}in`);
+      svg.setAttribute("height", `${(tempCanvas.height / dpi).toFixed(3)}in`);
       svg.setAttribute("viewBox", `0 0 ${tempCanvas.width} ${tempCanvas.height}`);
       svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
       
       const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-      image.setAttribute("href", tempCanvas.toDataURL());
+      image.setAttribute("xlink:href", tempCanvas.toDataURL("image/png"));
       image.setAttribute("width", tempCanvas.width);
       image.setAttribute("height", tempCanvas.height);
       svg.appendChild(image);
       
       // Download
       const svgData = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgData], { type: "image/svg+xml" });
+      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -408,8 +469,20 @@ export default function NameTagGenerator() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Live Preview</CardTitle>
-              <div className="text-sm text-stone-600">
-                {dimensions.width}" × {dimensions.height}"
+              <div className="flex items-center gap-3">
+                <Select value={background} onValueChange={setBackground}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="transparent">Transparent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-sm text-stone-600">
+                  {dimensions.width}" × {dimensions.height}"
+                </div>
               </div>
             </div>
           </CardHeader>
