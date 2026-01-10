@@ -719,10 +719,10 @@ export default function NameTagGenerator() {
         {/* Live Preview - LEFT */}
         <Card>
           <CardContent className="p-4">
-            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white relative" style={{ height: "500px" }}>
+            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white relative" style={{ height: "600px" }}>
               <canvas
                 ref={canvasRef}
-                style={{ display: "block", width: "100%", height: "auto" }}
+                style={{ display: "block", maxWidth: "none" }}
               />
               <Button
                 onClick={handleZoomToFit}
