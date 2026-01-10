@@ -93,11 +93,23 @@ export default function NameTagGenerator() {
     const pixelSize = getFontSizeInPixels();
     const nameList = names.split("\n").filter(n => n.trim());
     
-    // Set canvas size to accommodate all names with grid
-    const padding = 50;
+    // Calculate required canvas size
+    const padding = 100;
     const gridSize = dpi; // 1 inch grid
-    canvas.width = 1200;
-    canvas.height = Math.max(400, nameList.length * pixelSize * 2 + padding * 2);
+    
+    // Measure maximum text width
+    ctx.font = `${pixelSize}px ${fontFamily}`;
+    let maxTextWidth = 0;
+    nameList.forEach(name => {
+      const width = ctx.measureText(name).width;
+      maxTextWidth = Math.max(maxTextWidth, width);
+    });
+    
+    // Add extra space for holes if enabled
+    const holeSpace = includeHole ? (holeDiameter + holeOffsetH + holeThickness) * dpi * 2 : 0;
+    
+    canvas.width = Math.max(1200, maxTextWidth + padding * 2 + holeSpace);
+    canvas.height = Math.max(400, nameList.length * (pixelSize * 1.5) + padding * 2);
 
     // Clear and draw background
     ctx.fillStyle = "#fafaf9";
@@ -137,11 +149,11 @@ export default function NameTagGenerator() {
     const newWarnings = [];
 
     nameList.forEach((name, index) => {
-      const yOffset = padding + index * pixelSize * 2;
+      const yOffset = padding + index * (pixelSize * 1.5);
       
       // Configure text
-      ctx.font = `${pixelSize}px ${fontFamily}`;
-      ctx.textBaseline = "top";
+      ctx.font = `bold ${pixelSize}px ${fontFamily}`;
+      ctx.textBaseline = "alphabetic";
       
       // Measure text
       const metrics = ctx.measureText(name);
@@ -149,41 +161,45 @@ export default function NameTagGenerator() {
       maxWidth = Math.max(maxWidth, textWidth);
       
       // Apply thickening via stroke
-      const strokeWidth = (pixelSize * thicken) / 100;
+      const strokeWidth = Math.max(2, (pixelSize * thicken) / 100);
       
-      // Draw text with connection logic
-      if (connectMode === "letters" || connectMode === "dots and letters") {
-        ctx.fillStyle = "#1c1917";
-        ctx.strokeStyle = "#1c1917";
-        ctx.lineWidth = strokeWidth;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
+      ctx.fillStyle = "#1c1917";
+      ctx.strokeStyle = "#1c1917";
+      ctx.lineWidth = strokeWidth;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      
+      // Draw text with stroke first for thickness
+      if (strokeWidth > 0) {
+        ctx.strokeText(name, padding, yOffset + pixelSize * 0.8);
+      }
+      ctx.fillText(name, padding, yOffset + pixelSize * 0.8);
+      
+      // Connect dots for i, j, and ! to letter body
+      if (connectMode === "dots and letters") {
+        const chars = name.split("");
+        let xPos = padding;
         
-        // Draw filled text
-        ctx.fillText(name, padding, yOffset);
-        
-        // Add stroke for thickness
-        if (strokeWidth > 0) {
-          ctx.strokeText(name, padding, yOffset);
-        }
-        
-        // Connect dots for i and j if mode is "dots and letters"
-        if (connectMode === "dots and letters") {
-          const chars = name.split("");
-          let xPos = padding;
-          chars.forEach(char => {
-            if (char === "i" || char === "j" || char === "!" || char === "I") {
-              const charWidth = ctx.measureText(char).width;
-              // Draw connecting line to dot
-              ctx.beginPath();
-              ctx.moveTo(xPos + charWidth / 2, yOffset);
-              ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.2);
-              ctx.lineWidth = Math.max(2, strokeWidth / 2);
-              ctx.stroke();
-            }
-            xPos += ctx.measureText(char).width;
-          });
-        }
+        chars.forEach((char, charIndex) => {
+          const charWidth = ctx.measureText(char).width;
+          const lowerChar = char.toLowerCase();
+          
+          if (lowerChar === "i" || lowerChar === "j" || char === "!") {
+            // Draw thicker connecting line from letter to dot
+            ctx.beginPath();
+            ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.5);
+            ctx.lineTo(xPos + charWidth / 2, yOffset + pixelSize * 0.1);
+            ctx.lineWidth = Math.max(strokeWidth * 0.8, 2);
+            ctx.stroke();
+            
+            // Fill the dot area
+            ctx.beginPath();
+            ctx.arc(xPos + charWidth / 2, yOffset + pixelSize * 0.1, strokeWidth * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          xPos += charWidth;
+        });
       }
       
       // Draw hole if enabled
@@ -355,11 +371,10 @@ export default function NameTagGenerator() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white">
+            <div className="border-2 border-stone-300 rounded-lg overflow-auto bg-white" style={{ maxHeight: "600px" }}>
               <canvas
                 ref={canvasRef}
-                className="w-full h-auto"
-                style={{ minHeight: "400px" }}
+                style={{ display: "block", width: "100%", height: "auto" }}
               />
             </div>
           </CardContent>
