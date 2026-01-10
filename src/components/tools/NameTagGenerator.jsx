@@ -19,6 +19,7 @@ export default function NameTagGenerator() {
   const [customFonts, setCustomFonts] = useState([]);
   const [thicken, setThicken] = useState(0);
   const [connectMode, setConnectMode] = useState("letters");
+  const [letterSpacing, setLetterSpacing] = useState(0);
   const [cornerRounding, setCornerRounding] = useState(0);
   const [includeHole, setIncludeHole] = useState(false);
   const [holeDiameter, setHoleDiameter] = useState(0.25);
@@ -142,7 +143,7 @@ export default function NameTagGenerator() {
   // Generate preview and SVG
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, connectMode, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetH, holeOffsetV, holeOverlap, customFonts, background, letterSpacing]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
@@ -226,31 +227,46 @@ export default function NameTagGenerator() {
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         
-        // Draw filled text
-        ctx.fillText(name, padding, yOffset);
+        // Draw text with letter spacing
+        const chars = name.split("");
+        let xPos = padding;
         
-        // Add stroke for thickness
-        if (strokeWidth > 0) {
-          ctx.strokeText(name, padding, yOffset);
-        }
-        
-        // Connect dots for i and j if mode is "dots and letters"
-        if (connectMode === "dots and letters") {
-          const chars = name.split("");
-          let xPos = padding;
-          chars.forEach(char => {
+        chars.forEach((char, charIndex) => {
+          ctx.fillText(char, xPos, yOffset);
+          if (strokeWidth > 0) {
+            ctx.strokeText(char, xPos, yOffset);
+          }
+          
+          const charWidth = ctx.measureText(char).width;
+          
+          // Connect letters if mode includes connections
+          if (connectMode === "dots and letters" && charIndex < chars.length - 1) {
+            const nextChar = chars[charIndex + 1];
+            const connectionThickness = Math.max(pixelSize * 0.05, 3);
+            
+            // Draw bridge between letters
+            ctx.fillStyle = textColor;
+            ctx.fillRect(
+              xPos + charWidth, 
+              yOffset + pixelSize * 0.4, 
+              letterSpacing > 0 ? letterSpacing : pixelSize * 0.1, 
+              connectionThickness
+            );
+          }
+          
+          // Connect dots for i, j, ! if mode is "dots and letters"
+          if (connectMode === "dots and letters") {
             if (char === "i" || char === "j" || char === "!" || char === "I") {
-              const charWidth = ctx.measureText(char).width;
-              // Draw connecting line to dot
               ctx.beginPath();
-              ctx.moveTo(xPos + charWidth / 2, yOffset);
-              ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.2);
-              ctx.lineWidth = Math.max(2, strokeWidth / 2);
+              ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.15);
+              ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.15);
+              ctx.lineWidth = Math.max(pixelSize * 0.05, 3);
               ctx.stroke();
             }
-            xPos += ctx.measureText(char).width;
-          });
-        }
+          }
+          
+          xPos += charWidth + (letterSpacing > 0 ? letterSpacing : 0);
+        });
       }
       
       // Draw hole if enabled
@@ -370,16 +386,51 @@ export default function NameTagGenerator() {
     nameList.forEach((name, index) => {
       const yOffset = margin + index * (pixelSize * 1.5 + spacing);
       
-      // Draw text
-      ctx.fillText(name, margin, yOffset);
+      // Draw text with connections
+      const chars = name.split("");
+      let xPos = margin;
       
-      if (strokeWidth > 0) {
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = strokeWidth;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.strokeText(name, margin, yOffset);
-      }
+      chars.forEach((char, charIndex) => {
+        ctx.fillText(char, xPos, yOffset);
+        
+        if (strokeWidth > 0) {
+          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = strokeWidth;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.strokeText(char, xPos, yOffset);
+        }
+        
+        const charWidth = ctx.measureText(char).width;
+        
+        // Connect letters if mode includes connections
+        if (connectMode === "dots and letters" && charIndex < chars.length - 1) {
+          const connectionThickness = Math.max(pixelSize * 0.05, 3);
+          
+          // Draw bridge between letters
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(
+            xPos + charWidth, 
+            yOffset + pixelSize * 0.4, 
+            letterSpacing > 0 ? letterSpacing : pixelSize * 0.1, 
+            connectionThickness
+          );
+        }
+        
+        // Connect dots for i, j, ! if mode is "dots and letters"
+        if (connectMode === "dots and letters") {
+          if (char === "i" || char === "j" || char === "!" || char === "I") {
+            ctx.beginPath();
+            ctx.moveTo(xPos + charWidth / 2, yOffset + pixelSize * 0.15);
+            ctx.lineTo(xPos + charWidth / 2, yOffset - pixelSize * 0.15);
+            ctx.lineWidth = Math.max(pixelSize * 0.05, 3);
+            ctx.strokeStyle = "#000000";
+            ctx.stroke();
+          }
+        }
+        
+        xPos += charWidth + (letterSpacing > 0 ? letterSpacing : 0);
+      });
       
       // Draw hole if enabled
       if (includeHole) {
@@ -688,10 +739,30 @@ export default function NameTagGenerator() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="letters">Letters Only</SelectItem>
-                      <SelectItem value="dots and letters">Dots and Letters</SelectItem>
+                      <SelectItem value="dots and letters">Connect All (Welded)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-stone-500 mt-1">
+                    {connectMode === "dots and letters" ? "Bridges connect letters for single-cut path" : "Individual letters"}
+                  </p>
                 </div>
+
+                {connectMode === "dots and letters" && (
+                  <div>
+                    <Label className="text-xs">Letter Spacing: {letterSpacing}px</Label>
+                    <Slider
+                      value={[letterSpacing]}
+                      onValueChange={([v]) => setLetterSpacing(v)}
+                      min={0}
+                      max={50}
+                      step={5}
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-stone-500 mt-1">
+                      Wider spacing = longer bridges between letters
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <Label className="text-xs">Corner Rounding: {cornerRounding}%</Label>
