@@ -9,8 +9,6 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Upload, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import * as opentype from "opentype.js";
-import * as paper from "paper";
 
 export default function NameTagGenerator() {
   const [names, setNames] = useState("Christina");
@@ -18,14 +16,11 @@ export default function NameTagGenerator() {
   const [fontUnit, setFontUnit] = useState("in");
   const [fontFamily, setFontFamily] = useState("Brush Script MT");
   const [customFonts, setCustomFonts] = useState([]);
-  const [loadedFont, setLoadedFont] = useState(null);
   const [thicken, setThicken] = useState(1.2);
   const [letterSpacing, setLetterSpacing] = useState(0);
   const [lineHeight, setLineHeight] = useState(100);
   const [connectMode, setConnectMode] = useState("dots and letters");
   const [capitalize, setCapitalize] = useState("none");
-  const [ligatures, setLigatures] = useState("none");
-  const [showFewerOptions, setShowFewerOptions] = useState(false);
   const [cornerRounding, setCornerRounding] = useState(0.5);
   const [includeHole, setIncludeHole] = useState(false);
   const [holeDiameter, setHoleDiameter] = useState(0.19);
@@ -41,7 +36,6 @@ export default function NameTagGenerator() {
   
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  const paperScopeRef = useRef(null);
 
   const systemFonts = {
     script: [
@@ -67,7 +61,6 @@ export default function NameTagGenerator() {
     ]
   };
 
-  // Load custom fonts from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem('nametag-custom-fonts');
     if (stored) {
@@ -85,30 +78,6 @@ export default function NameTagGenerator() {
       }
     }
   }, []);
-
-  // Initialize Paper.js
-  useEffect(() => {
-    if (canvasRef.current && !paperScopeRef.current) {
-      paperScopeRef.current = new paper.PaperScope();
-      paperScopeRef.current.setup(canvasRef.current);
-    }
-  }, []);
-
-  // Load font for vector rendering
-  useEffect(() => {
-    const customFont = customFonts.find(f => f.name === fontFamily);
-    if (customFont) {
-      fetch(customFont.data)
-        .then(res => res.arrayBuffer())
-        .then(buffer => {
-          const font = opentype.parse(buffer);
-          setLoadedFont(font);
-        })
-        .catch(err => console.error("Failed to load custom font:", err));
-    } else {
-      setLoadedFont(null);
-    }
-  }, [fontFamily, customFonts]);
 
   const getFontSizeInPixels = () => {
     const dpi = 96;
@@ -170,29 +139,28 @@ export default function NameTagGenerator() {
 
   useEffect(() => {
     generatePreview();
-  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, ligatures, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetV, holeOverlap, loadedFont]);
+  }, [names, fontSize, fontUnit, fontFamily, thicken, letterSpacing, lineHeight, connectMode, capitalize, cornerRounding, includeHole, holeDiameter, holeThickness, holeSide, holeOffsetV, holeOverlap, customFonts]);
 
   const generatePreview = () => {
     const canvas = canvasRef.current;
-    const scope = paperScopeRef.current;
-    if (!canvas || !scope || !names.trim()) return;
+    if (!canvas || !names.trim()) return;
 
     const ctx = canvas.getContext("2d");
     const dpi = 96;
     const pixelSize = getFontSizeInPixels();
     const nameList = names.split("\n").filter(n => n.trim()).map(n => applyCapitalization(n));
     
-    const padding = dpi; // 1 inch padding
-    const gridSize = dpi; // 1 inch grid
+    const padding = dpi;
+    const gridSize = dpi;
     
     canvas.width = 1200;
     canvas.height = Math.max(400, nameList.length * pixelSize * (lineHeight / 100) * 1.5 + padding * 2);
 
-    // Clear canvas with white background
+    // White background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid
+    // Grid
     ctx.strokeStyle = "#e7e5e4";
     ctx.lineWidth = 1;
     for (let x = padding; x < canvas.width; x += gridSize) {
@@ -208,7 +176,7 @@ export default function NameTagGenerator() {
       ctx.stroke();
     }
 
-    // Draw ruler marks
+    // Rulers
     ctx.fillStyle = "#78716c";
     ctx.font = "10px sans-serif";
     for (let x = padding; x < canvas.width; x += gridSize) {
@@ -234,7 +202,7 @@ export default function NameTagGenerator() {
       const textWidth = metrics.width;
       maxWidth = Math.max(maxWidth, textWidth);
       
-      // Draw red outline
+      // Red outline
       ctx.strokeStyle = "#ef4444";
       ctx.lineWidth = Math.max(2, pixelSize * (thicken / 100));
       ctx.lineJoin = "round";
@@ -248,10 +216,9 @@ export default function NameTagGenerator() {
     const heightInches = (totalHeight / dpi).toFixed(2);
     setDimensions({ width: widthInches, height: heightInches });
 
-    // Validation
     const newWarnings = [];
     if (thicken < 0.5) {
-      newWarnings.push("Thicken percentage below 0.5% may be too thin for reliable laser cutting");
+      newWarnings.push("Thicken below 0.5% may be too thin for reliable laser cutting");
     }
     if (fontSize < 1 && fontUnit === "in") {
       newWarnings.push("Font size below 1 inch may produce fragile results");
@@ -260,11 +227,7 @@ export default function NameTagGenerator() {
   };
 
   const downloadSVG = () => {
-    if (!paperScopeRef.current || !names.trim()) return;
-
-    const scope = paperScopeRef.current;
-    scope.activate();
-    scope.project.clear();
+    if (!names.trim()) return;
 
     const dpi = 96;
     const pixelSize = getFontSizeInPixels();
@@ -273,89 +236,57 @@ export default function NameTagGenerator() {
     const padding = 20;
     const spacing = pixelSize * (lineHeight / 100) * 1.5;
     
-    let allShapes = [];
     let maxWidth = 0;
-    let totalHeight = 0;
-
-    nameList.forEach((name, index) => {
-      const yOffset = padding + index * spacing;
-      
-      // Create text path using canvas measurement as fallback
-      const tempCanvas = document.createElement("canvas");
-      const ctx = tempCanvas.getContext("2d");
-      ctx.font = `${pixelSize}px ${fontFamily}`;
-      const textWidth = ctx.measureText(name).width;
-      maxWidth = Math.max(maxWidth, textWidth);
-      
-      // Create text as compound path
-      const textPath = new scope.CompoundPath({
-        children: []
-      });
-      
-      // Draw each character
-      let xPos = padding;
-      for (let i = 0; i < name.length; i++) {
-        const char = name[i];
-        const charPath = new scope.PointText({
-          point: [xPos, yOffset],
-          content: char,
-          fontSize: pixelSize,
-          fontFamily: fontFamily
-        });
-        
-        const outline = charPath.toPath(false);
-        if (outline) {
-          textPath.addChild(outline);
-        }
-        charPath.remove();
-        
-        const charWidth = ctx.measureText(char).width;
-        xPos += charWidth * (1 + letterSpacing / 100);
-      }
-      
-      // Apply thickening via offset
-      if (thicken > 0) {
-        const offsetAmount = (pixelSize * thicken) / 100;
-        const expanded = textPath.unite(textPath.clone().scale(1 + offsetAmount / 100));
-        textPath.remove();
-        allShapes.push(expanded);
-      } else {
-        allShapes.push(textPath);
-      }
-      
-      totalHeight = yOffset + pixelSize;
+    const tempCanvas = document.createElement("canvas");
+    const ctx = tempCanvas.getContext("2d");
+    ctx.font = `${pixelSize}px ${fontFamily}`;
+    
+    nameList.forEach(name => {
+      const w = ctx.measureText(name).width;
+      maxWidth = Math.max(maxWidth, w);
     });
 
-    // Unite all shapes if "connect all" mode
-    let finalShape;
-    if (connectMode === "dots and letters" && allShapes.length > 0) {
-      finalShape = allShapes[0];
-      for (let i = 1; i < allShapes.length; i++) {
-        const united = finalShape.unite(allShapes[i]);
-        finalShape.remove();
-        allShapes[i].remove();
-        finalShape = united;
-      }
-    } else {
-      finalShape = new scope.Group(allShapes);
-    }
+    const svgWidth = maxWidth + padding * 2;
+    const svgHeight = nameList.length * spacing + padding * 2;
 
-    // Export as SVG
-    const svgString = scope.project.exportSVG({ asString: true });
-    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    let svgContent = `<svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">`;
+    svgContent += `<rect width="${svgWidth}" height="${svgHeight}" fill="transparent"/>`;
+
+    const strokeWidth = Math.max(1, pixelSize * (thicken / 100));
+
+    nameList.forEach((name, index) => {
+      const yOffset = padding + index * spacing + pixelSize * 0.75;
+      
+      // Create text path as outline
+      svgContent += `<text x="${padding}" y="${yOffset}" font-family="${fontFamily}" font-size="${pixelSize}" fill="none" stroke="#000000" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">${escapeXml(name)}</text>`;
+    });
+
+    svgContent += `</svg>`;
+
+    const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `nametags-${nameList.length}.svg`;
     link.click();
     URL.revokeObjectURL(url);
-    
-    scope.project.clear();
+  };
+
+  const escapeXml = (str) => {
+    return str.replace(/[<>&'"]/g, (c) => {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case "'": return '&apos;';
+        case '"': return '&quot;';
+        default: return c;
+      }
+    });
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Panel - Canvas Preview */}
       <div className="lg:col-span-2">
         <Card>
           <CardContent className="p-4">
@@ -379,7 +310,6 @@ export default function NameTagGenerator() {
         </Card>
       </div>
 
-      {/* Right Panel - Controls */}
       <div className="space-y-4">
         <Card>
           <CardHeader className="pb-3">
@@ -429,7 +359,7 @@ export default function NameTagGenerator() {
               </Select>
             </div>
             <p className="text-xs text-stone-400">
-              Font size for the connected text. This determines the overall size for the item.
+              Font size for the connected text.
             </p>
           </CardContent>
         </Card>
@@ -570,47 +500,20 @@ export default function NameTagGenerator() {
                   </Select>
                 </div>
 
-                {!showFewerOptions && (
-                  <>
-                    <div>
-                      <Label className="text-xs">Capitalize</Label>
-                      <Select value={capitalize} onValueChange={setCapitalize}>
-                        <SelectTrigger className="h-8 mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">none</SelectItem>
-                          <SelectItem value="uppercase">UPPERCASE</SelectItem>
-                          <SelectItem value="lowercase">lowercase</SelectItem>
-                          <SelectItem value="title">Title Case</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Ligatures</Label>
-                      <Select value={ligatures} onValueChange={setLigatures}>
-                        <SelectTrigger className="h-8 mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">none</SelectItem>
-                          <SelectItem value="standard">standard</SelectItem>
-                          <SelectItem value="discretionary">discretionary</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowFewerOptions(!showFewerOptions)}
-                  className="w-full text-xs text-stone-500 hover:text-stone-700"
-                >
-                  {showFewerOptions ? "Show More Options" : "Show Fewer Options"}
-                </Button>
+                <div>
+                  <Label className="text-xs">Capitalize</Label>
+                  <Select value={capitalize} onValueChange={setCapitalize}>
+                    <SelectTrigger className="h-8 mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">none</SelectItem>
+                      <SelectItem value="uppercase">UPPERCASE</SelectItem>
+                      <SelectItem value="lowercase">lowercase</SelectItem>
+                      <SelectItem value="title">Title Case</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
@@ -668,7 +571,6 @@ export default function NameTagGenerator() {
                         />
                         <span className="text-xs text-stone-500">in</span>
                       </div>
-                      <p className="text-xs text-stone-400 mt-1">Size (diameter) of the opening.</p>
                     </div>
 
                     <div>
@@ -684,7 +586,6 @@ export default function NameTagGenerator() {
                         />
                         <span className="text-xs text-stone-500">in</span>
                       </div>
-                      <p className="text-xs text-stone-400 mt-1">Amount of material around the hole.</p>
                     </div>
 
                     <div className="pt-2">
