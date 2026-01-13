@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, CheckCircle2, AlertCircle, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+// xlsx imported dynamically in handleFileUpload
 
 // Helper functions for parsing Etsy CSV data
 const getVal = (row, header) => row[header];
@@ -125,7 +125,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
     },
   });
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -133,8 +133,9 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
     setImportResult(null);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = (await import("xlsx")).default;
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -204,7 +205,8 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
     onOpenChange(false);
   };
 
-  const downloadSkippedReport = () => {
+  const downloadSkippedReport = async () => {
+    const XLSX = (await import("xlsx")).default;
     const report = skippedRows.map(s => ({
       "Row": s.rowIndex,
       "Reason": s.reason,
