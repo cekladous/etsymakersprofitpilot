@@ -49,7 +49,7 @@ import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import BusinessExpenseDialog from "@/components/monthly/BusinessExpenseDialog";
 import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
-import * as XLSX from "xlsx";
+// xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -278,7 +278,8 @@ export default function Dashboard() {
     return format(selectedDate, "MMMM yyyy");
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = (await import("xlsx")).default;
     const exportData = {
       "Period": getPeriodLabel(),
       "Total Revenue": metrics.periodRevenue,
