@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, CheckCircle, AlertCircle, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+// xlsx imported dynamically in handleImport
 
 // Parsing helpers
 const getVal = (row, header) => {
@@ -212,6 +212,7 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
+        const XLSX = (await import("xlsx")).default;
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -311,7 +312,8 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
     reader.readAsArrayBuffer(file);
   };
 
-  const downloadSkippedReport = () => {
+  const downloadSkippedReport = async () => {
+    const XLSX = (await import("xlsx")).default;
     const data = skippedRows.map(s => ({
       "Row": s.rowIndex,
       "Reason": s.reason,
