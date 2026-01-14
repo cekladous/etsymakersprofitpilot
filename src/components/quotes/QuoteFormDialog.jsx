@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import {
   Dialog,
@@ -14,6 +14,59 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
+
+const US_STATES = [
+  { code: "NJ", name: "New Jersey", taxRate: 6.625 },
+  { code: "NY", name: "New York", taxRate: 4.0 },
+  { code: "PA", name: "Pennsylvania", taxRate: 6.0 },
+  { code: "CA", name: "California", taxRate: 7.25 },
+  { code: "TX", name: "Texas", taxRate: 6.25 },
+  { code: "FL", name: "Florida", taxRate: 6.0 },
+  { code: "IL", name: "Illinois", taxRate: 6.25 },
+  { code: "OH", name: "Ohio", taxRate: 5.75 },
+  { code: "NC", name: "North Carolina", taxRate: 4.75 },
+  { code: "GA", name: "Georgia", taxRate: 4.0 },
+  { code: "MI", name: "Michigan", taxRate: 6.0 },
+  { code: "VA", name: "Virginia", taxRate: 5.3 },
+  { code: "WA", name: "Washington", taxRate: 6.5 },
+  { code: "AZ", name: "Arizona", taxRate: 5.6 },
+  { code: "MA", name: "Massachusetts", taxRate: 6.25 },
+  { code: "TN", name: "Tennessee", taxRate: 7.0 },
+  { code: "IN", name: "Indiana", taxRate: 7.0 },
+  { code: "MO", name: "Missouri", taxRate: 4.225 },
+  { code: "MD", name: "Maryland", taxRate: 6.0 },
+  { code: "WI", name: "Wisconsin", taxRate: 5.0 },
+  { code: "CO", name: "Colorado", taxRate: 2.9 },
+  { code: "MN", name: "Minnesota", taxRate: 6.875 },
+  { code: "SC", name: "South Carolina", taxRate: 6.0 },
+  { code: "AL", name: "Alabama", taxRate: 4.0 },
+  { code: "LA", name: "Louisiana", taxRate: 4.45 },
+  { code: "KY", name: "Kentucky", taxRate: 6.0 },
+  { code: "OR", name: "Oregon", taxRate: 0 },
+  { code: "OK", name: "Oklahoma", taxRate: 4.5 },
+  { code: "CT", name: "Connecticut", taxRate: 6.35 },
+  { code: "UT", name: "Utah", taxRate: 6.1 },
+  { code: "IA", name: "Iowa", taxRate: 6.0 },
+  { code: "NV", name: "Nevada", taxRate: 6.85 },
+  { code: "AR", name: "Arkansas", taxRate: 6.5 },
+  { code: "MS", name: "Mississippi", taxRate: 7.0 },
+  { code: "KS", name: "Kansas", taxRate: 6.5 },
+  { code: "NM", name: "New Mexico", taxRate: 5.125 },
+  { code: "NE", name: "Nebraska", taxRate: 5.5 },
+  { code: "ID", name: "Idaho", taxRate: 6.0 },
+  { code: "WV", name: "West Virginia", taxRate: 6.0 },
+  { code: "HI", name: "Hawaii", taxRate: 4.0 },
+  { code: "NH", name: "New Hampshire", taxRate: 0 },
+  { code: "ME", name: "Maine", taxRate: 5.5 },
+  { code: "RI", name: "Rhode Island", taxRate: 7.0 },
+  { code: "MT", name: "Montana", taxRate: 0 },
+  { code: "DE", name: "Delaware", taxRate: 0 },
+  { code: "SD", name: "South Dakota", taxRate: 4.5 },
+  { code: "ND", name: "North Dakota", taxRate: 5.0 },
+  { code: "AK", name: "Alaska", taxRate: 0 },
+  { code: "VT", name: "Vermont", taxRate: 6.0 },
+  { code: "WY", name: "Wyoming", taxRate: 4.0 },
+];
 
 const generateQuoteNumber = () => {
   const date = new Date();
@@ -30,6 +83,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     customer_name: "",
     customer_email: "",
     customer_phone: "",
+    customer_state: "",
     due_date: "",
     status: "Draft",
     line_items: [],
@@ -42,6 +96,11 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const queryClient = useQueryClient();
 
+  const { data: products = [] } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => base44.entities.Product.list(),
+  });
+
   useEffect(() => {
     if (quote) {
       setFormData(quote);
@@ -52,6 +111,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         customer_name: "",
         customer_email: "",
         customer_phone: "",
+        customer_state: "",
         due_date: "",
         status: "Draft",
         line_items: [],
@@ -72,8 +132,43 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   };
 
   const addLineItem = () => {
-    const newItems = [...formData.line_items, { description: "", quantity: 1, unit_price: 0, total: 0 }];
+    const newItems = [...formData.line_items, { product_id: "", description: "", quantity: 1, unit_price: 0, total: 0 }];
     setFormData({ ...formData, line_items: newItems });
+  };
+
+  const handleProductSelect = (index, productId) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const newItems = [...formData.line_items];
+    newItems[index] = {
+      ...newItems[index],
+      product_id: productId,
+      description: product.name,
+      unit_price: 0,
+    };
+
+    const { subtotal, tax_amount, total } = calculateTotals(newItems, formData.tax_rate);
+    setFormData({
+      ...formData,
+      line_items: newItems,
+      subtotal,
+      tax_amount,
+      total,
+    });
+  };
+
+  const handleStateChange = (stateCode) => {
+    const state = US_STATES.find(s => s.code === stateCode);
+    const taxRate = state ? state.taxRate : 0;
+    const { subtotal, tax_amount, total } = calculateTotals(formData.line_items, taxRate);
+    setFormData({
+      ...formData,
+      customer_state: stateCode,
+      tax_rate: taxRate,
+      tax_amount,
+      total,
+    });
   };
 
   const updateLineItem = (index, field, value) => {
@@ -197,13 +292,29 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   />
                 </div>
                 <div>
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                  />
+                  <Label>State</Label>
+                  <Select value={formData.customer_state} onValueChange={handleStateChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {US_STATES.map(state => (
+                        <SelectItem key={state.code} value={state.code}>
+                          {state.name} ({state.taxRate}% tax)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+
+              <div>
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -250,13 +361,22 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   {formData.line_items.map((item, index) => (
                     <div key={index} className="flex gap-2 items-start bg-stone-50 p-3 rounded-lg">
                       <div className="flex-1 grid grid-cols-12 gap-2">
-                        <div className="col-span-5">
-                          <Input
-                            placeholder="Description"
-                            value={item.description}
-                            onChange={(e) => updateLineItem(index, "description", e.target.value)}
-                            className="text-sm"
-                          />
+                        <div className="col-span-4">
+                          <Select
+                            value={item.product_id}
+                            onValueChange={(value) => handleProductSelect(index, value)}
+                          >
+                            <SelectTrigger className="text-sm">
+                              <SelectValue placeholder="Select product..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map(product => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="col-span-2">
                           <Input
@@ -305,16 +425,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-2">
-                        <span>Tax:</span>
-                        <Input
-                          type="number"
-                          value={formData.tax_rate}
-                          onChange={(e) => updateTaxRate(e.target.value)}
-                          className="w-20 h-7 text-sm"
-                          min="0"
-                          step="0.1"
-                        />
-                        <span className="text-stone-500">%</span>
+                        <span>Tax ({formData.customer_state || "select state"}):</span>
+                        <span className="text-stone-500">{formData.tax_rate.toFixed(2)}%</span>
                       </div>
                       <span className="font-semibold">${formData.tax_amount.toFixed(2)}</span>
                     </div>
