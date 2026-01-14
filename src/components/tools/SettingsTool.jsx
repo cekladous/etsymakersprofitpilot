@@ -62,6 +62,7 @@ export default function SettingsTool() {
     monthly_overhead: 0,
     default_markup: 0,
     business_name: "",
+    business_logo_url: "",
     etsy_listing_fee: 0.20,
     etsy_transaction_fee_percent: 6.5,
     payment_processing_fee_percent: 3.0,
@@ -163,6 +164,7 @@ export default function SettingsTool() {
         monthly_overhead: s.monthly_overhead || 0,
         default_markup: s.default_markup || 0,
         business_name: s.business_name || "",
+        business_logo_url: s.business_logo_url || "",
         etsy_listing_fee: s.etsy_listing_fee ?? 0.20,
         etsy_transaction_fee_percent: s.etsy_transaction_fee_percent ?? 6.5,
         payment_processing_fee_percent: s.payment_processing_fee_percent ?? 3.0,
@@ -348,6 +350,25 @@ export default function SettingsTool() {
                   placeholder="My Maker Shop"
                 />
               </div>
+            </div>
+            <div className="space-y-2 pt-4">
+              <Label>Business Logo for Quotes & Invoices</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    setSettingsData({ ...settingsData, business_logo_url: file_url });
+                  }
+                }}
+              />
+              {settingsData.business_logo_url && (
+                <div className="mt-2 p-2 border rounded-lg bg-white">
+                  <img src={settingsData.business_logo_url} alt="Business Logo" className="h-16 object-contain" />
+                </div>
+              )}
             </div>
           </div>
 

@@ -10,11 +10,13 @@ import {
   Receipt,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
+  { name: "Quotes", icon: FileText, page: "Quotes" },
   { name: "Orders", icon: ShoppingBag, page: "Orders" },
   { name: "Production", icon: Wrench, page: "Jobs" },
   { name: "Products", icon: Package, page: "Products" },
