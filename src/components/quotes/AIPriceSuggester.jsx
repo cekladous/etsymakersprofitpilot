@@ -19,34 +19,31 @@ export default function AIPriceSuggester({
       const materialsDesc = materials.map(m => `${m.name || m.type}`).join(", ") || "Custom item";
       
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a pricing expert for handmade and custom products sold on Etsy.
+        prompt: `You are a pricing expert analyzing Etsy shop data.
 
-Analyze the user's shop: craftedxdesignco.etsy.com
+Look at this specific Etsy shop: craftedxdesignco.etsy.com
 
 Project Details:
 - Name: ${projectName}
 - Materials: ${materialsDesc}
 - Material Cost: $${materialsTotal.toFixed(2)}
 
-Based on:
-1. Similar products on their Etsy shop
-2. Industry standard pricing for custom handmade items
-3. Fair profit margins (typically 2-3x material cost for handmade goods)
-4. What they appear to be selling successfully
+IMPORTANT: Use ONLY prices from craftedxdesignco's Etsy listings. 
+- Find similar products they're currently selling
+- What price range are they using for comparable items?
+- Match their pricing strategy
 
-Suggest a fair retail price that:
-- Covers all costs with reasonable profit
-- Aligns with their shop's pricing
-- Is competitive but not underpriced
-- Doesn't overprice compared to similar items
-
-Provide ONLY a realistic price suggestion, not inflated. Be conservative if uncertain.
+Suggest a price that:
+- Aligns exactly with what they charge on Etsy for similar items
+- Is NOT inflated or overpriced
+- Reflects their actual Etsy shop pricing
+- Works for their business model
 
 Return a JSON response with:
-- suggested_price: the recommended retail price
-- reasoning: brief 1-2 sentence explanation
+- suggested_price: the Etsy-aligned price
+- reasoning: brief explanation of which Etsy products it's based on
 
-Keep it simple and fair.`,
+Be accurate to their actual shop pricing.`,
         response_json_schema: {
           type: "object",
           properties: {
