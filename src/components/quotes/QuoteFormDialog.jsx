@@ -618,7 +618,6 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     <SelectValue placeholder="Select existing customer..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None (Enter manually)</SelectItem>
                     {customers.map(customer => (
                       <SelectItem key={customer.id} value={customer.id}>
                         {customer.name} {customer.company ? `(${customer.company})` : ""}
