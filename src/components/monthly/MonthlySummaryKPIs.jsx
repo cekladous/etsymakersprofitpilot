@@ -5,16 +5,16 @@ import { TrendingUp, DollarSign, CreditCard, Target } from "lucide-react";
 export default function MonthlySummaryKPIs({ financialData }) {
   // USE SINGLE SOURCE OF TRUTH - Extract from aggregated data
   const {
-    totalRevenue,
-    totalExpenses,
-    netProfit,
-    profitMargin,
-    sellingExpenses,
-    businessExpenses,
-    cashflow,
-  } = financialData;
+    totalRevenue = 0,
+    totalExpenses = 0,
+    netProfit = 0,
+    profitMargin = 0,
+    sellingExpenses = {},
+    businessExpenses = {},
+    cashflow = {},
+  } = financialData || {};
 
-  const totalAds = sellingExpenses.etsyAds + sellingExpenses.etsyOffsiteAds + businessExpenses.advertisingMarketing;
+  const totalAds = (sellingExpenses.etsyAds || 0) + (sellingExpenses.etsyOffsiteAds || 0) + (businessExpenses.advertisingMarketing || 0);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -63,7 +63,7 @@ export default function MonthlySummaryKPIs({ financialData }) {
       />
       <KPICard
         label="Etsy Fees"
-        value={formatCurrency(sellingExpenses.total)}
+        value={formatCurrency(sellingExpenses.total || 0)}
         icon={CreditCard}
         color="text-orange-600"
       />
@@ -75,13 +75,13 @@ export default function MonthlySummaryKPIs({ financialData }) {
       />
       <KPICard
         label="Etsy Deposits"
-        value={formatCurrency(cashflow.etsyDeposits)}
+        value={formatCurrency(cashflow.etsyDeposits || 0)}
         icon={DollarSign}
         color="text-teal-600"
       />
       <KPICard
         label="Owner Transfers"
-        value={formatCurrency(cashflow.ownerTransfers)}
+        value={formatCurrency(cashflow.ownerTransfers || 0)}
         icon={DollarSign}
         color="text-indigo-600"
       />
