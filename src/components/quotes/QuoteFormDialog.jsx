@@ -646,28 +646,65 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => {
-                    const newCustomer = {
-                      name: "New Customer",
-                      email: "",
-                      phone: "",
-                    };
-                    base44.entities.Customer.create(newCustomer).then((customer) => {
-                      queryClient.invalidateQueries({ queryKey: ["customers"] });
-                      setFormData({
-                        ...formData,
-                        customer_id: customer.id,
-                        customer_name: customer.name,
-                        customer_email: customer.email || "",
-                        customer_phone: customer.phone || "",
-                      });
-                    });
-                  }}
+                  onClick={() => setShowQuickAdd(!showQuickAdd)}
                   className="w-full mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <Plus className="w-3 h-3 mr-1" />
-                  Quick Add Customer
+                  {showQuickAdd ? "Cancel" : "Create New Customer"}
                 </Button>
+
+                {showQuickAdd && (
+                  <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
+                    <Input
+                      placeholder="Customer name *"
+                      value={newCustomerData.name}
+                      onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      value={newCustomerData.email}
+                      onChange={(e) => setNewCustomerData({ ...newCustomerData, email: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      placeholder="Phone"
+                      value={newCustomerData.phone}
+                      onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      placeholder="Company (optional)"
+                      value={newCustomerData.company}
+                      onChange={(e) => setNewCustomerData({ ...newCustomerData, company: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!newCustomerData.name || isCreatingCustomer}
+                      onClick={async () => {
+                        setIsCreatingCustomer(true);
+                        const customer = await base44.entities.Customer.create(newCustomerData);
+                        queryClient.invalidateQueries({ queryKey: ["customers"] });
+                        setFormData({
+                          ...formData,
+                          customer_id: customer.id,
+                          customer_name: customer.name,
+                          customer_email: customer.email || "",
+                          customer_phone: customer.phone || "",
+                        });
+                        setNewCustomerData({ name: "", email: "", phone: "", company: "" });
+                        setShowQuickAdd(false);
+                        setIsCreatingCustomer(false);
+                      }}
+                      className="w-full h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      {isCreatingCustomer ? "Adding..." : "Add Customer"}
+                    </Button>
+                  </div>
+                )}
                 </div>
 
               <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
