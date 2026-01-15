@@ -145,6 +145,13 @@ export default function Products() {
     <div className="space-y-6">
       <PageHeader title="Products" description="Manage product defaults for faster job creation">
         <Button
+          onClick={() => setShowImport(!showImport)}
+          variant="outline"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Bulk Import
+        </Button>
+        <Button
           onClick={() => {
             setEditingProduct(null);
             setFormOpen(true);
@@ -155,6 +162,8 @@ export default function Products() {
           Add Product
         </Button>
       </PageHeader>
+
+      {showImport && <BulkProductImportTool />}
 
       {/* Search */}
       <div className="relative max-w-md">
