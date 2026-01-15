@@ -13,9 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp, Calculator } from "lucide-react";
+import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp, Calculator, Info } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { calculateProfit } from "@/components/shared/profitCalculator";
+import { calculateProfit, formatCurrency } from "@/components/shared/profitCalculator";
+import { Switch } from "@/components/ui/switch";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
