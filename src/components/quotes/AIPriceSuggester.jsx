@@ -19,29 +19,30 @@ export default function AIPriceSuggester({
       const materialsDesc = materials.map(m => `${m.name || m.type}`).join(", ") || "Custom item";
       
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a pricing expert analyzing Etsy market data.
+        prompt: `You are a pricing expert for handmade Etsy products.
 
 Project Details:
-- Name: ${projectName}
-- Materials: ${materialsDesc}
+- Product: ${projectName}
+- Materials used: ${materialsDesc}
 - Material Cost: $${materialsTotal.toFixed(2)}
 
-IMPORTANT: Research average Etsy pricing for similar products.
-- Find comparable handmade/custom items on Etsy with similar materials
-- What's the average price range for items like this?
-- Look at completed listings and current active listings
+Search Etsy marketplace for similar products:
+1. Find items with matching or similar materials (e.g., acrylic, wood, leather signs)
+2. Look at current average pricing for these items on Etsy
+3. Consider what successful sellers charge for comparable handmade/custom work
+4. Account for Etsy's fees when pricing
 
-Suggest a competitive price that:
-- Matches typical Etsy market pricing for similar items
-- Is NOT overpriced or underpriced
-- Accounts for Etsy fees and competitive market
-- Is realistic and fair
+Suggest a price that:
+- Reflects current average Etsy market rates for similar items
+- Covers costs + reasonable profit margin
+- Is competitive but not undercut
+- Is realistic for handmade work on Etsy
 
-Return a JSON response with:
-- suggested_price: the competitive Etsy market price
-- reasoning: brief explanation of the market comparison
+Return a JSON with:
+- suggested_price: the recommended price based on Etsy averages
+- reasoning: what similar Etsy items cost
 
-Use actual Etsy market data, not inflated prices.`,
+Use real Etsy marketplace pricing data.`,
         response_json_schema: {
           type: "object",
           properties: {
