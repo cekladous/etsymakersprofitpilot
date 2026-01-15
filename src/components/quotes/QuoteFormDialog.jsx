@@ -35,7 +35,6 @@ const generateQuoteNumber = () => {
 export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const [currency, setCurrency] = useState("USD");
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
   
   const [formData, setFormData] = useState({
     quote_number: generateQuoteNumber(),
