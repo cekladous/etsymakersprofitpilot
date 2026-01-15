@@ -1037,5 +1037,14 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         </form>
       </DialogContent>
     </Dialog>
+
+    <ConvertQuoteDialog
+      open={showConvertDialog}
+      onOpenChange={setShowConvertDialog}
+      quote={quote}
+      onConfirm={handleConfirmConversion}
+      isPending={convertMutation.isPending}
+    />
+    </>
   );
 }
