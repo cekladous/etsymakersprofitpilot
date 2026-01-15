@@ -60,6 +60,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     payment_method: "etsy",
     advertising_type: "none",
     advertising_value: 0,
+    share_save_enabled: false,
+    share_save_discount: 10,
+    share_save_discount_type: "percent",
+    share_save_fee_rate: 4,
   });
 
   const queryClient = useQueryClient();
