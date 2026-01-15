@@ -77,6 +77,10 @@ export default function Tools() {
         <TabsContent value="settings" className="mt-6">
           <SettingsTool />
         </TabsContent>
+
+        <TabsContent value="bulk-import" className="mt-6">
+          <BulkProductImportTool />
+        </TabsContent>
       </Tabs>
     </div>
   );
