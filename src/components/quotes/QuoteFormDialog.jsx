@@ -17,6 +17,7 @@ import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp, Calculator,
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { calculateProfit, formatCurrency } from "@/components/shared/profitCalculator";
 import { Switch } from "@/components/ui/switch";
+import QuickCustomerForm from "./QuickCustomerForm";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
