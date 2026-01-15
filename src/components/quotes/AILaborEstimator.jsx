@@ -19,20 +19,27 @@ export default function AILaborEstimator({
       const machinesText = machines.map(m => m.name || "Unknown").join(", ");
 
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an expert in custom manufacturing and craftsmanship. Estimate the labor and machine time needed for this project based on the details provided.
+        prompt: `You are an expert in custom Etsy product manufacturing. Estimate the labor and machine time needed for this project based on current Etsy market standards.
 
 Project Name: ${projectName}
 Materials: ${materialsText || "None specified"}
 Machines Available: ${machinesText || "Standard equipment"}
+
+Research current Etsy average pricing for similar items and work backwards to suggest realistic production times.
 
 Please provide realistic estimates for:
 1. Design/Planning hours and minutes (total time for design work)
 2. Manual labor hours and minutes (hands-on assembly, finishing, packaging)
 3. Machine operating time in hours and minutes (laser, CNC, etc.)
 
-Consider complexity, material handling, and standard industry practices. Be practical and assume professional-level efficiency.
+Base estimates on:
+- What Etsy sellers typically charge for similar items (2026 market rates)
+- Industry-standard production times for handmade goods
+- Material type (acrylic, wood, leather, etc.)
+- Professional-level efficiency
 
 Format as JSON with keys: design_hours, design_minutes, labor_hours, labor_minutes, machine_hours, machine_minutes`,
+        add_context_from_internet: true,
         response_json_schema: {
           type: "object",
           properties: {
