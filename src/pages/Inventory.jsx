@@ -24,6 +24,7 @@ export default function Inventory() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
+  const [showImport, setShowImport] = useState(false);
 
   const queryClient = useQueryClient();
 
