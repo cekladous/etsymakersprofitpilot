@@ -175,6 +175,28 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const updateMaterial = (index, field, value) => {
     const newMaterials = [...formData.materials];
     newMaterials[index][field] = value;
+
+    // Auto-populate machine based on material
+    if (field === "type" || field === "name") {
+      const materialName = (value || newMaterials[index].name || "").toLowerCase();
+      let suggestedMachine = null;
+
+      if (materialName.includes("acrylic") || materialName.includes("wood") || materialName.includes("leather")) {
+        suggestedMachine = machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
+      } else if (materialName.includes("metal")) {
+        suggestedMachine = machines.find(m => m.name && m.name.toLowerCase().includes("cnc"));
+      }
+
+      if (suggestedMachine && formData.machines.length === 0) {
+        setFormData({ 
+          ...formData, 
+          materials: newMaterials,
+          machines: [{ machine_id: suggestedMachine.id, name: suggestedMachine.name, hours: 0, minutes: 0, rate: suggestedMachine.hourly_rate || 50 }]
+        });
+        return;
+      }
+    }
+
     setFormData({ ...formData, materials: newMaterials });
   };
 
