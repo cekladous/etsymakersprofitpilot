@@ -104,6 +104,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const [shareSaveExpanded, setShareSaveExpanded] = useState(false);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState(null);
+  const [desiredMargin, setDesiredMargin] = useState(40);
+  const [showAIPricer, setShowAIPricer] = useState(false);
 
   useEffect(() => {
     if (quote) {
