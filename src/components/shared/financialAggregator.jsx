@@ -32,12 +32,12 @@ export function aggregateFinancials(data, dateRange) {
   };
 
   // Filter all data by date range
-  const periodEtsyOrders = filterByDate(data.etsyOrders || [], "sale_date");
-  const periodCustomSales = filterByDate(data.customSales || [], "date");
-  const periodBusinessExpenses = filterByDate(data.businessExpenses || [], "date");
-  const periodTransfers = filterByDate(data.transfers || [], "date");
-  const periodMaterialPurchases = filterByDate(data.materialPurchases || [], "purchase_date");
-  const periodLedgerEntries = filterByDate(data.etsyLedgerEntries || [], "entry_date");
+  const periodEtsyOrders = filterByDate(Array.isArray(data.etsyOrders) ? data.etsyOrders : [], "sale_date");
+  const periodCustomSales = filterByDate(Array.isArray(data.customSales) ? data.customSales : [], "date");
+  const periodBusinessExpenses = filterByDate(Array.isArray(data.businessExpenses) ? data.businessExpenses : [], "date");
+  const periodTransfers = filterByDate(Array.isArray(data.transfers) ? data.transfers : [], "date");
+  const periodMaterialPurchases = filterByDate(Array.isArray(data.materialPurchases) ? data.materialPurchases : [], "purchase_date");
+  const periodLedgerEntries = filterByDate(Array.isArray(data.etsyLedgerEntries) ? data.etsyLedgerEntries : [], "entry_date");
 
   // ==================== A) REVENUE ====================
   
