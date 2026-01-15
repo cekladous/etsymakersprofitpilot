@@ -9,7 +9,10 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, Building, MapPin, FileText, ShoppingBag } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import StatusBadge from "@/components/shared/StatusBadge";
 
 export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
@@ -110,9 +113,16 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
           {/* Quotes History */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                <CardTitle className="text-base">Quotes</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <CardTitle className="text-base">Quotes</CardTitle>
+                </div>
+                {quotes.length > 0 && (
+                  <Link to={createPageUrl("Quotes")}>
+                    <Button size="sm" variant="outline">View All</Button>
+                  </Link>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -143,9 +153,16 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
           {/* Orders History */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4" />
-                <CardTitle className="text-base">Orders</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4" />
+                  <CardTitle className="text-base">Orders</CardTitle>
+                </div>
+                {orders.length > 0 && (
+                  <Link to={createPageUrl("Orders")}>
+                    <Button size="sm" variant="outline">View All</Button>
+                  </Link>
+                )}
               </div>
             </CardHeader>
             <CardContent>
