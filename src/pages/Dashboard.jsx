@@ -407,7 +407,7 @@ export default function Dashboard() {
           </TabsTrigger>
           <TabsTrigger value="budget">
             <BarChart3 className="w-4 h-4 mr-2" />
-            Budget vs Actual
+            Actuals
           </TabsTrigger>
         </TabsList>
 
@@ -467,9 +467,9 @@ export default function Dashboard() {
           onClick={() => setActiveTab("budget")}
           className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105"
         >
-          <p className="text-violet-100 text-sm font-medium mb-1">Budget vs Actual</p>
+          <p className="text-violet-100 text-sm font-medium mb-1">Actual Spending</p>
           <p className="text-3xl font-bold">${financialData.totalExpenses.toLocaleString()}</p>
-          <p className="text-violet-200 text-xs mt-1">Spent • Click to view budget</p>
+          <p className="text-violet-200 text-xs mt-1">Spent • Click to view breakdown</p>
         </div>
       </div>
 

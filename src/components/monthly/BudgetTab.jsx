@@ -216,19 +216,8 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
       data.push([group.label]);
 
       group.categories.forEach(cat => {
-        // Budget row
-        const budgetRow = [cat.label + " Budget"];
-        let yearBudget = 0;
-        periods.forEach(p => {
-          const budget = getBudget(cat.name, p.start);
-          budgetRow.push(budget);
-          yearBudget += budget;
-        });
-        budgetRow.push(yearBudget);
-        data.push(budgetRow);
-
         // Actual row
-        const actualRow = [cat.label + " Actual"];
+        const actualRow = [cat.label];
         let yearActual = 0;
         periods.forEach(p => {
           const actual = getActual(cat.name, p.start);
@@ -241,48 +230,33 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
     });
 
     // Totals
-    const totalBudgetRow = ["Total Spending Budget"];
-    const totalActualRow = ["Total Spending Actual"];
-    const differenceRow = ["Difference"];
-    
-    let yearTotalBudget = 0;
+    const totalActualRow = ["Total Spending"];
     let yearTotalActual = 0;
     
     periods.forEach(p => {
-      let periodBudget = 0;
       let periodActual = 0;
       
       Object.values(EXPENSE_CATEGORY_GROUPS).forEach(group => {
         group.categories.forEach(cat => {
-          periodBudget += getBudget(cat.name, p.start);
           periodActual += getActual(cat.name, p.start);
         });
       });
       
-      totalBudgetRow.push(periodBudget);
       totalActualRow.push(periodActual);
-      differenceRow.push(periodBudget - periodActual);
-      
-      yearTotalBudget += periodBudget;
       yearTotalActual += periodActual;
     });
     
-    totalBudgetRow.push(yearTotalBudget);
     totalActualRow.push(yearTotalActual);
-    differenceRow.push(yearTotalBudget - yearTotalActual);
-    
-    data.push(totalBudgetRow);
     data.push(totalActualRow);
-    data.push(differenceRow);
 
     const worksheet = XLSX.utils.aoa_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Budget");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Actuals");
     
     if (fileType === "csv") {
-      XLSX.writeFile(workbook, `budget-${format(dateRange.start, "yyyy-MM")}.csv`);
+      XLSX.writeFile(workbook, `actuals-${format(dateRange.start, "yyyy-MM")}.csv`);
     } else {
-      XLSX.writeFile(workbook, `budget-${format(dateRange.start, "yyyy-MM")}.xlsx`);
+      XLSX.writeFile(workbook, `actuals-${format(dateRange.start, "yyyy-MM")}.xlsx`);
     }
   };
 
@@ -365,10 +339,10 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
         </Button>
       </div>
 
-      {/* Budget Table */}
+      {/* Actual Spending Table */}
       <Card>
         <CardHeader>
-          <CardTitle>My Business Budget</CardTitle>
+          <CardTitle>Actual Spending</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
@@ -403,60 +377,34 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
 
                   {/* Category Rows */}
                   {group.categories.map(cat => {
-                    let yearBudget = 0;
                     let yearActual = 0;
                     periods.forEach(p => {
-                      yearBudget += getBudget(cat.name, p.start);
                       yearActual += getActual(cat.name, p.start);
                     });
 
                     return (
-                      <React.Fragment key={cat.name}>
-                        {/* Budget Row */}
-                        <tr className="border-b border-stone-200">
-                          <td className="p-2 pl-6 text-stone-700 sticky left-0 bg-white">
-                            {cat.label} Budget
+                      <tr key={cat.name} className="border-b border-stone-200">
+                        <td className="p-2 pl-6 text-stone-700 sticky left-0 bg-white">
+                          {cat.label}
+                        </td>
+                        {periods.map((p, idx) => (
+                          <td key={idx} className="border-l border-stone-200">
+                            <ActualCell
+                              categoryName={cat.name}
+                              period={p}
+                              label={cat.label}
+                            />
                           </td>
-                          {periods.map((p, idx) => (
-                            <td key={idx} className="border-l border-stone-200">
-                              <BudgetCell
-                                categoryName={cat.name}
-                                categoryGroup={groupKey}
-                                period={p}
-                              />
-                            </td>
-                          ))}
-                          <td className="border-l-2 border-stone-300 bg-stone-50">
-                            <div className="text-xs text-center py-1 font-semibold">
-                              {yearBudget > 0 ? formatCurrency(yearBudget) : "—"}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* Actual Row */}
-                        <tr className="border-b border-stone-200 bg-stone-50">
-                          <td className="p-2 pl-6 text-stone-600 sticky left-0 bg-stone-50">
-                            {cat.label} Actual
-                          </td>
-                          {periods.map((p, idx) => (
-                            <td key={idx} className="border-l border-stone-200">
-                              <ActualCell
-                                categoryName={cat.name}
-                                period={p}
-                                label={cat.label}
-                              />
-                            </td>
-                          ))}
-                          <td className="border-l-2 border-stone-300 bg-stone-100">
-                            <div
-                              onClick={() => yearActual > 0 && handleDrillDown(cat.label, cat.name, dateRange.start)}
-                              className={`text-xs text-center py-1 font-semibold ${yearActual > 0 ? "cursor-pointer hover:bg-emerald-100" : ""}`}
-                            >
-                              {yearActual > 0 ? formatCurrency(yearActual) : "—"}
-                            </div>
-                          </td>
-                        </tr>
-                      </React.Fragment>
+                        ))}
+                        <td className="border-l-2 border-stone-300 bg-stone-50">
+                          <div
+                            onClick={() => yearActual > 0 && handleDrillDown(cat.label, cat.name, dateRange.start)}
+                            className={`text-xs text-center py-1 font-semibold ${yearActual > 0 ? "cursor-pointer hover:bg-emerald-50" : ""}`}
+                          >
+                            {yearActual > 0 ? formatCurrency(yearActual) : "—"}
+                          </div>
+                        </td>
+                      </tr>
                     );
                   })}
                 </React.Fragment>
@@ -464,36 +412,7 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
 
               {/* Totals */}
               <tr className="bg-stone-200 border-t-2 border-stone-400 font-semibold">
-                <td className="p-2 sticky left-0 bg-stone-200">Total Spending Budget</td>
-                {periods.map((p, idx) => {
-                  let total = 0;
-                  Object.values(EXPENSE_CATEGORY_GROUPS).forEach(group => {
-                    group.categories.forEach(cat => {
-                      total += getBudget(cat.name, p.start);
-                    });
-                  });
-                  return (
-                    <td key={idx} className="border-l border-stone-300 text-center p-2">
-                      {total > 0 ? formatCurrency(total) : "—"}
-                    </td>
-                  );
-                })}
-                <td className="border-l-2 border-stone-400 text-center p-2 bg-stone-300">
-                  {formatCurrency(
-                    periods.reduce((sum, p) => {
-                      Object.values(EXPENSE_CATEGORY_GROUPS).forEach(group => {
-                        group.categories.forEach(cat => {
-                          sum += getBudget(cat.name, p.start);
-                        });
-                      });
-                      return sum;
-                    }, 0)
-                  )}
-                </td>
-              </tr>
-
-              <tr className="bg-stone-200 font-semibold">
-                <td className="p-2 sticky left-0 bg-stone-200">Total Spending Actual</td>
+                <td className="p-2 sticky left-0 bg-stone-200">Total Spending</td>
                 {periods.map((p, idx) => {
                   let total = 0;
                   Object.values(EXPENSE_CATEGORY_GROUPS).forEach(group => {
@@ -518,46 +437,6 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
                       return sum;
                     }, 0)
                   )}
-                </td>
-              </tr>
-
-              <tr className="bg-amber-50 border-t border-stone-300 font-semibold">
-                <td className="p-2 sticky left-0 bg-amber-50">Difference</td>
-                {periods.map((p, idx) => {
-                  let budget = 0;
-                  let actual = 0;
-                  Object.values(EXPENSE_CATEGORY_GROUPS).forEach(group => {
-                    group.categories.forEach(cat => {
-                      budget += getBudget(cat.name, p.start);
-                      actual += getActual(cat.name, p.start);
-                    });
-                  });
-                  const diff = budget - actual;
-                  return (
-                    <td key={idx} className={`border-l border-stone-300 text-center p-2 ${diff < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                      {diff !== 0 ? formatCurrency(diff) : "—"}
-                    </td>
-                  );
-                })}
-                <td className={`border-l-2 border-stone-400 text-center p-2 bg-amber-100`}>
-                  {(() => {
-                    let totalBudget = 0;
-                    let totalActual = 0;
-                    periods.forEach(p => {
-                      Object.values(EXPENSE_CATEGORY_GROUPS).forEach(group => {
-                        group.categories.forEach(cat => {
-                          totalBudget += getBudget(cat.name, p.start);
-                          totalActual += getActual(cat.name, p.start);
-                        });
-                      });
-                    });
-                    const diff = totalBudget - totalActual;
-                    return (
-                      <span className={diff < 0 ? "text-rose-600" : "text-emerald-600"}>
-                        {formatCurrency(diff)}
-                      </span>
-                    );
-                  })()}
                 </td>
               </tr>
             </tbody>
