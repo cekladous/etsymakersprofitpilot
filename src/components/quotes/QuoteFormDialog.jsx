@@ -830,22 +830,19 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
             projectName={formData.project_name}
             materials={formData.materials}
             onSuggestedPrice={(price) => {
-              // Set all service labor rates to achieve the suggested price
+              // Calculate the rate to achieve the suggested price
               const costBasis = getMaterialsTotal();
               const profitNeeded = price - costBasis;
 
-              // Simple approach: set labor rate to achieve desired profit
-              const designHours = (parseFloat(formData.design_hours) || 0) + (parseFloat(formData.design_minutes) || 0) / 60;
-              const laborHours = (parseFloat(formData.manual_labor_hours) || 0) + (parseFloat(formData.manual_labor_minutes) || 0) / 60;
+              const laborHours = (parseFloat(formData.labor_hours) || 0) + (parseFloat(formData.labor_minutes) || 0) / 60;
               const machineHours = formData.machines.reduce((sum, m) => sum + (parseFloat(m.hours) || 0) + (parseFloat(m.minutes) || 0) / 60, 0);
-              const totalHours = designHours + laborHours + machineHours;
+              const totalHours = laborHours + machineHours;
 
               if (totalHours > 0) {
                 const hourlyRate = profitNeeded / totalHours;
                 setFormData({
                   ...formData,
-                  design_rate: hourlyRate,
-                  manual_labor_rate: hourlyRate,
+                  labor_rate: hourlyRate,
                   machines: formData.machines.map(m => ({ ...m, rate: hourlyRate }))
                 });
               }
