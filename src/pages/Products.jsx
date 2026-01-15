@@ -20,6 +20,7 @@ export default function Products() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [search, setSearch] = useState("");
+  const [showImport, setShowImport] = useState(false);
   
   const queryClient = useQueryClient();
 
