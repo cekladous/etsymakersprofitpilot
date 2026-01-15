@@ -55,6 +55,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     manual_labor_type: "Standard Labor",
     manual_labor_rate: 95,
     machines: [],
+    shipping_cost: 0,
+    payment_method: "etsy",
+    advertising_type: "none",
+    advertising_value: 0,
   });
 
   const queryClient = useQueryClient();
@@ -79,6 +83,13 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     queryFn: () => base44.entities.Customer.list(),
   });
 
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.list(),
+  });
+
+  const feeConfig = settings[0] || {};
+
   useEffect(() => {
     if (quote) {
       setFormData({
@@ -93,6 +104,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         manual_labor_type: quote.manual_labor_type || "Standard Labor",
         manual_labor_rate: quote.manual_labor_rate || 95,
         machines: quote.machines || [],
+        shipping_cost: quote.shipping_cost || 0,
+        payment_method: quote.payment_method || "etsy",
+        advertising_type: quote.advertising_type || "none",
+        advertising_value: quote.advertising_value || 0,
       });
     } else {
       setFormData({
@@ -115,6 +130,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         manual_labor_type: "Standard Labor",
         manual_labor_rate: 95,
         machines: [],
+        shipping_cost: 0,
+        payment_method: "etsy",
+        advertising_type: "none",
+        advertising_value: 0,
       });
     }
   }, [quote, open]);
@@ -201,6 +220,24 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     return getMaterialsTotal() + getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
   };
 
+  // Calculate profit
+  const profitInputs = {
+    sales_price: getGrandTotal(),
+    shipping_charged: 0,
+    discounts: 0,
+    refunds: 0,
+    sales_tax: 0,
+    cost_of_goods: getMaterialsTotal() + (parseFloat(formData.shipping_cost) || 0),
+    shipping_cost: parseFloat(formData.shipping_cost) || 0,
+    advertising_type: formData.advertising_type || "none",
+    advertising_value: parseFloat(formData.advertising_value) || 0,
+    advertising_value_type: "percent",
+    payment_method: formData.payment_method || "etsy",
+  };
+
+  const profitResults = calculateProfit(profitInputs, feeConfig);
+  const laborRevenue = getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
+
   const saveMutation = useMutation({
     mutationFn: async (data) => {
       if (quote) {
@@ -269,31 +306,140 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         </DialogHeader>
 
         {showCalculator && (
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="text-sm font-medium text-blue-900 mb-3">Quick Profit Check</div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-stone-600">Total Quote:</span>
-                <span className="font-semibold">{currencySymbol}{getGrandTotal().toFixed(2)}</span>
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Profit Analysis</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Payment & Fees */}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Payment Method</Label>
+                  <Select value={formData.payment_method} onValueChange={(v) => setFormData({...formData, payment_method: v})}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="etsy">Etsy Payments</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="square">Square</SelectItem>
+                      <SelectItem value="venmo_business">Venmo Business</SelectItem>
+                      <SelectItem value="cash">Cash/Zelle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Advertising</Label>
+                  <Select value={formData.advertising_type} onValueChange={(v) => setFormData({...formData, advertising_type: v})}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="etsy_ads">Etsy Ads</SelectItem>
+                      <SelectItem value="etsy_offsite_ads">Etsy Offsite Ads</SelectItem>
+                      <SelectItem value="social_ads">Social Ads</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.advertising_type !== "none" && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Ad Cost (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={formData.advertising_value}
+                      onChange={(e) => setFormData({...formData, advertising_value: e.target.value})}
+                      className="h-9"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Shipping Cost ({currencySymbol})</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.shipping_cost}
+                    onChange={(e) => setFormData({...formData, shipping_cost: e.target.value})}
+                    className="h-9"
+                  />
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-600">Materials Cost:</span>
-                <span className="font-semibold text-rose-600">-{currencySymbol}{getMaterialsTotal().toFixed(2)}</span>
+
+              {/* Profit Breakdown */}
+              <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-stone-600">Quote Total:</span>
+                  <span className="font-semibold">{currencySymbol}{getGrandTotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-stone-500">
+                  <span className="pl-3">Materials:</span>
+                  <span>-{currencySymbol}{getMaterialsTotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-stone-500">
+                  <span className="pl-3">Shipping Cost:</span>
+                  <span>-{currencySymbol}{(parseFloat(formData.shipping_cost) || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-stone-500">
+                  <span className="pl-3">Labor/Services:</span>
+                  <span className="text-emerald-600">+{currencySymbol}{laborRevenue.toFixed(2)}</span>
+                </div>
+                
+                <div className="border-t border-stone-300 pt-2">
+                  <div className="flex justify-between text-xs text-stone-500">
+                    <span className="pl-3">Platform Fees:</span>
+                    <span>-{currencySymbol}{profitResults.total_fees.toFixed(2)}</span>
+                  </div>
+                  {profitResults.listing_fee > 0 && (
+                    <div className="flex justify-between text-xs text-stone-400 pl-6">
+                      <span>Listing Fee:</span>
+                      <span>{currencySymbol}{profitResults.listing_fee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {profitResults.transaction_fee > 0 && (
+                    <div className="flex justify-between text-xs text-stone-400 pl-6">
+                      <span>Transaction Fee:</span>
+                      <span>{currencySymbol}{profitResults.transaction_fee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {profitResults.processing_fee > 0 && (
+                    <div className="flex justify-between text-xs text-stone-400 pl-6">
+                      <span>Processing Fee:</span>
+                      <span>{currencySymbol}{profitResults.processing_fee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {profitResults.advertising_cost > 0 && (
+                    <div className="flex justify-between text-xs text-stone-400 pl-6">
+                      <span>Advertising:</span>
+                      <span>{currencySymbol}{profitResults.advertising_cost.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`pt-2 border-t-2 flex justify-between font-semibold ${profitResults.profit >= 0 ? 'text-emerald-600 border-emerald-300 bg-emerald-50' : 'text-rose-600 border-rose-300 bg-rose-50'} -mx-3 px-3 py-2 rounded`}>
+                  <span>Net Profit:</span>
+                  <span>{currencySymbol}{profitResults.profit.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-stone-600">Profit Margin:</span>
+                  <span className={`font-semibold ${profitResults.profit_margin >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {profitResults.profit_margin.toFixed(1)}%
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-600">Labor Revenue:</span>
-                <span className="font-semibold text-emerald-600">+{currencySymbol}{(getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal()).toFixed(2)}</span>
-              </div>
-              <div className="pt-2 border-t border-blue-300 flex justify-between">
-                <span className="font-semibold text-blue-900">Gross Profit:</span>
-                <span className="font-bold text-blue-900">{currencySymbol}{(getGrandTotal() - getMaterialsTotal()).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-xs text-stone-600">
-                <span>Profit Margin:</span>
-                <span>{getGrandTotal() > 0 ? (((getGrandTotal() - getMaterialsTotal()) / getGrandTotal()) * 100).toFixed(1) : 0}%</span>
-              </div>
-            </div>
-          </div>
+
+              {profitResults.profit < 0 && (
+                <div className="bg-rose-50 border border-rose-200 rounded p-2 text-xs text-rose-800">
+                  <strong>⚠️ Warning:</strong> Losing money on this quote. Consider raising price or reducing costs.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
