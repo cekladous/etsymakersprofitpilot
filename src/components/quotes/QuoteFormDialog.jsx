@@ -392,6 +392,77 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 </div>
               </div>
 
+              {/* Share & Save Section */}
+              <div 
+                className="bg-stone-50 rounded-lg p-3 cursor-pointer hover:bg-stone-100 transition-colors"
+                onClick={() => setShareSaveExpanded(!shareSaveExpanded)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-medium">Etsy Share & Save Calculator</Label>
+                  {shareSaveExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
+                {shareSaveExpanded && (
+                  <div className="space-y-3 mt-3 border-t border-stone-200 pt-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-stone-600">Enable Share & Save</p>
+                        <p className="text-xs text-stone-500 mt-0.5">4% savings on listing fees</p>
+                      </div>
+                      <Switch
+                        checked={formData.share_save_enabled}
+                        onCheckedChange={(checked) => setFormData({...formData, share_save_enabled: checked})}
+                      />
+                    </div>
+
+                    {formData.share_save_enabled && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Discount to Customer</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={formData.share_save_discount}
+                              onChange={(e) => setFormData({...formData, share_save_discount: e.target.value})}
+                              className="h-9 flex-1"
+                            />
+                            <Select value={formData.share_save_discount_type} onValueChange={(v) => setFormData({...formData, share_save_discount_type: v})}>
+                              <SelectTrigger className="h-9 w-16">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percent">%</SelectItem>
+                                <SelectItem value="fixed">$</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Share & Save Impact */}
+                        <div className="bg-emerald-50 border border-emerald-200 rounded p-2 space-y-1">
+                          <p className="text-xs font-semibold text-emerald-900">Share & Save Impact:</p>
+                          <div className="space-y-1 text-xs text-emerald-700">
+                            <div className="flex justify-between">
+                              <span>Original Price:</span>
+                              <span className="font-medium">{formatCurrency(profitResults.original_sale_price)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Discount:</span>
+                              <span className="font-medium">-{formatCurrency(profitResults.share_save_discount_amount)}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-emerald-300 pt-1 mt-1">
+                              <span>Etsy Savings (4%):</span>
+                              <span className="font-medium text-emerald-600">+{formatCurrency(profitResults.share_save_fee)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Profit Breakdown */}
               <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -438,6 +509,12 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     <div className="flex justify-between text-xs text-stone-400 pl-6">
                       <span>Advertising:</span>
                       <span>{currencySymbol}{profitResults.advertising_cost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {profitResults.share_save_fee > 0 && (
+                    <div className="flex justify-between text-xs text-stone-400 pl-6">
+                      <span>Share & Save Savings:</span>
+                      <span className="text-emerald-600">+{currencySymbol}{profitResults.share_save_fee.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
