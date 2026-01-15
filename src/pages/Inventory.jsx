@@ -233,6 +233,13 @@ export default function Inventory() {
     <div className="space-y-6">
       <PageHeader title="Inventory" description="Track materials, purchases, and inventory levels">
         <Button
+          onClick={() => setShowImport(!showImport)}
+          variant="outline"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Bulk Import
+        </Button>
+        <Button
           variant="outline"
           onClick={() => {
             setEditingType(null);
@@ -250,6 +257,8 @@ export default function Inventory() {
           Log Purchase
         </Button>
       </PageHeader>
+
+      {showImport && <BulkInventoryImportTool />}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
