@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp, Calculator } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const CURRENCIES = [
@@ -33,6 +33,7 @@ const generateQuoteNumber = () => {
 export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const [currency, setCurrency] = useState("USD");
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   
   const [formData, setFormData] = useState({
     quote_number: generateQuoteNumber(),
@@ -252,8 +253,48 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Quote Calculator</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl">Quote Calculator</DialogTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCalculator(!showCalculator)}
+              className="gap-2"
+            >
+              <Calculator className="w-4 h-4" />
+              {showCalculator ? "Hide" : "Show"} Profit Calculator
+            </Button>
+          </div>
         </DialogHeader>
+
+        {showCalculator && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-sm font-medium text-blue-900 mb-3">Quick Profit Check</div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-stone-600">Total Quote:</span>
+                <span className="font-semibold">{currencySymbol}{getGrandTotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-600">Materials Cost:</span>
+                <span className="font-semibold text-rose-600">-{currencySymbol}{getMaterialsTotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-600">Labor Revenue:</span>
+                <span className="font-semibold text-emerald-600">+{currencySymbol}{(getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal()).toFixed(2)}</span>
+              </div>
+              <div className="pt-2 border-t border-blue-300 flex justify-between">
+                <span className="font-semibold text-blue-900">Gross Profit:</span>
+                <span className="font-bold text-blue-900">{currencySymbol}{(getGrandTotal() - getMaterialsTotal()).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-stone-600">
+                <span>Profit Margin:</span>
+                <span>{getGrandTotal() > 0 ? (((getGrandTotal() - getMaterialsTotal()) / getGrandTotal()) * 100).toFixed(1) : 0}%</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Customer & Project */}
