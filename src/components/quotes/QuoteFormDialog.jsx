@@ -19,6 +19,7 @@ import { calculateProfit, formatCurrency } from "@/components/shared/profitCalcu
 import { Switch } from "@/components/ui/switch";
 import ConvertQuoteDialog from "./ConvertQuoteDialog";
 import AIPriceSuggester from "./AIPriceSuggester";
+import AILaborEstimator from "./AILaborEstimator";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
