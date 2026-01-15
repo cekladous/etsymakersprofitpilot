@@ -73,6 +73,11 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     queryFn: () => base44.entities.Machine.list(),
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => base44.entities.Customer.list(),
+  });
+
   useEffect(() => {
     if (quote) {
       setFormData({
@@ -263,6 +268,47 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                   className="mt-1"
                 />
+              </div>
+
+              <div>
+                <Label className="text-xs text-stone-600">Select Customer (Optional)</Label>
+                <Select
+                  value={formData.customer_id || ""}
+                  onValueChange={(value) => {
+                    if (value) {
+                      const customer = customers.find(c => c.id === value);
+                      if (customer) {
+                        setFormData({
+                          ...formData,
+                          customer_id: customer.id,
+                          customer_name: customer.name,
+                          customer_email: customer.email || "",
+                          customer_phone: customer.phone || "",
+                        });
+                      }
+                    } else {
+                      setFormData({
+                        ...formData,
+                        customer_id: "",
+                        customer_name: "",
+                        customer_email: "",
+                        customer_phone: "",
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select existing customer..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None (Enter manually)</SelectItem>
+                    {customers.map(customer => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name} {customer.company ? `(${customer.company})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
