@@ -249,6 +249,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     advertising_value: parseFloat(formData.advertising_value) || 0,
     advertising_value_type: "percent",
     payment_method: formData.payment_method || "etsy",
+    share_save_enabled: formData.share_save_enabled || false,
+    share_save_discount: parseFloat(formData.share_save_discount) || 10,
+    share_save_discount_type: formData.share_save_discount_type || "percent",
+    share_save_fee_rate: parseFloat(formData.share_save_fee_rate) || 4,
   };
 
   const profitResults = calculateProfit(profitInputs, feeConfig);
