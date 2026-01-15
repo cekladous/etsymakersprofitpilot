@@ -364,19 +364,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl">Quote Calculator</DialogTitle>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCalculator(!showCalculator)}
-              className="gap-2"
-            >
-              <Calculator className="w-4 h-4" />
-              {showCalculator ? "Hide" : "Show"} Profit Calculator
-            </Button>
-          </div>
+          <DialogTitle className="text-2xl">Create Quote</DialogTitle>
         </DialogHeader>
 
 
