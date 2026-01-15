@@ -628,14 +628,6 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                           customer_phone: customer.phone || "",
                         });
                       }
-                    } else {
-                      setFormData({
-                        ...formData,
-                        customer_id: "",
-                        customer_name: "",
-                        customer_email: "",
-                        customer_phone: "",
-                      });
                     }
                   }}
                 >
@@ -643,8 +635,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     <SelectValue placeholder="Select existing customer..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {customers.map(customer => (
-                      <SelectItem key={customer.id} value={customer.id}>
+                    {customers && customers.length > 0 && customers.map(customer => (
+                      <SelectItem key={customer.id} value={customer.id || ""}>
                         {customer.name} {customer.company ? `(${customer.company})` : ""}
                       </SelectItem>
                     ))}
