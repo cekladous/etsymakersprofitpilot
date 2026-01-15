@@ -171,29 +171,31 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         const materialName = (value || newMaterials[index].name || "").toLowerCase();
 
         // Default to xTool P3 for laser-compatible materials
-        if (materialName.includes("acrylic") || materialName.includes("wood") || materialName.includes("leather")) {
-          const defaultMachine = machines.find(m => m.name && m.name.toLowerCase().includes("xtool p3")) || 
-                               machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
+         if (materialName.includes("acrylic") || materialName.includes("wood") || materialName.includes("leather")) {
+           const defaultMachine = machines.find(m => m.name && m.name.toLowerCase().includes("xtool p3")) || 
+                                machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
 
-          if (defaultMachine && formData.machines.length === 0) {
-            setFormData({ 
-              ...formData, 
-              materials: newMaterials,
-              machines: [{ machine_id: defaultMachine.id, name: defaultMachine.name, hours: 0, minutes: 0, rate: defaultMachine.hourly_rate || 50 }]
-            });
-            return;
-          }
-        } else if (materialName.includes("metal")) {
-          const cncMachine = machines.find(m => m.name && m.name.toLowerCase().includes("cnc"));
-          if (cncMachine && formData.machines.length === 0) {
-            setFormData({ 
-              ...formData, 
-              materials: newMaterials,
-              machines: [{ machine_id: cncMachine.id, name: cncMachine.name, hours: 0, minutes: 0, rate: cncMachine.hourly_rate || 50 }]
-            });
-            return;
-          }
-        }
+           if (defaultMachine && formData.machines.length === 0) {
+             const hourlyDepreciation = (defaultMachine.monthly_depreciation || 0) / 160;
+             setFormData({ 
+               ...formData, 
+               materials: newMaterials,
+               machines: [{ machine_id: defaultMachine.id, name: defaultMachine.name, hours: 0, minutes: 0, rate: hourlyDepreciation || 0 }]
+             });
+             return;
+           }
+         } else if (materialName.includes("metal")) {
+           const cncMachine = machines.find(m => m.name && m.name.toLowerCase().includes("cnc"));
+           if (cncMachine && formData.machines.length === 0) {
+             const hourlyDepreciation = (cncMachine.monthly_depreciation || 0) / 160;
+             setFormData({ 
+               ...formData, 
+               materials: newMaterials,
+               machines: [{ machine_id: cncMachine.id, name: cncMachine.name, hours: 0, minutes: 0, rate: hourlyDepreciation || 0 }]
+             });
+             return;
+           }
+         }
       }
 
     setFormData({ ...formData, materials: newMaterials });
