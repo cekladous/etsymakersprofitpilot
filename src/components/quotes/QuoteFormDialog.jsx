@@ -98,6 +98,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const [showCalculator, setShowCalculator] = useState(false);
   const [shareSaveExpanded, setShareSaveExpanded] = useState(false);
+  const [showQuickCustomerForm, setShowQuickCustomerForm] = useState(false);
 
   useEffect(() => {
     if (quote) {
