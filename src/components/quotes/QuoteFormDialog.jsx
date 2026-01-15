@@ -282,7 +282,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   };
 
   const profitResults = calculateProfit(profitInputs, feeConfig);
-  const laborRevenue = getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
+  const laborRevenue = getLaborTotal() + getMachinesTotal();
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
