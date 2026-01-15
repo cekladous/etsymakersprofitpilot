@@ -1069,6 +1069,55 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
             </CardContent>
           </Card>
 
+          {/* AI Price Suggester */}
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAIPricer(!showAIPricer)}
+              className="w-full mb-4"
+            >
+              {showAIPricer ? "Hide" : "Show"} AI Price Suggester
+            </Button>
+            {showAIPricer && (
+              <AIPriceSuggester
+                materialsTotal={getMaterialsTotal()}
+                laborTotal={getDesignServicesTotal() + getManualLaborTotal()}
+                machineTotal={getMachinesTotal()}
+                desiredMargin={desiredMargin}
+                onSuggestedPrice={(price) => {
+                  // Update the form to reflect the suggested price
+                  // We'll adjust the manual labor rate to achieve this price
+                  const currentCost = getMaterialsTotal() + getMachinesTotal();
+                  const designHours = (parseFloat(formData.design_hours) || 0) + (parseFloat(formData.design_minutes) || 0) / 60;
+                  const laborHours = (parseFloat(formData.manual_labor_hours) || 0) + (parseFloat(formData.manual_labor_minutes) || 0) / 60;
+                  const totalServiceHours = designHours + laborHours;
+
+                  if (totalServiceHours > 0) {
+                    const suggestedServiceRate = (price - currentCost) / totalServiceHours;
+                    setFormData({
+                      ...formData,
+                      manual_labor_rate: suggestedServiceRate
+                    });
+                  } else {
+                    // If no service hours, add as a manual material cost
+                    const newMaterials = [...formData.materials];
+                    newMaterials.push({
+                      type: "Custom (Manual)",
+                      name: "AI Suggested Price Adjustment",
+                      cost: price - currentCost
+                    });
+                    setFormData({
+                      ...formData,
+                      materials: newMaterials
+                    });
+                  }
+                  setShowAIPricer(false);
+                }}
+              />
+            )}
+          </div>
+
           {/* Grand Total */}
           <div className="bg-stone-800 text-white p-4 rounded-lg">
             <div className="flex justify-between items-center">
