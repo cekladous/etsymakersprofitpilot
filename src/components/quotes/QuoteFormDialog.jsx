@@ -249,22 +249,17 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     return formData.machines.reduce((sum, m) => sum + getMachineTotal(m), 0);
   };
 
-  const getDesignServicesTotal = () => {
-    const totalHours = (parseFloat(formData.design_hours) || 0) + (parseFloat(formData.design_minutes) || 0) / 60;
-    return totalHours * (parseFloat(formData.design_rate) || 0);
-  };
-
-  const getManualLaborTotal = () => {
-    const totalHours = (parseFloat(formData.manual_labor_hours) || 0) + (parseFloat(formData.manual_labor_minutes) || 0) / 60;
-    return totalHours * (parseFloat(formData.manual_labor_rate) || 0);
+  const getLaborTotal = () => {
+    const totalHours = (parseFloat(formData.labor_hours) || 0) + (parseFloat(formData.labor_minutes) || 0) / 60;
+    return totalHours * (parseFloat(formData.labor_rate) || 0);
   };
 
   const getGrandTotal = () => {
-    return getMaterialsTotal() + getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
+    return getMaterialsTotal() + getLaborTotal() + getMachinesTotal();
   };
 
   const calculateGrandTotal = () => {
-    return getMaterialsTotal() + getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
+    return getMaterialsTotal() + getLaborTotal() + getMachinesTotal();
   };
 
   // Calculate profit
