@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, Zap, Settings as SettingsIcon, Database, Tag, FileImage, Upload } from "lucide-react";
+import { Calculator, Zap, Settings as SettingsIcon, Database, Tag, FileImage } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
 // Import tool components
@@ -10,7 +10,6 @@ import SettingsTool from "@/components/tools/SettingsTool";
 import MaterialsLibraryTool from "@/components/tools/MaterialsLibraryTool";
 import NameTagGenerator from "@/components/tools/NameTagGenerator";
 import SVGConverterTool from "@/components/tools/SVGConverterTool";
-import BulkProductImportTool from "@/components/tools/BulkProductImportTool";
 
 export default function Tools() {
   const [activeTab, setActiveTab] = useState("calculator");
