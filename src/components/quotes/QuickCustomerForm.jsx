@@ -21,7 +21,12 @@ export default function QuickCustomerForm({ onCustomerCreated, onCancel }) {
     mutationFn: (data) => base44.entities.Customer.create(data),
     onSuccess: (customer) => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-      onCustomerCreated(customer);
+      setTimeout(() => {
+        onCustomerCreated(customer);
+      }, 300);
+    },
+    onError: (error) => {
+      console.error("Error creating customer:", error);
     },
   });
 
