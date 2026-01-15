@@ -221,15 +221,17 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const updateMachine = (index, field, value) => {
     const newMachines = [...formData.machines];
     newMachines[index][field] = value;
-    
+
     if (field === "machine_id") {
       const machine = machines.find(m => m.id === value);
       if (machine) {
         newMachines[index].name = machine.name;
-        newMachines[index].rate = machine.hourly_rate || 50;
+        // Convert monthly depreciation to hourly rate (assuming 160 business hours/month)
+        const hourlyDepreciation = (machine.monthly_depreciation || 0) / 160;
+        newMachines[index].rate = hourlyDepreciation || 0;
       }
     }
-    
+
     setFormData({ ...formData, machines: newMachines });
   };
 
