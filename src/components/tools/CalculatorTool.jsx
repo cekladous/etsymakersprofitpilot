@@ -368,7 +368,7 @@ export default function CalculatorTool() {
                   <div className="flex items-start gap-2">
                     <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-xs text-blue-800">
-                      <span className="font-semibold">What is Share & Save?</span> Etsy's discount program charges a 4% fee on the discounted order total. This may increase conversion but reduces profit.
+                      <span className="font-semibold">What is Share & Save?</span> Etsy's discount program where you save 4% on listing fees for discounted orders. This increases conversion while keeping more profit.
                     </div>
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function CalculatorTool() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Etsy Share & Save Fee Rate (%)</Label>
+                      <Label className="text-sm font-medium">Etsy Share & Save Savings Rate (%)</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -419,28 +419,28 @@ export default function CalculatorTool() {
                         onChange={(e) => handleInputChange("share_save_fee_rate", e.target.value)}
                         className="h-11"
                       />
-                      <p className="text-xs text-stone-500">Percentage of discounted order total (default: 4%)</p>
+                      <p className="text-xs text-stone-500">Percentage you save on listing fees (default: 4%)</p>
                     </div>
 
                     {/* Share & Save Impact Summary */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-amber-900">Share & Save Impact:</p>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-emerald-900">Share & Save Impact:</p>
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-amber-700">Original Sale Price:</span>
-                          <span className="font-medium text-amber-900">{formatCurrency(results.original_sale_price)}</span>
+                          <span className="text-emerald-700">Original Sale Price:</span>
+                          <span className="font-medium text-emerald-900">{formatCurrency(results.original_sale_price)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-amber-700">Share & Save Discount:</span>
-                          <span className="font-medium text-amber-900">-{formatCurrency(results.share_save_discount_amount)}</span>
+                          <span className="text-emerald-700">Share & Save Discount:</span>
+                          <span className="font-medium text-emerald-900">-{formatCurrency(results.share_save_discount_amount)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-amber-700">Discounted Sale Price:</span>
-                          <span className="font-medium text-amber-900">{formatCurrency(results.discounted_sale_price)}</span>
+                          <span className="text-emerald-700">Discounted Sale Price:</span>
+                          <span className="font-medium text-emerald-900">{formatCurrency(results.discounted_sale_price)}</span>
                         </div>
-                        <div className="flex justify-between border-t border-amber-300 pt-1 mt-1">
-                          <span className="text-amber-700">Share & Save Fee:</span>
-                          <span className="font-medium text-rose-600">{formatCurrency(results.share_save_fee)}</span>
+                        <div className="flex justify-between border-t border-emerald-300 pt-1 mt-1">
+                          <span className="text-emerald-700">Share & Save Savings (4% you keep):</span>
+                          <span className="font-medium text-emerald-600">+{formatCurrency(results.share_save_fee)}</span>
                         </div>
                       </div>
                     </div>
@@ -597,7 +597,7 @@ export default function CalculatorTool() {
                   <BreakdownRow label="Advertising" amount={results.advertising_cost} indent />
                 )}
                 {results.share_save_fee > 0 && (
-                  <BreakdownRow label="Share & Save Fee" amount={results.share_save_fee} indent />
+                  <BreakdownRow label="Share & Save Savings" amount={-results.share_save_fee} indent />
                 )}
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Fees" amount={results.total_fees} bold />
