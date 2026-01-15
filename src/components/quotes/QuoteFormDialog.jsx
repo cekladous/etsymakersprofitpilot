@@ -717,6 +717,25 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
               </Collapsible>
 
               <div>
+                <Label className="text-xs text-stone-600">Status</Label>
+                <Select value={formData.status} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Sent">Sent</SelectItem>
+                    <SelectItem value="Accepted">Accepted</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                    <SelectItem value="Paid">Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+                {quote?.converted_to_order_id && (
+                  <p className="text-xs text-emerald-600 mt-1">✓ Converted to Order</p>
+                )}
+              </div>
+
+              <div>
                 <Label className="text-xs text-stone-600">Notes</Label>
                 <Textarea
                   value={formData.notes}
@@ -726,8 +745,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   className="mt-1"
                 />
               </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+              </Card>
 
           {/* Materials Cost */}
           <Card>
