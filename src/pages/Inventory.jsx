@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
 import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
+import BulkInventoryImportTool from "@/components/inventory/BulkInventoryImportTool";
 
 export default function Inventory() {
   const [activeTab, setActiveTab] = useState("inventory");
