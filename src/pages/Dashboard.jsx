@@ -152,6 +152,18 @@ export default function Dashboard() {
 
   // SINGLE SOURCE OF TRUTH - Use shared financial aggregator
   const financialData = useMemo(() => {
+    if (!dateRange?.start || !dateRange?.end) {
+      return {
+        totalRevenue: 0,
+        netProfit: 0,
+        totalExpenses: 0,
+        profitMargin: 0,
+        productExpenses: { materialsSupplies: 0 },
+        cashflow: { etsyDeposits: 0 },
+        unmatchedLedgerEntries: [],
+        _rawData: { etsyOrders: [] }
+      };
+    }
     return aggregateFinancials({
       etsyOrders,
       customSales,
