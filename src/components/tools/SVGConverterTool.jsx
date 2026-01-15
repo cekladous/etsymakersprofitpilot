@@ -56,13 +56,98 @@ export default function SVGConverterTool() {
     });
   };
 
+  const convertImageToSVG = async () => {
+    if (!image) return;
+
+    // Create canvas to process image
+    const img = new Image();
+    img.src = image;
+    
+    return new Promise((resolve) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Apply scale setting
+        canvas.width = img.width * settings.scale;
+        canvas.height = img.height * settings.scale;
+        
+        // Draw and apply blur
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        if (settings.blurRadius > 0) {
+          ctx.filter = `blur(${settings.blurRadius}px)`;
+          ctx.drawImage(canvas, 0, 0);
+        }
+        
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        // Simple edge detection based on settings
+        const threshold = 255 - settings.noiseReduction;
+        const paths = [];
+        
+        // Process by layers/colors
+        for (let layer = 0; layer < settings.layers; layer++) {
+          const layerThreshold = threshold - (layer * (255 / settings.layers));
+          let pathData = `M 0 0`;
+          
+          // Simplified path generation using line precision
+          const step = Math.max(1, 10 - settings.linePrecision);
+          
+          for (let y = 0; y < canvas.height; y += step) {
+            for (let x = 0; x < canvas.width; x += step) {
+              const i = (y * canvas.width + x) * 4;
+              const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              
+              if (brightness < layerThreshold) {
+                pathData += ` L ${x} ${y}`;
+              }
+            }
+          }
+          
+          paths.push({
+            d: pathData,
+            fill: `rgba(0,0,0,${1 - (layer / settings.layers)})`,
+            smoothness: settings.curveSmoothness
+          });
+        }
+        
+        // Generate SVG
+        const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${canvas.width}" height="${canvas.height}" xmlns="http://www.w3.org/2000/svg">
+  <desc>Converted with settings: Layers=${settings.layers}, Noise=${settings.noiseReduction}, Precision=${settings.linePrecision}, Smoothness=${settings.curveSmoothness}, Blur=${settings.blurRadius}, Scale=${settings.scale}x</desc>
+  ${paths.map((path, i) => `
+  <path d="${path.d}" fill="${path.fill}" stroke="none" />
+  `).join('')}
+</svg>`;
+        
+        resolve(svgContent);
+      };
+    });
+  };
+
   const handleConvert = async () => {
     setConverting(true);
-    // Placeholder for actual conversion logic
-    setTimeout(() => {
+    try {
+      const svgContent = await convertImageToSVG();
+      
+      // Create download
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `converted-${Date.now()}.svg`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
       setConverting(false);
-      alert("Conversion complete! (Integration with vectorization library needed)");
-    }, 2000);
+    } catch (error) {
+      console.error('Conversion error:', error);
+      setConverting(false);
+      alert('Conversion failed. Please try again.');
+    }
   };
 
   return (
