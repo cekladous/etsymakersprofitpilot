@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp, Calculator } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { calculateProfit } from "@/components/shared/profitCalculator";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
