@@ -875,6 +875,23 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              <AILaborEstimator
+                projectName={formData.project_name}
+                materials={formData.materials}
+                machines={formData.machines}
+                onEstimate={(estimates) => {
+                  setFormData({
+                    ...formData,
+                    design_hours: estimates.design_hours,
+                    design_minutes: estimates.design_minutes,
+                    manual_labor_hours: estimates.labor_hours,
+                    manual_labor_minutes: estimates.labor_minutes,
+                    machines: formData.machines.map((m, i) => 
+                      i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
+                    )
+                  });
+                }}
+              />
               {/* Design Services */}
               <div>
                 <div className="text-xs text-stone-500 font-medium mb-3">Design Services</div>
