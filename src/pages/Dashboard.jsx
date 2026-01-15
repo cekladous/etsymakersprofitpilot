@@ -179,6 +179,20 @@ export default function Dashboard() {
   const filteredSummaryData = financialData._rawData;
 
   const metrics = useMemo(() => {
+    if (!Array.isArray(orders) || !Array.isArray(expenses) || !periodStart || !periodEnd) {
+      return {
+        periodRevenue: 0,
+        periodFees: 0,
+        periodExpenses: 0,
+        periodProfit: 0,
+        periodMargin: 0,
+        allTimeRevenue: 0,
+        allTimeProfit: 0,
+        materialExpenses: 0,
+        orderCount: 0,
+      };
+    }
+    
     // Period calculations based on selected timeRange
     const periodOrders = orders.filter(o => {
       const d = new Date(o.sale_date);
@@ -192,7 +206,7 @@ export default function Dashboard() {
       sum + (o.etsy_fees || 0) + (o.processing_fees || 0), 0);
     
     const periodExpenses = expenses
-      .filter(e => new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
+      .filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
     
     const periodProfit = periodRevenue - periodFees - periodExpenses;
@@ -210,7 +224,7 @@ export default function Dashboard() {
 
     // Material spend for period
     const materialExpenses = expenses
-      .filter(e => e.category === "materials" && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
+      .filter(e => e?.date && e.category === "materials" && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
 
     return {
@@ -227,16 +241,20 @@ export default function Dashboard() {
   }, [orders, expenses, periodStart, periodEnd]);
 
   // Alerts
-  const ordersWithoutJobs = orders.filter(o => !o.job_id && o.status !== "shipped");
-  const uncategorizedExpenses = expenses.filter(e => !e.is_categorized);
+  const ordersWithoutJobs = Array.isArray(orders) ? orders.filter(o => !o.job_id && o.status !== "shipped") : [];
+  const uncategorizedExpenses = Array.isArray(expenses) ? expenses.filter(e => !e.is_categorized) : [];
   
-  const lowStockSheets = sheets.filter(sheet => {
-    const type = materialTypes.find(t => t.id === sheet.material_type_id);
+  const lowStockSheets = Array.isArray(sheets) ? sheets.filter(sheet => {
+    const type = Array.isArray(materialTypes) ? materialTypes.find(t => t.id === sheet.material_type_id) : null;
     return type && sheet.remaining_percentage <= 20 && sheet.status !== "depleted";
-  });
+  }) : [];
 
   // Chart data
   const chartData = useMemo(() => {
+    if (!Array.isArray(orders) || !Array.isArray(expenses)) {
+      return [];
+    }
+    
     const periods = [];
     const monthsToShow = timeRange === "month" ? 1 : timeRange === "quarter" ? 3 : 12;
     
@@ -257,7 +275,7 @@ export default function Dashboard() {
         sum + (o.etsy_fees || 0) + (o.processing_fees || 0), 0);
       
       const periodExpenses = expenses
-        .filter(e => new Date(e.date) >= start && new Date(e.date) <= end)
+        .filter(e => e?.date && new Date(e.date) >= start && new Date(e.date) <= end)
         .reduce((sum, e) => sum + (e.amount || 0), 0);
       
       periods.push({
@@ -401,7 +419,7 @@ export default function Dashboard() {
           <KPICard
             title="Total Revenue"
             value={formatCurrency(financialData.totalRevenue)}
-            subtitle={`${financialData._rawData.etsyOrders.length} orders • Click for breakdown`}
+            subtitle={`${(financialData._rawData?.etsyOrders || []).length} orders • Click for breakdown`}
             icon={DollarSign}
             accentColor="emerald"
           />
