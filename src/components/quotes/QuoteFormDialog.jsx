@@ -176,26 +176,35 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     const newMaterials = [...formData.materials];
     newMaterials[index][field] = value;
 
-    // Auto-populate machine based on material
-    if (field === "type" || field === "name") {
-      const materialName = (value || newMaterials[index].name || "").toLowerCase();
-      let suggestedMachine = null;
+    // Auto-populate machine based on material (default to xTool P3)
+      if (field === "type" || field === "name") {
+        const materialName = (value || newMaterials[index].name || "").toLowerCase();
 
-      if (materialName.includes("acrylic") || materialName.includes("wood") || materialName.includes("leather")) {
-        suggestedMachine = machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
-      } else if (materialName.includes("metal")) {
-        suggestedMachine = machines.find(m => m.name && m.name.toLowerCase().includes("cnc"));
-      }
+        // Default to xTool P3 for laser-compatible materials
+        if (materialName.includes("acrylic") || materialName.includes("wood") || materialName.includes("leather")) {
+          const defaultMachine = machines.find(m => m.name && m.name.toLowerCase().includes("xtool p3")) || 
+                               machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
 
-      if (suggestedMachine && formData.machines.length === 0) {
-        setFormData({ 
-          ...formData, 
-          materials: newMaterials,
-          machines: [{ machine_id: suggestedMachine.id, name: suggestedMachine.name, hours: 0, minutes: 0, rate: suggestedMachine.hourly_rate || 50 }]
-        });
-        return;
+          if (defaultMachine && formData.machines.length === 0) {
+            setFormData({ 
+              ...formData, 
+              materials: newMaterials,
+              machines: [{ machine_id: defaultMachine.id, name: defaultMachine.name, hours: 0, minutes: 0, rate: defaultMachine.hourly_rate || 50 }]
+            });
+            return;
+          }
+        } else if (materialName.includes("metal")) {
+          const cncMachine = machines.find(m => m.name && m.name.toLowerCase().includes("cnc"));
+          if (cncMachine && formData.machines.length === 0) {
+            setFormData({ 
+              ...formData, 
+              materials: newMaterials,
+              machines: [{ machine_id: cncMachine.id, name: cncMachine.name, hours: 0, minutes: 0, rate: cncMachine.hourly_rate || 50 }]
+            });
+            return;
+          }
+        }
       }
-    }
 
     setFormData({ ...formData, materials: newMaterials });
   };
