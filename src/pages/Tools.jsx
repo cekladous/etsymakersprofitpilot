@@ -22,7 +22,7 @@ export default function Tools() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-5xl grid-cols-7">
+        <TabsList className="grid w-full max-w-4xl grid-cols-6">
           <TabsTrigger value="calculator" className="flex items-center gap-2">
             <Calculator className="w-4 h-4" />
             <span className="hidden sm:inline">Calculator</span>
