@@ -5,10 +5,27 @@
  */
 
 export function aggregateFinancials(data, dateRange) {
-  const { start, end } = dateRange;
+  const { start, end } = dateRange || {};
+  
+  if (!start || !end) {
+    return {
+      revenue: { total: 0 },
+      sellingExpenses: { total: 0 },
+      productExpenses: { total: 0, materialsSupplies: 0 },
+      businessExpenses: { total: 0 },
+      totalRevenue: 0,
+      totalExpenses: 0,
+      netProfit: 0,
+      profitMargin: 0,
+      cashflow: { etsyDeposits: 0, ownerTransfers: 0 },
+      unmatchedLedgerEntries: [],
+      unmatchedNetImpact: 0,
+      _rawData: { etsyOrders: [], customSales: [], businessExpenses: [], transfers: [], materialPurchases: [], etsyLedgerEntries: [] }
+    };
+  }
   
   const filterByDate = (items, dateField) => {
-    return items.filter(item => {
+    return (items || []).filter(item => {
       const d = new Date(item[dateField]);
       return d >= start && d <= end;
     });

@@ -13,6 +13,7 @@ import { format } from "date-fns";
 export default function QuotesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
+  const [selectedQuotes, setSelectedQuotes] = useState([]);
   const queryClient = useQueryClient();
 
   const { data: quotes = [] } = useQuery({
@@ -89,12 +90,60 @@ export default function QuotesPage() {
     }
   };
 
+  const handleBulkConvert = async () => {
+    if (selectedQuotes.length === 0) return;
+    if (!confirm(`Convert ${selectedQuotes.length} quote(s) to orders?`)) return;
+
+    for (const quoteId of selectedQuotes) {
+      const quote = quotes.find(q => q.id === quoteId);
+      if (quote && quote.status === "Accepted" && !quote.converted_to_order_id) {
+        await convertToOrderMutation.mutateAsync(quote);
+      }
+    }
+    setSelectedQuotes([]);
+  };
+
+  const toggleQuoteSelection = (quoteId) => {
+    setSelectedQuotes(prev =>
+      prev.includes(quoteId)
+        ? prev.filter(id => id !== quoteId)
+        : [...prev, quoteId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedQuotes.length === quotes.length) {
+      setSelectedQuotes([]);
+    } else {
+      setSelectedQuotes(quotes.map(q => q.id));
+    }
+  };
+
   const handleExportPDF = async (quote) => {
     const { exportQuoteToPDF } = await import("@/components/quotes/exportQuoteToPDF");
     exportQuoteToPDF(quote, settings?.business_name || "Your Business");
   };
 
   const columns = [
+    {
+      key: "select",
+      label: (
+        <input
+          type="checkbox"
+          checked={selectedQuotes.length === quotes.length && quotes.length > 0}
+          onChange={toggleSelectAll}
+          className="rounded border-stone-300"
+        />
+      ),
+      render: (quote) => (
+        <input
+          type="checkbox"
+          checked={selectedQuotes.includes(quote.id)}
+          onChange={() => toggleQuoteSelection(quote.id)}
+          className="rounded border-stone-300"
+        />
+      ),
+    },
     {
       key: "quote_number",
       label: "Quote #",
@@ -177,10 +226,21 @@ export default function QuotesPage() {
         title="Quotes"
         description="Create and manage customer quotes"
       >
-        <Button onClick={handleNew} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          New Quote
-        </Button>
+        <div className="flex gap-2">
+          {selectedQuotes.length > 0 && (
+            <Button
+              onClick={handleBulkConvert}
+              variant="outline"
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
+            >
+              Convert {selectedQuotes.length} to Orders
+            </Button>
+          )}
+          <Button onClick={handleNew} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            New Quote
+          </Button>
+        </div>
       </PageHeader>
 
       <Card>

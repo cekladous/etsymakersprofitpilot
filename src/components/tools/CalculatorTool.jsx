@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight, ExternalLink, Info, RotateCcw, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { Calculator as CalcIcon, DollarSign, TrendingUp, Percent, ArrowRight, ExternalLink, Info, RotateCcw, Save, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
 import { format } from "date-fns";
@@ -41,6 +43,7 @@ export default function CalculatorTool() {
   const [inputs, setInputs] = useState(defaultInputs);
   const [shareSaveExpanded, setShareSaveExpanded] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: settings = [] } = useQuery({
     queryKey: ["settings"],
@@ -91,6 +94,33 @@ export default function CalculatorTool() {
     saveDefaultsMutation.mutate();
   };
 
+  const handleCreateQuote = async () => {
+    const grandTotal = results.profit + results.total_fees + totalCosts;
+    
+    const quoteNumber = `Q-${Date.now()}`;
+    await base44.entities.Quote.create({
+      quote_number: quoteNumber,
+      project_name: "New Quote from Calculator",
+      customer_name: "",
+      status: "Draft",
+      materials: [{
+        name: "Materials",
+        cost: inputs.cost_of_goods
+      }],
+      machines: [],
+      design_hours: 0,
+      design_minutes: 0,
+      design_rate: 0,
+      manual_labor_hours: 0,
+      manual_labor_minutes: 0,
+      manual_labor_rate: 0,
+      notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin.toFixed(1)}%)\n\nPayment Method: ${inputs.payment_method}`,
+    });
+    
+    queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    navigate(createPageUrl("Quotes"));
+  };
+
   // Chart data
   const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0);
   const chartData = [
@@ -136,6 +166,10 @@ export default function CalculatorTool() {
           <Button variant="outline" size="sm" onClick={handleSaveDefaults}>
             <Save className="w-4 h-4 mr-2" />
             Save Defaults
+          </Button>
+          <Button size="sm" onClick={handleCreateQuote} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Quote
           </Button>
         </div>
       </div>
