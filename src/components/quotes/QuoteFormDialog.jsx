@@ -626,7 +626,33 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowQuickCustomerForm(!showQuickCustomerForm)}
+                  className="w-full mt-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Create New Customer
+                </Button>
               </div>
+
+              {showQuickCustomerForm && (
+                <QuickCustomerForm
+                  onCustomerCreated={(customer) => {
+                    setFormData({
+                      ...formData,
+                      customer_id: customer.id,
+                      customer_name: customer.name,
+                      customer_email: customer.email || "",
+                      customer_phone: customer.phone || "",
+                    });
+                    setShowQuickCustomerForm(false);
+                  }}
+                  onCancel={() => setShowQuickCustomerForm(false)}
+                />
+              )}
 
               <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
                 <CollapsibleTrigger className="w-full">
