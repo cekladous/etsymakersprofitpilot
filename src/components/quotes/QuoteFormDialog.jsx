@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { calculateProfit, formatCurrency } from "@/components/shared/profitCalculator";
 import { Switch } from "@/components/ui/switch";
 import QuickCustomerForm from "./QuickCustomerForm";
+import ConvertQuoteDialog from "./ConvertQuoteDialog";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
