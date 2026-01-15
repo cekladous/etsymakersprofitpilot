@@ -196,16 +196,47 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     return getMaterialsTotal() + getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
   };
 
+  const calculateGrandTotal = () => {
+    return getMaterialsTotal() + getDesignServicesTotal() + getManualLaborTotal() + getMachinesTotal();
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data) => {
       if (quote) {
-        return base44.entities.Quote.update(quote.id, data);
+        const updatedQuote = await base44.entities.Quote.update(quote.id, data);
+        
+        // Auto-convert to order if status changed to Accepted
+        if (data.status === "Accepted" && quote.status !== "Accepted" && !quote.converted_to_order_id) {
+          const grandTotal = calculateGrandTotal();
+          const order = await base44.entities.Order.create({
+            channel: "custom",
+            order_id: `QUOTE-${data.quote_number}`,
+            sale_date: new Date().toISOString().split("T")[0],
+            product_name: data.project_name,
+            gross_total: grandTotal,
+            shipping_charged: 0,
+            discounts: 0,
+            refunds: 0,
+            sales_tax: 0,
+            net_payout: grandTotal,
+            status: "pending",
+            notes: `Auto-converted from Quote #${data.quote_number} - Customer: ${data.customer_name}`,
+          });
+          
+          await base44.entities.Quote.update(quote.id, {
+            ...data,
+            converted_to_order_id: order.id,
+          });
+        }
+        
+        return updatedQuote;
       } else {
         return base44.entities.Quote.create(data);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       onOpenChange(false);
     },
   });
