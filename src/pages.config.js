@@ -4,8 +4,8 @@ import Inventory from './pages/Inventory';
 import Jobs from './pages/Jobs';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
-import Tools from './pages/Tools';
 import Quotes from './pages/Quotes';
+import Tools from './pages/Tools';
 import __Layout from './Layout.jsx';
 
 
@@ -16,8 +16,8 @@ export const PAGES = {
     "Jobs": Jobs,
     "Orders": Orders,
     "Products": Products,
-    "Tools": Tools,
     "Quotes": Quotes,
+    "Tools": Tools,
 }
 
 export const pagesConfig = {
