@@ -9,11 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Package, Trash2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Package, Trash2, Upload } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import ProductFormDialog from "@/components/products/ProductFormDialog";
+import BulkProductImportTool from "@/components/products/BulkProductImportTool";
 
 export default function Products() {
   const [formOpen, setFormOpen] = useState(false);
