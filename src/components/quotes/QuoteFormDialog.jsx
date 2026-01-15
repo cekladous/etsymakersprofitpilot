@@ -95,6 +95,9 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const feeConfig = settings[0] || {};
 
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [shareSaveExpanded, setShareSaveExpanded] = useState(false);
+
   useEffect(() => {
     if (quote) {
       setFormData({
@@ -113,6 +116,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         payment_method: quote.payment_method || "etsy",
         advertising_type: quote.advertising_type || "none",
         advertising_value: quote.advertising_value || 0,
+        share_save_enabled: quote.share_save_enabled || false,
+        share_save_discount: quote.share_save_discount || 10,
+        share_save_discount_type: quote.share_save_discount_type || "percent",
+        share_save_fee_rate: quote.share_save_fee_rate || 4,
       });
     } else {
       setFormData({
@@ -139,6 +146,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         payment_method: "etsy",
         advertising_type: "none",
         advertising_value: 0,
+        share_save_enabled: false,
+        share_save_discount: 10,
+        share_save_discount_type: "percent",
+        share_save_fee_rate: 4,
       });
     }
   }, [quote, open]);
