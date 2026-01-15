@@ -886,53 +886,32 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
           </Card>
 
           {/* AI Price Suggester */}
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAIPricer(!showAIPricer)}
-              className="w-full mb-4"
-            >
-              {showAIPricer ? "Hide" : "Show"} AI Price Suggester
-            </Button>
-            {showAIPricer && (
-              <AIPriceSuggester
-                materialsTotal={getMaterialsTotal()}
-                laborTotal={getDesignServicesTotal() + getManualLaborTotal()}
-                machineTotal={getMachinesTotal()}
-                desiredMargin={desiredMargin}
-                onSuggestedPrice={(price) => {
-                  // Update the form to reflect the suggested price
-                  // We'll adjust the manual labor rate to achieve this price
-                  const currentCost = getMaterialsTotal() + getMachinesTotal();
-                  const designHours = (parseFloat(formData.design_hours) || 0) + (parseFloat(formData.design_minutes) || 0) / 60;
-                  const laborHours = (parseFloat(formData.manual_labor_hours) || 0) + (parseFloat(formData.manual_labor_minutes) || 0) / 60;
-                  const totalServiceHours = designHours + laborHours;
+          <AIPriceSuggester
+            materialsTotal={getMaterialsTotal()}
+            projectName={formData.project_name}
+            materials={formData.materials}
+            onSuggestedPrice={(price) => {
+              // Set all service labor rates to achieve the suggested price
+              const costBasis = getMaterialsTotal();
+              const profitNeeded = price - costBasis;
 
-                  if (totalServiceHours > 0) {
-                    const suggestedServiceRate = (price - currentCost) / totalServiceHours;
-                    setFormData({
-                      ...formData,
-                      manual_labor_rate: suggestedServiceRate
-                    });
-                  } else {
-                    // If no service hours, add as a manual material cost
-                    const newMaterials = [...formData.materials];
-                    newMaterials.push({
-                      type: "Custom (Manual)",
-                      name: "AI Suggested Price Adjustment",
-                      cost: price - currentCost
-                    });
-                    setFormData({
-                      ...formData,
-                      materials: newMaterials
-                    });
-                  }
-                  setShowAIPricer(false);
-                }}
-              />
-            )}
-          </div>
+              // Simple approach: set labor rate to achieve desired profit
+              const designHours = (parseFloat(formData.design_hours) || 0) + (parseFloat(formData.design_minutes) || 0) / 60;
+              const laborHours = (parseFloat(formData.manual_labor_hours) || 0) + (parseFloat(formData.manual_labor_minutes) || 0) / 60;
+              const machineHours = formData.machines.reduce((sum, m) => sum + (parseFloat(m.hours) || 0) + (parseFloat(m.minutes) || 0) / 60, 0);
+              const totalHours = designHours + laborHours + machineHours;
+
+              if (totalHours > 0) {
+                const hourlyRate = profitNeeded / totalHours;
+                setFormData({
+                  ...formData,
+                  design_rate: hourlyRate,
+                  manual_labor_rate: hourlyRate,
+                  machines: formData.machines.map(m => ({ ...m, rate: hourlyRate }))
+                });
+              }
+            }}
+          />
 
           {/* Grand Total */}
           <div className="bg-stone-800 text-white p-4 rounded-lg">
