@@ -48,6 +48,10 @@ export default function Tools() {
             <SettingsIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
+          <TabsTrigger value="bulk-import" className="flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Bulk Import</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="calculator" className="mt-6">
