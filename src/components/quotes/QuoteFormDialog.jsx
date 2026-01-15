@@ -642,31 +642,30 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 </Select>
                 <Button
                   type="button"
-                  variant="ghost"
                   size="sm"
-                  onClick={() => setShowQuickCustomerForm(!showQuickCustomerForm)}
-                  className="w-full mt-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  onClick={() => {
+                    const newCustomer = {
+                      name: "New Customer",
+                      email: "",
+                      phone: "",
+                    };
+                    base44.entities.Customer.create(newCustomer).then((customer) => {
+                      queryClient.invalidateQueries({ queryKey: ["customers"] });
+                      setFormData({
+                        ...formData,
+                        customer_id: customer.id,
+                        customer_name: customer.name,
+                        customer_email: customer.email || "",
+                        customer_phone: customer.phone || "",
+                      });
+                    });
+                  }}
+                  className="w-full mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <Plus className="w-3 h-3 mr-1" />
-                  Create New Customer
+                  Quick Add Customer
                 </Button>
-              </div>
-
-              {showQuickCustomerForm && (
-                <QuickCustomerForm
-                  onCustomerCreated={(customer) => {
-                    setFormData({
-                      ...formData,
-                      customer_id: customer.id,
-                      customer_name: customer.name,
-                      customer_email: customer.email || "",
-                      customer_phone: customer.phone || "",
-                    });
-                    setShowQuickCustomerForm(false);
-                  }}
-                  onCancel={() => setShowQuickCustomerForm(false)}
-                />
-              )}
+                </div>
 
               <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
                 <CollapsibleTrigger className="w-full">
