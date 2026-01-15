@@ -674,25 +674,23 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 onEstimate={(estimates) => {
                   setFormData({
                     ...formData,
-                    design_hours: estimates.design_hours,
-                    design_minutes: estimates.design_minutes,
-                    manual_labor_hours: estimates.labor_hours,
-                    manual_labor_minutes: estimates.labor_minutes,
+                    labor_hours: estimates.design_hours + estimates.labor_hours,
+                    labor_minutes: estimates.design_minutes + estimates.labor_minutes,
                     machines: formData.machines.map((m, i) => 
                       i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
                     )
                   });
                 }}
               />
-              {/* Design Services */}
+              {/* Design & Labor Service */}
               <div>
-                <div className="text-xs text-stone-500 font-medium mb-3">Design Services</div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="text-xs text-stone-500 font-medium mb-3">Design & Labor Service</div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Input
                       type="number"
-                      value={formData.design_hours}
-                      onChange={(e) => setFormData({ ...formData, design_hours: e.target.value })}
+                      value={formData.labor_hours}
+                      onChange={(e) => setFormData({ ...formData, labor_hours: e.target.value })}
                       placeholder="0"
                       min="0"
                     />
@@ -701,79 +699,26 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   <div>
                     <Input
                       type="number"
-                      value={formData.design_minutes}
-                      onChange={(e) => setFormData({ ...formData, design_minutes: e.target.value })}
+                      value={formData.labor_minutes}
+                      onChange={(e) => setFormData({ ...formData, labor_minutes: e.target.value })}
                       placeholder="0"
                       min="0"
                       max="59"
                     />
                     <div className="text-xs text-stone-400 mt-1 text-center">min</div>
-                  </div>
-                  <div>
-                    <Select value={formData.design_rate_type} onValueChange={(value) => setFormData({ ...formData, design_rate_type: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Custom">Custom</SelectItem>
-                        <SelectItem value="Standard">Standard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-stone-400 mt-1 text-center">{currencySymbol}/hr</div>
                   </div>
                 </div>
                 <div className="mt-2">
                   <Input
                     type="number"
-                    value={formData.design_rate}
-                    onChange={(e) => setFormData({ ...formData, design_rate: e.target.value })}
-                    placeholder="0.00"
+                    value={formData.labor_rate}
+                    onChange={(e) => setFormData({ ...formData, labor_rate: e.target.value })}
+                    placeholder="50.00"
                     step="0.01"
                     min="0"
                   />
-                  <div className="text-xs text-stone-400 mt-1">Rate: {currencySymbol}{formData.design_rate}/hr</div>
+                  <div className="text-xs text-stone-400 mt-1">Rate: {currencySymbol}{formData.labor_rate}/hr</div>
                 </div>
-              </div>
-
-              {/* Manual Labor */}
-              <div>
-                <div className="text-xs text-stone-500 font-medium mb-3">Manual Labor</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Input
-                      type="number"
-                      value={formData.manual_labor_hours}
-                      onChange={(e) => setFormData({ ...formData, manual_labor_hours: e.target.value })}
-                      placeholder="0"
-                      min="0"
-                    />
-                    <div className="text-xs text-stone-400 mt-1 text-center">hr</div>
-                  </div>
-                  <div>
-                    <Input
-                      type="number"
-                      value={formData.manual_labor_minutes}
-                      onChange={(e) => setFormData({ ...formData, manual_labor_minutes: e.target.value })}
-                      placeholder="0"
-                      min="0"
-                      max="59"
-                    />
-                    <div className="text-xs text-stone-400 mt-1 text-center">min</div>
-                  </div>
-                  <div>
-                    <Select value={formData.manual_labor_type} onValueChange={(value) => setFormData({ ...formData, manual_labor_type: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Standard Labor">Standard Labor</SelectItem>
-                        <SelectItem value="Skilled Labor">Skilled Labor</SelectItem>
-                        <SelectItem value="Custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="text-xs text-stone-500 mt-2">{currencySymbol}{formData.manual_labor_rate.toFixed(2)}/hr</div>
               </div>
 
               {/* Machines Used */}
