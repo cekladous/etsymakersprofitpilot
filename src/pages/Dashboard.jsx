@@ -479,7 +479,10 @@ export default function Dashboard() {
             accentColor="rose"
           />
         </Link>
-        <Link to={createPageUrl("Expenses")} className="block transition-transform hover:scale-105">
+        <Link 
+          to={createPageUrl("Expenses") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}`}
+          className="block transition-transform hover:scale-105"
+        >
           <KPICard
             title="Total Expenses"
             value={`$${metrics.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}

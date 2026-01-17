@@ -17,8 +17,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar } from "lucide-react";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +27,8 @@ import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import CSVImporter from "@/components/shared/CSVImporter";
 import ExpenseFormDialog from "@/components/expenses/ExpenseFormDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 const CATEGORIES = [
   { value: "materials", label: "Materials" },
@@ -65,14 +67,30 @@ export default function Expenses() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("table");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [timeRange, setTimeRange] = useState("all");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [customStartDate, setCustomStartDate] = useState(null);
+  const [customEndDate, setCustomEndDate] = useState(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
-  // Check URL params for filters
+  // Check URL params for filters and date range
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("filter") === "uncategorized") {
       setStatusFilter("uncategorized");
+    }
+    
+    // Handle date range from URL (from Dashboard)
+    const startDateParam = params.get("startDate");
+    const endDateParam = params.get("endDate");
+    const rangeParam = params.get("range");
+    
+    if (startDateParam && endDateParam) {
+      setCustomStartDate(parse(startDateParam, 'yyyy-MM-dd', new Date()));
+      setCustomEndDate(parse(endDateParam, 'yyyy-MM-dd', new Date()));
+      setTimeRange(rangeParam || "custom");
     }
   }, []);
 
@@ -84,6 +102,21 @@ export default function Expenses() {
   const { data: settings = [] } = useQuery({
     queryKey: ["settings"],
     queryFn: () => base44.entities.Settings.list(),
+  });
+
+  const { data: etsyOrders = [] } = useQuery({
+    queryKey: ["etsy-orders"],
+    queryFn: () => base44.entities.EtsyOrder.list("-sale_date", 1000),
+  });
+
+  const { data: orderFees = [] } = useQuery({
+    queryKey: ["order-fees"],
+    queryFn: () => base44.entities.OrderFee.list(),
+  });
+
+  const { data: businessExpenses = [] } = useQuery({
+    queryKey: ["business-expenses"],
+    queryFn: () => base44.entities.BusinessExpense.list("-date", 1000),
   });
 
   const deleteMutation = useMutation({
@@ -197,8 +230,42 @@ export default function Expenses() {
     });
   };
 
+  // Calculate date range
+  const dateRange = useMemo(() => {
+    if (timeRange === "all") {
+      return null;
+    }
+    
+    let start, end;
+    
+    if (customStartDate && customEndDate) {
+      start = customStartDate;
+      end = customEndDate;
+    } else if (timeRange === "month") {
+      start = startOfMonth(selectedDate);
+      end = endOfMonth(selectedDate);
+    } else if (timeRange === "year") {
+      start = startOfYear(selectedDate);
+      end = endOfYear(selectedDate);
+    }
+    
+    return start && end ? { start, end } : null;
+  }, [timeRange, selectedDate, customStartDate, customEndDate]);
+
   const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
+    let filtered = expenses;
+    
+    // Apply date range filter first
+    if (dateRange) {
+      filtered = filtered.filter(expense => {
+        if (!expense.date) return false;
+        const expenseDate = new Date(expense.date);
+        return expenseDate >= dateRange.start && expenseDate <= dateRange.end;
+      });
+    }
+    
+    // Apply other filters
+    return filtered.filter(expense => {
       const matchesSearch = !search ||
         expense.description?.toLowerCase().includes(search.toLowerCase()) ||
         expense.vendor?.toLowerCase().includes(search.toLowerCase());
@@ -208,15 +275,58 @@ export default function Expenses() {
         (statusFilter === "categorized" && expense.is_categorized);
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [expenses, search, categoryFilter, statusFilter]);
+  }, [expenses, search, categoryFilter, statusFilter, dateRange]);
 
-  // Total amount (returns reduce the total)
-  const totalAmount = filteredExpenses.reduce((sum, e) => {
-    const amount = e.amount || 0;
-    return e.type === "return" ? sum - amount : sum + amount;
-  }, 0);
-  const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
-  const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
+  // Calculate totals matching Dashboard logic
+  const totals = useMemo(() => {
+    if (!dateRange) {
+      // Show old expenses page totals when "All Time" is selected
+      const totalAmount = filteredExpenses.reduce((sum, e) => {
+        const amount = e.amount || 0;
+        return e.type === "return" ? sum - amount : sum + amount;
+      }, 0);
+      const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
+      const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
+      
+      return { totalAmount, totalDebits, totalCredits, orderFees: 0, businessExpenses: totalAmount, totalExpenses: totalAmount };
+    }
+    
+    // Match Dashboard calculation exactly
+    const periodEtsyOrders = etsyOrders.filter(o => {
+      const d = new Date(o.sale_date);
+      return d >= dateRange.start && d <= dateRange.end;
+    });
+    
+    const periodOrderFees = orderFees
+      .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
+      .reduce((sum, f) => {
+        const fees = (f.listing_fees || 0) + 
+                     (f.transaction_fees || 0) + 
+                     (f.processing_fees || 0) + 
+                     (f.other_fees || 0) + 
+                     (f.etsy_ads || 0) + 
+                     (f.offsite_ads_fees || 0) + 
+                     (f.etsy_shipping || 0) + 
+                     (f.other_postage_costs || 0);
+        const credits = (f.share_save_refunds_credits || 0);
+        return sum + fees - credits;
+      }, 0);
+    
+    const periodBusinessExpenses = businessExpenses
+      .filter(e => e?.date && new Date(e.date) >= dateRange.start && new Date(e.date) <= dateRange.end)
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+    
+    const totalExpenses = periodBusinessExpenses + periodOrderFees;
+    
+    return {
+      totalAmount: totalExpenses,
+      totalDebits: periodBusinessExpenses + periodOrderFees,
+      totalCredits: 0,
+      orderFees: periodOrderFees,
+      businessExpenses: periodBusinessExpenses,
+      totalExpenses
+    };
+  }, [filteredExpenses, dateRange, etsyOrders, orderFees, businessExpenses]);
 
   // Chart data - by category (returns reduce category totals)
   const categoryData = useMemo(() => {
@@ -229,14 +339,27 @@ export default function Expenses() {
     }, {});
     
     return Object.entries(grouped)
-      .filter(([_, amount]) => amount !== 0) // Filter out zero amounts
+      .filter(([_, amount]) => amount !== 0)
       .map(([category, amount]) => ({
         name: CATEGORIES.find(c => c.value === category)?.label || category,
-        value: Math.abs(amount), // Use absolute for chart display
-        actualValue: amount, // Keep actual value for tooltip
+        value: Math.abs(amount),
+        actualValue: amount,
         category,
       })).sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
+  
+  const getPeriodLabel = () => {
+    if (timeRange === "all") return "All Time";
+    if (customStartDate && customEndDate) {
+      return `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
+    }
+    if (timeRange === "month") {
+      return format(selectedDate, "MMMM yyyy");
+    } else if (timeRange === "year") {
+      return format(selectedDate, "yyyy");
+    }
+    return "All Time";
+  };
 
   // Top expenses by amount
   const topExpenses = useMemo(() => {
@@ -410,48 +533,165 @@ export default function Expenses() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Expenses" description="Track and categorize your business expenses">
-        <Button variant="outline" onClick={exportCSV}>
-          <Download className="w-4 h-4 mr-2" />
-          Export
-        </Button>
-        <Button variant="outline" onClick={() => setImportOpen(true)}>
-          <Upload className="w-4 h-4 mr-2" />
-          Import CSV
-        </Button>
-        <Button
-          onClick={() => {
-            setEditingExpense(null);
-            setFormOpen(true);
-          }}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Expense
-        </Button>
+      <PageHeader title="Expenses" description={getPeriodLabel()}>
+        <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 items-center">
+            {["all", "month", "year"].map((range) => (
+              <Button
+                key={range}
+                variant={timeRange === range && !customStartDate ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setTimeRange(range);
+                  setCustomStartDate(null);
+                  setCustomEndDate(null);
+                }}
+                className={timeRange === range && !customStartDate ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                {range === "all" ? "All Time" : range.charAt(0).toUpperCase() + range.slice(1)}
+              </Button>
+            ))}
+            
+            {timeRange !== "all" && (
+              <>
+                <div className="h-6 w-px bg-stone-300 mx-1"></div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (timeRange === "month") {
+                      setSelectedDate(subMonths(selectedDate, 1));
+                    } else if (timeRange === "year") {
+                      setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth()));
+                    }
+                  }}
+                >
+                  ←
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (timeRange === "month") {
+                      setSelectedDate(subMonths(selectedDate, -1));
+                    } else if (timeRange === "year") {
+                      setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth()));
+                    }
+                  }}
+                >
+                  →
+                </Button>
+                
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {customStartDate && customEndDate 
+                        ? `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}`
+                        : format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
+                      }
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="start">
+                    <div className="space-y-4">
+                      <p className="text-sm text-stone-500">Select start and end dates</p>
+                      <CalendarComponent
+                        mode="range"
+                        selected={{ from: customStartDate, to: customEndDate }}
+                        onSelect={(range) => {
+                          setCustomStartDate(range?.from || null);
+                          setCustomEndDate(range?.to || null);
+                        }}
+                        numberOfMonths={1}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setCustomStartDate(null);
+                            setCustomEndDate(null);
+                            setDatePickerOpen(false);
+                          }}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setDatePickerOpen(false)}
+                          className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                          disabled={!customStartDate || !customEndDate}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </>
+            )}
+          </div>
+          
+          <div className="h-6 w-px bg-stone-300 mx-1"></div>
+          
+          <Button variant="outline" onClick={exportCSV} size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)} size="sm">
+            <Upload className="w-4 h-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingExpense(null);
+              setFormOpen(true);
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700"
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Expense
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Summary */}
       <div className="bg-white rounded-xl border border-stone-100 p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm text-stone-500">Net Total (filtered)</p>
-            <p className="text-2xl font-bold text-stone-900">${totalAmount.toFixed(2)}</p>
+            <p className="text-sm text-stone-500">Total Expenses {dateRange ? "(Fees + Business)" : "(Net)"}</p>
+            <p className="text-2xl font-bold text-stone-900">${totals.totalExpenses.toFixed(2)}</p>
           </div>
           <div className="text-sm text-stone-500">
-            {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""}
+            {dateRange ? getPeriodLabel() : `${filteredExpenses.length} expense${filteredExpenses.length !== 1 ? "s" : ""}`}
           </div>
         </div>
-        <div className="flex gap-6 text-sm">
-          <div>
-            <span className="text-stone-500">Debits: </span>
-            <span className="font-semibold text-stone-900">${totalDebits.toFixed(2)}</span>
+        {dateRange ? (
+          <div className="flex gap-6 text-sm">
+            <div>
+              <span className="text-stone-500">Order Fees (net): </span>
+              <span className="font-semibold text-stone-900">${totals.orderFees.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-stone-500">Business Expenses: </span>
+              <span className="font-semibold text-stone-900">${totals.businessExpenses.toFixed(2)}</span>
+            </div>
           </div>
-          <div>
-            <span className="text-stone-500">Returns: </span>
-            <span className="font-semibold text-emerald-600">-${totalCredits.toFixed(2)}</span>
+        ) : (
+          <div className="flex gap-6 text-sm">
+            <div>
+              <span className="text-stone-500">Debits: </span>
+              <span className="font-semibold text-stone-900">${totals.totalDebits.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-stone-500">Returns: </span>
+              <span className="font-semibold text-emerald-600">-${totals.totalCredits.toFixed(2)}</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Bulk Actions */}
@@ -620,7 +860,7 @@ export default function Expenses() {
                           {cat.actualValue < 0 && <span className="ml-1 text-xs">(net return)</span>}
                         </p>
                         <p className="text-xs text-stone-500">
-                          {((cat.value / Math.abs(totalAmount || 1)) * 100).toFixed(1)}% of total
+                          {((cat.value / Math.abs(totals.totalAmount || 1)) * 100).toFixed(1)}% of total
                         </p>
                       </div>
                     </div>
