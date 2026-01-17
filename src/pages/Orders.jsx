@@ -70,10 +70,12 @@ export default function Orders() {
     });
   }, [etsyOrders, search, dateFilter]);
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
+  // Revenue excludes sales tax (pass-through to government)
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0) - (o.sales_tax || 0), 0);
   const totalFees = orderFees
     .filter(f => filteredOrders.some(o => o.id === f.order_id))
     .reduce((sum, f) => sum + (f.total_fees || 0), 0);
+  const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
 
   const exportOrders = () => {
     const data = filteredOrders.map(o => {
@@ -170,7 +172,7 @@ export default function Orders() {
       </PageHeader>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -194,7 +196,7 @@ export default function Orders() {
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-stone-500">Total Revenue</p>
+                <p className="text-sm text-stone-500">Revenue (excl. tax)</p>
                 <p className="text-2xl font-bold text-stone-900">
                   {formatCurrency(totalRevenue)}
                 </p>
@@ -213,6 +215,22 @@ export default function Orders() {
                 <p className="text-sm text-stone-500">Total Fees</p>
                 <p className="text-2xl font-bold text-stone-900">
                   {formatCurrency(totalFees)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-stone-100 rounded-lg">
+                <DollarSign className="w-6 h-6 text-stone-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Sales Tax (collected)</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {formatCurrency(totalSalesTax)}
                 </p>
               </div>
             </div>

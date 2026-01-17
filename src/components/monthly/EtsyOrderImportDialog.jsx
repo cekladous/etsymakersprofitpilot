@@ -79,7 +79,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
   const queryClient = useQueryClient();
 
   const importMutation = useMutation({
-    mutationFn: async ({ orders, fileName }) => {
+    mutationFn: async ({ orders, fees, fileName }) => {
       // Create import batch
       const batch = await base44.entities.OrderImportBatch.create({
         source_file_name: fileName,
@@ -89,24 +89,45 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
         status: "success",
       });
 
-      // Check for duplicates and create/update orders
+      // Upsert logic: find by channel + order_id, update if exists, create if not
       const existingOrders = await base44.entities.EtsyOrder.list();
       let created = 0;
       let updated = 0;
       let skipped = 0;
 
       for (const order of orders) {
-        const isDuplicate = existingOrders.find(
-          (o) =>
-            o.order_id === order.order_id &&
-            o.sale_date === order.sale_date &&
-            Math.abs((o.order_value || 0) - (order.order_value || 0)) < 0.01
-        );
+        const existing = existingOrders.find(o => o.order_id === order.order_id);
 
-        if (isDuplicate) {
-          skipped++;
+        if (existing) {
+          // Update existing order
+          await base44.entities.EtsyOrder.update(existing.id, { 
+            ...order, 
+            import_batch_id: batch.id 
+          });
+          
+          // Update associated fees if provided
+          const feeData = fees.find(f => f.order_id === order.order_id);
+          if (feeData) {
+            const existingFee = await base44.entities.OrderFee.filter({ order_id: existing.id });
+            if (existingFee.length > 0) {
+              await base44.entities.OrderFee.update(existingFee[0].id, { ...feeData, order_id: existing.id });
+            } else {
+              await base44.entities.OrderFee.create({ ...feeData, order_id: existing.id });
+            }
+          }
+          updated++;
         } else {
-          await base44.entities.EtsyOrder.create({ ...order, import_batch_id: batch.id });
+          // Create new order
+          const newOrder = await base44.entities.EtsyOrder.create({ 
+            ...order, 
+            import_batch_id: batch.id 
+          });
+          
+          // Create associated fees if provided
+          const feeData = fees.find(f => f.order_id === order.order_id);
+          if (feeData) {
+            await base44.entities.OrderFee.create({ ...feeData, order_id: newOrder.id });
+          }
           created++;
         }
       }
@@ -143,6 +164,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
 
         // Transform to EtsyOrder schema with validation
         const orders = [];
+        const fees = [];
         const skipped = [];
 
         jsonData.forEach((row, index) => {
@@ -169,6 +191,14 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
             return;
           }
 
+          const order_value = parseMoney(getVal(row, "Order Value"));
+          const shipping_charged = parseMoney(getVal(row, "Shipping"));
+          const discount_amount = parseMoney(getVal(row, "Discount Amount"));
+          const sales_tax = parseMoney(getVal(row, "Sales Tax"));
+          const card_processing_fees = parseMoney(getVal(row, "Card Processing Fees"));
+          const order_total = parseMoney(getVal(row, "Order Total"));
+          const order_net = parseMoney(getVal(row, "Order Net"));
+
           orders.push({
             sale_date,
             order_id,
@@ -176,20 +206,40 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
             buyer_full_name: toStringSafe(getVal(row, "Full Name")),
             number_of_items: parseIntSafe(getVal(row, "Number of Items")),
             payment_method: toStringSafe(getVal(row, "Payment Method")),
-            order_value: parseMoney(getVal(row, "Order Value")),
+            order_value,
             coupon_code: toStringSafe(getVal(row, "Coupon Code")),
-            discount_amount: parseMoney(getVal(row, "Discount Amount")),
-            shipping_charged: parseMoney(getVal(row, "Shipping")),
-            sales_tax: parseMoney(getVal(row, "Sales Tax")),
-            order_total: parseMoney(getVal(row, "Order Total")),
-            card_processing_fees: parseMoney(getVal(row, "Card Processing Fees")),
-            order_net: parseMoney(getVal(row, "Order Net")),
+            discount_amount,
+            shipping_charged,
+            sales_tax,
+            order_total,
+            card_processing_fees,
+            order_net,
             status: toStringSafe(getVal(row, "Status")) || "completed",
+          });
+
+          // Extract fees from Etsy CSV if available
+          fees.push({
+            order_id,
+            listing_fees: parseMoney(getVal(row, "Listing Fee")),
+            transaction_fees: parseMoney(getVal(row, "Transaction Fee")),
+            processing_fees: card_processing_fees,
+            share_save_refunds_credits: parseMoney(getVal(row, "Share & Save")),
+            other_fees: parseMoney(getVal(row, "Other Fees")),
+            etsy_ads: parseMoney(getVal(row, "Etsy Ads")),
+            offsite_ads_fees: parseMoney(getVal(row, "Offsite Ads")),
+            etsy_shipping: parseMoney(getVal(row, "Etsy Shipping Label")),
+            other_postage_costs: parseMoney(getVal(row, "Other Postage")),
+            total_fees: parseMoney(getVal(row, "Listing Fee")) + 
+                       parseMoney(getVal(row, "Transaction Fee")) +
+                       card_processing_fees +
+                       parseMoney(getVal(row, "Other Fees")) +
+                       parseMoney(getVal(row, "Etsy Ads")) +
+                       parseMoney(getVal(row, "Offsite Ads")),
           });
         });
 
         setSkippedRows(skipped);
-        importMutation.mutate({ orders, fileName: file.name });
+        importMutation.mutate({ orders, fees, fileName: file.name });
       } catch (error) {
         setImportResult({ error: `Failed to parse file: ${error.message}` });
         setImporting(false);
@@ -265,12 +315,13 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
                 <p className="font-semibold text-emerald-900">Import Successful</p>
               </div>
               <div className="text-sm text-emerald-800 space-y-1">
-                <p>✓ Created: {importResult.created} orders</p>
-                <p>⊗ Skipped: {importResult.skipped} duplicates</p>
+                <p>✓ Created: {importResult.created} new orders</p>
+                <p>↻ Updated: {importResult.updated} existing orders</p>
+                <p>⊗ Skipped: {importResult.skipped} errors</p>
                 {skippedRows.length > 0 && (
                   <p>⚠ Invalid rows: {skippedRows.length}</p>
                 )}
-                <p>Total: {importResult.total} rows processed</p>
+                <p className="font-semibold pt-2 border-t border-emerald-300 mt-2">Total: {importResult.total} rows processed</p>
               </div>
               {skippedRows.length > 0 && (
                 <Button
