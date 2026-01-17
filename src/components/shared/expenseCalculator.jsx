@@ -1,6 +1,12 @@
 /**
  * Shared expense calculation logic for Dashboard and Expenses page
  * Ensures 1:1 reconciliation between KPI and drilldown
+ * 
+ * IMPORTANT: This calculates expenses based on the NEW data model:
+ * - BusinessExpense entity (selling expenses, product expenses, business expenses)
+ * - OrderFee entity (order-level fees from Etsy)
+ * 
+ * All calculations filter strictly by transaction date (not created_at or imported_at)
  */
 
 /**
@@ -10,7 +16,7 @@
  * 
  * @param {Object} params
  * @param {Array} params.etsyOrders - EtsyOrder entities
- * @param {Array} params.orderFees - OrderFee entities
+ * @param {Array} params.orderFees - OrderFee entities  
  * @param {Array} params.businessExpenses - BusinessExpense entities
  * @param {Object} params.dateRange - { start: Date, end: Date }
  * @returns {Object} Breakdown of expenses
@@ -53,7 +59,7 @@ export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses
     .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
     .reduce((sum, f) => sum + (f.share_save_refunds_credits || 0), 0);
 
-  // Calculate business expenses by transaction date
+  // Calculate business expenses by transaction date (date field)
   const periodBusinessExpenses = businessExpenses
     .filter(e => {
       if (!e?.date) return false;
