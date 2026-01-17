@@ -39,9 +39,9 @@ export function aggregateFinancials(data, dateRange) {
   const periodMaterialPurchases = filterByDate(Array.isArray(data.materialPurchases) ? data.materialPurchases : [], "purchase_date");
   const periodLedgerEntries = filterByDate(Array.isArray(data.etsyLedgerEntries) ? data.etsyLedgerEntries : [], "entry_date");
   
-  // CRITICAL: Include legacy Expense entity (only reviewed/categorized ones)
+  // CRITICAL: Include legacy Expense entity (only reviewed ones, include both old and new category names)
   const periodLegacyExpenses = filterByDate(Array.isArray(data.expenses) ? data.expenses : [], "date")
-    .filter(e => e.is_categorized === true && e.type !== "return");
+    .filter(e => e.type !== "return");
 
   // ==================== A) REVENUE ====================
   
@@ -204,9 +204,9 @@ export function aggregateFinancials(data, dateRange) {
     .filter(e => e.category_name === "materials_supplies")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  // CRITICAL: Include legacy Expense entity materials (old category names)
+  // CRITICAL: Include legacy Expense entity materials (both old and new category names)
   const legacyMaterials = periodLegacyExpenses
-    .filter(e => ["materials", "packaging"].includes(e.category))
+    .filter(e => ["materials", "packaging", "materials_supplies"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const totalMaterialsSupplies = materialsCost + materialsExpense + legacyMaterials;
@@ -217,7 +217,7 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyTools = periodLegacyExpenses
-    .filter(e => ["tools", "equipment"].includes(e.category))
+    .filter(e => ["tools", "equipment", "tools_equipment"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const toolsEquipment = toolsEquipmentFromBE + legacyTools;
@@ -229,7 +229,7 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyAdvertising = periodLegacyExpenses
-    .filter(e => ["advertising", "software"].includes(e.category))
+    .filter(e => ["advertising", "software", "advertising_marketing"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const advertisingMarketing = advertisingMarketingFromBE + legacyAdvertising;
@@ -239,14 +239,20 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyOffice = periodLegacyExpenses
-    .filter(e => ["utilities"].includes(e.category))
+    .filter(e => ["utilities", "office_expenses"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const officeExpenses = officeExpensesFromBE + legacyOffice;
   
-  const professionalServices = periodBusinessExpenses
+  const professionalServicesFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "professional_services")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const legacyProfessional = periodLegacyExpenses
+    .filter(e => ["professional_services"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const professionalServices = professionalServicesFromBE + legacyProfessional;
   
   const otherBusinessExpensesFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "other")
@@ -258,9 +264,17 @@ export function aggregateFinancials(data, dateRange) {
   
   const otherBusinessExpenses = otherBusinessExpensesFromBE + legacyOther;
   
-  const miscellaneousExpenses = periodBusinessExpenses
+  const miscellaneousExpensesFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "miscellaneous_expenses")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const legacyMisc = periodLegacyExpenses
+    .filter(e => ["miscellaneous_expenses"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const miscellaneousExpenses = miscellaneousExpensesFromBE + legacyMisc;
+  
+
 
   // ==================== E) TOTALS ====================
   
