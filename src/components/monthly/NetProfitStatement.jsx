@@ -143,7 +143,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
   const buildExpensesLink = (categoryName = null) => {
     if (!dateRange?.start || !dateRange?.end) return createPageUrl("Expenses");
     let url = createPageUrl("Expenses") + 
-      `?startDate=${format(dateRange.start, 'yyyy-MM-dd')}&endDate=${format(dateRange.end, 'yyyy-MM-dd')}&range=custom`;
+      `?startDate=${format(dateRange.start, 'yyyy-MM-dd')}&endDate=${format(dateRange.end, 'yyyy-MM-dd')}&range=custom&source=netprofit`;
     if (categoryName) {
       url += `&category=${categoryName}`;
     }

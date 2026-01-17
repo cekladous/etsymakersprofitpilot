@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,31 +32,37 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 
 const CATEGORIES = [
-  { value: "materials", label: "Materials" },
-  { value: "shipping", label: "Shipping" },
-  { value: "tools", label: "Tools" },
-  { value: "software", label: "Software" },
-  { value: "advertising", label: "Advertising" },
-  { value: "utilities", label: "Utilities" },
-  { value: "etsy_fees", label: "Etsy Fees" },
-  { value: "packaging", label: "Packaging" },
-  { value: "equipment", label: "Equipment" },
-  { value: "maintenance", label: "Maintenance" },
+  { value: "materials_supplies", label: "Materials & Supplies" },
+  { value: "tools_equipment", label: "Tools & Equipment" },
+  { value: "advertising_marketing", label: "Advertising & Marketing" },
+  { value: "office_expenses", label: "Office Expenses" },
+  { value: "professional_services", label: "Professional Services" },
   { value: "other", label: "Other" },
+  { value: "miscellaneous_expenses", label: "Miscellaneous" },
+  { value: "etsy_listing_fees", label: "Etsy Listing Fees" },
+  { value: "etsy_transaction_fees", label: "Etsy Transaction Fees" },
+  { value: "etsy_processing_fees", label: "Etsy Processing Fees" },
+  { value: "etsy_ads", label: "Etsy Ads" },
+  { value: "etsy_offsite_ads_fees", label: "Etsy Offsite Ads" },
+  { value: "etsy_shipping", label: "Etsy Shipping" },
+  { value: "other_postage_costs", label: "Other Postage" },
 ];
 
 const categoryColors = {
-  materials: "bg-blue-100 text-blue-700",
-  shipping: "bg-violet-100 text-violet-700",
-  tools: "bg-amber-100 text-amber-700",
-  software: "bg-emerald-100 text-emerald-700",
-  advertising: "bg-pink-100 text-pink-700",
-  utilities: "bg-cyan-100 text-cyan-700",
-  etsy_fees: "bg-orange-100 text-orange-700",
-  packaging: "bg-lime-100 text-lime-700",
-  equipment: "bg-rose-100 text-rose-700",
-  maintenance: "bg-indigo-100 text-indigo-700",
+  materials_supplies: "bg-blue-100 text-blue-700",
+  tools_equipment: "bg-amber-100 text-amber-700",
+  advertising_marketing: "bg-pink-100 text-pink-700",
+  office_expenses: "bg-emerald-100 text-emerald-700",
+  professional_services: "bg-violet-100 text-violet-700",
   other: "bg-stone-100 text-stone-600",
+  miscellaneous_expenses: "bg-stone-200 text-stone-700",
+  etsy_listing_fees: "bg-orange-100 text-orange-700",
+  etsy_transaction_fees: "bg-orange-200 text-orange-800",
+  etsy_processing_fees: "bg-orange-100 text-orange-700",
+  etsy_ads: "bg-purple-100 text-purple-700",
+  etsy_offsite_ads_fees: "bg-purple-200 text-purple-800",
+  etsy_shipping: "bg-yellow-100 text-yellow-700",
+  other_postage_costs: "bg-yellow-200 text-yellow-800",
 };
 
 export default function Expenses() {
@@ -73,15 +79,18 @@ export default function Expenses() {
   const [customStartDate, setCustomStartDate] = useState(null);
   const [customEndDate, setCustomEndDate] = useState(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [materialFilter, setMaterialFilter] = useState("all");
+  const [navSource, setNavSource] = useState(null);
 
   const queryClient = useQueryClient();
 
-  // Check URL params for filters and date range
+  // Check URL params for filters and date range (runs once on mount)
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("filter") === "uncategorized") {
-      setStatusFilter("uncategorized");
-    }
+    
+    // Track navigation source
+    const source = params.get("source") || null;
+    setNavSource(source);
     
     // Handle category filter from URL
     const categoryParam = params.get("category");
@@ -89,7 +98,12 @@ export default function Expenses() {
       setCategoryFilter(categoryParam);
     }
     
-    // Handle date range from URL (from Dashboard)
+    // Handle uncategorized filter
+    if (params.get("filter") === "uncategorized") {
+      setStatusFilter("uncategorized");
+    }
+    
+    // Handle date range from URL (from Dashboard/Net Profit/Actuals)
     const startDateParam = params.get("startDate");
     const endDateParam = params.get("endDate");
     const rangeParam = params.get("range");
@@ -124,6 +138,16 @@ export default function Expenses() {
   const { data: businessExpenses = [] } = useQuery({
     queryKey: ["business-expenses"],
     queryFn: () => base44.entities.BusinessExpense.list("-date", 1000),
+  });
+
+  const { data: materialPurchases = [] } = useQuery({
+    queryKey: ["material-purchases"],
+    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 1000),
+  });
+
+  const { data: etsyLedgerEntries = [] } = useQuery({
+    queryKey: ["etsy-ledger-entries"],
+    queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 5000),
   });
 
   const deleteMutation = useMutation({
@@ -259,20 +283,92 @@ export default function Expenses() {
     return start && end ? { start, end } : null;
   }, [timeRange, selectedDate, customStartDate, customEndDate]);
 
-  const filteredExpenses = useMemo(() => {
-    let filtered = expenses;
+  // Get unique materials for filter
+  const uniqueMaterials = useMemo(() => {
+    if (categoryFilter !== "materials_supplies") return [];
     
-    // Apply date range filter first
+    const materials = new Set();
+    
+    // From MaterialPurchases
+    materialPurchases.forEach(p => {
+      if (p.material_name) materials.add(p.material_name);
+    });
+    
+    // From BusinessExpenses
+    businessExpenses
+      .filter(e => e.category_name === "materials_supplies")
+      .forEach(e => {
+        if (e.vendor) materials.add(e.vendor);
+      });
+    
+    return Array.from(materials).sort();
+  }, [categoryFilter, materialPurchases, businessExpenses]);
+
+  const filteredExpenses = useMemo(() => {
+    // Combine all expense sources for unified view
+    let allExpenses = [];
+    
+    // Legacy Expense entity
+    allExpenses.push(...expenses.map(e => ({
+      ...e,
+      source: "legacy",
+      material_name: e.vendor,
+    })));
+    
+    // BusinessExpense entity
+    allExpenses.push(...businessExpenses.map(e => ({
+      id: e.id,
+      date: e.date,
+      description: e.description,
+      amount: e.amount,
+      category: e.category_name,
+      vendor: e.vendor,
+      payment_method: e.payment_source,
+      is_categorized: true,
+      source: "business",
+      material_name: e.vendor,
+    })));
+    
+    // MaterialPurchase (treated as materials_supplies category)
+    allExpenses.push(...materialPurchases.map(p => ({
+      id: p.id,
+      date: p.purchase_date,
+      description: p.material_name,
+      amount: p.total_cost,
+      category: "materials_supplies",
+      vendor: p.vendor,
+      payment_method: p.payment_method,
+      is_categorized: true,
+      source: "material",
+      material_name: p.material_name,
+    })));
+    
+    // EtsyLedgerEntries (if matched to a category)
+    allExpenses.push(...etsyLedgerEntries
+      .filter(e => e.matched_category)
+      .map(e => ({
+        id: e.id,
+        date: e.entry_date,
+        description: `${e.title || ""} - ${e.info || ""}`,
+        amount: Math.abs(e.net || 0),
+        category: e.matched_category,
+        vendor: "Etsy",
+        payment_method: "Etsy Payment Ledger",
+        is_categorized: true,
+        source: "ledger",
+      })));
+    
+    // Apply date range filter
     if (dateRange) {
-      filtered = filtered.filter(expense => {
+      allExpenses = allExpenses.filter(expense => {
         if (!expense.date) return false;
         const expenseDate = new Date(expense.date);
         return expenseDate >= dateRange.start && expenseDate <= dateRange.end;
       });
     }
     
-    // Apply other filters
-    return filtered.filter(expense => {
+    // Apply filters
+    return allExpenses.filter(expense => {
       const matchesSearch = !search ||
         expense.description?.toLowerCase().includes(search.toLowerCase()) ||
         expense.vendor?.toLowerCase().includes(search.toLowerCase());
@@ -280,9 +376,12 @@ export default function Expenses() {
       const matchesStatus = statusFilter === "all" ||
         (statusFilter === "uncategorized" && !expense.is_categorized) ||
         (statusFilter === "categorized" && expense.is_categorized);
-      return matchesSearch && matchesCategory && matchesStatus;
+      const matchesMaterial = materialFilter === "all" || 
+        !expense.material_name ||
+        expense.material_name === materialFilter;
+      return matchesSearch && matchesCategory && matchesStatus && matchesMaterial;
     });
-  }, [expenses, search, categoryFilter, statusFilter, dateRange]);
+  }, [expenses, businessExpenses, materialPurchases, etsyLedgerEntries, search, categoryFilter, statusFilter, materialFilter, dateRange]);
 
   // Calculate totals directly from filtered table data (single source of truth)
   const totals = useMemo(() => {
@@ -354,6 +453,38 @@ export default function Expenses() {
       return format(selectedDate, "yyyy");
     }
     return "All Time";
+  };
+
+  const clearFilters = () => {
+    setCategoryFilter("all");
+    setMaterialFilter("all");
+    setStatusFilter("all");
+    setTimeRange("all");
+    setCustomStartDate(null);
+    setCustomEndDate(null);
+    setSearch("");
+    setNavSource(null);
+    window.history.replaceState({}, '', window.location.pathname);
+  };
+
+  const getNavigationContext = () => {
+    if (!navSource && categoryFilter === "all" && !customStartDate) return null;
+    
+    const parts = [];
+    if (navSource) {
+      parts.push(navSource === "dashboard" ? "Dashboard" : 
+                 navSource === "netprofit" ? "Net Profit" : 
+                 navSource === "actuals" ? "Actuals" : navSource);
+    }
+    if (categoryFilter !== "all") {
+      const cat = CATEGORIES.find(c => c.value === categoryFilter);
+      parts.push(cat?.label || categoryFilter);
+    }
+    if (customStartDate && customEndDate) {
+      parts.push(`${format(customStartDate, "MMM yyyy")}`);
+    }
+    
+    return parts.length > 0 ? parts.join(" → ") : null;
   };
 
   // Top expenses by amount
@@ -526,20 +657,33 @@ export default function Expenses() {
     },
   ];
 
+  const navigationContext = getNavigationContext();
+
   return (
     <div className="space-y-6">
+      {navigationContext && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">
+              Filtered from: {navigationContext}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Clear filters
+          </Button>
+        </div>
+      )}
+
       <PageHeader 
         title="Expenses" 
-        description={
-          <div className="flex items-center gap-3">
-            <span>{getPeriodLabel()}</span>
-            {categoryFilter !== "all" && (
-              <span className="text-sm px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md">
-                {CATEGORIES.find(c => c.value === categoryFilter)?.label || categoryFilter}
-              </span>
-            )}
-          </div>
-        }
+        description={getPeriodLabel()}
       >
         <div className="flex gap-2 flex-wrap">
           <div className="flex gap-2 items-center">
@@ -745,7 +889,7 @@ export default function Expenses() {
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full md:w-40">
+          <SelectTrigger className="w-full md:w-52">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -757,6 +901,21 @@ export default function Expenses() {
             ))}
           </SelectContent>
         </Select>
+        {categoryFilter === "materials_supplies" && uniqueMaterials.length > 0 && (
+          <Select value={materialFilter} onValueChange={setMaterialFilter}>
+            <SelectTrigger className="w-full md:w-52">
+              <SelectValue placeholder="Material" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Materials</SelectItem>
+              {uniqueMaterials.map((material) => (
+                <SelectItem key={material} value={material}>
+                  {material}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full md:w-40">
             <SelectValue placeholder="Status" />

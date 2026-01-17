@@ -107,6 +107,7 @@ export default function ActualsSpendingMatrix({
       `?startDate=${format(monthRange.start, 'yyyy-MM-dd')}` +
       `&endDate=${format(monthRange.end, 'yyyy-MM-dd')}` +
       `&range=custom` +
+      `&source=actuals` +
       `&category=${categoryName}`;
     
     window.location.href = url;

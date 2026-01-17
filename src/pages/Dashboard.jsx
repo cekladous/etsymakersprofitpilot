@@ -460,7 +460,7 @@ export default function Dashboard() {
           />
         </Link>
         <Link 
-          to={createPageUrl("Expenses") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}`}
+          to={createPageUrl("Expenses") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}&source=dashboard`}
           className="block transition-transform hover:scale-105"
         >
           <KPICard
