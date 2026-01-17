@@ -179,53 +179,39 @@ export default function Dashboard() {
   const filteredSummaryData = financialData._rawData;
 
   const metrics = useMemo(() => {
-    if (!Array.isArray(orders) || !Array.isArray(expenses) || !periodStart || !periodEnd) {
+    if (!periodStart || !periodEnd) {
       return {
         periodRevenue: 0,
         periodFees: 0,
         periodExpenses: 0,
         periodProfit: 0,
         periodMargin: 0,
-        allTimeRevenue: 0,
-        allTimeProfit: 0,
-        materialExpenses: 0,
         orderCount: 0,
       };
     }
     
-    // Period calculations based on selected timeRange
-    const periodOrders = orders.filter(o => {
+    // Filter EtsyOrders for period
+    const periodEtsyOrders = etsyOrders.filter(o => {
       const d = new Date(o.sale_date);
       return d >= periodStart && d <= periodEnd;
     });
     
-    const periodRevenue = periodOrders.reduce((sum, o) => 
-      sum + (o.gross_total || 0) - (o.sales_tax || 0) - (o.refunds || 0), 0);
+    // Calculate revenue (exclude sales tax - pass-through to government)
+    const periodRevenue = periodEtsyOrders.reduce((sum, o) => 
+      sum + (o.order_value || 0), 0);
     
-    const periodFees = periodOrders.reduce((sum, o) => 
-      sum + (o.etsy_fees || 0) + (o.processing_fees || 0), 0);
+    // Calculate fees from OrderFee records
+    const periodFees = orderFees
+      .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
+      .reduce((sum, f) => sum + (f.total_fees || 0), 0);
     
-    const periodExpenses = expenses
+    // Calculate expenses from BusinessExpense records
+    const periodExpenses = businessExpenses
       .filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
     
     const periodProfit = periodRevenue - periodFees - periodExpenses;
     const periodMargin = periodRevenue > 0 ? (periodProfit / periodRevenue) * 100 : 0;
-
-    // All-time calculations
-    const allTimeRevenue = orders.reduce((sum, o) => 
-      sum + (o.gross_total || 0) - (o.sales_tax || 0) - (o.refunds || 0), 0);
-    
-    const allTimeFees = orders.reduce((sum, o) => 
-      sum + (o.etsy_fees || 0) + (o.processing_fees || 0), 0);
-    
-    const allTimeExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const allTimeProfit = allTimeRevenue - allTimeFees - allTimeExpenses;
-
-    // Material spend for period
-    const materialExpenses = expenses
-      .filter(e => e?.date && e.category === "materials" && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
 
     return {
       periodRevenue,
@@ -233,12 +219,9 @@ export default function Dashboard() {
       periodExpenses,
       periodProfit,
       periodMargin,
-      allTimeRevenue,
-      allTimeProfit,
-      materialExpenses,
-      orderCount: periodOrders.length,
+      orderCount: periodEtsyOrders.length,
     };
-  }, [orders, expenses, periodStart, periodEnd]);
+  }, [etsyOrders, orderFees, businessExpenses, periodStart, periodEnd]);
 
   // Alerts
   const ordersWithoutJobs = Array.isArray(orders) ? orders.filter(o => !o.job_id && o.status !== "shipped") : [];
@@ -251,30 +234,27 @@ export default function Dashboard() {
 
   // Chart data
   const chartData = useMemo(() => {
-    if (!Array.isArray(orders) || !Array.isArray(expenses)) {
-      return [];
-    }
-    
     const periods = [];
-    const monthsToShow = timeRange === "month" ? 1 : timeRange === "quarter" ? 3 : 12;
+    const monthsToShow = timeRange === "month" ? 6 : timeRange === "quarter" ? 6 : 12;
     
     for (let i = monthsToShow - 1; i >= 0; i--) {
-      const date = subMonths(now, i);
+      const date = subMonths(selectedDate, i);
       const start = startOfMonth(date);
       const end = endOfMonth(date);
       
-      const periodOrders = orders.filter(o => {
+      const periodEtsyOrders = etsyOrders.filter(o => {
         const d = new Date(o.sale_date);
         return d >= start && d <= end;
       });
       
-      const revenue = periodOrders.reduce((sum, o) => 
-        sum + (o.gross_total || 0) - (o.sales_tax || 0) - (o.refunds || 0), 0);
+      const revenue = periodEtsyOrders.reduce((sum, o) => 
+        sum + (o.order_value || 0), 0);
       
-      const fees = periodOrders.reduce((sum, o) => 
-        sum + (o.etsy_fees || 0) + (o.processing_fees || 0), 0);
+      const fees = orderFees
+        .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
+        .reduce((sum, f) => sum + (f.total_fees || 0), 0);
       
-      const periodExpenses = expenses
+      const periodExpenses = businessExpenses
         .filter(e => e?.date && new Date(e.date) >= start && new Date(e.date) <= end)
         .reduce((sum, e) => sum + (e.amount || 0), 0);
       
@@ -286,7 +266,7 @@ export default function Dashboard() {
     }
     
     return periods;
-  }, [orders, expenses, timeRange, now]);
+  }, [etsyOrders, orderFees, businessExpenses, timeRange, selectedDate]);
 
   const formatCurrency = (val) => {
     if (val >= 1000) return `$${(val / 1000).toFixed(1)}k`;
@@ -330,7 +310,7 @@ export default function Dashboard() {
         description={getPeriodLabel()}
       >
         <div className="flex gap-2 flex-wrap">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {["month", "quarter", "year"].map((range) => (
               <Button
                 key={range}
@@ -346,6 +326,35 @@ export default function Dashboard() {
                 {range.charAt(0).toUpperCase() + range.slice(1)}
               </Button>
             ))}
+            
+            <div className="h-6 w-px bg-stone-300 mx-1"></div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (timeRange === "month") {
+                  setSelectedDate(subMonths(selectedDate, 1));
+                } else if (timeRange === "year") {
+                  setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth()));
+                }
+              }}
+            >
+              ←
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (timeRange === "month") {
+                  setSelectedDate(subMonths(selectedDate, -1));
+                } else if (timeRange === "year") {
+                  setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth()));
+                }
+              }}
+            >
+              →
+            </Button>
           </div>
           
           <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
@@ -415,40 +424,40 @@ export default function Dashboard() {
 
       {/* KPI Cards - ALL CLICKABLE */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
+        <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
           <KPICard
-            title="Total Revenue"
-            value={formatCurrency(financialData.totalRevenue)}
-            subtitle={`${(financialData._rawData?.etsyOrders || []).length} orders • Click for breakdown`}
+            title="Revenue (excl. tax)"
+            value={`$${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle={`${metrics.orderCount} orders • View all orders`}
             icon={DollarSign}
             accentColor="emerald"
           />
-        </div>
+        </Link>
         <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
           <KPICard
             title="Net Profit"
-            value={formatCurrency(financialData.netProfit)}
-            subtitle={`${financialData.profitMargin.toFixed(1)}% margin • Click for details`}
+            value={`$${metrics.periodProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle={`${metrics.periodMargin.toFixed(1)}% margin • View breakdown`}
             icon={TrendingUp}
-            accentColor={financialData.netProfit >= 0 ? "emerald" : "rose"}
+            accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"}
           />
         </div>
-        <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
+        <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
+          <KPICard
+            title="Total Fees"
+            value={`$${metrics.periodFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle="Etsy + processing • View details"
+            icon={Receipt}
+            accentColor="rose"
+          />
+        </Link>
+        <Link to={createPageUrl("Expenses")} className="block transition-transform hover:scale-105">
           <KPICard
             title="Total Expenses"
-            value={formatCurrency(financialData.totalExpenses)}
-            subtitle="All costs • Click to view breakdown"
-            icon={Receipt}
+            value={`$${metrics.periodExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle="All costs • Manage expenses"
+            icon={Percent}
             accentColor="amber"
-          />
-        </div>
-        <Link to={createPageUrl("Inventory") + "?filter=low"} className="transition-transform hover:scale-105 block">
-          <KPICard
-            title="Material Spend"
-            value={formatCurrency(financialData.productExpenses.materialsSupplies)}
-            subtitle="Go to inventory"
-            icon={Layers}
-            accentColor="violet"
           />
         </Link>
       </div>
