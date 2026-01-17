@@ -184,13 +184,14 @@ export default function Dashboard() {
         periodRevenue: 0,
         periodFees: 0,
         periodExpenses: 0,
+        totalExpenses: 0,
         periodProfit: 0,
         periodMargin: 0,
         orderCount: 0,
       };
     }
     
-    // Filter EtsyOrders for period
+    // Filter EtsyOrders for period (by transaction date = sale_date)
     const periodEtsyOrders = etsyOrders.filter(o => {
       const d = new Date(o.sale_date);
       return d >= periodStart && d <= periodEnd;
@@ -200,23 +201,39 @@ export default function Dashboard() {
     const periodRevenue = periodEtsyOrders.reduce((sum, o) => 
       sum + (o.order_value || 0), 0);
     
-    // Calculate fees from OrderFee records
-    const periodFees = orderFees
+    // Calculate order fees (listing, transaction, processing, ads, shipping, etc.)
+    const periodOrderFees = orderFees
       .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
-      .reduce((sum, f) => sum + (f.total_fees || 0), 0);
+      .reduce((sum, f) => {
+        const fees = (f.listing_fees || 0) + 
+                     (f.transaction_fees || 0) + 
+                     (f.processing_fees || 0) + 
+                     (f.other_fees || 0) + 
+                     (f.etsy_ads || 0) + 
+                     (f.offsite_ads_fees || 0) + 
+                     (f.etsy_shipping || 0) + 
+                     (f.other_postage_costs || 0);
+        // Subtract credits (Share & Save refunds/credits are positive in DB)
+        const credits = (f.share_save_refunds_credits || 0);
+        return sum + fees - credits;
+      }, 0);
     
-    // Calculate expenses from BusinessExpense records
-    const periodExpenses = businessExpenses
+    // Calculate business expenses (by transaction date, not created date)
+    const periodBusinessExpenses = businessExpenses
       .filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
     
-    const periodProfit = periodRevenue - periodFees - periodExpenses;
+    // Total Expenses = Business Expenses + Order Fees (net of credits)
+    const totalExpenses = periodBusinessExpenses + periodOrderFees;
+    
+    const periodProfit = periodRevenue - totalExpenses;
     const periodMargin = periodRevenue > 0 ? (periodProfit / periodRevenue) * 100 : 0;
 
     return {
       periodRevenue,
-      periodFees,
-      periodExpenses,
+      periodFees: periodOrderFees,
+      periodExpenses: periodBusinessExpenses,
+      totalExpenses,
       periodProfit,
       periodMargin,
       orderCount: periodEtsyOrders.length,
@@ -454,8 +471,8 @@ export default function Dashboard() {
         <Link to={createPageUrl("Expenses")} className="block transition-transform hover:scale-105">
           <KPICard
             title="Total Expenses"
-            value={`$${metrics.periodExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            subtitle="All costs • Manage expenses"
+            value={`$${metrics.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle={`Fees + Business expenses • View all`}
             icon={Percent}
             accentColor="amber"
           />
