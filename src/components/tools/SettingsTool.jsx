@@ -522,6 +522,27 @@ export default function SettingsTool() {
                     />
 
                     <div className="space-y-2">
+                      <Label className="text-sm font-medium">Share & Save Source</Label>
+                      {settingsData.share_save_source_url && (
+                        <a
+                          href={settingsData.share_save_source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mb-2"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Share & Save Official Page
+                        </a>
+                      )}
+                      <Input
+                        type="text"
+                        placeholder="https://help.etsy.com/..."
+                        value={settingsData.share_save_source_url}
+                        onChange={(e) => setSettingsData({ ...settingsData, share_save_source_url: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label className="text-sm font-medium">Last Verified</Label>
                       <div className="flex gap-2">
                         <Input
