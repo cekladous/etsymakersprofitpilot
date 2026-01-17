@@ -95,7 +95,7 @@ export default function LowStockNotifications() {
             +{notifications.length - 5} more alerts
           </p>
         )}
-        <Link to={createPageUrl("Materials")}>
+        <Link to={createPageUrl("Inventory")}>
           <Button variant="outline" size="sm" className="w-full mt-2">
             View All Materials
           </Button>
