@@ -528,7 +528,19 @@ export default function Expenses() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Expenses" description={getPeriodLabel()}>
+      <PageHeader 
+        title="Expenses" 
+        description={
+          <div className="flex items-center gap-3">
+            <span>{getPeriodLabel()}</span>
+            {categoryFilter !== "all" && (
+              <span className="text-sm px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md">
+                {CATEGORIES.find(c => c.value === categoryFilter)?.label || categoryFilter}
+              </span>
+            )}
+          </div>
+        }
+      >
         <div className="flex gap-2 flex-wrap">
           <div className="flex gap-2 items-center">
             {["all", "month", "year"].map((range) => (

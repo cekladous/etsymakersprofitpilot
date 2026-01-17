@@ -140,10 +140,14 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     return content;
   };
 
-  const buildExpensesLink = () => {
+  const buildExpensesLink = (categoryName = null) => {
     if (!dateRange?.start || !dateRange?.end) return createPageUrl("Expenses");
-    return createPageUrl("Expenses") + 
-      `?startDate=${format(dateRange.start, 'yyyy-MM-dd')}&endDate=${format(dateRange.end, 'yyyy-MM-dd')}`;
+    let url = createPageUrl("Expenses") + 
+      `?startDate=${format(dateRange.start, 'yyyy-MM-dd')}&endDate=${format(dateRange.end, 'yyyy-MM-dd')}&range=custom`;
+    if (categoryName) {
+      url += `&category=${categoryName}`;
+    }
+    return url;
   };
 
   return (
@@ -230,44 +234,37 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row 
             label="Materials & Supplies" 
             amount={productExpenses.materialsSupplies || 0} 
-            categoryName="materials_supplies"
-            linkTo={buildExpensesLink() + "&category=materials_supplies"}
+            linkTo={buildExpensesLink("materials_supplies")}
           />
           <Row 
             label="Tools & Equipment" 
             amount={productExpenses.toolsEquipment || 0} 
-            categoryName="tools_equipment"
-            linkTo={buildExpensesLink() + "&category=tools_equipment"}
+            linkTo={buildExpensesLink("tools_equipment")}
           />
           <Row 
             label="Advertising & Marketing" 
             amount={businessExpenses.advertisingMarketing || 0} 
-            categoryName="advertising_marketing"
-            linkTo={buildExpensesLink() + "&category=advertising_marketing"}
+            linkTo={buildExpensesLink("advertising_marketing")}
           />
           <Row 
             label="Office Expenses" 
             amount={businessExpenses.officeExpenses || 0} 
-            categoryName="office_expenses"
-            linkTo={buildExpensesLink() + "&category=office_expenses"}
+            linkTo={buildExpensesLink("office_expenses")}
           />
           <Row 
             label="Professional Services" 
             amount={businessExpenses.professionalServices || 0} 
-            categoryName="professional_services"
-            linkTo={buildExpensesLink() + "&category=professional_services"}
+            linkTo={buildExpensesLink("professional_services")}
           />
           <Row 
             label="Other Business Expenses" 
             amount={businessExpenses.other || 0} 
-            categoryName="other"
-            linkTo={buildExpensesLink() + "&category=other"}
+            linkTo={buildExpensesLink("other")}
           />
           <Row 
             label="Miscellaneous" 
             amount={businessExpenses.miscellaneous || 0} 
-            categoryName="miscellaneous_expenses"
-            linkTo={buildExpensesLink() + "&category=miscellaneous"}
+            linkTo={buildExpensesLink("miscellaneous_expenses")}
           />
 
           {/* TOTALS */}

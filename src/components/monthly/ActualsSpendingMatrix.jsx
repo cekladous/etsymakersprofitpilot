@@ -7,7 +7,7 @@ import { HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { startOfMonth, endOfMonth, format, eachMonthOfInterval } from "date-fns";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
-import LineItemDrillDown from "./LineItemDrillDown";
+import { createPageUrl } from "@/utils";
 
 export default function ActualsSpendingMatrix({ 
   dateRange, 
@@ -21,8 +21,6 @@ export default function ActualsSpendingMatrix({
   orderFees
 }) {
   const [includeFees, setIncludeFees] = useState(false);
-  const [drillDownOpen, setDrillDownOpen] = useState(false);
-  const [drillDownData, setDrillDownData] = useState({ title: "", items: [] });
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -101,50 +99,17 @@ export default function ActualsSpendingMatrix({
   };
 
   const handleCellClick = (category, monthIndex) => {
-    const monthData = monthlyData[monthIndex];
+    const monthRange = months[monthIndex];
     const categoryName = getCategoryNameMapping(category.key);
     
-    let items = [];
+    // Navigate to Expenses page with filters
+    const url = createPageUrl("Expenses") + 
+      `?startDate=${format(monthRange.start, 'yyyy-MM-dd')}` +
+      `&endDate=${format(monthRange.end, 'yyyy-MM-dd')}` +
+      `&range=custom` +
+      `&category=${categoryName}`;
     
-    if (category.key === "materialsSupplies") {
-      const purchases = (monthData._rawData?.materialPurchases || []).map(p => ({
-        date: p.purchase_date,
-        description: p.material_name,
-        vendor: p.vendor,
-        payment_source: p.payment_method,
-        amount: p.total_cost,
-      }));
-      items.push(...purchases);
-    }
-    
-    const expenses = (monthData._rawData?.businessExpenses || [])
-      .filter(e => e.category_name === categoryName)
-      .map(e => ({
-        date: e.date,
-        description: e.description,
-        vendor: e.vendor,
-        payment_source: e.payment_source,
-        amount: e.amount,
-      }));
-    
-    items.push(...expenses);
-    
-    const ledgerEntries = (monthData._rawData?.etsyLedgerEntries || [])
-      .filter(e => e.matched_category === categoryName)
-      .map(e => ({
-        date: e.entry_date,
-        description: `${e.title} - ${e.info}`,
-        vendor: "Etsy",
-        payment_source: "Etsy Payment Ledger",
-        amount: Math.abs(e.net || 0),
-      }));
-    
-    items.push(...ledgerEntries);
-    items.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    const monthLabel = format(months[monthIndex].start, "MMMM yyyy");
-    setDrillDownData({ title: `${category.label} - ${monthLabel}`, items });
-    setDrillDownOpen(true);
+    window.location.href = url;
   };
 
   const getCategoryNameMapping = (key) => {
@@ -256,12 +221,7 @@ export default function ActualsSpendingMatrix({
         </CardContent>
       </Card>
 
-      <LineItemDrillDown
-        open={drillDownOpen}
-        onOpenChange={setDrillDownOpen}
-        title={drillDownData.title}
-        items={drillDownData.items}
-      />
+
     </>
   );
 }
