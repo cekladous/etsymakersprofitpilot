@@ -40,8 +40,8 @@ import AlertCard from "@/components/dashboard/AlertCard";
 import ProfitChart from "@/components/dashboard/ProfitChart";
 import ProfitCalculatorWidget from "@/components/dashboard/ProfitCalculatorWidget";
 import LowStockNotifications from "@/components/notifications/LowStockNotifications";
-import MonthlySummaryKPIs from "@/components/monthly/MonthlySummaryKPIs";
-import MonthlySummaryTable from "@/components/monthly/MonthlySummaryTable";
+import NetProfitStatement from "@/components/monthly/NetProfitStatement";
+import ActualsSpendingMatrix from "@/components/monthly/ActualsSpendingMatrix";
 import BudgetTab from "@/components/monthly/BudgetTab";
 import EtsyOrderImportDialog from "@/components/monthly/EtsyOrderImportDialog";
 import EtsyLedgerImportDialog from "@/components/monthly/EtsyLedgerImportDialog";
@@ -563,9 +563,6 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          {/* Summary KPIs */}
-          <MonthlySummaryKPIs financialData={financialData} />
-
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setCustomSaleDialogOpen(true)}>
@@ -582,15 +579,21 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          {/* Summary Table */}
-          <MonthlySummaryTable financialData={financialData} viewMode={timeRange} />
+          {/* Net Profit Statement */}
+          <NetProfitStatement financialData={financialData} dateRange={dateRange} />
         </TabsContent>
 
         <TabsContent value="budget" className="mt-6">
-          <BudgetTab
-            viewMode={timeRange}
+          <ActualsSpendingMatrix
             dateRange={dateRange}
-            financialData={financialData}
+            viewMode={timeRange}
+            etsyOrders={etsyOrders}
+            customSales={customSales}
+            businessExpenses={businessExpenses}
+            transfers={transfers}
+            materialPurchases={materialPurchases}
+            etsyLedgerEntries={etsyLedgerEntries}
+            orderFees={orderFees}
           />
         </TabsContent>
       </Tabs>

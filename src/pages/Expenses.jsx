@@ -83,6 +83,12 @@ export default function Expenses() {
       setStatusFilter("uncategorized");
     }
     
+    // Handle category filter from URL
+    const categoryParam = params.get("category");
+    if (categoryParam) {
+      setCategoryFilter(categoryParam);
+    }
+    
     // Handle date range from URL (from Dashboard)
     const startDateParam = params.get("startDate");
     const endDateParam = params.get("endDate");
