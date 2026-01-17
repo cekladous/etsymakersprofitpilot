@@ -278,36 +278,40 @@ export default function Expenses() {
     });
   }, [expenses, search, categoryFilter, statusFilter, dateRange]);
 
-  // Calculate totals using shared expense calculator for perfect reconciliation
+  // Calculate totals directly from filtered table data (single source of truth)
   const totals = useMemo(() => {
-    if (!dateRange) {
-      // Show old expenses page totals when "All Time" is selected
-      const totalAmount = filteredExpenses.reduce((sum, e) => {
-        const amount = e.amount || 0;
-        return e.type === "return" ? sum - amount : sum + amount;
-      }, 0);
-      const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
-      const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
-      
-      return { totalAmount, totalDebits, totalCredits, orderFees: 0, businessExpenses: totalAmount, totalExpenses: totalAmount, feeCredits: 0 };
+    // Always calculate from the actual filtered expenses shown in the table
+    const totalAmount = filteredExpenses.reduce((sum, e) => {
+      const amount = e.amount || 0;
+      return e.type === "return" ? sum - amount : sum + amount;
+    }, 0);
+    const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
+    const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
+    
+    // For date-filtered views, also calculate Dashboard-compatible breakdown
+    let dashboardBreakdown = { orderFees: 0, businessExpenses: totalAmount, feeCredits: 0 };
+    
+    if (dateRange) {
+      // Use shared calculator for Dashboard reconciliation
+      const calculated = calculateTotalExpenses({
+        etsyOrders,
+        orderFees,
+        businessExpenses,
+        dateRange,
+      });
+      dashboardBreakdown = {
+        orderFees: calculated.orderFees,
+        businessExpenses: calculated.businessExpenses,
+        feeCredits: calculated.feeCredits,
+      };
     }
     
-    // Use shared expense calculator - same logic as Dashboard
-    const calculated = calculateTotalExpenses({
-      etsyOrders,
-      orderFees,
-      businessExpenses,
-      dateRange,
-    });
-    
-    return {
-      totalAmount: calculated.totalExpenses,
-      totalDebits: calculated.businessExpenses + calculated.orderFees,
-      totalCredits: calculated.feeCredits,
-      orderFees: calculated.orderFees,
-      businessExpenses: calculated.businessExpenses,
-      feeCredits: calculated.feeCredits,
-      totalExpenses: calculated.totalExpenses,
+    return { 
+      totalAmount, 
+      totalDebits, 
+      totalCredits, 
+      totalExpenses: totalAmount,
+      ...dashboardBreakdown
     };
   }, [filteredExpenses, dateRange, etsyOrders, orderFees, businessExpenses]);
 
@@ -641,41 +645,43 @@ export default function Expenses() {
         </div>
       </PageHeader>
 
-      {/* Summary */}
+      {/* Summary - Always matches table data */}
       <div className="bg-white rounded-xl border border-stone-100 p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm text-stone-500">Total Expenses {dateRange ? "(Fees + Business)" : "(Net)"}</p>
-            <p className="text-2xl font-bold text-stone-900">${totals.totalExpenses.toFixed(2)}</p>
+            <p className="text-sm text-stone-500">Total from Table {dateRange ? `(${getPeriodLabel()})` : "(All Time)"}</p>
+            <p className="text-2xl font-bold text-stone-900">${totals.totalAmount.toFixed(2)}</p>
           </div>
           <div className="text-sm text-stone-500">
-            {dateRange ? getPeriodLabel() : `${filteredExpenses.length} expense${filteredExpenses.length !== 1 ? "s" : ""}`}
+            {filteredExpenses.length} transaction{filteredExpenses.length !== 1 ? "s" : ""}
           </div>
         </div>
-        {dateRange ? (
-          <div className="flex gap-6 text-sm">
-            <div>
-              <span className="text-stone-500">Order Fees: </span>
-              <span className="font-semibold text-stone-900">${totals.orderFees.toFixed(2)}</span>
-            </div>
-            <div>
-              <span className="text-stone-500">Fee Credits: </span>
-              <span className="font-semibold text-emerald-600">-${totals.feeCredits.toFixed(2)}</span>
-            </div>
-            <div>
-              <span className="text-stone-500">Business Expenses: </span>
-              <span className="font-semibold text-stone-900">${totals.businessExpenses.toFixed(2)}</span>
-            </div>
+        <div className="flex gap-6 text-sm">
+          <div>
+            <span className="text-stone-500">Debits: </span>
+            <span className="font-semibold text-stone-900">${totals.totalDebits.toFixed(2)}</span>
           </div>
-        ) : (
-          <div className="flex gap-6 text-sm">
-            <div>
-              <span className="text-stone-500">Debits: </span>
-              <span className="font-semibold text-stone-900">${totals.totalDebits.toFixed(2)}</span>
-            </div>
-            <div>
-              <span className="text-stone-500">Returns: </span>
-              <span className="font-semibold text-emerald-600">-${totals.totalCredits.toFixed(2)}</span>
+          <div>
+            <span className="text-stone-500">Returns: </span>
+            <span className="font-semibold text-emerald-600">-${totals.totalCredits.toFixed(2)}</span>
+          </div>
+        </div>
+        {dateRange && (
+          <div className="mt-3 pt-3 border-t border-stone-100">
+            <p className="text-xs text-stone-500 mb-2">Dashboard Reconciliation:</p>
+            <div className="flex gap-6 text-xs">
+              <div>
+                <span className="text-stone-500">Order Fees: </span>
+                <span className="font-medium text-stone-700">${totals.orderFees.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-stone-500">Fee Credits: </span>
+                <span className="font-medium text-emerald-600">-${totals.feeCredits.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-stone-500">Business: </span>
+                <span className="font-medium text-stone-700">${totals.businessExpenses.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         )}
