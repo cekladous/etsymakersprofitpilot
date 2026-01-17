@@ -82,6 +82,12 @@ export default function SettingsTool() {
     square_last_verified_date: "",
     venmo_source_url: "https://help.venmo.com/hc/en-us/articles/360016096533",
     venmo_last_verified_date: "",
+    share_save_rate_pct: 4.0,
+    share_save_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
+    advertising_type: "none",
+    etsy_ads_rate: 0,
+    etsy_ads_rate_type: "percent",
+    offsite_ads_rate: 15,
     auto_categorization_rules: [],
     });
 
@@ -184,6 +190,12 @@ export default function SettingsTool() {
         square_last_verified_date: s.square_last_verified_date || "",
         venmo_source_url: s.venmo_source_url || "https://help.venmo.com/hc/en-us/articles/360016096533",
         venmo_last_verified_date: s.venmo_last_verified_date || "",
+        share_save_rate_pct: s.share_save_rate_pct ?? 4.0,
+        share_save_source_url: s.share_save_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
+        advertising_type: s.advertising_type || "none",
+        etsy_ads_rate: s.etsy_ads_rate || 0,
+        etsy_ads_rate_type: s.etsy_ads_rate_type || "percent",
+        offsite_ads_rate: s.offsite_ads_rate || 15,
         auto_categorization_rules: s.auto_categorization_rules || [],
         });
     }
@@ -191,6 +203,34 @@ export default function SettingsTool() {
 
   const settingsMutation = useMutation({
     mutationFn: async (data) => {
+      const oldSettings = settings[0] || {};
+      
+      // Track fee changes
+      const feeFields = [
+        { key: "etsy_listing_fee", label: "listing_fee" },
+        { key: "etsy_transaction_fee_percent", label: "transaction_fee" },
+        { key: "payment_processing_fee_percent", label: "processing_fee_percent" },
+        { key: "payment_processing_fee_fixed", label: "processing_fee_fixed" },
+        { key: "share_save_rate_pct", label: "share_save_rate" },
+      ];
+      
+      for (const field of feeFields) {
+        const oldValue = oldSettings[field.key];
+        const newValue = data[field.key];
+        
+        if (oldValue !== undefined && newValue !== undefined && oldValue !== newValue) {
+          await base44.entities.FeeChangeLog.create({
+            fee_type: field.label,
+            old_value: oldValue,
+            new_value: newValue,
+            country: data.fee_country || "US",
+            source_url: data.fee_source_url || "",
+            change_date: new Date().toISOString().split('T')[0],
+            notes: `Updated from ${oldValue} to ${newValue}`,
+          });
+        }
+      }
+      
       if (settings.length > 0) {
         return base44.entities.Settings.update(settings[0].id, data);
       }
@@ -198,6 +238,7 @@ export default function SettingsTool() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["fee-change-logs"] });
       setSaving(false);
     },
   });
@@ -445,6 +486,16 @@ export default function SettingsTool() {
                         onChange={(e) => setSettingsData({ ...settingsData, payment_processing_fee_fixed: parseFloat(e.target.value) || 0 })}
                       />
                       <p className="text-xs text-stone-500">Current US rate: $0.25 per order</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Share & Save Rate (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settingsData.share_save_rate_pct ?? 4.0}
+                        onChange={(e) => setSettingsData({ ...settingsData, share_save_rate_pct: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Fee credit you receive on Share & Save orders: 4.0%</p>
                     </div>
                   </div>
 
@@ -723,6 +774,88 @@ export default function SettingsTool() {
                 </div>
               </TabsContent>
             </Tabs>
+          </div>
+
+          <div className="border-t border-stone-200"></div>
+
+          {/* Advertising (Etsy) */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CircleDollarSign className="w-4 h-4 text-purple-600" />
+              <h3 className="font-semibold text-stone-900">Advertising (Etsy)</h3>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-white p-4 rounded-lg border border-purple-100">
+              <p className="text-xs text-stone-600 mb-4">
+                Configure Etsy's advertising options. These are selling expenses, separate from payment processing fees.
+              </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Advertising Type</Label>
+                  <Select 
+                    value={settingsData.advertising_type} 
+                    onValueChange={(v) => setSettingsData({ ...settingsData, advertising_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="etsy_ads">Etsy Ads</SelectItem>
+                      <SelectItem value="offsite_ads">Offsite Ads</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {settingsData.advertising_type === "etsy_ads" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Etsy Ads Rate</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={settingsData.etsy_ads_rate}
+                          onChange={(e) => setSettingsData({ ...settingsData, etsy_ads_rate: parseFloat(e.target.value) || 0 })}
+                          className="flex-1"
+                        />
+                        <Select 
+                          value={settingsData.etsy_ads_rate_type} 
+                          onValueChange={(v) => setSettingsData({ ...settingsData, etsy_ads_rate_type: v })}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percent">%</SelectItem>
+                            <SelectItem value="fixed">$</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-stone-500">
+                        {settingsData.etsy_ads_rate_type === "percent" 
+                          ? "Percentage of sale price"
+                          : "Fixed cost per order"}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {settingsData.advertising_type === "offsite_ads" && (
+                  <div className="space-y-2">
+                    <Label>Offsite Ads Rate (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={settingsData.offsite_ads_rate}
+                      onChange={(e) => setSettingsData({ ...settingsData, offsite_ads_rate: parseFloat(e.target.value) || 0 })}
+                    />
+                    <p className="text-xs text-stone-500">
+                      Percentage of order revenue (excluding tax), typically 15% for most sellers
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-stone-200"></div>
