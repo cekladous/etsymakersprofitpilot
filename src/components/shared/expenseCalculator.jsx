@@ -2,31 +2,33 @@
  * Shared expense calculation logic for Dashboard and Expenses page
  * Ensures 1:1 reconciliation between KPI and drilldown
  * 
- * IMPORTANT: This calculates expenses based on the NEW data model:
- * - BusinessExpense entity (selling expenses, product expenses, business expenses)
- * - OrderFee entity (order-level fees from Etsy)
+ * IMPORTANT: This calculates expenses from BOTH data models:
+ * - NEW: BusinessExpense entity + OrderFee entity (recommended)
+ * - OLD: Expense entity (legacy - for backward compatibility)
  * 
  * All calculations filter strictly by transaction date (not created_at or imported_at)
  */
 
 /**
  * Calculate total expenses for a given date range
- * Formula: BusinessExpenses + OrderFees - FeeCredits
+ * Formula: BusinessExpenses + OrderFees - FeeCredits + LegacyExpenses
  * All filtered by transaction date only
  * 
  * @param {Object} params
  * @param {Array} params.etsyOrders - EtsyOrder entities
  * @param {Array} params.orderFees - OrderFee entities  
  * @param {Array} params.businessExpenses - BusinessExpense entities
+ * @param {Array} params.expenses - Expense entities (legacy/old model)
  * @param {Object} params.dateRange - { start: Date, end: Date }
  * @returns {Object} Breakdown of expenses
  */
-export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses, dateRange }) {
+export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses, expenses = [], dateRange }) {
   if (!dateRange?.start || !dateRange?.end) {
     return {
       orderFees: 0,
       businessExpenses: 0,
       feeCredits: 0,
+      legacyExpenses: 0,
       totalExpenses: 0,
       orderCount: 0,
     };
@@ -68,13 +70,27 @@ export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses
     })
     .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-  // Total Expenses = BusinessExpenses + OrderFees - FeeCredits
-  const totalExpenses = periodBusinessExpenses + periodOrderFeesTotal - periodFeeCredits;
+  // Calculate legacy expenses (old Expense entity) by transaction date
+  const periodLegacyExpenses = expenses
+    .filter(e => {
+      if (!e?.date) return false;
+      const d = new Date(e.date);
+      return d >= dateRange.start && d <= dateRange.end;
+    })
+    .reduce((sum, e) => {
+      const amount = e.amount || 0;
+      // Returns reduce total (credits), sales increase total (debits)
+      return e.type === "return" ? sum - amount : sum + amount;
+    }, 0);
+
+  // Total Expenses = BusinessExpenses + OrderFees - FeeCredits + LegacyExpenses
+  const totalExpenses = periodBusinessExpenses + periodOrderFeesTotal - periodFeeCredits + periodLegacyExpenses;
 
   return {
     orderFees: periodOrderFeesTotal,
     businessExpenses: periodBusinessExpenses,
     feeCredits: periodFeeCredits,
+    legacyExpenses: periodLegacyExpenses,
     totalExpenses,
     orderCount: periodEtsyOrders.length,
   };

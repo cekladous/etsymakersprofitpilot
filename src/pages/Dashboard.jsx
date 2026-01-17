@@ -185,9 +185,10 @@ export default function Dashboard() {
       etsyOrders,
       orderFees,
       businessExpenses,
+      expenses, // Include legacy expenses for complete reconciliation
       dateRange: periodStart && periodEnd ? { start: periodStart, end: periodEnd } : null,
     });
-  }, [etsyOrders, orderFees, businessExpenses, periodStart, periodEnd]);
+  }, [etsyOrders, orderFees, businessExpenses, expenses, periodStart, periodEnd]);
 
   const metrics = useMemo(() => {
     if (!periodStart || !periodEnd) {

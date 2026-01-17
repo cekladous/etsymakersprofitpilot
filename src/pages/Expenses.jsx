@@ -297,12 +297,14 @@ export default function Expenses() {
         etsyOrders,
         orderFees,
         businessExpenses,
+        expenses, // Include all expense entities for reconciliation
         dateRange,
       });
       dashboardBreakdown = {
         orderFees: calculated.orderFees,
         businessExpenses: calculated.businessExpenses,
         feeCredits: calculated.feeCredits,
+        legacyExpenses: calculated.legacyExpenses,
       };
     }
     
@@ -668,8 +670,8 @@ export default function Expenses() {
         </div>
         {dateRange && (
           <div className="mt-3 pt-3 border-t border-stone-100">
-            <p className="text-xs text-stone-500 mb-2">Dashboard Reconciliation:</p>
-            <div className="flex gap-6 text-xs">
+            <p className="text-xs text-stone-500 mb-2">Dashboard Reconciliation (matches Dashboard KPI):</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
               <div>
                 <span className="text-stone-500">Order Fees: </span>
                 <span className="font-medium text-stone-700">${totals.orderFees.toFixed(2)}</span>
@@ -679,9 +681,17 @@ export default function Expenses() {
                 <span className="font-medium text-emerald-600">-${totals.feeCredits.toFixed(2)}</span>
               </div>
               <div>
-                <span className="text-stone-500">Business: </span>
+                <span className="text-stone-500">Business Expenses: </span>
                 <span className="font-medium text-stone-700">${totals.businessExpenses.toFixed(2)}</span>
               </div>
+              <div>
+                <span className="text-stone-500">Legacy Expenses: </span>
+                <span className="font-medium text-stone-700">${(totals.legacyExpenses || 0).toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-stone-50">
+              <span className="text-stone-600 font-semibold">Dashboard Total: </span>
+              <span className="font-bold text-stone-900">${(totals.orderFees + totals.businessExpenses - totals.feeCredits + (totals.legacyExpenses || 0)).toFixed(2)}</span>
             </div>
           </div>
         )}
