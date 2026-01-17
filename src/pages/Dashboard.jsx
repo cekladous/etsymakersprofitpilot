@@ -49,6 +49,7 @@ import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import BusinessExpenseDialog from "@/components/monthly/BusinessExpenseDialog";
 import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
+import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 // xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
@@ -178,6 +179,16 @@ export default function Dashboard() {
   // For backward compatibility with existing components
   const filteredSummaryData = financialData._rawData;
 
+  // Use shared expense calculator for perfect reconciliation
+  const expenseMetrics = useMemo(() => {
+    return calculateTotalExpenses({
+      etsyOrders,
+      orderFees,
+      businessExpenses,
+      dateRange: periodStart && periodEnd ? { start: periodStart, end: periodEnd } : null,
+    });
+  }, [etsyOrders, orderFees, businessExpenses, periodStart, periodEnd]);
+
   const metrics = useMemo(() => {
     if (!periodStart || !periodEnd) {
       return {
@@ -193,6 +204,7 @@ export default function Dashboard() {
     
     // Filter EtsyOrders for period (by transaction date = sale_date)
     const periodEtsyOrders = etsyOrders.filter(o => {
+      if (!o.sale_date) return false;
       const d = new Date(o.sale_date);
       return d >= periodStart && d <= periodEnd;
     });
@@ -201,41 +213,8 @@ export default function Dashboard() {
     const periodRevenue = periodEtsyOrders.reduce((sum, o) => 
       sum + (o.order_value || 0), 0);
     
-    // Calculate order fees (listing, transaction, processing, ads, shipping, etc.)
-    const periodOrderFees = orderFees
-      .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
-      .reduce((sum, f) => {
-        const fees = (f.listing_fees || 0) + 
-                     (f.transaction_fees || 0) + 
-                     (f.processing_fees || 0) + 
-                     (f.other_fees || 0) + 
-                     (f.etsy_ads || 0) + 
-                     (f.offsite_ads_fees || 0) + 
-                     (f.etsy_shipping || 0) + 
-                     (f.other_postage_costs || 0);
-        // Subtract credits (Share & Save refunds/credits are positive in DB)
-        const credits = (f.share_save_refunds_credits || 0);
-        return sum + fees - credits;
-      }, 0);
-    
-    // Calculate business expenses (by transaction date, not created date)
-    const periodBusinessExpenses = businessExpenses
-      .filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
-    
-    // Debug logging
-    console.log('Dashboard Expense Debug:', {
-      periodStart: periodStart?.toISOString(),
-      periodEnd: periodEnd?.toISOString(),
-      totalBusinessExpenses: businessExpenses.length,
-      filteredBusinessExpenses: businessExpenses.filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd).length,
-      periodBusinessExpenses,
-      periodOrderFees,
-      totalExpenses: periodBusinessExpenses + periodOrderFees
-    });
-    
-    // Total Expenses = Business Expenses + Order Fees (net of credits)
-    const totalExpenses = periodBusinessExpenses + periodOrderFees;
+    // Use shared expense calculator for total expenses
+    const { totalExpenses, orderFees: periodOrderFees, businessExpenses: periodBusinessExpenses } = expenseMetrics;
     
     const periodProfit = periodRevenue - totalExpenses;
     const periodMargin = periodRevenue > 0 ? (periodProfit / periodRevenue) * 100 : 0;
@@ -249,7 +228,7 @@ export default function Dashboard() {
       periodMargin,
       orderCount: periodEtsyOrders.length,
     };
-  }, [etsyOrders, orderFees, businessExpenses, periodStart, periodEnd]);
+  }, [etsyOrders, periodStart, periodEnd, expenseMetrics]);
 
   // Alerts
   const ordersWithoutJobs = Array.isArray(orders) ? orders.filter(o => !o.job_id && o.status !== "shipped") : [];

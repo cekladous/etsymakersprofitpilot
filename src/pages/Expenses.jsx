@@ -29,6 +29,7 @@ import CSVImporter from "@/components/shared/CSVImporter";
 import ExpenseFormDialog from "@/components/expenses/ExpenseFormDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 
 const CATEGORIES = [
   { value: "materials", label: "Materials" },
@@ -277,7 +278,7 @@ export default function Expenses() {
     });
   }, [expenses, search, categoryFilter, statusFilter, dateRange]);
 
-  // Calculate totals matching Dashboard logic
+  // Calculate totals using shared expense calculator for perfect reconciliation
   const totals = useMemo(() => {
     if (!dateRange) {
       // Show old expenses page totals when "All Time" is selected
@@ -288,43 +289,25 @@ export default function Expenses() {
       const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
       const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
       
-      return { totalAmount, totalDebits, totalCredits, orderFees: 0, businessExpenses: totalAmount, totalExpenses: totalAmount };
+      return { totalAmount, totalDebits, totalCredits, orderFees: 0, businessExpenses: totalAmount, totalExpenses: totalAmount, feeCredits: 0 };
     }
     
-    // Match Dashboard calculation exactly
-    const periodEtsyOrders = etsyOrders.filter(o => {
-      const d = new Date(o.sale_date);
-      return d >= dateRange.start && d <= dateRange.end;
+    // Use shared expense calculator - same logic as Dashboard
+    const calculated = calculateTotalExpenses({
+      etsyOrders,
+      orderFees,
+      businessExpenses,
+      dateRange,
     });
     
-    const periodOrderFees = orderFees
-      .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
-      .reduce((sum, f) => {
-        const fees = (f.listing_fees || 0) + 
-                     (f.transaction_fees || 0) + 
-                     (f.processing_fees || 0) + 
-                     (f.other_fees || 0) + 
-                     (f.etsy_ads || 0) + 
-                     (f.offsite_ads_fees || 0) + 
-                     (f.etsy_shipping || 0) + 
-                     (f.other_postage_costs || 0);
-        const credits = (f.share_save_refunds_credits || 0);
-        return sum + fees - credits;
-      }, 0);
-    
-    const periodBusinessExpenses = businessExpenses
-      .filter(e => e?.date && new Date(e.date) >= dateRange.start && new Date(e.date) <= dateRange.end)
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
-    
-    const totalExpenses = periodBusinessExpenses + periodOrderFees;
-    
     return {
-      totalAmount: totalExpenses,
-      totalDebits: periodBusinessExpenses + periodOrderFees,
-      totalCredits: 0,
-      orderFees: periodOrderFees,
-      businessExpenses: periodBusinessExpenses,
-      totalExpenses
+      totalAmount: calculated.totalExpenses,
+      totalDebits: calculated.businessExpenses + calculated.orderFees,
+      totalCredits: calculated.feeCredits,
+      orderFees: calculated.orderFees,
+      businessExpenses: calculated.businessExpenses,
+      feeCredits: calculated.feeCredits,
+      totalExpenses: calculated.totalExpenses,
     };
   }, [filteredExpenses, dateRange, etsyOrders, orderFees, businessExpenses]);
 
@@ -672,8 +655,12 @@ export default function Expenses() {
         {dateRange ? (
           <div className="flex gap-6 text-sm">
             <div>
-              <span className="text-stone-500">Order Fees (net): </span>
+              <span className="text-stone-500">Order Fees: </span>
               <span className="font-semibold text-stone-900">${totals.orderFees.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-stone-500">Fee Credits: </span>
+              <span className="font-semibold text-emerald-600">-${totals.feeCredits.toFixed(2)}</span>
             </div>
             <div>
               <span className="text-stone-500">Business Expenses: </span>
