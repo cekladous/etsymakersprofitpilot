@@ -578,6 +578,9 @@ export default function Expenses() {
           {row.vendor && (
             <p className="text-sm text-stone-500 truncate">{row.vendor}</p>
           )}
+          {row.material_name && row.category === "materials_supplies" && (
+            <p className="text-xs text-blue-600 truncate">🧱 {row.material_name}</p>
+          )}
         </div>
       ),
     },
@@ -596,23 +599,34 @@ export default function Expenses() {
     },
     {
       header: "Category",
-      render: (row) => (
-        <Select
-          value={row.category || "other"}
-          onValueChange={(v) => handleQuickCategory(row, v)}
-        >
-          <SelectTrigger className={`w-32 h-8 text-xs font-medium ${categoryColors[row.category] || categoryColors.other}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORIES.map((cat) => (
-              <SelectItem key={cat.value} value={cat.value}>
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
+      render: (row) => {
+        // Show category badge, only allow editing for legacy expenses
+        if (row.source !== "legacy") {
+          return (
+            <Badge className={categoryColors[row.category] || categoryColors.other}>
+              {CATEGORIES.find(c => c.value === row.category)?.label || row.category}
+            </Badge>
+          );
+        }
+        
+        return (
+          <Select
+            value={row.category || "other"}
+            onValueChange={(v) => handleQuickCategory(row, v)}
+          >
+            <SelectTrigger className={`w-32 h-8 text-xs font-medium ${categoryColors[row.category] || categoryColors.other}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
     },
     {
       header: "Status",
@@ -644,13 +658,15 @@ export default function Expenses() {
             }}>
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => deleteMutation.mutate(row.id)}
-              className="text-rose-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
+            {row.source === "legacy" && (
+              <DropdownMenuItem
+                onClick={() => deleteMutation.mutate(row.id)}
+                className="text-rose-600"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -878,54 +894,82 @@ export default function Expenses() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-          <Input
-            placeholder="Search expenses..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full md:w-52">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {CATEGORIES.map((cat) => (
-              <SelectItem key={cat.value} value={cat.value}>
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {categoryFilter === "materials_supplies" && uniqueMaterials.length > 0 && (
-          <Select value={materialFilter} onValueChange={setMaterialFilter}>
+      <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <Input
+              placeholder="Search expenses..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-full md:w-52">
-              <SelectValue placeholder="Material" />
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Materials</SelectItem>
-              {uniqueMaterials.map((material) => (
-                <SelectItem key={material} value={material}>
-                  {material}
+              <SelectItem value="all">All Categories</SelectItem>
+              {CATEGORIES.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {categoryFilter === "materials_supplies" && uniqueMaterials.length > 0 && (
+            <Select value={materialFilter} onValueChange={setMaterialFilter}>
+              <SelectTrigger className="w-full md:w-52">
+                <SelectValue placeholder="Material" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Materials</SelectItem>
+                {uniqueMaterials.map((material) => (
+                  <SelectItem key={material} value={material}>
+                    {material}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="uncategorized">Needs Review</SelectItem>
+              <SelectItem value="categorized">Reviewed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {(categoryFilter !== "all" || materialFilter !== "all" || statusFilter !== "all" || timeRange !== "all") && (
+          <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
+            <span className="text-xs text-stone-500">Active filters:</span>
+            {categoryFilter !== "all" && (
+              <Badge variant="outline" className="bg-blue-50">
+                {CATEGORIES.find(c => c.value === categoryFilter)?.label}
+              </Badge>
+            )}
+            {materialFilter !== "all" && (
+              <Badge variant="outline" className="bg-blue-50">
+                {materialFilter}
+              </Badge>
+            )}
+            {statusFilter !== "all" && (
+              <Badge variant="outline" className="bg-blue-50">
+                {statusFilter === "uncategorized" ? "Needs Review" : "Reviewed"}
+              </Badge>
+            )}
+            {timeRange !== "all" && (
+              <Badge variant="outline" className="bg-blue-50">
+                {getPeriodLabel()}
+              </Badge>
+            )}
+          </div>
         )}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="uncategorized">Needs Review</SelectItem>
-            <SelectItem value="categorized">Reviewed</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Tabs */}
