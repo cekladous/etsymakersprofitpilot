@@ -20,7 +20,7 @@ export function aggregateFinancials(data, dateRange) {
       cashflow: { etsyDeposits: 0, ownerTransfers: 0 },
       unmatchedLedgerEntries: [],
       unmatchedNetImpact: 0,
-      _rawData: { etsyOrders: [], customSales: [], businessExpenses: [], transfers: [], materialPurchases: [], etsyLedgerEntries: [] }
+      _rawData: { etsyOrders: [], customSales: [], businessExpenses: [], transfers: [], materialPurchases: [], etsyLedgerEntries: [], expenses: [] }
     };
   }
   
@@ -38,6 +38,10 @@ export function aggregateFinancials(data, dateRange) {
   const periodTransfers = filterByDate(Array.isArray(data.transfers) ? data.transfers : [], "date");
   const periodMaterialPurchases = filterByDate(Array.isArray(data.materialPurchases) ? data.materialPurchases : [], "purchase_date");
   const periodLedgerEntries = filterByDate(Array.isArray(data.etsyLedgerEntries) ? data.etsyLedgerEntries : [], "entry_date");
+  
+  // CRITICAL: Include legacy Expense entity (only reviewed/categorized ones)
+  const periodLegacyExpenses = filterByDate(Array.isArray(data.expenses) ? data.expenses : [], "date")
+    .filter(e => e.is_categorized === true && e.type !== "return");
 
   // ==================== A) REVENUE ====================
   
@@ -200,30 +204,59 @@ export function aggregateFinancials(data, dateRange) {
     .filter(e => e.category_name === "materials_supplies")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  const totalMaterialsSupplies = materialsCost + materialsExpense;
+  // CRITICAL: Include legacy Expense entity materials
+  const legacyMaterials = periodLegacyExpenses
+    .filter(e => e.category === "materials" || e.category === "packaging")
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const totalMaterialsSupplies = materialsCost + materialsExpense + legacyMaterials;
   
   // 2) Tools & Equipment
-  const toolsEquipment = periodBusinessExpenses
+  const toolsEquipmentFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "tools_equipment")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const legacyTools = periodLegacyExpenses
+    .filter(e => e.category === "tools" || e.category === "equipment")
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const toolsEquipment = toolsEquipmentFromBE + legacyTools;
 
   // ==================== D) BUSINESS EXPENSES ====================
   
-  const advertisingMarketing = periodBusinessExpenses
+  const advertisingMarketingFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "advertising_marketing")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  const officeExpenses = periodBusinessExpenses
+  const legacyAdvertising = periodLegacyExpenses
+    .filter(e => e.category === "advertising" || e.category === "software")
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const advertisingMarketing = advertisingMarketingFromBE + legacyAdvertising;
+  
+  const officeExpensesFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "office_expenses")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const legacyOffice = periodLegacyExpenses
+    .filter(e => e.category === "utilities")
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const officeExpenses = officeExpensesFromBE + legacyOffice;
   
   const professionalServices = periodBusinessExpenses
     .filter(e => e.category_name === "professional_services")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  const otherBusinessExpenses = periodBusinessExpenses
+  const otherBusinessExpensesFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "other")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const legacyOther = periodLegacyExpenses
+    .filter(e => e.category === "other" || e.category === "maintenance" || e.category === "shipping")
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const otherBusinessExpenses = otherBusinessExpensesFromBE + legacyOther;
   
   const miscellaneousExpenses = periodBusinessExpenses
     .filter(e => e.category_name === "miscellaneous_expenses")
@@ -333,6 +366,7 @@ export function aggregateFinancials(data, dateRange) {
       transfers: periodTransfers,
       materialPurchases: periodMaterialPurchases,
       etsyLedgerEntries: periodLedgerEntries,
+      expenses: periodLegacyExpenses,
     },
   };
 }

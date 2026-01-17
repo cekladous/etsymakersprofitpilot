@@ -173,8 +173,9 @@ export default function Dashboard() {
       materialPurchases,
       etsyLedgerEntries,
       orderFees,
+      expenses, // CRITICAL: Include legacy Expense entity
     }, dateRange);
-  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, dateRange]);
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, dateRange]);
 
   // For backward compatibility with existing components
   const filteredSummaryData = financialData._rawData;
