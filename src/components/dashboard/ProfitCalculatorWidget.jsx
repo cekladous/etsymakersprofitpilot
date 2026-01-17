@@ -40,7 +40,7 @@ export default function ProfitCalculatorWidget() {
               <CardDescription>See your profit before fees</CardDescription>
             </div>
           </div>
-          <Link to={createPageUrl("Calculator")}>
+          <Link to={createPageUrl("Tools")}>
             <Button variant="ghost" size="sm">
               Full Calculator
               <ArrowRight className="w-4 h-4 ml-2" />
