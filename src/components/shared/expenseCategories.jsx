@@ -57,3 +57,43 @@ export const CATEGORY_COLORS = {
   etsy_shipping: "bg-yellow-100 text-yellow-700",
   other_postage_costs: "bg-yellow-200 text-yellow-800",
 };
+
+/**
+ * Legacy structure for BudgetTab compatibility
+ */
+export const EXPENSE_CATEGORY_GROUPS = {
+  selling_expenses: {
+    label: "Selling Expenses",
+    color: "bg-cyan-50",
+    categories: [
+      { name: "etsy_listing_fees", label: "Etsy Listing Fees" },
+      { name: "etsy_transaction_fees", label: "Etsy Transaction Fees" },
+      { name: "etsy_processing_fees", label: "Etsy Processing Fees" },
+      { name: "share_save_refunds_credits", label: "Share & Save Credits" },
+      { name: "other_fees", label: "Other Fees" },
+      { name: "etsy_ads", label: "Etsy Ads" },
+      { name: "etsy_offsite_ads_fees", label: "Offsite Ads" },
+      { name: "etsy_shipping", label: "Shipping Labels" },
+      { name: "other_postage_costs", label: "Other Postage" },
+    ],
+  },
+  product_expenses: {
+    label: "Product Expenses",
+    color: "bg-pink-50",
+    categories: [
+      { name: "materials_supplies", label: "Materials & Supplies" },
+      { name: "tools_equipment", label: "Tools & Equipment" },
+    ],
+  },
+  business_expenses: {
+    label: "Business Expenses",
+    color: "bg-purple-50",
+    categories: [
+      { name: "advertising_marketing", label: "Advertising & Marketing" },
+      { name: "office_expenses", label: "Office Expenses" },
+      { name: "professional_services", label: "Professional Services" },
+      { name: "other", label: "Other" },
+      { name: "miscellaneous_expenses", label: "Miscellaneous" },
+    ],
+  },
+};
