@@ -8,6 +8,11 @@ export const DEFAULT_FEE_CONFIG = {
   etsy_transaction_fee_percent: 6.5,
   payment_processing_fee_percent: 3.0,
   payment_processing_fee_fixed: 0.25,
+  share_save_rate_pct: 4.0,
+  advertising_type: "none",
+  etsy_ads_rate: 0,
+  etsy_ads_rate_type: "percent",
+  offsite_ads_rate: 15,
   paypal_fee_percent: 3.49,
   paypal_fee_fixed: 0.49,
   square_fee_percent: 2.9,
@@ -70,7 +75,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
 
   // Calculate Share & Save discount and credit
   let share_save_discount_amount = 0;
-  let share_save_credit = 0;
+  let share_save_fee = 0;
   
   if (share_save_enabled) {
     if (share_save_discount_type === "percent") {
@@ -82,10 +87,10 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     // Ensure discount doesn't make price negative
     share_save_discount_amount = Math.min(share_save_discount_amount, sales_price);
     
-    // Calculate Share & Save credit (4% refund on qualifying total)
-    // Qualifying total = item price + shipping (exclude taxes, same as transaction fee base)
-    const qualifying_total = sales_price + shipping_charged;
-    share_save_credit = (qualifying_total * share_save_fee_rate) / 100;
+    // Calculate Share & Save fee credit (4% refund on qualifying total)
+    // Qualifying total = (item + shipping - discounts - refunds) exclude tax
+    const qualifying_total = sales_price + shipping_charged - discount_amount - refunds;
+    share_save_fee = (Math.max(0, qualifying_total) * (config.share_save_rate_pct || share_save_fee_rate)) / 100;
   }
 
   // Calculate revenue (excludes sales tax, includes Share & Save discount)
@@ -133,7 +138,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   }
   
   // Total Fees (Share & Save credit reduces total fees)
-  const total_fees = listing_fee + transaction_fee + processing_fee + advertising_cost - share_save_credit;
+  const total_fees = listing_fee + transaction_fee + processing_fee + advertising_cost - share_save_fee;
   
   // Net revenue after fees
   const net_revenue = gross_revenue - total_fees;
@@ -157,13 +162,14 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     transaction_fee,
     processing_fee,
     advertising_cost,
-    share_save_credit,
+    share_save_fee,
     total_fees,
     
     // Share & Save Details
     share_save_discount_amount,
     original_sale_price: sales_price,
     discounted_sale_price: share_save_enabled ? sales_price - share_save_discount_amount : sales_price,
+    share_save_credit: share_save_fee, // Alias for backwards compatibility
     
     // Bottom Line
     net_revenue,

@@ -31,39 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 
-const CATEGORIES = [
-  { value: "materials_supplies", label: "Materials & Supplies" },
-  { value: "tools_equipment", label: "Tools & Equipment" },
-  { value: "advertising_marketing", label: "Advertising & Marketing" },
-  { value: "office_expenses", label: "Office Expenses" },
-  { value: "professional_services", label: "Professional Services" },
-  { value: "other", label: "Other" },
-  { value: "miscellaneous_expenses", label: "Miscellaneous" },
-  { value: "etsy_listing_fees", label: "Etsy Listing Fees" },
-  { value: "etsy_transaction_fees", label: "Etsy Transaction Fees" },
-  { value: "etsy_processing_fees", label: "Etsy Processing Fees" },
-  { value: "etsy_ads", label: "Etsy Ads" },
-  { value: "etsy_offsite_ads_fees", label: "Etsy Offsite Ads" },
-  { value: "etsy_shipping", label: "Etsy Shipping" },
-  { value: "other_postage_costs", label: "Other Postage" },
-];
-
-const categoryColors = {
-  materials_supplies: "bg-blue-100 text-blue-700",
-  tools_equipment: "bg-amber-100 text-amber-700",
-  advertising_marketing: "bg-pink-100 text-pink-700",
-  office_expenses: "bg-emerald-100 text-emerald-700",
-  professional_services: "bg-violet-100 text-violet-700",
-  other: "bg-stone-100 text-stone-600",
-  miscellaneous_expenses: "bg-stone-200 text-stone-700",
-  etsy_listing_fees: "bg-orange-100 text-orange-700",
-  etsy_transaction_fees: "bg-orange-200 text-orange-800",
-  etsy_processing_fees: "bg-orange-100 text-orange-700",
-  etsy_ads: "bg-purple-100 text-purple-700",
-  etsy_offsite_ads_fees: "bg-purple-200 text-purple-800",
-  etsy_shipping: "bg-yellow-100 text-yellow-700",
-  other_postage_costs: "bg-yellow-200 text-yellow-800",
-};
+import { ALL_EXPENSE_CATEGORIES as CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
 
 export default function Expenses() {
   const [importOpen, setImportOpen] = useState(false);
@@ -829,11 +797,18 @@ export default function Expenses() {
       <div className="bg-white rounded-xl border border-stone-100 p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm text-stone-500">Total from Table {dateRange ? `(${getPeriodLabel()})` : "(All Time)"}</p>
+            <p className="text-sm text-stone-500">
+              Total Shown {dateRange ? `(${getPeriodLabel()})` : "(All Time)"}
+            </p>
             <p className="text-2xl font-bold text-stone-900">${totals.totalAmount.toFixed(2)}</p>
           </div>
-          <div className="text-sm text-stone-500">
-            {filteredExpenses.length} transaction{filteredExpenses.length !== 1 ? "s" : ""}
+          <div className="text-right">
+            <p className="text-sm text-stone-500">{filteredExpenses.length} transaction{filteredExpenses.length !== 1 ? "s" : ""}</p>
+            {categoryFilter !== "all" && (
+              <p className="text-xs text-blue-600 mt-1">
+                {CATEGORIES.find(c => c.value === categoryFilter)?.label}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex gap-6 text-sm">
@@ -842,37 +817,10 @@ export default function Expenses() {
             <span className="font-semibold text-stone-900">${totals.totalDebits.toFixed(2)}</span>
           </div>
           <div>
-            <span className="text-stone-500">Returns: </span>
+            <span className="text-stone-500">Credits/Returns: </span>
             <span className="font-semibold text-emerald-600">-${totals.totalCredits.toFixed(2)}</span>
           </div>
         </div>
-        {dateRange && (
-          <div className="mt-3 pt-3 border-t border-stone-100">
-            <p className="text-xs text-stone-500 mb-2">Dashboard Reconciliation (matches Dashboard KPI):</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-              <div>
-                <span className="text-stone-500">Order Fees: </span>
-                <span className="font-medium text-stone-700">${totals.orderFees.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-stone-500">Fee Credits: </span>
-                <span className="font-medium text-emerald-600">-${totals.feeCredits.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-stone-500">Business Expenses: </span>
-                <span className="font-medium text-stone-700">${totals.businessExpenses.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-stone-500">Legacy Expenses: </span>
-                <span className="font-medium text-stone-700">${(totals.legacyExpenses || 0).toFixed(2)}</span>
-              </div>
-            </div>
-            <div className="mt-2 pt-2 border-t border-stone-50">
-              <span className="text-stone-600 font-semibold">Dashboard Total: </span>
-              <span className="font-bold text-stone-900">${(totals.orderFees + totals.businessExpenses - totals.feeCredits + (totals.legacyExpenses || 0)).toFixed(2)}</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Bulk Actions */}

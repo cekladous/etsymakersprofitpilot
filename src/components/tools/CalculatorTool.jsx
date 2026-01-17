@@ -410,16 +410,16 @@ export default function CalculatorTool() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Etsy Share & Save Savings Rate (%)</Label>
+                      <Label className="text-sm font-medium">Share & Save Credit Rate (%)</Label>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={inputs.share_save_fee_rate}
+                        value={inputs.share_save_fee_rate || feeConfig?.share_save_rate_pct || 4}
                         onChange={(e) => handleInputChange("share_save_fee_rate", e.target.value)}
                         className="h-11"
                       />
-                      <p className="text-xs text-stone-500">Percentage you save on listing fees (default: 4%)</p>
+                      <p className="text-xs text-stone-500">Fee credit you receive on Share & Save orders (default: 4%)</p>
                     </div>
 
                     {/* Share & Save Impact Summary */}
@@ -439,8 +439,8 @@ export default function CalculatorTool() {
                           <span className="font-medium text-emerald-900">{formatCurrency(results.discounted_sale_price)}</span>
                         </div>
                         <div className="flex justify-between border-t border-emerald-300 pt-1 mt-1">
-                          <span className="text-emerald-700">Share & Save Savings (4% you keep):</span>
-                          <span className="font-medium text-emerald-600">+{formatCurrency(results.share_save_fee)}</span>
+                         <span className="text-emerald-700">Share & Save Credit ({feeConfig?.share_save_rate_pct || 4}% you keep):</span>
+                         <span className="font-medium text-emerald-600">+{formatCurrency(results.share_save_fee)}</span>
                         </div>
                       </div>
                     </div>
@@ -597,7 +597,7 @@ export default function CalculatorTool() {
                   <BreakdownRow label="Advertising" amount={results.advertising_cost} indent />
                 )}
                 {results.share_save_fee > 0 && (
-                  <BreakdownRow label="Share & Save Savings" amount={-results.share_save_fee} indent />
+                  <BreakdownRow label="Share & Save Credit" amount={-results.share_save_fee} indent />
                 )}
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Fees" amount={results.total_fees} bold />
