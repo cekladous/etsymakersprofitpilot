@@ -204,9 +204,9 @@ export function aggregateFinancials(data, dateRange) {
     .filter(e => e.category_name === "materials_supplies")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  // CRITICAL: Include legacy Expense entity materials
+  // CRITICAL: Include legacy Expense entity materials (old category names)
   const legacyMaterials = periodLegacyExpenses
-    .filter(e => e.category === "materials" || e.category === "packaging")
+    .filter(e => ["materials", "packaging"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const totalMaterialsSupplies = materialsCost + materialsExpense + legacyMaterials;
@@ -217,7 +217,7 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyTools = periodLegacyExpenses
-    .filter(e => e.category === "tools" || e.category === "equipment")
+    .filter(e => ["tools", "equipment"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const toolsEquipment = toolsEquipmentFromBE + legacyTools;
@@ -229,7 +229,7 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyAdvertising = periodLegacyExpenses
-    .filter(e => e.category === "advertising" || e.category === "software")
+    .filter(e => ["advertising", "software"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const advertisingMarketing = advertisingMarketingFromBE + legacyAdvertising;
@@ -239,7 +239,7 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyOffice = periodLegacyExpenses
-    .filter(e => e.category === "utilities")
+    .filter(e => ["utilities"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const officeExpenses = officeExpensesFromBE + legacyOffice;
@@ -253,7 +253,7 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const legacyOther = periodLegacyExpenses
-    .filter(e => e.category === "other" || e.category === "maintenance" || e.category === "shipping")
+    .filter(e => ["other", "maintenance", "shipping"].includes(e.category))
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   const otherBusinessExpenses = otherBusinessExpensesFromBE + legacyOther;
