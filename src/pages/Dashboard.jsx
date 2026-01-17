@@ -223,6 +223,17 @@ export default function Dashboard() {
       .filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
     
+    // Debug logging
+    console.log('Dashboard Expense Debug:', {
+      periodStart: periodStart?.toISOString(),
+      periodEnd: periodEnd?.toISOString(),
+      totalBusinessExpenses: businessExpenses.length,
+      filteredBusinessExpenses: businessExpenses.filter(e => e?.date && new Date(e.date) >= periodStart && new Date(e.date) <= periodEnd).length,
+      periodBusinessExpenses,
+      periodOrderFees,
+      totalExpenses: periodBusinessExpenses + periodOrderFees
+    });
+    
     // Total Expenses = Business Expenses + Order Fees (net of credits)
     const totalExpenses = periodBusinessExpenses + periodOrderFees;
     
