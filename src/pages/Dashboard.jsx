@@ -522,7 +522,7 @@ export default function Dashboard() {
                 type="warning"
               />
             </Link>
-            <Link to={createPageUrl("Inventory") + "?filter=low"} className="block">
+            <Link to={createPageUrl("Inventory")} className="block">
               <AlertCard
                 title="Low Stock Materials"
                 count={lowStockSheets.length}
