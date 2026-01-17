@@ -102,7 +102,7 @@ export default function ActualsSpendingMatrix({
     const monthRange = months[monthIndex];
     const categoryName = getCategoryNameMapping(category.key);
     
-    // Navigate to Expenses page with filters
+    // Navigate to Expenses page with filters (spreadsheet-style drill-down)
     const url = createPageUrl("Expenses") + 
       `?startDate=${format(monthRange.start, 'yyyy-MM-dd')}` +
       `&endDate=${format(monthRange.end, 'yyyy-MM-dd')}` +

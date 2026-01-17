@@ -33,6 +33,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
   const handleDrillDown = (label, categoryName) => {
     let items = [];
     
+    // Include MaterialPurchases for materials_supplies
     if (categoryName === "materials_supplies") {
       const purchases = (filteredData.materialPurchases || []).map(p => ({
         date: p.purchase_date,
@@ -44,6 +45,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
       items.push(...purchases);
     }
     
+    // Include BusinessExpenses for this category
     const expenses = (filteredData.businessExpenses || [])
       .filter(e => e.category_name === categoryName)
       .map(e => ({
@@ -56,6 +58,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     
     items.push(...expenses);
     
+    // Include matched Etsy Ledger entries for fee categories
     const ledgerEntries = (filteredData.etsyLedgerEntries || [])
       .filter(e => e.matched_category === categoryName)
       .map(e => ({
@@ -154,7 +157,19 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Net Profit Statement</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Net Profit Statement</CardTitle>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="w-4 h-4 text-stone-400" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p className="text-xs">This view mirrors the Etsy Seller Spreadsheet and reconciles 1:1 with Expenses and Orders. Click any line item to drill into details.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </CardHeader>
         <CardContent className="space-y-0">
           
@@ -268,7 +283,13 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           />
 
           {/* TOTALS */}
-          <Row label="Total Expenses" amount={totalExpenses} bold highlight="bg-rose-50" linkTo={buildExpensesLink()} />
+          <Row 
+            label="Total Expenses" 
+            amount={totalExpenses} 
+            bold 
+            highlight="bg-rose-50" 
+            linkTo={buildExpensesLink()}
+          />
           <Row 
             label="Net Profit" 
             amount={netProfit} 

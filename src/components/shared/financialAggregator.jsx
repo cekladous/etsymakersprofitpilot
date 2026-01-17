@@ -231,13 +231,15 @@ export function aggregateFinancials(data, dateRange) {
 
   // ==================== E) TOTALS ====================
   
-  // 1) Total Expenses
+  // 1) Total Expenses (Order Fees + Business Expenses - Fee Credits)
   const totalSellingExpenses = totalEtsyFees + etsyShipping + otherPostage;
   const totalProductExpenses = totalMaterialsSupplies + toolsEquipment;
   const totalBusinessExpenses = 
     advertisingMarketing + officeExpenses + professionalServices + 
     otherBusinessExpenses + miscellaneousExpenses;
   
+  // CRITICAL: Total Expenses = Fees + Product + Business
+  // This MUST match Expenses page total for same date range
   const totalExpenses = totalSellingExpenses + totalProductExpenses + totalBusinessExpenses;
   
   // 2) Net Profit (tax collected excluded from profit)
