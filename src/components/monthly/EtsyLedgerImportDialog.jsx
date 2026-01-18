@@ -52,6 +52,21 @@ const parseEtsyDateToISO = (v) => {
   
   const str = toStringSafe(v);
   
+  // Try DD-MMM-YY format (e.g., "31-Dec-25")
+  const ddmmmyy = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/);
+  if (ddmmmyy) {
+    const [, day, monthStr, year] = ddmmmyy;
+    const months = {
+      jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+      jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+    };
+    const month = months[monthStr.toLowerCase()];
+    if (month) {
+      const fullYear = parseInt(year) < 50 ? `20${year}` : `19${year}`;
+      return `${fullYear}-${month}-${day.padStart(2, "0")}`;
+    }
+  }
+  
   // Try MM/DD/YYYY
   const mmddyyyy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (mmddyyyy) {
