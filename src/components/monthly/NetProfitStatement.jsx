@@ -138,30 +138,45 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     isNegative = false,
     highlight = ""
   }) => {
-    const isClickable = (categoryName && amount !== 0) || linkTo;
+    const hasQuickView = categoryName && amount !== 0;
+    const hasLinkTo = linkTo && amount !== 0;
     const displayAmount = isNegative ? -Math.abs(amount) : amount;
     
-    const content = (
+    return (
       <div 
         className={`
           flex justify-between items-center py-2 px-4 
           ${highlight}
           ${bold ? "font-semibold border-t border-b border-stone-300 bg-stone-100" : ""} 
-          ${isClickable ? "cursor-pointer hover:bg-stone-100 transition-colors" : ""}
           group
         `}
-        onClick={() => {
-          if (categoryName && !linkTo) {
-            handleDrillDown(label, categoryName);
-          }
-        }}
       >
-        <span className={`text-sm ${indent ? "pl-4" : ""} ${bold ? "font-bold" : ""}`}>
+        <span 
+          className={`
+            text-sm ${indent ? "pl-4" : ""} ${bold ? "font-bold" : ""}
+            ${hasQuickView ? "cursor-pointer hover:underline" : ""}
+          `}
+          onClick={() => {
+            if (hasQuickView) {
+              handleDrillDown(label, categoryName);
+            }
+          }}
+        >
           {label}
         </span>
         <div className="flex items-center gap-2">
-          {isClickable && (
-            <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-600 transition-colors" />
+          {hasLinkTo && (
+            <Link to={linkTo}>
+              <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer" />
+            </Link>
+          )}
+          {hasQuickView && !hasLinkTo && (
+            <div 
+              className="cursor-pointer"
+              onClick={() => handleDrillDown(label, categoryName)}
+            >
+              <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors" />
+            </div>
           )}
           <span className={`text-sm ${bold ? "font-bold" : ""} ${displayAmount < 0 ? "text-emerald-600" : ""}`}>
             {formatCurrency(displayAmount)}
@@ -169,12 +184,6 @@ export default function NetProfitStatement({ financialData, dateRange }) {
         </div>
       </div>
     );
-
-    if (linkTo) {
-      return <Link to={linkTo}>{content}</Link>;
-    }
-
-    return content;
   };
 
   const buildExpensesLink = (categoryName = null) => {
