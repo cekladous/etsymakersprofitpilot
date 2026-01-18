@@ -125,7 +125,35 @@ export default function Dashboard() {
     queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 5000),
   });
 
+  const { data: user } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: () => base44.auth.me(),
+  });
+
   const now = new Date();
+  
+  // Welcoming message logic
+  const getGreeting = () => {
+    const hour = now.getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const motivationalQuotes = [
+    "Every masterpiece starts with a single cut.",
+    "Your creativity is your greatest asset.",
+    "Small steps lead to big achievements.",
+    "Craft with passion, sell with confidence.",
+    "Today's effort is tomorrow's success.",
+    "Your business is growing one order at a time.",
+    "Believe in your craft and your numbers.",
+    "Progress, not perfection.",
+    "You're building something amazing.",
+    "Success is made of consistent small wins."
+  ];
+
+  const dailyQuote = motivationalQuotes[now.getDate() % motivationalQuotes.length];
   
   // Calculate date range based on selected timeRange or custom dates
   const dateRange = useMemo(() => {
@@ -314,6 +342,14 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg">
+        <h1 className="text-2xl font-bold mb-1">
+          {getGreeting()}, {user?.full_name?.split(' ')[0] || 'there'}! ✨
+        </h1>
+        <p className="text-emerald-100 italic">"{dailyQuote}"</p>
+      </div>
+
       <PageHeader
         title="Dashboard"
         description={getPeriodLabel()}
