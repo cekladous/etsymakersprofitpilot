@@ -11,8 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar } from "lucide-react";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
 import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
@@ -21,7 +27,11 @@ import EtsyOrderImportDialog from "@/components/monthly/EtsyOrderImportDialog";
 
 export default function Orders() {
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [timeRange, setTimeRange] = useState("all");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [customStartDate, setCustomStartDate] = useState(null);
+  const [customEndDate, setCustomEndDate] = useState(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
@@ -60,6 +70,28 @@ export default function Orders() {
     }).format(amount);
   };
 
+  // Calculate date range based on selected timeRange or custom dates
+  const dateRange = useMemo(() => {
+    if (timeRange === "all") return null;
+    
+    let start, end;
+    
+    if (customStartDate && customEndDate) {
+      start = customStartDate;
+      end = customEndDate;
+    } else if (timeRange === "month") {
+      start = startOfMonth(selectedDate);
+      end = endOfMonth(selectedDate);
+    } else if (timeRange === "quarter") {
+      start = startOfQuarter(selectedDate);
+      end = endOfQuarter(selectedDate);
+    } else if (timeRange === "year") {
+      start = startOfYear(selectedDate);
+      end = endOfYear(selectedDate);
+    }
+    return start && end ? { start, end } : null;
+  }, [timeRange, selectedDate, customStartDate, customEndDate]);
+
   const filteredOrders = useMemo(() => {
     return etsyOrders.filter(order => {
       const matchesSearch = !search || 
@@ -67,22 +99,14 @@ export default function Orders() {
         order.buyer_username?.toLowerCase().includes(search.toLowerCase());
       
       let matchesDate = true;
-      if (dateFilter !== "all") {
+      if (dateRange && order.sale_date) {
         const orderDate = new Date(order.sale_date);
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        
-        if (dateFilter === "30days") {
-          matchesDate = orderDate >= thirtyDaysAgo;
-        } else if (dateFilter === "90days") {
-          matchesDate = orderDate >= ninetyDaysAgo;
-        }
+        matchesDate = orderDate >= dateRange.start && orderDate <= dateRange.end;
       }
       
       return matchesSearch && matchesDate;
     });
-  }, [etsyOrders, search, dateFilter]);
+  }, [etsyOrders, search, dateRange]);
 
   // Revenue excludes sales tax (pass-through to government)
   const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0) - (o.sales_tax || 0), 0);
@@ -90,6 +114,22 @@ export default function Orders() {
     .filter(f => filteredOrders.some(o => o.id === f.order_id))
     .reduce((sum, f) => sum + (f.total_fees || 0), 0);
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
+
+  const getPeriodLabel = () => {
+    if (timeRange === "all") return "All Orders";
+    if (customStartDate && customEndDate) {
+      return `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
+    }
+    if (timeRange === "month") {
+      return format(selectedDate, "MMMM yyyy");
+    } else if (timeRange === "quarter") {
+      const quarter = Math.floor(selectedDate.getMonth() / 3) + 1;
+      return `Q${quarter} ${format(selectedDate, "yyyy")}`;
+    } else if (timeRange === "year") {
+      return format(selectedDate, "yyyy");
+    }
+    return "All Orders";
+  };
 
   const exportOrders = () => {
     const data = filteredOrders.map(o => {
@@ -209,18 +249,129 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Etsy Orders" description="View imported Etsy sales data">
-        <Button variant="outline" onClick={exportOrders}>
-          <Download className="w-4 h-4 mr-2" />
-          Export
-        </Button>
-        <Button 
-          className="bg-emerald-600 hover:bg-emerald-700"
-          onClick={() => setImportDialogOpen(true)}
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          Import Orders
-        </Button>
+      <PageHeader title="Etsy Orders" description={getPeriodLabel()}>
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* Time Range Buttons */}
+          <div className="flex gap-2 items-center">
+            {["all", "month", "quarter", "year"].map((range) => (
+              <Button
+                key={range}
+                variant={timeRange === range && !customStartDate ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setTimeRange(range);
+                  setCustomStartDate(null);
+                  setCustomEndDate(null);
+                }}
+                className={timeRange === range && !customStartDate ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                {range === "all" ? "All" : range.charAt(0).toUpperCase() + range.slice(1)}
+              </Button>
+            ))}
+            
+            {timeRange !== "all" && (
+              <>
+                <div className="h-6 w-px bg-stone-300 mx-1"></div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (timeRange === "month") {
+                      setSelectedDate(subMonths(selectedDate, 1));
+                    } else if (timeRange === "quarter") {
+                      setSelectedDate(subMonths(selectedDate, 3));
+                    } else if (timeRange === "year") {
+                      setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth()));
+                    }
+                  }}
+                >
+                  ←
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (timeRange === "month") {
+                      setSelectedDate(subMonths(selectedDate, -1));
+                    } else if (timeRange === "quarter") {
+                      setSelectedDate(subMonths(selectedDate, -3));
+                    } else if (timeRange === "year") {
+                      setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth()));
+                    }
+                  }}
+                >
+                  →
+                </Button>
+              </>
+            )}
+          </div>
+          
+          {timeRange !== "all" && (
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {customStartDate && customEndDate 
+                    ? `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}`
+                    : format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
+                  }
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-4" align="start">
+                <div className="space-y-4">
+                  <p className="text-sm text-stone-500">Select start and end dates</p>
+                  <CalendarComponent
+                    mode="range"
+                    selected={{ from: customStartDate, to: customEndDate }}
+                    onSelect={(range) => {
+                      setCustomStartDate(range?.from || null);
+                      setCustomEndDate(range?.to || null);
+                    }}
+                    numberOfMonths={1}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setCustomStartDate(null);
+                        setCustomEndDate(null);
+                        setDatePickerOpen(false);
+                      }}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setDatePickerOpen(false)}
+                      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                      disabled={!customStartDate || !customEndDate}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          <div className="h-6 w-px bg-stone-300 mx-1"></div>
+
+          <Button variant="outline" size="sm" onClick={exportOrders}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button 
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Import Orders
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Summary Cards */}
@@ -308,27 +459,15 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-          <Input
-            placeholder="Search by order ID or buyer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={dateFilter} onValueChange={setDateFilter}>
-          <SelectTrigger className="w-full md:w-48">
-            <SelectValue placeholder="Date Range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
-            <SelectItem value="30days">Last 30 Days</SelectItem>
-            <SelectItem value="90days">Last 90 Days</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+        <Input
+          placeholder="Search by order ID or buyer..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {/* Table */}
