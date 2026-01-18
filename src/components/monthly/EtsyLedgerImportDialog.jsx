@@ -165,31 +165,15 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
 
   const importMutation = useMutation({
     mutationFn: async ({ entries, batchData, transfers }) => {
-      // Get existing entries to check for duplicates
-      const existingEntries = await base44.entities.EtsyLedgerEntry.list();
-      
-      // Filter out duplicates
-      const existingKeys = new Set(
-        existingEntries.map(e => `${e.entry_date}|${e.type}|${e.title}|${e.amount}|${e.net}`)
-      );
-      
-      const uniqueEntries = entries.filter(entry => {
-        const key = `${entry.entry_date}|${entry.type}|${entry.title}|${entry.amount}|${entry.net}`;
-        return !existingKeys.has(key);
-      });
-      
-      const duplicateCount = entries.length - uniqueEntries.length;
-      
       // Create batch
       const batch = await base44.entities.OrderImportBatch.create({
         ...batchData,
-        row_count: uniqueEntries.length,
-        notes: duplicateCount > 0 ? `${duplicateCount} duplicates skipped` : "",
+        row_count: entries.length,
       });
       
-      // Create ledger entries (only non-duplicates)
-      if (uniqueEntries.length > 0) {
-        const entriesWithBatch = uniqueEntries.map(e => ({ ...e, source_batch_id: batch.id }));
+      // Create ledger entries
+      if (entries.length > 0) {
+        const entriesWithBatch = entries.map(e => ({ ...e, source_batch_id: batch.id }));
         await base44.entities.EtsyLedgerEntry.bulkCreate(entriesWithBatch);
       }
       
@@ -198,7 +182,7 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
         await base44.entities.Transfer.bulkCreate(transfers);
       }
       
-      return { batch, entries: uniqueEntries, duplicates: duplicateCount };
+      return { batch, entries };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
@@ -209,7 +193,6 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
       setResult({
         imported: data.entries.length,
         skipped: skippedRows.length,
-        duplicates: data.duplicates,
       });
     },
     onError: (error) => {
@@ -245,6 +228,12 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet);
         
+        // Get existing entries to check for database duplicates
+        const existingEntries = await base44.entities.EtsyLedgerEntry.list();
+        const existingKeys = new Set(
+          existingEntries.map(e => `${e.entry_date}|${e.type}|${e.title}|${e.amount}|${e.net}`)
+        );
+        
         const entries = [];
         const transfers = [];
         const skipped = [];
@@ -270,10 +259,19 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
           
           // Dedupe key
           const dedupeKey = `${entry_date}|${type}|${title}|${amount}|${net}`;
+          
+          // Check for duplicates in this file
           if (seen.has(dedupeKey)) {
-            skipped.push({ rowIndex: idx + 2, reason: "Duplicate entry", row });
+            skipped.push({ rowIndex: idx + 2, reason: "Duplicate in file", row });
             return;
           }
+          
+          // Check for duplicates in database
+          if (existingKeys.has(dedupeKey)) {
+            skipped.push({ rowIndex: idx + 2, reason: "Duplicate in database", row });
+            return;
+          }
+          
           seen.add(dedupeKey);
           
           // Extract order ID
@@ -432,8 +430,7 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
                   <p className="font-semibold text-emerald-900">Import Successful</p>
                   <p className="text-sm text-emerald-700">
                     ✓ Imported: {result.imported} entries
-                    {result.duplicates > 0 && <><br/>⊗ Duplicates skipped: {result.duplicates}</>}
-                    {result.skipped > 0 && <><br/>⚠ Invalid rows: {result.skipped}</>}
+                    {result.skipped > 0 && <><br/>⊗ Skipped: {result.skipped} rows</>}
                   </p>
                 </div>
               </div>
