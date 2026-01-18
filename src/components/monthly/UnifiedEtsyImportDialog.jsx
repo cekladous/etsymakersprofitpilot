@@ -150,17 +150,23 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
           status: "success",
         });
 
-        const existingEntries = await base44.entities.EtsyLedgerEntry.list();
-        const existingKeys = new Set(
-          existingEntries.map(e => `${e.entry_date}_${e.type}_${e.title}_${e.amount}`)
-        );
+        const existingEntries = await base44.entities.EtsyLedgerEntry.list("-entry_date", 10000);
 
         for (const entry of ledgerEntries) {
-          const key = `${entry.entry_date}_${entry.type}_${entry.title}_${entry.amount}`;
-          if (existingKeys.has(key)) {
+          // Check if this exact entry already exists (by all key fields)
+          const duplicate = existingEntries.find(e => 
+            e.entry_date === entry.entry_date &&
+            e.type === entry.type &&
+            e.title === entry.title &&
+            e.amount === entry.amount &&
+            e.net === entry.net
+          );
+          
+          if (duplicate) {
             result.ledger.skipped++;
             continue;
           }
+          
           await base44.entities.EtsyLedgerEntry.create({ ...entry, source_batch_id: batch.id });
           result.ledger.created++;
         }
@@ -464,7 +470,9 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
                   {importResult.ledger && (
                     <>
                       <p>✓ Ledger entries created: {importResult.ledger.created}</p>
-                      <p>⊗ Ledger entries skipped: {importResult.ledger.skipped}</p>
+                      {importResult.ledger.skipped > 0 && (
+                        <p className="text-amber-700">⊗ Ledger entries skipped: {importResult.ledger.skipped} (duplicates already imported)</p>
+                      )}
                     </>
                   )}
                   {importResult.transfers && importResult.transfers.created > 0 && (
