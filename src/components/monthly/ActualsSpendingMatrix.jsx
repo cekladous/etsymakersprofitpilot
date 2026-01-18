@@ -18,7 +18,8 @@ export default function ActualsSpendingMatrix({
   transfers,
   materialPurchases,
   etsyLedgerEntries,
-  orderFees
+  orderFees,
+  expenses
 }) {
   const [includeFees, setIncludeFees] = useState(false);
 
@@ -58,9 +59,10 @@ export default function ActualsSpendingMatrix({
         materialPurchases,
         etsyLedgerEntries,
         orderFees,
+        expenses,
       }, monthRange)
     );
-  }, [months, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees]);
+  }, [months, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses]);
 
   // Define expense categories
   const expenseCategories = [
