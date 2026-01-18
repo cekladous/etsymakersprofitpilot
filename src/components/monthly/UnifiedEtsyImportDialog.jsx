@@ -142,6 +142,14 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
 
       // Import ledger entries if present
       if (ledgerEntries && ledgerEntries.length > 0) {
+        // Create batch for ledger entries
+        const batch = await base44.entities.OrderImportBatch.create({
+          source_file_name: fileName,
+          row_count: ledgerEntries.length,
+          channel: "etsy_ledger",
+          status: "success",
+        });
+
         const existingEntries = await base44.entities.EtsyLedgerEntry.list();
         const existingKeys = new Set(
           existingEntries.map(e => `${e.entry_date}_${e.type}_${e.title}_${e.amount}`)
@@ -153,7 +161,7 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
             result.ledger.skipped++;
             continue;
           }
-          await base44.entities.EtsyLedgerEntry.create(entry);
+          await base44.entities.EtsyLedgerEntry.create({ ...entry, source_batch_id: batch.id });
           result.ledger.created++;
         }
       }
