@@ -250,7 +250,12 @@ export default function NetProfitStatement({ financialData, dateRange }) {
                   <HelpCircle className="w-4 h-4 text-stone-400" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-sm">
-                  <p className="text-xs">This view mirrors the Etsy Seller Spreadsheet and reconciles 1:1 with Expenses and Orders. Click any line item to drill into details.</p>
+                  <p className="text-xs font-semibold mb-2">Net Profit Statement</p>
+                  <p className="text-xs mb-2">This mirrors the Etsy Seller Spreadsheet methodology:</p>
+                  <p className="text-xs mb-1">• Revenue excludes sales tax (pass-through)</p>
+                  <p className="text-xs mb-1">• Fees reduce revenue first</p>
+                  <p className="text-xs mb-1">• Business expenses reduce profit</p>
+                  <p className="text-xs text-stone-500 mt-2">All totals reconcile 1:1 with Expenses page and Orders for the same period.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -270,11 +275,22 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             categoryName="etsy_sales"
             linkTo={createPageUrl("Orders")}
           />
-          <Row 
-            label="Sales Tax Collected" 
-            amount={revenue.taxCollectedByEtsy || 0} 
-            indent
-          />
+          <div className="flex items-center gap-2 py-2 px-4 pl-8">
+            <span className="text-sm">Sales Tax Collected</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="w-3 h-3 text-stone-400" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">Sales tax is excluded from revenue because it's a pass-through to the government. You never receive this money, and it's not included in your 1099-K.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <div className="flex-1"></div>
+            <span className="text-sm min-w-[100px] text-right">{formatCurrency(revenue.taxCollectedByEtsy || 0)}</span>
+            <span className="text-xs text-stone-500 min-w-[50px] text-right"></span>
+          </div>
           <Row 
             label="Total Etsy Sales (incl. tax)" 
             amount={revenue.totalEtsySales || 0} 
@@ -305,20 +321,44 @@ export default function NetProfitStatement({ financialData, dateRange }) {
 
           {/* FEES SECTION */}
           <Section 
-            title="Fees" 
-            tooltip="All Etsy platform fees and payment processing costs from your Payment Account ledger"
+            title="Fees (Platform-Controlled)" 
+            tooltip="All Etsy platform fees and payment processing costs. These are deducted from revenue to calculate profit. Fees are different from business expenses."
             bgColor="bg-orange-50" 
           />
           <Row label="Listing Fees" amount={sellingExpenses.etsyListingFees || 0} categoryName="etsy_listing_fees" linkTo={buildExpensesLink("etsy_listing_fees")} />
           <Row label="Transaction Fees" amount={sellingExpenses.etsyTransactionFees || 0} categoryName="etsy_transaction_fees" linkTo={buildExpensesLink("etsy_transaction_fees")} />
           <Row label="Processing Fees" amount={sellingExpenses.etsyProcessingFees || 0} categoryName="etsy_processing_fees" linkTo={buildExpensesLink("etsy_processing_fees")} />
-          <Row 
-            label="Share & Save Credits" 
-            amount={sellingExpenses.shareSaveRefunds || 0} 
-            isNegative
-            categoryName="share_save_refunds_credits"
-            linkTo={buildExpensesLink("share_save_refunds_credits")}
-          />
+          <div className="flex justify-between items-center py-2 px-4 group">
+            <div className="flex items-center gap-2">
+              <span 
+                className="text-sm cursor-pointer hover:underline"
+                onClick={() => handleDrillDown("Share & Save Credits", "share_save_refunds_credits")}
+              >
+                Share & Save Credits
+              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="w-3 h-3 text-stone-400" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">Share & Save credits are fee refunds from Etsy (shown as negative). They reduce your total fees.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link to={buildExpensesLink("share_save_refunds_credits")}>
+                <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer" />
+              </Link>
+              <span className="text-sm text-emerald-600 min-w-[100px] text-right">
+                {formatCurrency(-(sellingExpenses.shareSaveRefunds || 0))}
+              </span>
+              <span className="text-xs text-stone-500 min-w-[50px] text-right">
+                {totalRevenue > 0 ? `${((Math.abs(sellingExpenses.shareSaveRefunds || 0) / totalRevenue) * 100).toFixed(1)}%` : ''}
+              </span>
+            </div>
+          </div>
           <Row label="Other Fees" amount={sellingExpenses.otherFees || 0} categoryName="other_fees" linkTo={buildExpensesLink("other_fees")} />
           <Row label="Etsy Ads" amount={sellingExpenses.etsyAds || 0} categoryName="etsy_ads" linkTo={buildExpensesLink("etsy_ads")} />
           <Row label="Offsite Ads" amount={sellingExpenses.etsyOffsiteAds || 0} categoryName="etsy_offsite_ads_fees" linkTo={buildExpensesLink("etsy_offsite_ads_fees")} />
@@ -329,8 +369,8 @@ export default function NetProfitStatement({ financialData, dateRange }) {
 
           {/* EXPENSES SECTION */}
           <Section 
-            title="Business Expenses" 
-            tooltip="Materials, supplies, tools, and operating costs tracked in your Expenses page"
+            title="Business Expenses (Cost of Goods + Operating)" 
+            tooltip="All categorized expenses from Materials & Supplies, Tools, Office, Professional Services, and other operating costs. These reduce profit after fees are deducted."
             bgColor="bg-purple-50" 
           />
           <Row 
@@ -377,20 +417,22 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           />
 
           {/* TOTALS */}
-          <Row 
-            label="Total Expenses" 
-            amount={totalExpenses} 
-            bold 
-            highlight="bg-rose-50" 
-            linkTo={buildExpensesLink()}
-          />
-          <Row 
-            label="Net Profit" 
-            amount={netProfit} 
-            bold 
-            highlight={netProfit >= 0 ? "bg-emerald-50" : "bg-rose-50"}
-            isProfitMargin={true}
-          />
+          <div className="mt-2 pt-2 border-t-2 border-stone-300">
+            <Row 
+              label="Total Expenses (Fees + Business)" 
+              amount={totalExpenses} 
+              bold 
+              highlight="bg-rose-50" 
+              linkTo={buildExpensesLink()}
+            />
+            <Row 
+              label="Net Profit (Revenue - All Expenses)" 
+              amount={netProfit} 
+              bold 
+              highlight={netProfit >= 0 ? "bg-emerald-50" : "bg-rose-50"}
+              isProfitMargin={true}
+            />
+          </div>
 
           {/* CASHFLOW (NOT PROFIT) */}
           <div className="mt-4 pt-4 border-t-2 border-stone-300">

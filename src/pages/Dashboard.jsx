@@ -50,6 +50,7 @@ import BusinessExpenseDialog from "@/components/monthly/BusinessExpenseDialog";
 import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
+import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
 // xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
@@ -584,6 +585,14 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-6 mt-6">
+          {/* Reconciliation Warning */}
+          <ReconciliationWarning
+            dashboardTotal={metrics.totalExpenses}
+            netProfitTotal={financialData.totalExpenses}
+            actualsTotal={financialData.totalExpenses}
+            periodLabel={getPeriodLabel()}
+          />
+          
           {/* Import/Export Actions */}
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
@@ -621,6 +630,16 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="budget" className="mt-6">
+          {/* Reconciliation Warning */}
+          <div className="mb-6">
+            <ReconciliationWarning
+              dashboardTotal={metrics.totalExpenses}
+              netProfitTotal={financialData.totalExpenses}
+              actualsTotal={financialData.totalExpenses}
+              periodLabel={getPeriodLabel()}
+            />
+          </div>
+          
           <ActualsSpendingMatrix
             dateRange={dateRange}
             viewMode={timeRange}

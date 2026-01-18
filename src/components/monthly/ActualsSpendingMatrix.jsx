@@ -135,6 +135,15 @@ export default function ActualsSpendingMatrix({
     return mapping[key] || key;
   };
 
+  // Calculate grand total for validation
+  const grandTotal = useMemo(() => {
+    return monthlyData.reduce((sum, data) => {
+      const monthTotal = allCategories.reduce((catSum, cat) => 
+        catSum + getCategoryValue(data, cat), 0);
+      return sum + monthTotal;
+    }, 0);
+  }, [monthlyData, allCategories]);
+
   return (
     <>
       <Card>
@@ -147,8 +156,10 @@ export default function ActualsSpendingMatrix({
                   <TooltipTrigger>
                     <HelpCircle className="w-4 h-4 text-stone-400" />
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-xs">View spending by category and month. Click any cell to see details.</p>
+                  <TooltipContent className="max-w-sm">
+                    <p className="text-xs font-semibold mb-1">Actual Spending Matrix</p>
+                    <p className="text-xs mb-2">Shows all business expenses by category and period. Click any cell to drill into transaction details.</p>
+                    <p className="text-xs text-stone-500">Note: Totals here must exactly match Dashboard Total Expenses and Net Profit Statement totals for the same period.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -197,12 +208,12 @@ export default function ActualsSpendingMatrix({
                             className={`text-right py-2 px-4 ${value > 0 ? 'cursor-pointer hover:bg-emerald-50' : 'text-stone-400'}`}
                             onClick={() => value > 0 && handleCellClick(category, monthIdx)}
                           >
-                            {value > 0 ? formatCurrency(value) : "-"}
+                            {formatCurrency(value)}
                           </td>
                         );
                       })}
                       <td className="text-right py-2 px-4 font-semibold bg-stone-50">
-                        {categoryTotal > 0 ? formatCurrency(categoryTotal) : "-"}
+                        {formatCurrency(categoryTotal)}
                       </td>
                     </tr>
                   );
@@ -219,11 +230,7 @@ export default function ActualsSpendingMatrix({
                     );
                   })}
                   <td className="text-right py-3 px-4 bg-stone-200">
-                    {formatCurrency(monthlyData.reduce((sum, data) => {
-                      const monthTotal = allCategories.reduce((catSum, cat) => 
-                        catSum + getCategoryValue(data, cat), 0);
-                      return sum + monthTotal;
-                    }, 0))}
+                    {formatCurrency(grandTotal)}
                   </td>
                 </tr>
               </tbody>
