@@ -65,6 +65,11 @@ export default function Dashboard() {
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
 
+  const { data: user } = useQuery({
+    queryKey: ["user"],
+    queryFn: () => base44.auth.me(),
+  });
+
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
     queryFn: () => base44.entities.Order.list("-sale_date"),
@@ -282,6 +287,18 @@ export default function Dashboard() {
     return `$${val.toFixed(0)}`;
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const getFirstName = () => {
+    if (!user?.full_name) return "";
+    return user.full_name.split(" ")[0];
+  };
+
   const getPeriodLabel = () => {
     if (customStartDate && customEndDate) {
       return `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
@@ -314,6 +331,18 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Welcome Banner */}
+      {user && (
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg">
+          <h1 className="text-2xl font-bold mb-1">
+            {getGreeting()}, {getFirstName()}! 👋
+          </h1>
+          <p className="text-emerald-100 text-sm">
+            "Success is the sum of small efforts, repeated day in and day out." - Robert Collier
+          </p>
+        </div>
+      )}
+
       <PageHeader
         title="Dashboard"
         description={getPeriodLabel()}
