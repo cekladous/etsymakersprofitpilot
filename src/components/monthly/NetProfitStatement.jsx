@@ -169,12 +169,15 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     indent = false,
     isNegative = false,
     highlight = "",
-    showPercentage = true
+    showPercentage = true,
+    isProfitMargin = false
   }) => {
     const hasQuickView = categoryName && amount !== 0;
     const hasLinkTo = linkTo && amount !== 0;
     const displayAmount = isNegative ? -Math.abs(amount) : amount;
-    const percentage = totalRevenue > 0 ? (Math.abs(displayAmount) / totalRevenue) * 100 : 0;
+    const percentage = totalRevenue > 0 
+      ? (isProfitMargin ? (displayAmount / totalRevenue) * 100 : (Math.abs(displayAmount) / totalRevenue) * 100)
+      : 0;
     
     return (
       <div 
@@ -216,8 +219,8 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             {formatCurrency(displayAmount)}
           </span>
           {showPercentage && (
-            <span className={`text-xs text-stone-500 min-w-[50px] text-right ${bold ? "font-semibold" : ""}`}>
-              {percentage > 0 ? `${percentage.toFixed(1)}%` : ''}
+            <span className={`text-xs ${percentage < 0 ? 'text-rose-600' : 'text-stone-500'} min-w-[50px] text-right ${bold ? "font-semibold" : ""}`}>
+              {percentage !== 0 ? `${percentage.toFixed(1)}%` : ''}
             </span>
           )}
         </div>
@@ -386,6 +389,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             amount={netProfit} 
             bold 
             highlight={netProfit >= 0 ? "bg-emerald-50" : "bg-rose-50"}
+            isProfitMargin={true}
           />
 
           {/* CASHFLOW (NOT PROFIT) */}
