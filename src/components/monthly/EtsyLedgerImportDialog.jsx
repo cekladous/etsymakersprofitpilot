@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { DialogFooter } from "@/components/ui/dialog";
 import { Upload, Loader2, CheckCircle, AlertCircle, Download } from "lucide-react";
 // xlsx imported dynamically in handleImport
 
@@ -158,24 +159,46 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [skippedRows, setSkippedRows] = useState([]);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
   const importMutation = useMutation({
     mutationFn: async ({ entries, batchData, transfers }) => {
-      // Create batch
-      const batch = await base44.entities.OrderImportBatch.create(batchData);
+      // Get existing entries to check for duplicates
+      const existingEntries = await base44.entities.EtsyLedgerEntry.list();
       
-      // Create ledger entries
-      const entriesWithBatch = entries.map(e => ({ ...e, source_batch_id: batch.id }));
-      await base44.entities.EtsyLedgerEntry.bulkCreate(entriesWithBatch);
+      // Filter out duplicates
+      const existingKeys = new Set(
+        existingEntries.map(e => `${e.entry_date}|${e.type}|${e.title}|${e.amount}|${e.net}`)
+      );
+      
+      const uniqueEntries = entries.filter(entry => {
+        const key = `${entry.entry_date}|${entry.type}|${entry.title}|${entry.amount}|${entry.net}`;
+        return !existingKeys.has(key);
+      });
+      
+      const duplicateCount = entries.length - uniqueEntries.length;
+      
+      // Create batch
+      const batch = await base44.entities.OrderImportBatch.create({
+        ...batchData,
+        row_count: uniqueEntries.length,
+        notes: duplicateCount > 0 ? `${duplicateCount} duplicates skipped` : "",
+      });
+      
+      // Create ledger entries (only non-duplicates)
+      if (uniqueEntries.length > 0) {
+        const entriesWithBatch = uniqueEntries.map(e => ({ ...e, source_batch_id: batch.id }));
+        await base44.entities.EtsyLedgerEntry.bulkCreate(entriesWithBatch);
+      }
       
       // Create transfers
       if (transfers.length > 0) {
         await base44.entities.Transfer.bulkCreate(transfers);
       }
       
-      return { batch, entries: entriesWithBatch };
+      return { batch, entries: uniqueEntries, duplicates: duplicateCount };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
@@ -186,6 +209,7 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
       setResult({
         imported: data.entries.length,
         skipped: skippedRows.length,
+        duplicates: data.duplicates,
       });
     },
     onError: (error) => {
@@ -201,12 +225,15 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
       setStatus("idle");
       setResult(null);
       setSkippedRows([]);
+      setConfirmDialogOpen(true);
     }
+    e.target.value = "";
   };
 
   const handleImport = async () => {
     if (!file) return;
     
+    setConfirmDialogOpen(false);
     setStatus("processing");
     
     const reader = new FileReader();
@@ -330,14 +357,39 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Import Etsy Payment Ledger</DialogTitle>
-          <DialogDescription>
-            Upload your Etsy Payment Account CSV/XLSX with columns: Date, Type, Title, Info, Currency, Amount, Fees & Taxes, Net
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Import</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to import {file?.name}? Duplicate entries will be automatically skipped.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => {
+              setConfirmDialogOpen(false);
+              setFile(null);
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleImport} className="bg-emerald-600 hover:bg-emerald-700">
+              Import
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Import Dialog */}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Etsy Payment Ledger</DialogTitle>
+            <DialogDescription>
+              Upload your Etsy Payment Account CSV/XLSX with columns: Date, Type, Title, Info, Currency, Amount, Fees & Taxes, Net
+            </DialogDescription>
+          </DialogHeader>
 
         <div className="space-y-4">
           <input
@@ -349,22 +401,14 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
           />
 
           {status === "idle" && (
-            <div className="space-y-4">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                className="w-full"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {file ? file.name : "Select File"}
-              </Button>
-              
-              {file && (
-                <Button onClick={handleImport} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  Import Ledger
-                </Button>
-              )}
-            </div>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="w-full"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Select File
+            </Button>
           )}
 
           {status === "processing" && (
@@ -381,8 +425,9 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
                 <div>
                   <p className="font-semibold text-emerald-900">Import Successful</p>
                   <p className="text-sm text-emerald-700">
-                    Imported {result.imported} entries
-                    {result.skipped > 0 && `, skipped ${result.skipped} rows`}
+                    ✓ Imported: {result.imported} entries
+                    {result.duplicates > 0 && <><br/>⊗ Duplicates skipped: {result.duplicates}</>}
+                    {result.skipped > 0 && <><br/>⚠ Invalid rows: {result.skipped}</>}
                   </p>
                 </div>
               </div>
@@ -420,7 +465,8 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
