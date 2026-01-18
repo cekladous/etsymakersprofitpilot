@@ -10,7 +10,6 @@ import {
   ShoppingBag,
   Layers,
   Percent,
-  Upload,
   Download,
   Plus,
   Calendar,
