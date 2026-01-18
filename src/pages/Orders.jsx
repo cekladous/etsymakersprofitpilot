@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,10 +17,12 @@ import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
+import EtsyOrderImportDialog from "@/components/monthly/EtsyOrderImportDialog";
 
 export default function Orders() {
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { data: etsyOrders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["etsy-orders"],
@@ -162,12 +162,13 @@ export default function Orders() {
           <Download className="w-4 h-4 mr-2" />
           Export
         </Button>
-        <Link to={createPageUrl("Dashboard")}>
-          <Button className="bg-emerald-600 hover:bg-emerald-700">
-            <Upload className="w-4 h-4 mr-2" />
-            Import Orders
-          </Button>
-        </Link>
+        <Button 
+          className="bg-emerald-600 hover:bg-emerald-700"
+          onClick={() => setImportDialogOpen(true)}
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Import Orders
+        </Button>
       </PageHeader>
 
       {/* Summary Cards */}
@@ -265,9 +266,9 @@ export default function Orders() {
         <EmptyState
           icon={ShoppingBag}
           title="No orders imported"
-          description="Import your Etsy orders from Monthly Summary to view them here."
-          actionLabel="Go to Monthly Summary"
-          onAction={() => window.location.href = createPageUrl("MonthlySummary")}
+          description="Import your Etsy Sold Orders CSV to view them here."
+          actionLabel="Import Orders"
+          onAction={() => setImportDialogOpen(true)}
         />
       ) : (
         <DataTable
@@ -277,6 +278,11 @@ export default function Orders() {
           emptyMessage="No orders match your filters"
         />
       )}
+
+      <EtsyOrderImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+      />
     </div>
   );
 }
