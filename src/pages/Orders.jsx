@@ -162,13 +162,12 @@ export default function Orders() {
           <Download className="w-4 h-4 mr-2" />
           Export
         </Button>
-        <Button
-          onClick={() => window.location.href = createPageUrl("MonthlySummary")}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          Import Orders
-        </Button>
+        <Link to={createPageUrl("Dashboard")}>
+          <Button className="bg-emerald-600 hover:bg-emerald-700">
+            <Upload className="w-4 h-4 mr-2" />
+            Import Orders
+          </Button>
+        </Link>
       </PageHeader>
 
       {/* Summary Cards */}
