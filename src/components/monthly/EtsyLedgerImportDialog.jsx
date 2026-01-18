@@ -340,14 +340,20 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
   };
 
   const downloadSkippedReport = async () => {
-    const XLSX = (await import("xlsx")).default;
+    const xlsxModule = await import("xlsx");
+    const XLSX = xlsxModule.default || xlsxModule;
     const data = skippedRows.map(s => ({
       "Row": s.rowIndex,
       "Reason": s.reason,
-      "Date": s.row.Date || s.row.date || "",
-      "Type": s.row.Type || s.row.type || "",
-      "Title": s.row.Title || s.row.title || "",
-      "Amount": s.row.Amount || s.row.amount || "",
+      "Date": getVal(s.row, "date"),
+      "Type": getVal(s.row, "type"),
+      "Title": getVal(s.row, "title"),
+      "Info": getVal(s.row, "info"),
+      "Currency": getVal(s.row, "currency"),
+      "Amount": getVal(s.row, "amount"),
+      "Fees & Taxes": getVal(s.row, "fees"),
+      "Net": getVal(s.row, "net"),
+      "Tax Details": getVal(s.row, "tax"),
     }));
     
     const ws = XLSX.utils.json_to_sheet(data);
