@@ -126,7 +126,11 @@ export function aggregateFinancials(data, dateRange) {
     "tax: auto-renew",
     "tax: listing"
   ]);
-  const etsyListingFees = sumLedgerExpense(listingFeeRows);
+  const listingFeesFromLedger = sumLedgerExpense(listingFeeRows);
+  const legacyListingFees = periodLegacyExpenses
+    .filter(e => ["etsy_listing_fees"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const etsyListingFees = listingFeesFromLedger + legacyListingFees;
 
   // 2) Etsy Transaction Fees
   const transactionFeeRows = matchLedgerRows([
@@ -134,7 +138,11 @@ export function aggregateFinancials(data, dateRange) {
     "credit for transaction fee*",
     "tax: transaction*"
   ]);
-  const etsyTransactionFees = sumLedgerExpense(transactionFeeRows);
+  const transactionFeesFromLedger = sumLedgerExpense(transactionFeeRows);
+  const legacyTransactionFees = periodLegacyExpenses
+    .filter(e => ["etsy_transaction_fees"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const etsyTransactionFees = transactionFeesFromLedger + legacyTransactionFees;
 
   // 3) Etsy Processing Fees
   const processingFeeRows = matchLedgerRows([
@@ -142,14 +150,22 @@ export function aggregateFinancials(data, dateRange) {
     "credit for processing fee*",
     "tax: processing fee*"
   ]);
-  const etsyProcessingFees = sumLedgerExpense(processingFeeRows);
+  const processingFeesFromLedger = sumLedgerExpense(processingFeeRows);
+  const legacyProcessingFees = periodLegacyExpenses
+    .filter(e => ["etsy_processing_fees"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const etsyProcessingFees = processingFeesFromLedger + legacyProcessingFees;
 
   // 4) Share & Save Fee Refunds & Misc. Credits
   const shareSaveRows = matchLedgerRows([
     "share & save refund*",
     "etsy miscellaneous credit*"
   ]);
-  const shareSaveRefunds = sumLedgerExpense(shareSaveRows);
+  const shareSaveFromLedger = sumLedgerExpense(shareSaveRows);
+  const legacyShareSave = periodLegacyExpenses
+    .filter(e => ["share_save_refunds_credits"].includes(e.category))
+    .reduce((sum, e) => sum - (e.amount || 0), 0); // Credits reduce expenses
+  const shareSaveRefunds = shareSaveFromLedger + legacyShareSave;
 
   // 5) Other Fees
   const otherFeeRows = matchLedgerRows([
@@ -157,7 +173,11 @@ export function aggregateFinancials(data, dateRange) {
     "regulatory operating fee*",
     "tax: regulatory operating fee*"
   ]);
-  const otherFees = sumLedgerExpense(otherFeeRows);
+  const otherFeesFromLedger = sumLedgerExpense(otherFeeRows);
+  const legacyOtherFees = periodLegacyExpenses
+    .filter(e => ["other_fees"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const otherFees = otherFeesFromLedger + legacyOtherFees;
 
   // 6) Etsy Ads
   const adsRows = matchLedgerRows([
@@ -167,11 +187,19 @@ export function aggregateFinancials(data, dateRange) {
     "sales tax on etsy plus subscription fee*",
     "credit for etsy ads fee*"
   ]);
-  const etsyAds = sumLedgerExpense(adsRows);
+  const adsFromLedger = sumLedgerExpense(adsRows);
+  const legacyAds = periodLegacyExpenses
+    .filter(e => ["etsy_ads"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const etsyAds = adsFromLedger + legacyAds;
 
   // 7) Etsy Offsite Ads Fees
   const offsiteAdsRows = matchLedgerRows(["offsite ads"]);
-  const etsyOffsiteAds = sumLedgerExpense(offsiteAdsRows);
+  const offsiteAdsFromLedger = sumLedgerExpense(offsiteAdsRows);
+  const legacyOffsiteAds = periodLegacyExpenses
+    .filter(e => ["etsy_offsite_ads_fees"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const etsyOffsiteAds = offsiteAdsFromLedger + legacyOffsiteAds;
 
   // 8) Total Etsy Fees
   const totalEtsyFees = 
@@ -187,12 +215,20 @@ export function aggregateFinancials(data, dateRange) {
     const type = (e.type || "").toLowerCase();
     return type.includes("shipping");
   });
-  const etsyShipping = sumLedgerExpense(shippingRows);
+  const shippingFromLedger = sumLedgerExpense(shippingRows);
+  const legacyShipping = periodLegacyExpenses
+    .filter(e => ["etsy_shipping"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const etsyShipping = shippingFromLedger + legacyShipping;
 
   // 10) Other Postage Costs (from manual entries)
-  const otherPostage = periodBusinessExpenses
+  const otherPostageFromBE = periodBusinessExpenses
     .filter(e => e.category_name === "other_postage_costs")
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const legacyOtherPostage = periodLegacyExpenses
+    .filter(e => ["other_postage_costs"].includes(e.category))
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const otherPostage = otherPostageFromBE + legacyOtherPostage;
 
   // ==================== C) PRODUCT EXPENSES ====================
   
