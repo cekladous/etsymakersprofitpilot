@@ -292,36 +292,43 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row 
             label="Materials & Supplies" 
             amount={productExpenses.materialsSupplies || 0} 
+            categoryName="materials_supplies"
             linkTo={buildExpensesLink("materials_supplies")}
           />
           <Row 
             label="Tools & Equipment" 
             amount={productExpenses.toolsEquipment || 0} 
+            categoryName="tools_equipment"
             linkTo={buildExpensesLink("tools_equipment")}
           />
           <Row 
             label="Advertising & Marketing" 
             amount={businessExpenses.advertisingMarketing || 0} 
+            categoryName="advertising_marketing"
             linkTo={buildExpensesLink("advertising_marketing")}
           />
           <Row 
             label="Office Expenses" 
             amount={businessExpenses.officeExpenses || 0} 
+            categoryName="office_expenses"
             linkTo={buildExpensesLink("office_expenses")}
           />
           <Row 
             label="Professional Services" 
             amount={businessExpenses.professionalServices || 0} 
+            categoryName="professional_services"
             linkTo={buildExpensesLink("professional_services")}
           />
           <Row 
             label="Other Business Expenses" 
             amount={businessExpenses.other || 0} 
+            categoryName="other"
             linkTo={buildExpensesLink("other")}
           />
           <Row 
             label="Miscellaneous" 
             amount={businessExpenses.miscellaneous || 0} 
+            categoryName="miscellaneous_expenses"
             linkTo={buildExpensesLink("miscellaneous_expenses")}
           />
 
