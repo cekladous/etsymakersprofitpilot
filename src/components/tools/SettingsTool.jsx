@@ -36,20 +36,7 @@ import {
 } from "@/components/ui/tabs";
 import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
-
-const EXPENSE_CATEGORIES = [
-  { value: "materials", label: "Materials" },
-  { value: "shipping", label: "Shipping" },
-  { value: "tools", label: "Tools" },
-  { value: "software", label: "Software" },
-  { value: "advertising", label: "Advertising" },
-  { value: "utilities", label: "Utilities" },
-  { value: "etsy_fees", label: "Etsy Fees" },
-  { value: "packaging", label: "Packaging" },
-  { value: "equipment", label: "Equipment" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "other", label: "Other" },
-];
+import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
 
 export default function SettingsTool() {
   const [machineFormOpen, setMachineFormOpen] = useState(false);
@@ -967,7 +954,7 @@ export default function SettingsTool() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EXPENSE_CATEGORIES.map((cat) => (
+                {ALL_EXPENSE_CATEGORIES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>
