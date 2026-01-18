@@ -168,11 +168,13 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     linkTo = null,
     indent = false,
     isNegative = false,
-    highlight = ""
+    highlight = "",
+    showPercentage = true
   }) => {
     const hasQuickView = categoryName && amount !== 0;
     const hasLinkTo = linkTo && amount !== 0;
     const displayAmount = isNegative ? -Math.abs(amount) : amount;
+    const percentage = totalRevenue > 0 ? (Math.abs(displayAmount) / totalRevenue) * 100 : 0;
     
     return (
       <div 
@@ -196,7 +198,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
         >
           {label}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           {hasLinkTo && (
             <Link to={linkTo}>
               <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer" />
@@ -210,9 +212,14 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors" />
             </div>
           )}
-          <span className={`text-sm ${bold ? "font-bold" : ""} ${displayAmount < 0 ? "text-emerald-600" : ""}`}>
+          <span className={`text-sm ${bold ? "font-bold" : ""} ${displayAmount < 0 ? "text-emerald-600" : ""} min-w-[100px] text-right`}>
             {formatCurrency(displayAmount)}
           </span>
+          {showPercentage && (
+            <span className={`text-xs text-stone-500 min-w-[50px] text-right ${bold ? "font-semibold" : ""}`}>
+              {percentage > 0 ? `${percentage.toFixed(1)}%` : ''}
+            </span>
+          )}
         </div>
       </div>
     );
@@ -388,8 +395,8 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               tooltip="Money moved in/out of your business bank account - tracked separately from revenue/expenses"
               bgColor="bg-slate-50" 
             />
-            <Row label="Deposits from Etsy" amount={cashflow.etsyDeposits || 0} />
-            <Row label="Owner Transfers (Take Home)" amount={cashflow.ownerTransfers || 0} />
+            <Row label="Deposits from Etsy" amount={cashflow.etsyDeposits || 0} showPercentage={false} />
+            <Row label="Owner Transfers (Take Home)" amount={cashflow.ownerTransfers || 0} showPercentage={false} />
           </div>
         </CardContent>
       </Card>
