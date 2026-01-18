@@ -45,7 +45,8 @@ const parseEtsyDateToISO = (v) => {
   
   // If it's an Excel serial number (days since 1900-01-01)
   if (typeof v === "number") {
-    const date = XLSX.SSF.parse_date_code(v);
+    if (!window.XLSX) return "";
+    const date = window.XLSX.SSF.parse_date_code(v);
     if (!date) return "";
     const year = date.y;
     const month = String(date.m).padStart(2, "0");
