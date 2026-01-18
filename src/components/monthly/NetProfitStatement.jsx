@@ -266,22 +266,23 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             tooltip="All Etsy platform fees and payment processing costs from your Payment Account ledger"
             bgColor="bg-orange-50" 
           />
-          <Row label="Listing Fees" amount={sellingExpenses.etsyListingFees || 0} categoryName="etsy_listing_fees" />
-          <Row label="Transaction Fees" amount={sellingExpenses.etsyTransactionFees || 0} categoryName="etsy_transaction_fees" />
-          <Row label="Processing Fees" amount={sellingExpenses.etsyProcessingFees || 0} categoryName="etsy_processing_fees" />
+          <Row label="Listing Fees" amount={sellingExpenses.etsyListingFees || 0} categoryName="etsy_listing_fees" linkTo={buildExpensesLink("etsy_listing_fees")} />
+          <Row label="Transaction Fees" amount={sellingExpenses.etsyTransactionFees || 0} categoryName="etsy_transaction_fees" linkTo={buildExpensesLink("etsy_transaction_fees")} />
+          <Row label="Processing Fees" amount={sellingExpenses.etsyProcessingFees || 0} categoryName="etsy_processing_fees" linkTo={buildExpensesLink("etsy_processing_fees")} />
           <Row 
             label="Share & Save Credits" 
             amount={sellingExpenses.shareSaveRefunds || 0} 
             isNegative
-            categoryName="share_save_refunds_credits" 
+            categoryName="share_save_refunds_credits"
+            linkTo={buildExpensesLink("share_save_refunds_credits")}
           />
-          <Row label="Other Fees" amount={sellingExpenses.otherFees || 0} categoryName="other_fees" />
-          <Row label="Etsy Ads" amount={sellingExpenses.etsyAds || 0} categoryName="etsy_ads" />
-          <Row label="Offsite Ads" amount={sellingExpenses.etsyOffsiteAds || 0} categoryName="etsy_offsite_ads_fees" />
+          <Row label="Other Fees" amount={sellingExpenses.otherFees || 0} categoryName="other_fees" linkTo={buildExpensesLink("other_fees")} />
+          <Row label="Etsy Ads" amount={sellingExpenses.etsyAds || 0} categoryName="etsy_ads" linkTo={buildExpensesLink("etsy_ads")} />
+          <Row label="Offsite Ads" amount={sellingExpenses.etsyOffsiteAds || 0} categoryName="etsy_offsite_ads_fees" linkTo={buildExpensesLink("etsy_offsite_ads_fees")} />
           <Row label="Total Fees" amount={sellingExpenses.totalEtsyFees || 0} bold />
           
-          <Row label="Shipping Labels (Etsy)" amount={sellingExpenses.etsyShipping || 0} categoryName="etsy_shipping" highlight="bg-yellow-50" />
-          <Row label="Other Postage" amount={sellingExpenses.otherPostage || 0} categoryName="other_postage_costs" highlight="bg-yellow-50" />
+          <Row label="Shipping Labels (Etsy)" amount={sellingExpenses.etsyShipping || 0} categoryName="etsy_shipping" linkTo={buildExpensesLink("etsy_shipping")} highlight="bg-yellow-50" />
+          <Row label="Other Postage" amount={sellingExpenses.otherPostage || 0} categoryName="other_postage_costs" linkTo={buildExpensesLink("other_postage_costs")} highlight="bg-yellow-50" />
 
           {/* EXPENSES SECTION */}
           <Section 
