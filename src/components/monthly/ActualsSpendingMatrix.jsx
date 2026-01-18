@@ -209,13 +209,21 @@ export default function ActualsSpendingMatrix({
                 })}
                 <tr className="border-t-2 border-stone-300 font-bold bg-stone-100">
                   <td className="py-3 px-4 sticky left-0 bg-stone-100 z-10">Total Spending</td>
-                  {monthlyData.map((data, idx) => (
-                    <td key={idx} className="text-right py-3 px-4">
-                      {formatCurrency(data.totalExpenses)}
-                    </td>
-                  ))}
+                  {monthlyData.map((data, idx) => {
+                    const monthTotal = allCategories.reduce((sum, cat) => 
+                      sum + getCategoryValue(data, cat), 0);
+                    return (
+                      <td key={idx} className="text-right py-3 px-4">
+                        {formatCurrency(monthTotal)}
+                      </td>
+                    );
+                  })}
                   <td className="text-right py-3 px-4 bg-stone-200">
-                    {formatCurrency(monthlyData.reduce((sum, d) => sum + d.totalExpenses, 0))}
+                    {formatCurrency(monthlyData.reduce((sum, data) => {
+                      const monthTotal = allCategories.reduce((catSum, cat) => 
+                        catSum + getCategoryValue(data, cat), 0);
+                      return sum + monthTotal;
+                    }, 0))}
                   </td>
                 </tr>
               </tbody>
