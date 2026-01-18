@@ -33,6 +33,26 @@ export default function NetProfitStatement({ financialData, dateRange }) {
   const handleDrillDown = (label, categoryName) => {
     let items = [];
     
+    // Category mapping for legacy expenses (old category names to new)
+    const legacyCategoryMap = {
+      'materials_supplies': ['materials', 'packaging', 'materials_supplies'],
+      'tools_equipment': ['tools', 'equipment', 'tools_equipment'],
+      'advertising_marketing': ['advertising', 'software', 'advertising_marketing'],
+      'office_expenses': ['utilities', 'office_expenses'],
+      'professional_services': ['professional_services'],
+      'other': ['other', 'maintenance', 'shipping'],
+      'miscellaneous_expenses': ['miscellaneous_expenses'],
+      'etsy_listing_fees': ['etsy_listing_fees'],
+      'etsy_transaction_fees': ['etsy_transaction_fees'],
+      'etsy_processing_fees': ['etsy_processing_fees'],
+      'share_save_refunds_credits': ['share_save_refunds_credits'],
+      'other_fees': ['other_fees'],
+      'etsy_ads': ['etsy_ads'],
+      'etsy_offsite_ads_fees': ['etsy_offsite_ads_fees'],
+      'etsy_shipping': ['etsy_shipping'],
+      'other_postage_costs': ['other_postage_costs'],
+    };
+    
     // Include MaterialPurchases for materials_supplies
     if (categoryName === "materials_supplies") {
       const purchases = (filteredData.materialPurchases || []).map(p => ({
@@ -57,6 +77,20 @@ export default function NetProfitStatement({ financialData, dateRange }) {
       }));
     
     items.push(...expenses);
+    
+    // CRITICAL: Include legacy Expense entity (both old and new category names)
+    const legacyCategories = legacyCategoryMap[categoryName] || [categoryName];
+    const legacyExpenses = (filteredData.expenses || [])
+      .filter(e => e.type !== "return" && legacyCategories.includes(e.category))
+      .map(e => ({
+        date: e.date,
+        description: e.description,
+        vendor: e.vendor,
+        payment_source: e.payment_method,
+        amount: e.amount,
+      }));
+    
+    items.push(...legacyExpenses);
     
     // Include matched Etsy Ledger entries for fee categories
     const ledgerEntries = (filteredData.etsyLedgerEntries || [])
