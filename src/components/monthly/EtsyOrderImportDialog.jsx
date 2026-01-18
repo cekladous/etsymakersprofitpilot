@@ -75,6 +75,8 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [skippedRows, setSkippedRows] = useState([]);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -89,7 +91,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
         status: "success",
       });
 
-      // Upsert logic: find by channel + order_id, update if exists, create if not
+      // Check for duplicates BEFORE importing
       const existingOrders = await base44.entities.EtsyOrder.list();
       let created = 0;
       let updated = 0;
@@ -99,37 +101,23 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
         const existing = existingOrders.find(o => o.order_id === order.order_id);
 
         if (existing) {
-          // Update existing order
-          await base44.entities.EtsyOrder.update(existing.id, { 
-            ...order, 
-            import_batch_id: batch.id 
-          });
-          
-          // Update associated fees if provided
-          const feeData = fees.find(f => f.order_id === order.order_id);
-          if (feeData) {
-            const existingFee = await base44.entities.OrderFee.filter({ order_id: existing.id });
-            if (existingFee.length > 0) {
-              await base44.entities.OrderFee.update(existingFee[0].id, { ...feeData, order_id: existing.id });
-            } else {
-              await base44.entities.OrderFee.create({ ...feeData, order_id: existing.id });
-            }
-          }
-          updated++;
-        } else {
-          // Create new order
-          const newOrder = await base44.entities.EtsyOrder.create({ 
-            ...order, 
-            import_batch_id: batch.id 
-          });
-          
-          // Create associated fees if provided
-          const feeData = fees.find(f => f.order_id === order.order_id);
-          if (feeData) {
-            await base44.entities.OrderFee.create({ ...feeData, order_id: newOrder.id });
-          }
-          created++;
+          // Skip duplicates completely
+          skipped++;
+          continue;
         }
+
+        // Create new order only if not duplicate
+        const newOrder = await base44.entities.EtsyOrder.create({ 
+          ...order, 
+          import_batch_id: batch.id 
+        });
+        
+        // Create associated fees if provided
+        const feeData = fees.find(f => f.order_id === order.order_id);
+        if (feeData) {
+          await base44.entities.OrderFee.create({ ...feeData, order_id: newOrder.id });
+        }
+        created++;
       }
 
       return { created, updated, skipped, total: orders.length };
@@ -150,6 +138,15 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setPendingFile(file);
+    setConfirmDialogOpen(true);
+    event.target.value = "";
+  };
+
+  const processFile = async () => {
+    if (!pendingFile) return;
+
+    setConfirmDialogOpen(false);
     setImporting(true);
     setImportResult(null);
 
@@ -157,6 +154,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
     reader.onload = async (e) => {
       try {
         const XLSX = (await import("xlsx")).default;
+        window.XLSX = XLSX; // Make XLSX available globally for date parsing
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -239,19 +237,20 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
         });
 
         setSkippedRows(skipped);
-        importMutation.mutate({ orders, fees, fileName: file.name });
+        importMutation.mutate({ orders, fees, fileName: pendingFile.name });
       } catch (error) {
         setImportResult({ error: `Failed to parse file: ${error.message}` });
         setImporting(false);
       }
     };
-    reader.readAsArrayBuffer(file);
-    event.target.value = "";
+    reader.readAsArrayBuffer(pendingFile);
   };
 
   const handleClose = () => {
     setImportResult(null);
     setSkippedRows([]);
+    setPendingFile(null);
+    setConfirmDialogOpen(false);
     onOpenChange(false);
   };
 
@@ -272,14 +271,39 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Import Etsy Orders</DialogTitle>
-          <DialogDescription>
-            Upload your Etsy sold orders CSV or Excel file. Duplicates will be automatically skipped.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Import</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to import this file? Duplicate orders will be automatically skipped.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setConfirmDialogOpen(false);
+              setPendingFile(null);
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={processFile} className="bg-emerald-600 hover:bg-emerald-700">
+              Import
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Etsy Orders</DialogTitle>
+            <DialogDescription>
+              Upload your Etsy sold orders CSV or Excel file. Duplicates will be automatically skipped.
+            </DialogDescription>
+          </DialogHeader>
 
         <div className="space-y-4 py-4">
           <input
@@ -353,7 +377,8 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
             {importResult ? "Done" : "Cancel"}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
