@@ -8,9 +8,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Upload, Loader2, CheckCircle, AlertCircle, Download } from "lucide-react";
+import { Upload, Loader2, CheckCircle, AlertCircle, Download, Eye } from "lucide-react";
 // xlsx imported dynamically in handleImport
 
 // Parsing helpers
@@ -175,6 +182,8 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
   const [result, setResult] = useState(null);
   const [skippedRows, setSkippedRows] = useState([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -451,14 +460,50 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
               </div>
               
               {skippedRows.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={downloadSkippedReport}
-                  className="w-full"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Skipped Rows Report
-                </Button>
+                <>
+                  <div className="border rounded-lg max-h-64 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-stone-50 sticky top-0">
+                        <tr>
+                          <th className="text-left p-2 font-medium text-stone-600">Row</th>
+                          <th className="text-left p-2 font-medium text-stone-600">Reason</th>
+                          <th className="text-left p-2 font-medium text-stone-600">Date</th>
+                          <th className="text-right p-2 font-medium text-stone-600">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {skippedRows.map((skip, idx) => (
+                          <tr key={idx} className="border-t hover:bg-stone-50">
+                            <td className="p-2 text-stone-900">{skip.rowIndex}</td>
+                            <td className="p-2 text-rose-600">{skip.reason}</td>
+                            <td className="p-2 text-stone-600">{getVal(skip.row, "date")}</td>
+                            <td className="p-2 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRow(skip);
+                                  setDetailSheetOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={downloadSkippedReport}
+                    className="w-full"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Skipped Rows Report
+                  </Button>
+                </>
               )}
               
               <Button onClick={() => onOpenChange(false)} className="w-full">
@@ -485,6 +530,100 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
         </div>
         </DialogContent>
       </Dialog>
+
+      {/* Detail Sheet */}
+      <Sheet open={detailSheetOpen} onOpenChange={setDetailSheetOpen}>
+        <SheetContent className="overflow-auto">
+          <SheetHeader>
+            <SheetTitle>Row {selectedRow?.rowIndex} Details</SheetTitle>
+            <SheetDescription>
+              Skipped: {selectedRow?.reason}
+            </SheetDescription>
+          </SheetHeader>
+          
+          {selectedRow && (
+            <div className="mt-6 space-y-4">
+              <div className="bg-rose-50 border border-rose-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-rose-900">Skip Reason</p>
+                <p className="text-sm text-rose-700 mt-1">{selectedRow.reason}</p>
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="font-semibold text-stone-900">Raw Data</h3>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500 mb-1">Date</p>
+                    <p className="text-sm font-medium text-stone-900">
+                      {getVal(selectedRow.row, "date") || "—"}
+                    </p>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500 mb-1">Type</p>
+                    <p className="text-sm font-medium text-stone-900">
+                      {getVal(selectedRow.row, "type") || "—"}
+                    </p>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500 mb-1">Title</p>
+                    <p className="text-sm font-medium text-stone-900">
+                      {getVal(selectedRow.row, "title") || "—"}
+                    </p>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500 mb-1">Info</p>
+                    <p className="text-sm font-medium text-stone-900">
+                      {getVal(selectedRow.row, "info") || "—"}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-stone-500 mb-1">Currency</p>
+                      <p className="text-sm font-medium text-stone-900">
+                        {getVal(selectedRow.row, "currency") || "—"}
+                      </p>
+                    </div>
+                    
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-stone-500 mb-1">Amount</p>
+                      <p className="text-sm font-medium text-stone-900">
+                        {getVal(selectedRow.row, "amount") || "—"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-stone-500 mb-1">Fees & Taxes</p>
+                      <p className="text-sm font-medium text-stone-900">
+                        {getVal(selectedRow.row, "fees") || "—"}
+                      </p>
+                    </div>
+                    
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-stone-500 mb-1">Net</p>
+                      <p className="text-sm font-medium text-stone-900">
+                        {getVal(selectedRow.row, "net") || "—"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500 mb-1">Tax Details</p>
+                    <p className="text-sm font-medium text-stone-900">
+                      {getVal(selectedRow.row, "tax") || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
