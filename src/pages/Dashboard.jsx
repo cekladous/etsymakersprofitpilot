@@ -43,8 +43,6 @@ import LowStockNotifications from "@/components/notifications/LowStockNotificati
 import NetProfitStatement from "@/components/monthly/NetProfitStatement";
 import ActualsSpendingMatrix from "@/components/monthly/ActualsSpendingMatrix";
 import BudgetTab from "@/components/monthly/BudgetTab";
-import EtsyOrderImportDialog from "@/components/monthly/EtsyOrderImportDialog";
-import EtsyLedgerImportDialog from "@/components/monthly/EtsyLedgerImportDialog";
 import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import BusinessExpenseDialog from "@/components/monthly/BusinessExpenseDialog";
 import TransferDialog from "@/components/monthly/TransferDialog";
@@ -60,8 +58,6 @@ export default function Dashboard() {
   const [customStartDate, setCustomStartDate] = useState(null);
   const [customEndDate, setCustomEndDate] = useState(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [ledgerImportDialogOpen, setLedgerImportDialogOpen] = useState(false);
   const [customSaleDialogOpen, setCustomSaleDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -593,22 +589,6 @@ export default function Dashboard() {
             periodLabel={getPeriodLabel()}
           />
           
-          {/* Import/Export Actions */}
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Import Sold Orders
-            </Button>
-            <Button variant="outline" onClick={() => setLedgerImportDialogOpen(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Import Payment Ledger
-            </Button>
-            <Button variant="outline" onClick={handleExport}>
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setCustomSaleDialogOpen(true)}>
@@ -656,14 +636,6 @@ export default function Dashboard() {
       </Tabs>
 
       {/* Dialogs */}
-      <EtsyOrderImportDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
-      />
-      <EtsyLedgerImportDialog
-        open={ledgerImportDialogOpen}
-        onOpenChange={setLedgerImportDialogOpen}
-      />
       <CustomSaleDialog
         open={customSaleDialogOpen}
         onOpenChange={setCustomSaleDialogOpen}

@@ -24,6 +24,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import EtsyOrderImportDialog from "@/components/monthly/EtsyOrderImportDialog";
+import EtsyLedgerImportDialog from "@/components/monthly/EtsyLedgerImportDialog";
 
 export default function Orders() {
   const [search, setSearch] = useState("");
@@ -33,6 +34,7 @@ export default function Orders() {
   const [customEndDate, setCustomEndDate] = useState(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [ledgerImportDialogOpen, setLedgerImportDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
   const queryClient = useQueryClient();
@@ -369,7 +371,15 @@ export default function Orders() {
             onClick={() => setImportDialogOpen(true)}
           >
             <Upload className="w-4 h-4 mr-2" />
-            Import Orders
+            Import Sold Orders
+          </Button>
+          <Button 
+            size="sm"
+            variant="outline"
+            onClick={() => setLedgerImportDialogOpen(true)}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Import Payment Ledger
           </Button>
         </div>
       </PageHeader>
@@ -491,6 +501,10 @@ export default function Orders() {
       <EtsyOrderImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
+      />
+      <EtsyLedgerImportDialog
+        open={ledgerImportDialogOpen}
+        onOpenChange={setLedgerImportDialogOpen}
       />
     </div>
   );
