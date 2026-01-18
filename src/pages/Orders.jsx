@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard } from "lucide-react";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
@@ -23,6 +23,9 @@ export default function Orders() {
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const queryClient = useQueryClient();
 
   const { data: etsyOrders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["etsy-orders"],
@@ -37,6 +40,17 @@ export default function Orders() {
   const { data: etsyLedgerEntries = [] } = useQuery({
     queryKey: ["etsy-ledger-entries"],
     queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 1000),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all(ids.map(id => base44.entities.EtsyOrder.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order-fees"] });
+      setSelectedIds([]);
+    },
   });
 
   const formatCurrency = (amount) => {
@@ -99,7 +113,45 @@ export default function Orders() {
     XLSX.writeFile(wb, `etsy-orders-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredOrders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredOrders.map(o => o.id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Delete ${selectedIds.length} order(s)? This will also delete associated fees.`)) {
+      bulkDeleteMutation.mutate(selectedIds);
+    }
+  };
+
   const columns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedIds.length === filteredOrders.length && filteredOrders.length > 0}
+          onChange={toggleSelectAll}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(row.id)}
+          onChange={() => toggleSelect(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
     {
       header: "Order ID",
       render: (row) => (
@@ -237,6 +289,24 @@ export default function Orders() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Actions */}
+      {selectedIds.length > 0 && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-sm font-medium text-emerald-900">
+            {selectedIds.length} order{selectedIds.length !== 1 ? "s" : ""} selected
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={bulkDeleteMutation.isPending}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Selected
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
