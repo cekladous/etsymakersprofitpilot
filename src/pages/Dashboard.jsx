@@ -70,6 +70,11 @@ export default function Dashboard() {
     queryFn: () => base44.auth.me(),
   });
 
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.list(),
+  });
+
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
     queryFn: () => base44.entities.Order.list("-sale_date"),
@@ -295,6 +300,8 @@ export default function Dashboard() {
   };
 
   const getFirstName = () => {
+    const userName = settings[0]?.user_name;
+    if (userName) return userName.split(" ")[0];
     if (!user?.full_name) return "";
     return user.full_name.split(" ")[0];
   };

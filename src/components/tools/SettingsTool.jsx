@@ -49,6 +49,7 @@ export default function SettingsTool() {
     monthly_overhead: 0,
     default_markup: 0,
     business_name: "",
+    user_name: "",
     business_logo_url: "",
     etsy_listing_fee: 0.20,
     etsy_transaction_fee_percent: 6.5,
@@ -157,6 +158,7 @@ export default function SettingsTool() {
         monthly_overhead: s.monthly_overhead || 0,
         default_markup: s.default_markup || 0,
         business_name: s.business_name || "",
+        user_name: s.user_name || "",
         business_logo_url: s.business_logo_url || "",
         etsy_listing_fee: s.etsy_listing_fee ?? 0.20,
         etsy_transaction_fee_percent: s.etsy_transaction_fee_percent ?? 6.5,
@@ -378,6 +380,14 @@ export default function SettingsTool() {
                   placeholder="My Maker Shop"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Your Name</Label>
+              <Input
+                value={settingsData.user_name}
+                onChange={(e) => setSettingsData({ ...settingsData, user_name: e.target.value })}
+                placeholder="Enter your name for the dashboard greeting"
+              />
             </div>
             <div className="space-y-2 pt-4">
               <Label>Business Logo for Quotes & Invoices</Label>
