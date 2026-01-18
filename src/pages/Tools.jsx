@@ -41,7 +41,7 @@ export default function Tools() {
           </TabsTrigger>
           <TabsTrigger value="materials" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
-            <span className="hidden sm:inline">Materials</span>
+            <span className="hidden sm:inline">Material Settings</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
