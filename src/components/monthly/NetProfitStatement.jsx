@@ -53,6 +53,38 @@ export default function NetProfitStatement({ financialData, dateRange }) {
       'other_postage_costs': ['other_postage_costs'],
     };
     
+    // Handle Etsy Sales
+    if (categoryName === "etsy_sales") {
+      const orders = (filteredData.etsyOrders || []).map(o => ({
+        date: o.sale_date,
+        description: `Order #${o.order_id} - ${o.buyer_username || o.buyer_full_name || 'Unknown'}`,
+        vendor: "Etsy",
+        payment_source: o.payment_method || "Etsy",
+        amount: (o.order_value || 0) + (o.shipping_charged || 0),
+      }));
+      items.push(...orders);
+    }
+    
+    // Handle Etsy Refunds
+    if (categoryName === "etsy_refunds") {
+      const refundEntries = (filteredData.etsyLedgerEntries || [])
+        .filter(e => {
+          const title = (e.title || "").toLowerCase();
+          const type = (e.type || "").toLowerCase();
+          return e.matched_category === "etsy_refunds" || 
+                 type.includes("refund") ||
+                 title.includes("refund to buyer");
+        })
+        .map(e => ({
+          date: e.entry_date,
+          description: `${e.title || 'Refund'} - ${e.info || ''}`,
+          vendor: "Etsy",
+          payment_source: "Etsy Payment Ledger",
+          amount: Math.abs(e.net || 0),
+        }));
+      items.push(...refundEntries);
+    }
+    
     // Include MaterialPurchases for materials_supplies
     if (categoryName === "materials_supplies") {
       const purchases = (filteredData.materialPurchases || []).map(p => ({
@@ -225,6 +257,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row 
             label="Etsy Sales (item + shipping)" 
             amount={revenue.etsySales || 0}
+            categoryName="etsy_sales"
             linkTo={createPageUrl("Orders")}
           />
           <Row 
