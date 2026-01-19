@@ -31,6 +31,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import UnifiedEtsyImportHub from "@/components/imports/UnifiedEtsyImportHub";
+import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 
 export default function Orders() {
   const [activeTab, setActiveTab] = useState("orders");
