@@ -220,10 +220,15 @@ export default function EtsyActivity() {
 
       {/* Helper Text */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-900">
-          <strong>📊 Import your Etsy Monthly Statement</strong> to automatically populate Orders, Fees, Ads, Shipping Labels, and Deposits. 
-          This is the single source of truth for all Etsy financial data.
+        <p className="text-sm text-blue-900 mb-2">
+          <strong>📊 How to import:</strong>
         </p>
+        <ol className="text-sm text-blue-900 space-y-1 ml-4 list-decimal">
+          <li>Go to Etsy → Shop Manager → Finances → Payment Account</li>
+          <li>Select a month and click "Download CSV" (not PDF)</li>
+          <li>Click "Import Etsy Statement" above and upload the CSV file</li>
+          <li>All orders, fees, deposits automatically populate throughout the app</li>
+        </ol>
       </div>
 
       {/* Summary Cards */}
