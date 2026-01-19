@@ -50,10 +50,29 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
     return isNaN(num) ? 0 : num;
   };
 
+  const normalizeRow = (row) => {
+    const normalized = {};
+    Object.keys(row).forEach(key => {
+      const trimmedKey = key.trim();
+      normalized[trimmedKey] = row[key];
+    });
+    return normalized;
+  };
+
+  const getRowValue = (row, ...keyOptions) => {
+    for (const key of keyOptions) {
+      const val = row[key];
+      if (val !== null && val !== undefined && val !== "") {
+        return val;
+      }
+    }
+    return "";
+  };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     setImporting(true);
     setImportResult(null);
 
@@ -73,7 +92,9 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
           return;
         }
 
-        const orders = jsonData.map(row => ({
+        const orders = jsonData.map(row => {
+          const normalized = normalizeRow(row);
+          return {
            sale_date: parseDate(row["Sale Date"] || row["Order Date"]),
            order_id: String(row["Order ID"] || ""),
            buyer_username: row["Buyer"] || row["Buyer User ID"] || "",
