@@ -263,63 +263,42 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       };
       
+      // Get all existing statement lines to check for duplicates
+      const allExistingLines = await base44.entities.EtsyStatementLine.list();
+      const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
+      
+      // Filter out rows that already exist
+      const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
+      const newFees = fees.filter(f => !existingLineUIDs.has(f._rawLine.line_uid));
+      const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
+      
       // Check if this statement month was already imported
       const existingImports = await base44.entities.EtsyStatementImport.filter({ statement_month: statementMonth });
       let importRecord;
       
-      if (existingImports.length > 0) {
-        // Mark old imports as replaced
-        for (const oldImport of existingImports) {
-          await base44.entities.EtsyStatementImport.update(oldImport.id, {
-            status: 'replaced',
-            reconciliation_notes: `Replaced by import at ${new Date().toISOString()}`
-          });
-          
-          // Delete old statement lines for this import
-          const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImport.id });
-          await batchProcess(oldLines, 5, line => base44.entities.EtsyStatementLine.delete(line.id));
-
-          // Delete old fees for this import
-          const oldFees = await base44.entities.Fee.filter({ import_id: oldImport.id });
-          await batchProcess(oldFees, 5, fee => base44.entities.Fee.delete(fee.id));
-        }
-        
-        // Create new import record
-        importRecord = await base44.entities.EtsyStatementImport.create({
-          import_id: `import_${Date.now()}`,
-          statement_month: statementMonth,
-          date_range_start: dateRangeStart,
-          date_range_end: dateRangeEnd,
-          file_name: fileName,
-          file_hash: fileHash,
-          imported_at: new Date().toISOString(),
-          status: 'success',
-        });
-      } else {
-        // Create new import record
-        importRecord = await base44.entities.EtsyStatementImport.create({
-          import_id: `import_${Date.now()}`,
-          statement_month: statementMonth,
-          date_range_start: dateRangeStart,
-          date_range_end: dateRangeEnd,
-          file_name: fileName,
-          file_hash: fileHash,
-          imported_at: new Date().toISOString(),
-          status: 'success',
-        });
-      }
+      // Create new import record
+      importRecord = await base44.entities.EtsyStatementImport.create({
+        import_id: `import_${Date.now()}`,
+        statement_month: statementMonth,
+        date_range_start: dateRangeStart,
+        date_range_end: dateRangeEnd,
+        file_name: fileName,
+        file_hash: fileHash,
+        imported_at: new Date().toISOString(),
+        status: 'success',
+      });
 
       const result = {
-        orders: { created: 0, updated: 0 },
-        fees: { created: 0 },
-        deposits: { created: 0 },
+        orders: { created: 0, updated: 0, skipped: orders.length - newOrders.length },
+        fees: { created: 0, skipped: fees.length - newFees.length },
+        deposits: { created: 0, skipped: deposits.length - newDeposits.length },
         refunds: { created: 0 },
         taxes: { created: 0 },
         unmatched: { count: 0 }
       };
 
-      // Import orders (upsert by channel + order_id) - very conservative
-      await batchProcess(orders, 5, async (order) => {
+      // Import only new orders (upsert by order_id)
+      await batchProcess(newOrders, 5, async (order) => {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
@@ -330,15 +309,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       });
 
-      // Import fees (normalized) - very conservative
-      await batchProcess(fees, 10, async (fee) => {
+      // Import only new fees
+      await batchProcess(newFees, 10, async (fee) => {
         await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
         result.fees.created++;
       });
 
-      // Aggregate fees into OrderFee records for each order
+      // Aggregate fees into OrderFee records for each order (only new fees)
       const orderFeeMap = {};
-      fees.forEach(fee => {
+      newFees.forEach(fee => {
         if (fee.order_id) {
           if (!orderFeeMap[fee.order_id]) {
             orderFeeMap[fee.order_id] = {
@@ -382,8 +361,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       });
 
-      // Import deposits as transfers - smaller batches
-      await batchProcess(deposits, 5, async (deposit) => {
+      // Import only new deposits as transfers
+      await batchProcess(newDeposits, 5, async (deposit) => {
         await base44.entities.Transfer.create(deposit);
         result.deposits.created++;
       });
@@ -392,14 +371,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save all statement lines - very conservative
-      const allLines = [
-        ...orders.map(o => o._rawLine), 
-        ...fees.map(f => f._rawLine), 
-        ...deposits.map(d => d._rawLine),
-        ...unmatchedLines
+      // Save only new statement lines
+      const newLines = [
+        ...newOrders.map(o => o._rawLine), 
+        ...newFees.map(f => f._rawLine), 
+        ...newDeposits.map(d => d._rawLine)
       ];
-      await batchProcess(allLines, 10, async (line) => {
+      await batchProcess(newLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
           import_id: importRecord.id,
           ...line
