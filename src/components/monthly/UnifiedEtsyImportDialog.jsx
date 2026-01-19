@@ -151,6 +151,7 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
         });
 
         const existingEntries = await base44.entities.EtsyLedgerEntry.list("-entry_date", 10000);
+        result.existingEntriesCount = existingEntries.length;
 
         for (const entry of ledgerEntries) {
           // Check if this exact entry already exists (by all key fields)
@@ -158,8 +159,8 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
             e.entry_date === entry.entry_date &&
             e.type === entry.type &&
             e.title === entry.title &&
-            e.amount === entry.amount &&
-            e.net === entry.net
+            Math.abs((e.amount || 0) - (entry.amount || 0)) < 0.01 &&
+            Math.abs((e.net || 0) - (entry.net || 0)) < 0.01
           );
           
           if (duplicate) {
@@ -471,7 +472,10 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
                     <>
                       <p>✓ Ledger entries created: {importResult.ledger.created}</p>
                       {importResult.ledger.skipped > 0 && (
-                        <p className="text-amber-700">⊗ Ledger entries skipped: {importResult.ledger.skipped} (duplicates already imported)</p>
+                        <div className="text-amber-700">
+                          <p>⊗ Ledger entries skipped: {importResult.ledger.skipped} (duplicates detected)</p>
+                          <p className="text-sm mt-1">Database has {importResult.existingEntriesCount || 0} existing ledger entries. To re-import, delete existing entries first from the Orders page.</p>
+                        </div>
                       )}
                     </>
                   )}
