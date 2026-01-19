@@ -92,28 +92,31 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
           return;
         }
 
-        const orders = jsonData.map(row => {
-          const normalized = normalizeRow(row);
-          return {
-           sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
-           order_id: String(getRowValue(normalized, "Order ID") || ""),
-           buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID"),
-           buyer_full_name: getRowValue(normalized, "Full Name"),
-           number_of_items: parseInt(getRowValue(normalized, "Quantity", "Number of Items") || "1"),
-           sku: getRowValue(normalized, "SKU", "Sku"),
-           product_name: getRowValue(normalized, "Title", "Product", "Item Title"),
-           coupon_code: getRowValue(normalized, "Coupon Code", "Coupon"),
-           // Capture financial fields from Sold Orders CSV
-           order_value: parseMoney(getRowValue(normalized, "Order Value")),
-           shipping_charged: parseMoney(getRowValue(normalized, "Shipping", "Shipping price", "Shipping Charged", "Shipping Amount", "Shipping Cost")),
-           sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
-           order_total: parseMoney(getRowValue(normalized, "Order Total")),
-           order_net: parseMoney(getRowValue(normalized, "Order Net")),
-           discount_amount: parseMoney(getRowValue(normalized, "Discount Amount")),
-           card_processing_fees: parseMoney(getRowValue(normalized, "Card Processing Fees")),
-           status: "completed",
-           };
-           }).filter(o => o.order_id);
+        const orders = jsonData.map((row, idx) => {
+           const normalized = normalizeRow(row);
+           const shippingValue = getRowValue(normalized, "Shipping", "Shipping price", "Shipping Charged", "Shipping Amount", "Shipping Cost");
+           const shippingParsed = parseMoney(shippingValue);
+
+           return {
+            sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
+            order_id: String(getRowValue(normalized, "Order ID") || ""),
+            buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID", "Buyer User ID"),
+            buyer_full_name: getRowValue(normalized, "Full Name"),
+            number_of_items: parseInt(getRowValue(normalized, "Quantity", "Number of Items") || "1"),
+            sku: getRowValue(normalized, "SKU", "Sku"),
+            product_name: getRowValue(normalized, "Title", "Product", "Item Title"),
+            coupon_code: getRowValue(normalized, "Coupon Code", "Coupon"),
+            // Capture financial fields from Sold Orders CSV
+            order_value: parseMoney(getRowValue(normalized, "Order Value")),
+            shipping_charged: shippingParsed,
+            sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
+            order_total: parseMoney(getRowValue(normalized, "Order Total")),
+            order_net: parseMoney(getRowValue(normalized, "Order Net")),
+            discount_amount: parseMoney(getRowValue(normalized, "Discount Amount")),
+            card_processing_fees: parseMoney(getRowValue(normalized, "Card Processing Fees")),
+            status: "completed",
+          };
+         }).filter(o => o.order_id);
 
         setPreview({ count: orders.length });
         setPendingData({ orders });
