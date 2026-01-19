@@ -552,13 +552,22 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         });
       }
       // B) ORDERS/SALES
-      else if (classification.category === 'sale' && classification.order_id) {
-        // Calculate total fees for this order from the fees we found
-        const orderFees = feesByOrderId[classification.order_id] || [];
-        const totalOrderFees = orderFees.reduce((sum, f) => {
-          const feeAmount = parseMoney(f["Fees & Taxes"]);
-          return sum + Math.abs(feeAmount || 0);
-        }, 0);
+       else if (classification.category === 'sale' && classification.order_id) {
+         // Calculate total fees AND taxes for this order from the fees we found
+         const orderFees = feesByOrderId[classification.order_id] || [];
+         const orderTaxes = classifiedRows.filter(({ row: r, classification: c }) => 
+           c.category === 'tax' && c.order_id === classification.order_id
+         );
+
+         const totalOrderFees = orderFees.reduce((sum, f) => {
+           const feeAmount = parseMoney(f["Fees & Taxes"]);
+           return sum + Math.abs(feeAmount || 0);
+         }, 0);
+
+         const totalTaxes = orderTaxes.reduce((sum, { row: r }) => {
+           const taxAmount = parseMoney(r["Amount"] || r["Fees & Taxes"]);
+           return sum + Math.abs(taxAmount || 0);
+         }, 0);
 
         // Parse values from CSV or fallback to derived values
         let orderValue = parseMoney(row["Order Value"] || row["Item Total"]);
