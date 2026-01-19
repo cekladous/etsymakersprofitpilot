@@ -110,18 +110,25 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-stone-600">Shipping Charged</span>
+                  <span className="text-stone-600">Shipping</span>
                   <span className="font-semibold text-stone-900">
                     {formatCurrency(order.shipping_charged || 0)}
                   </span>
                 </div>
                 {(order.discount_amount || 0) > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-stone-600">Discount</span>
-                    <span className="font-semibold text-red-600">
-                      -{formatCurrency(order.discount_amount)}
-                    </span>
-                  </div>
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-stone-600">Discount</span>
+                      <span className="font-semibold text-red-600">
+                        -{formatCurrency(order.discount_amount)}
+                      </span>
+                    </div>
+                    {order.coupon_code && (
+                      <div className="flex justify-between items-center text-xs pl-2">
+                        <span className="text-stone-500">({order.coupon_code})</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="flex justify-between items-center">
                   <span className="text-stone-600">Sales Tax</span>
