@@ -55,6 +55,32 @@ export default function CustomersPage() {
     }
   };
 
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedCustomers = [...customers].sort((a, b) => {
+    let aVal = a[sortBy];
+    let bVal = b[sortBy];
+    
+    if (sortBy === "created_date") {
+      aVal = new Date(aVal);
+      bVal = new Date(bVal);
+    } else if (typeof aVal === "string") {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+    
+    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
   const columns = [
     {
       key: "name",
