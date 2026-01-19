@@ -52,6 +52,12 @@ export default function DataTable({
       }
     }
     setSelectedCells(newSelection);
+
+    // Auto-scroll if near bottom
+    const scrollContainer = document.querySelector('[data-table-scroll]');
+    if (scrollContainer && rowIndex === data.length - 1) {
+      scrollContainer.scrollTop += 50;
+    }
   };
 
   const handleMouseUp = () => {
