@@ -94,7 +94,7 @@ export default function EtsyAnalyticsDashboard() {
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = 0;
       }
-      monthlyData[monthKey] += order.order_value || 0;
+      monthlyData[monthKey] += (order.order_value || 0) + (order.shipping_charged || 0);
     });
 
     return Object.entries(monthlyData)
