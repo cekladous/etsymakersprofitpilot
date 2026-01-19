@@ -142,8 +142,8 @@ export default function CustomersPage() {
         </Button>
       </PageHeader>
 
-      <Card className="flex-1 flex flex-col overflow-hidden mt-0">
-        <CardContent className="p-0 flex-1 overflow-y-auto">
+      <Card className="flex-1 flex flex-col overflow-hidden mt-0 rounded-none border-0">
+        <CardContent className="p-0 flex-1 overflow-y-auto flex flex-col">
            {customers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 mx-auto text-stone-300 mb-3" />
