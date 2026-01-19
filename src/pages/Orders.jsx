@@ -47,6 +47,7 @@ export default function Orders() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectedFeeIds, setSelectedFeeIds] = useState([]);
   const [selectedDepositIds, setSelectedDepositIds] = useState([]);
+  const [selectedFeeOrderId, setSelectedFeeOrderId] = useState(null);
 
   const queryClient = useQueryClient();
 
