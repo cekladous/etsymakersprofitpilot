@@ -25,7 +25,7 @@ export default function EtsyActivity() {
   const [feeTypeFilter, setFeeTypeFilter] = useState("all");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("fees");
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
   const { data: fees = [], isLoading: feesLoading } = useQuery({
     queryKey: ["fees"],
