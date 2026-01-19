@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
@@ -52,6 +53,7 @@ import EtsyAnalyticsDashboard from "@/components/analytics/EtsyAnalyticsDashboar
 // xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -62,89 +64,100 @@ export default function Dashboard() {
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
 
-  const { data: user } = useQuery({
-    queryKey: ["user"],
-    queryFn: () => base44.auth.me(),
-  });
-
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
   });
 
   const { data: orders = [] } = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => base44.entities.Order.list("-sale_date"),
+    queryKey: ["orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Order.filter({ owner_user_id: user.id }, "-sale_date"),
   });
 
   const { data: jobs = [] } = useQuery({
-    queryKey: ["jobs"],
-    queryFn: () => base44.entities.Job.list("-created_date"),
+    queryKey: ["jobs", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
   const { data: expenses = [] } = useQuery({
-    queryKey: ["expenses"],
-    queryFn: () => base44.entities.Expense.list("-date"),
+    queryKey: ["expenses", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Expense.filter({ owner_user_id: user.id }, "-date"),
   });
 
   const { data: sheets = [] } = useQuery({
-    queryKey: ["sheets"],
-    queryFn: () => base44.entities.MaterialSheet.list(),
+    queryKey: ["sheets", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialSheet.filter({ owner_user_id: user.id }),
   });
 
   const { data: materialTypes = [] } = useQuery({
-    queryKey: ["materialTypes"],
-    queryFn: () => base44.entities.MaterialType.list(),
+    queryKey: ["materialTypes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }),
   });
 
   const { data: etsyOrders = [] } = useQuery({
-    queryKey: ["etsy-orders"],
-    queryFn: () => base44.entities.EtsyOrder.list("-sale_date", 1000),
+    queryKey: ["etsy-orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyOrder.filter({ owner_user_id: user.id }, "-sale_date", 1000),
   });
 
   const { data: orderFees = [] } = useQuery({
-    queryKey: ["order-fees"],
-    queryFn: () => base44.entities.OrderFee.list(),
+    queryKey: ["order-fees", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.OrderFee.filter({ owner_user_id: user.id }),
   });
 
   const { data: customSales = [] } = useQuery({
-    queryKey: ["custom-sales"],
-    queryFn: () => base44.entities.CustomSale.list("-date", 1000),
+    queryKey: ["custom-sales", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.CustomSale.filter({ owner_user_id: user.id }, "-date", 1000),
   });
 
   const { data: businessExpenses = [] } = useQuery({
-    queryKey: ["business-expenses"],
-    queryFn: () => base44.entities.BusinessExpense.list("-date", 1000),
+    queryKey: ["business-expenses", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, "-date", 1000),
   });
 
   const { data: transfers = [] } = useQuery({
-    queryKey: ["transfers"],
-    queryFn: () => base44.entities.Transfer.list("-date", 1000),
+    queryKey: ["transfers", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Transfer.filter({ owner_user_id: user.id }, "-date", 1000),
   });
 
   const { data: materialPurchases = [] } = useQuery({
-    queryKey: ["material-purchases"],
-    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 1000),
+    queryKey: ["material-purchases", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 1000),
   });
 
   const { data: etsyLedgerEntries = [] } = useQuery({
-    queryKey: ["etsy-ledger-entries"],
-    queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 5000),
+    queryKey: ["etsy-ledger-entries", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000),
   });
 
   const { data: fees = [] } = useQuery({
-    queryKey: ["fees"],
-    queryFn: () => base44.entities.Fee.list(),
+    queryKey: ["fees", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Fee.filter({ owner_user_id: user.id }),
   });
 
   const { data: etsyStatementLines = [] } = useQuery({
-    queryKey: ["etsy-statement-lines"],
-    queryFn: () => base44.entities.EtsyStatementLine.list(),
+    queryKey: ["etsy-statement-lines", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }),
   });
 
   const { data: etsyStatementImports = [] } = useQuery({
-    queryKey: ["etsy-statement-imports"],
-    queryFn: () => base44.entities.EtsyStatementImport.list(),
+    queryKey: ["etsy-statement-imports", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }),
   });
 
   const now = new Date();
@@ -354,6 +367,14 @@ export default function Dashboard() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
     XLSX.writeFile(workbook, `dashboard-${format(selectedDate, "yyyy-MM")}.xlsx`);
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="space-y-8">
