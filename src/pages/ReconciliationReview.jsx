@@ -212,6 +212,26 @@ export default function ReconciliationReview() {
     }))
   ];
 
+  // Create breakdown by Type for debugging
+  const unmatchedBreakdown = React.useMemo(() => {
+    const breakdown = {};
+    allUnmatchedRows.forEach(row => {
+      const key = row.type || 'Unknown Type';
+      if (!breakdown[key]) {
+        breakdown[key] = { count: 0, examples: [] };
+      }
+      breakdown[key].count++;
+      if (breakdown[key].examples.length < 3) {
+        breakdown[key].examples.push({
+          description: row.description,
+          amount: row.amount,
+          date: row.transaction_date
+        });
+      }
+    });
+    return breakdown;
+  }, [allUnmatchedRows]);
+
   return (
     <div className="space-y-6">
       <PageHeader
