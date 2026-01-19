@@ -10,9 +10,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
+import { AlertCircle, CheckCircle2, FileText, Loader2, Upload } from "lucide-react";
 
 // Generate stable line_uid from transaction data
 const generateLineUID = (date, type, amount, description, orderId, month) => {
@@ -239,6 +240,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
   const [preview, setPreview] = useState(null);
   const [importResult, setImportResult] = useState(null);
   const [pendingData, setPendingData] = useState(null);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -424,12 +426,25 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     },
   });
 
+  // Generate simple hash from file content
+  const generateFileHash = (data) => {
+    let hash = 0;
+    const str = JSON.stringify(data);
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+  };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
     setImporting(true);
     setImportResult(null);
+    setDuplicateWarning(null);
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -449,6 +464,36 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         // Parse statement
         const parsed = parseEtsyStatement(jsonData, file.name);
+        const fileHash = generateFileHash(jsonData);
+        
+        // Check for duplicate file
+        const existingImports = await base44.entities.EtsyStatementImport.filter({ file_hash: fileHash });
+        if (existingImports.length > 0) {
+          const existing = existingImports[0];
+          setDuplicateWarning({
+            existingImport: existing,
+            newData: {
+              statementMonth: parsed.statementMonth,
+              dateRangeStart: parsed.dateRangeStart,
+              dateRangeEnd: parsed.dateRangeEnd,
+              fileName: file.name,
+              fileHash,
+              parsedData: parsed
+            },
+            preview: {
+              orders: parsed.orders.length,
+              fees: parsed.fees.length,
+              deposits: parsed.deposits.length,
+              refunds: parsed.refunds.length,
+              taxes: parsed.taxes.length,
+              unmatched: parsed.unmatchedLines.length,
+              statementMonth: parsed.statementMonth,
+              dateRange: `${parsed.dateRangeStart} to ${parsed.dateRangeEnd}`
+            }
+          });
+          setImporting(false);
+          return;
+        }
         
         setPreview({
           orders: parsed.orders.length,
@@ -466,7 +511,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           dateRangeStart: parsed.dateRangeStart,
           dateRangeEnd: parsed.dateRangeEnd,
           fileName: file.name,
-          fileHash: `hash_${Date.now()}`, // TODO: implement real hash
+          fileHash,
           parsedData: parsed
         });
         
@@ -632,10 +677,23 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     }
   };
 
+  const confirmDuplicateImport = () => {
+    if (duplicateWarning?.newData) {
+      setImporting(true);
+      setDuplicateWarning(null);
+      importMutation.mutate(duplicateWarning.newData);
+    }
+  };
+
+  const cancelDuplicate = () => {
+    setDuplicateWarning(null);
+  };
+
   const handleClose = () => {
     setImportResult(null);
     setPreview(null);
     setPendingData(null);
+    setDuplicateWarning(null);
     if (!embedded) onOpenChange(false);
   };
 
