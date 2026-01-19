@@ -261,7 +261,7 @@ export default function Orders() {
 
   const exportOrders = () => {
     const data = filteredOrders.map(o => {
-      const fees = orderFees.find(f => f.order_id === o.id);
+      const fees = orderFees.find(f => f.order_id === o.order_id);
       return {
         "Order ID": o.order_id,
         "Date": o.sale_date,
