@@ -575,14 +575,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         let salesTax = parseMoney(row["Sales Tax"]);
         const orderTotal = parseMoney(row["Order Total"]) || amount;
 
-        // If order_value is missing, derive it: order_total - shipping - fees
-        if (!orderValue || orderValue === 0) {
-          orderValue = Math.max(0, orderTotal - shippingCharged - totalOrderFees);
-        }
+        // `orderValue` = Item(s) price from CSV. Only use if explicitly provided.
+        // Do not derive from other fields to avoid double-counting deductions.
 
-        // Calculate net payout correctly: order_value - total_fees - taxes
-        // Taxes and all fees are deducted from the sale price
-        const calculatedNetPayout = orderValue - totalOrderFees - totalTaxes;
+        // Calculate net payout correctly: order_total - total_fees - taxes
+        // This equals Etsy's "Order earnings" = what buyer paid - (all fees & credits & tax)
+        const calculatedNetPayout = orderTotal - totalOrderFees - totalTaxes;
 
         orders.push({
           sale_date: transactionDate,
@@ -594,7 +592,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           order_value: orderValue,
           shipping_charged: shippingCharged,
           discount_amount: parseMoney(row["Discount Amount"] || row["Coupon"]),
-          sales_tax: salesTax,
+          sales_tax: 0, // Sales tax is collected by Etsy and included in total fees deductions
           order_total: orderTotal,
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
           order_net: calculatedNetPayout,
