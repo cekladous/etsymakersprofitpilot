@@ -215,15 +215,15 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
           {/* Net Payout Calculation */}
           <Card className="bg-emerald-50 border-emerald-200">
             <CardContent className="p-6 space-y-3">
-              <p className="text-sm text-emerald-700 font-semibold">Net After Fees</p>
+              <p className="text-sm text-emerald-700 font-semibold">Order Earnings Calculation</p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center text-stone-600">
-                  <span>Subtotal (Order Value)</span>
+                  <span>Item(s) Price</span>
                   <span>{formatCurrency(order.order_value || 0)}</span>
                 </div>
                 {(order.shipping_charged || 0) > 0 && (
-                  <div className="flex justify-between items-center text-stone-600">
-                    <span>+ Shipping</span>
+                  <div className="flex justify-between items-center text-emerald-700">
+                    <span>+ Shipping Charged (kept by seller)</span>
                     <span>{formatCurrency(order.shipping_charged)}</span>
                   </div>
                 )}
@@ -233,14 +233,18 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     <span>-{formatCurrency(order.discount_amount)}</span>
                   </div>
                 )}
+                <div className="border-t-2 pt-2 flex justify-between items-center font-medium text-stone-900">
+                  <span>Subtotal (before fees)</span>
+                  <span>{formatCurrency((order.order_value || 0) + (order.shipping_charged || 0) - (order.discount_amount || 0))}</span>
+                </div>
                 {(orderFees?.total_fees || 0) > 0 && (
                   <div className="flex justify-between items-center text-red-600">
-                    <span>- Fees</span>
+                    <span>- All Fees & Taxes</span>
                     <span>-{formatCurrency(orderFees.total_fees)}</span>
                   </div>
                 )}
-                <div className="border-t pt-2 flex justify-between items-center font-semibold text-emerald-700">
-                  <span>= Net Payout</span>
+                <div className="border-t-2 pt-2 flex justify-between items-center font-semibold text-emerald-700">
+                  <span>= Net Earnings</span>
                   <span className="text-2xl text-emerald-600">
                     {formatCurrency(order.order_net || 0)}
                   </span>
