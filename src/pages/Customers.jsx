@@ -167,7 +167,7 @@ export default function CustomersPage() {
         title="Customers"
         description="Manage customer contacts and view their quote and order history"
       >
-        <div className="flex gap-2">
+        <div className="flex gap-3 items-center">
           <div className="flex gap-1 bg-stone-100 rounded-lg p-1">
             <Button
               size="sm"
@@ -186,6 +186,27 @@ export default function CustomersPage() {
               <List className="w-4 h-4" />
             </Button>
           </div>
+
+          <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setSortDir("asc"); }}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Sort by Name</SelectItem>
+              <SelectItem value="email">Sort by Contact</SelectItem>
+              <SelectItem value="created_date">Sort by Date Added</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+            className="px-2"
+          >
+            {sortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+          </Button>
+
           <Button onClick={handleNew} className="bg-emerald-600 hover:bg-emerald-700">
             <Plus className="w-4 h-4 mr-2" />
             New Customer
