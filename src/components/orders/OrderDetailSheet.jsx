@@ -102,46 +102,47 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
               <CardTitle className="text-sm">Financial Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-600">Order Value</span>
-                  <span className="font-semibold text-stone-900">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-stone-50 rounded">
+                  <span className="text-stone-600 font-medium">Order Value</span>
+                  <span className="font-bold text-stone-900 text-lg">
                     {formatCurrency(order.order_value || 0)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-600">Shipping</span>
-                  <span className="font-semibold text-stone-900">
+                <div className="flex justify-between items-center p-3 bg-emerald-50 rounded">
+                  <span className="text-emerald-700 font-medium">Shipping Charged</span>
+                  <span className="font-bold text-emerald-700 text-lg">
                     {formatCurrency(order.shipping_charged || 0)}
                   </span>
                 </div>
                 {(order.discount_amount || 0) > 0 && (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-stone-600">Discount</span>
-                      <span className="font-semibold text-red-600">
-                        -{formatCurrency(order.discount_amount)}
-                      </span>
-                    </div>
-                    {order.coupon_code && (
-                      <div className="flex justify-between items-center text-xs pl-2">
-                        <span className="text-stone-500">({order.coupon_code})</span>
-                      </div>
-                    )}
-                  </>
+                  <div className="flex justify-between items-center p-3 bg-red-50 rounded">
+                    <span className="text-red-700 font-medium">Discount {order.coupon_code ? `(${order.coupon_code})` : ""}</span>
+                    <span className="font-bold text-red-700 text-lg">
+                      -{formatCurrency(order.discount_amount)}
+                    </span>
+                  </div>
                 )}
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-600">Sales Tax</span>
-                  <span className="font-semibold text-stone-900">
+                <div className="flex justify-between items-center p-3 bg-amber-50 rounded">
+                  <span className="text-amber-700 font-medium">Sales Tax</span>
+                  <span className="font-bold text-amber-700 text-lg">
                     {formatCurrency(order.sales_tax || 0)}
                   </span>
                 </div>
-                <div className="border-t pt-2 flex justify-between items-center">
-                  <span className="text-stone-600">Order Total</span>
-                  <span className="font-semibold text-lg text-stone-900">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded border-2 border-blue-200">
+                  <span className="text-blue-900 font-bold">Order Total</span>
+                  <span className="font-bold text-blue-900 text-xl">
                     {formatCurrency(order.order_total || 0)}
                   </span>
                 </div>
+                {order.card_processing_fees > 0 && (
+                  <div className="flex justify-between items-center p-3 bg-rose-50 rounded">
+                    <span className="text-rose-700 font-medium">Card Processing Fees</span>
+                    <span className="font-bold text-rose-700">
+                      {formatCurrency(order.card_processing_fees)}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
