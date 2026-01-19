@@ -70,12 +70,15 @@ export default function CustomersPage() {
     let bVal = b[sortBy];
     
     if (sortBy === "created_date") {
-      aVal = new Date(aVal);
-      bVal = new Date(bVal);
-    } else if (typeof aVal === "string") {
+      aVal = aVal ? new Date(aVal) : new Date(0);
+      bVal = bVal ? new Date(bVal) : new Date(0);
+    } else if (typeof aVal === "string" && typeof bVal === "string") {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
     }
+    
+    if (aVal == null) aVal = "";
+    if (bVal == null) bVal = "";
     
     if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
     if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
