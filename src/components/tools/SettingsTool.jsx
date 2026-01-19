@@ -336,20 +336,32 @@ export default function SettingsTool() {
   const handleResetApp = async () => {
     setResetting(true);
     try {
-      // Delete all entities - use filter with empty query to get everything
+      // Delete all entities - fetch ALL records with high limit
       const entitiesToDelete = [
         'EtsyOrder', 'OrderFee', 'Fee', 'EtsyStatementImport', 'EtsyStatementLine',
         'EtsyLedgerEntry', 'BusinessExpense', 'Expense', 'Order', 'Quote', 'Customer',
         'Job', 'Product', 'MaterialType', 'MaterialSheet', 'MaterialUsage', 'MaterialPurchase',
         'Machine', 'LaserSetting', 'CustomSale', 'Transfer', 'InventoryItem', 'InventoryTransaction',
-        'BudgetPlan', 'BudgetLine', 'FeeChangeLog'
+        'BudgetPlan', 'BudgetLine', 'FeeChangeLog', 'OrderImportBatch'
       ];
 
+      console.log('Starting app reset...');
+      
       for (const entityName of entitiesToDelete) {
         try {
-          const records = await base44.entities[entityName].filter({});
+          console.log(`Deleting ${entityName}...`);
+          // Fetch with high limit to get all records
+          const records = await base44.entities[entityName].list('-created_date', 10000);
+          console.log(`Found ${records.length} ${entityName} records`);
+          
           if (records && records.length > 0) {
-            await Promise.all(records.map(r => base44.entities[entityName].delete(r.id)));
+            // Delete in batches to avoid overwhelming the system
+            const batchSize = 50;
+            for (let i = 0; i < records.length; i += batchSize) {
+              const batch = records.slice(i, i + batchSize);
+              await Promise.all(batch.map(r => base44.entities[entityName].delete(r.id)));
+              console.log(`Deleted ${Math.min(i + batchSize, records.length)}/${records.length} ${entityName}`);
+            }
           }
         } catch (err) {
           console.error(`Failed to delete ${entityName}:`, err);
@@ -362,26 +374,28 @@ export default function SettingsTool() {
           electricity_rate: 0.12,
           monthly_overhead: 0,
           default_markup: 0,
+          business_name: "",
+          user_name: "",
           etsy_listing_fee: 0.20,
           etsy_transaction_fee_percent: 6.5,
           payment_processing_fee_percent: 3.0,
           payment_processing_fee_fixed: 0.25,
-          auto_categorization_rules: []
+          auto_categorization_rules: [],
+          advertising_type: "none"
         });
       }
 
+      console.log('Reset complete, reloading...');
+      
       // Clear all query cache
       queryClient.clear();
       setResetDialogOpen(false);
       
-      // Reload page after a short delay
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      // Force reload
+      window.location.href = window.location.href;
     } catch (error) {
       console.error('Reset failed:', error);
-      alert('Reset failed: ' + error.message);
-    } finally {
+      alert('Reset failed. Check console for details: ' + error.message);
       setResetting(false);
     }
   };
