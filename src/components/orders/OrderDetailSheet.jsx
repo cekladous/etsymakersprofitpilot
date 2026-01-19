@@ -212,13 +212,40 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
             </Card>
           )}
 
-          {/* Net Payout */}
+          {/* Net Payout Calculation */}
           <Card className="bg-emerald-50 border-emerald-200">
-            <CardContent className="p-6">
-              <p className="text-sm text-emerald-700 mb-1">Net After Fees</p>
-              <p className="text-3xl font-bold text-emerald-600">
-                {formatCurrency(order.order_net || 0)}
-              </p>
+            <CardContent className="p-6 space-y-3">
+              <p className="text-sm text-emerald-700 font-semibold">Net After Fees</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center text-stone-600">
+                  <span>Subtotal (Order Value)</span>
+                  <span>{formatCurrency(order.order_value || 0)}</span>
+                </div>
+                {(order.shipping_charged || 0) > 0 && (
+                  <div className="flex justify-between items-center text-stone-600">
+                    <span>+ Shipping</span>
+                    <span>{formatCurrency(order.shipping_charged)}</span>
+                  </div>
+                )}
+                {(order.discount_amount || 0) > 0 && (
+                  <div className="flex justify-between items-center text-red-600">
+                    <span>- Discount</span>
+                    <span>-{formatCurrency(order.discount_amount)}</span>
+                  </div>
+                )}
+                {(orderFees?.total_fees || 0) > 0 && (
+                  <div className="flex justify-between items-center text-red-600">
+                    <span>- Fees</span>
+                    <span>-{formatCurrency(orderFees.total_fees)}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 flex justify-between items-center font-semibold text-emerald-700">
+                  <span>= Net Payout</span>
+                  <span className="text-2xl text-emerald-600">
+                    {formatCurrency(order.order_net || 0)}
+                  </span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
