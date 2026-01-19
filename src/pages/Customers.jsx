@@ -196,13 +196,16 @@ export default function CustomersPage() {
         <CardContent className="p-6 flex-1 overflow-visible">
            {viewMode === "grid" ? (
             <CustomerGridView 
-              customers={customers} 
+              customers={sortedCustomers} 
               onView={handleView}
               onEdit={handleEdit}
               onDelete={(customer) => handleDelete(customer.id)}
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={handleSort}
             />
            ) : (
-            customers.length === 0 ? (
+            sortedCustomers.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 mx-auto text-stone-300 mb-3" />
                 <p className="text-stone-500 mb-4">No customers yet</p>
@@ -212,7 +215,7 @@ export default function CustomersPage() {
                 </Button>
               </div>
             ) : (
-              <DataTable data={customers} columns={columns} />
+              <DataTable data={sortedCustomers} columns={columns} />
             )
            )}
         </CardContent>
