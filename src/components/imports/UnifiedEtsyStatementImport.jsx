@@ -599,7 +599,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
           order_net: calculatedNetPayout,
           status: row["Status"] || "completed",
-          total_fees: totalOrderFees,
+          total_fees: totalOrderFees + totalTaxes,
           _rawLine: rawLine
         });
       }
