@@ -559,7 +559,18 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           const feeAmount = parseMoney(f["Fees & Taxes"]);
           return sum + Math.abs(feeAmount || 0);
         }, 0);
-        
+
+        // Parse values from CSV or fallback to derived values
+        let orderValue = parseMoney(row["Order Value"] || row["Item Total"]);
+        let shippingCharged = parseMoney(row["Shipping"]);
+        let salesTax = parseMoney(row["Sales Tax"]);
+        const orderTotal = parseMoney(row["Order Total"]) || amount;
+
+        // If order_value is missing, derive it: order_total - shipping - fees
+        if (!orderValue || orderValue === 0) {
+          orderValue = Math.max(0, orderTotal - shippingCharged - totalOrderFees);
+        }
+
         orders.push({
           sale_date: transactionDate,
           order_id: classification.order_id,
@@ -567,11 +578,11 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           buyer_full_name: row["Full Name"] || "",
           number_of_items: parseIntSafe(row["Number of Items"] || row["Quantity"]),
           payment_method: row["Payment Method"] || "",
-          order_value: parseMoney(row["Order Value"] || row["Item Total"]),
-          shipping_charged: parseMoney(row["Shipping"]),
+          order_value: orderValue,
+          shipping_charged: shippingCharged,
           discount_amount: parseMoney(row["Discount Amount"] || row["Coupon"]),
-          sales_tax: parseMoney(row["Sales Tax"]),
-          order_total: parseMoney(row["Order Total"]) || amount,
+          sales_tax: salesTax,
+          order_total: orderTotal,
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
           order_net: net,
           status: row["Status"] || "completed",
