@@ -847,10 +847,10 @@ export default function Orders() {
               <div>
                 <p className="text-sm text-stone-500">Net After Fees</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {formatCurrency(totalRevenue - totalFees)}
+                  {formatCurrency(totalRevenue + totalShipping - totalFees)}
                 </p>
                 <p className="text-xs text-stone-500 mt-1">
-                  {totalRevenue > 0 ? ((((totalRevenue - totalFees) / totalRevenue) * 100).toFixed(1)) : 0}% of revenue
+                  {totalRevenue + totalShipping > 0 ? ((((totalRevenue + totalShipping - totalFees) / (totalRevenue + totalShipping)) * 100).toFixed(1)) : 0}% of revenue
                 </p>
               </div>
             </div>
