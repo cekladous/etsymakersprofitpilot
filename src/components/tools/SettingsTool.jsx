@@ -336,7 +336,7 @@ export default function SettingsTool() {
   const handleResetApp = async () => {
     setResetting(true);
     try {
-      // Delete all entities
+      // Delete all entities - use filter with empty query to get everything
       const entitiesToDelete = [
         'EtsyOrder', 'OrderFee', 'Fee', 'EtsyStatementImport', 'EtsyStatementLine',
         'EtsyLedgerEntry', 'BusinessExpense', 'Expense', 'Order', 'Quote', 'Customer',
@@ -347,8 +347,10 @@ export default function SettingsTool() {
 
       for (const entityName of entitiesToDelete) {
         try {
-          const records = await base44.entities[entityName].list('-created_date', 10000);
-          await Promise.all(records.map(r => base44.entities[entityName].delete(r.id)));
+          const records = await base44.entities[entityName].filter({});
+          if (records && records.length > 0) {
+            await Promise.all(records.map(r => base44.entities[entityName].delete(r.id)));
+          }
         } catch (err) {
           console.error(`Failed to delete ${entityName}:`, err);
         }
@@ -368,11 +370,17 @@ export default function SettingsTool() {
         });
       }
 
-      queryClient.invalidateQueries();
+      // Clear all query cache
+      queryClient.clear();
       setResetDialogOpen(false);
-      window.location.reload();
+      
+      // Reload page after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
       console.error('Reset failed:', error);
+      alert('Reset failed: ' + error.message);
     } finally {
       setResetting(false);
     }
