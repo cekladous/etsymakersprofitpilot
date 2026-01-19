@@ -168,8 +168,8 @@ export default function Orders() {
     });
   }, [etsyOrders, search, dateRange]);
 
-  // Revenue excludes sales tax (pass-through to government)
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0) - (o.sales_tax || 0), 0);
+  // Revenue from orders (tax collected by Etsy separately)
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
 
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
