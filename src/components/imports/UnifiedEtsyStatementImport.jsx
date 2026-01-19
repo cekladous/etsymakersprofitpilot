@@ -580,8 +580,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           orderValue = Math.max(0, orderTotal - shippingCharged - totalOrderFees);
         }
 
-        // Calculate net payout correctly: order_value - total_fees
-        const calculatedNetPayout = orderValue - totalOrderFees;
+        // Calculate net payout correctly: order_value - total_fees - taxes
+        // Taxes and all fees are deducted from the sale price
+        const calculatedNetPayout = orderValue - totalOrderFees - totalTaxes;
 
         orders.push({
           sale_date: transactionDate,
