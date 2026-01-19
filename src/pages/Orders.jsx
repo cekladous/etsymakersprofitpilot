@@ -35,6 +35,9 @@ import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 
 export default function Orders() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const customerFilter = urlParams.get("customer");
+  
   const [activeTab, setActiveTab] = useState("orders");
   const [search, setSearch] = useState("");
   const [feeSearch, setFeeSearch] = useState("");
@@ -164,9 +167,14 @@ export default function Orders() {
         matchesDate = orderDate >= dateRange.start && orderDate <= dateRange.end;
       }
       
-      return matchesSearch && matchesDate;
+      let matchesCustomer = true;
+      if (customerFilter) {
+        matchesCustomer = order.buyer_full_name === customerFilter;
+      }
+      
+      return matchesSearch && matchesDate && matchesCustomer;
     });
-  }, [etsyOrders, search, dateRange]);
+  }, [etsyOrders, search, dateRange, customerFilter]);
 
   // Revenue from orders (tax collected by Etsy separately)
   const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
@@ -253,19 +261,22 @@ export default function Orders() {
   };
 
   const getPeriodLabel = () => {
-    if (timeRange === "all") return "All Orders";
+    let label = timeRange === "all" ? "All Orders" : "";
     if (customStartDate && customEndDate) {
-      return `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
-    }
-    if (timeRange === "month") {
-      return format(selectedDate, "MMMM yyyy");
+      label = `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
+    } else if (timeRange === "month") {
+      label = format(selectedDate, "MMMM yyyy");
     } else if (timeRange === "quarter") {
       const quarter = Math.floor(selectedDate.getMonth() / 3) + 1;
-      return `Q${quarter} ${format(selectedDate, "yyyy")}`;
+      label = `Q${quarter} ${format(selectedDate, "yyyy")}`;
     } else if (timeRange === "year") {
-      return format(selectedDate, "yyyy");
+      label = format(selectedDate, "yyyy");
     }
-    return "All Orders";
+    
+    if (customerFilter) {
+      label = `${label} - ${customerFilter}`;
+    }
+    return label || "All Orders";
   };
 
   const exportOrders = () => {
