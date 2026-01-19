@@ -888,8 +888,11 @@ export default function Orders() {
         </TabsContent>
 
         <TabsContent value="fees" className="space-y-6">
-          {/* Summary Card */}
-          <Card>
+           {/* Charts */}
+           <FeeBreakdownChart orderFees={orderFees} formatCurrency={formatCurrency} />
+
+           {/* Summary Card */}
+           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-rose-100 rounded-lg">
