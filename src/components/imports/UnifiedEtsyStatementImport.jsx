@@ -270,11 +270,11 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
           
           // Delete old statement lines for this import
           const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImport.id });
-          await batchProcess(oldLines, 20, line => base44.entities.EtsyStatementLine.delete(line.id));
+          await batchProcess(oldLines, 10, line => base44.entities.EtsyStatementLine.delete(line.id));
           
           // Delete old fees for this import
           const oldFees = await base44.entities.Fee.filter({ import_id: oldImport.id });
-          await batchProcess(oldFees, 20, fee => base44.entities.Fee.delete(fee.id));
+          await batchProcess(oldFees, 10, fee => base44.entities.Fee.delete(fee.id));
         }
         
         // Create new import record
