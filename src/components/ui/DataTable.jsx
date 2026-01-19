@@ -31,6 +31,16 @@ export default function DataTable({
     return 0;
   };
 
+  const isNumericColumn = (colIndex) => {
+    // Check if column header suggests numeric data
+    const col = columns[colIndex];
+    const header = typeof col.header === 'function' ? col.header() : col.header;
+    if (!header) return false;
+    
+    const numericKeywords = ['amount', 'total', 'value', 'shipping', 'fees', 'cost', 'price', 'net', 'revenue'];
+    return numericKeywords.some(keyword => header.toLowerCase().includes(keyword));
+  };
+
   const getCellKey = (rowIndex, colIndex) => `${rowIndex}-${colIndex}`;
 
   const handleCellMouseDown = (rowIndex, colIndex) => {
