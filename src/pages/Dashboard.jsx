@@ -211,26 +211,33 @@ export default function Dashboard() {
     }
     
     // Use financialData for all calculations to ensure consistency
-    const periodRevenue = financialData.totalRevenue;
-    const totalExpenses = financialData.totalExpenses;
-    const periodOrderFees = financialData.sellingExpenses.etsyTransactionFees + 
-                             financialData.sellingExpenses.etsyProcessingFees + 
-                             financialData.sellingExpenses.etsyListingFees +
-                             financialData.sellingExpenses.otherFees +
-                             financialData.sellingExpenses.etsyAds +
-                             financialData.sellingExpenses.etsyOffsiteAdsFees;
-    const periodBusinessExpenses = totalExpenses - periodOrderFees;
+    const toNumber = (v) => {
+      const num = Number(v);
+      return Number.isFinite(num) ? num : 0;
+    };
     
-    const periodProfit = financialData.netProfit;
-    const periodMargin = financialData.profitMargin;
+    const periodRevenue = toNumber(financialData.totalRevenue);
+    const totalExpenses = toNumber(financialData.totalExpenses);
+    const periodOrderFees = toNumber(
+      toNumber(financialData.sellingExpenses.etsyTransactionFees) + 
+      toNumber(financialData.sellingExpenses.etsyProcessingFees) + 
+      toNumber(financialData.sellingExpenses.etsyListingFees) +
+      toNumber(financialData.sellingExpenses.otherFees) +
+      toNumber(financialData.sellingExpenses.etsyAds) +
+      toNumber(financialData.sellingExpenses.etsyOffsiteAdsFees)
+    );
+    const periodBusinessExpenses = toNumber(totalExpenses - periodOrderFees);
+    
+    const periodProfit = toNumber(financialData.netProfit);
+    const periodMargin = toNumber(financialData.profitMargin);
 
     return {
-      periodRevenue,
-      periodFees: periodOrderFees,
-      periodExpenses: periodBusinessExpenses,
-      totalExpenses,
-      periodProfit,
-      periodMargin,
+      periodRevenue: toNumber(periodRevenue),
+      periodFees: toNumber(periodOrderFees),
+      periodExpenses: toNumber(periodBusinessExpenses),
+      totalExpenses: toNumber(totalExpenses),
+      periodProfit: toNumber(periodProfit),
+      periodMargin: toNumber(periodMargin),
       orderCount: financialData._rawData.etsyOrders.length,
     };
   }, [financialData]);
