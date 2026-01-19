@@ -53,9 +53,11 @@ const parseDate = (val) => {
 
 const parseMoney = (v) => {
   if (v === null || v === undefined || v === "") return 0;
-  const str = String(v ?? "").trim().replace(/[$,]/g, "");
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
+  const str = String(v ?? "").trim();
+  const isNegative = str.includes("(") && str.includes(")");
+  const cleaned = str.replace(/[$(),\s]/g, "");
+  const num = parseFloat(cleaned);
+  return (isNaN(num) ? 0 : num) * (isNegative ? -1 : 1);
 };
 
 const parseIntSafe = (v) => {
