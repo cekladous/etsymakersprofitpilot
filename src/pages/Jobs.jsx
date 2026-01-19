@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import JobKanbanView from "@/components/jobs/JobKanbanView";
 import JobSpreadsheetView from "@/components/jobs/JobSpreadsheetView";
 
 export default function Jobs() {
+  const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -48,18 +50,21 @@ export default function Jobs() {
   }, []);
 
   const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ["jobs"],
-    queryFn: () => base44.entities.Job.list("-created_date"),
+    queryKey: ["jobs", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
   const { data: orders = [] } = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => base44.entities.Order.list(),
+    queryKey: ["orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Order.filter({ owner_user_id: user.id }),
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list(),
+    queryKey: ["products", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Product.filter({ owner_user_id: user.id }),
   });
 
   const updateMutation = useMutation({
@@ -186,6 +191,14 @@ export default function Jobs() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +18,7 @@ import ProductFormDialog from "@/components/products/ProductFormDialog";
 import BulkProductImportTool from "@/components/products/BulkProductImportTool";
 
 export default function Products() {
+  const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [search, setSearch] = useState("");
@@ -25,18 +27,21 @@ export default function Products() {
   const queryClient = useQueryClient();
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list("-created_date"),
+    queryKey: ["products", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Product.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
   const { data: materialTypes = [] } = useQuery({
-    queryKey: ["materialTypes"],
-    queryFn: () => base44.entities.MaterialType.list(),
+    queryKey: ["materialTypes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }),
   });
 
   const { data: jobs = [] } = useQuery({
-    queryKey: ["jobs"],
-    queryFn: () => base44.entities.Job.list(),
+    queryKey: ["jobs", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }),
   });
 
   const deleteMutation = useMutation({
@@ -140,6 +145,14 @@ export default function Products() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="space-y-6">
