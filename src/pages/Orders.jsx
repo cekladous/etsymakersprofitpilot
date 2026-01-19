@@ -17,7 +17,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
 import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
@@ -125,9 +131,22 @@ export default function Orders() {
 
   // Revenue excludes sales tax (pass-through to government)
   const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0) - (o.sales_tax || 0), 0);
-  const totalFees = orderFees
-    .filter(f => filteredOrders.some(o => o.id === f.order_id))
-    .reduce((sum, f) => sum + (f.total_fees || 0), 0);
+  
+  // Aggregate all fee categories for filtered orders
+  const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.id === f.order_id));
+  const totalFees = relevantOrderFees.reduce((sum, f) => sum + (f.total_fees || 0), 0);
+  const feeBreakdown = {
+    listing: relevantOrderFees.reduce((sum, f) => sum + (f.listing_fees || 0), 0),
+    transaction: relevantOrderFees.reduce((sum, f) => sum + (f.transaction_fees || 0), 0),
+    processing: relevantOrderFees.reduce((sum, f) => sum + (f.processing_fees || 0), 0),
+    etsy_ads: relevantOrderFees.reduce((sum, f) => sum + (f.etsy_ads || 0), 0),
+    offsite_ads: relevantOrderFees.reduce((sum, f) => sum + (f.offsite_ads_fees || 0), 0),
+    shipping: relevantOrderFees.reduce((sum, f) => sum + (f.etsy_shipping || 0), 0),
+    other_postage: relevantOrderFees.reduce((sum, f) => sum + (f.other_postage_costs || 0), 0),
+    share_save: relevantOrderFees.reduce((sum, f) => sum + (f.share_save_refunds_credits || 0), 0),
+    other: relevantOrderFees.reduce((sum, f) => sum + (f.other_fees || 0), 0),
+  };
+  
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
 
   const getPeriodLabel = () => {
@@ -245,10 +264,50 @@ export default function Orders() {
       header: "Fees",
       render: (row) => {
         const fees = orderFees.find(f => f.order_id === row.id);
+        if (!fees || fees.total_fees === 0) {
+          return <span className="text-stone-400">—</span>;
+        }
+        
+        const feeBreakdown = [
+          { label: "Listing", value: fees.listing_fees },
+          { label: "Transaction", value: fees.transaction_fees },
+          { label: "Processing", value: fees.processing_fees },
+          { label: "Etsy Ads", value: fees.etsy_ads },
+          { label: "Offsite Ads", value: fees.offsite_ads_fees },
+          { label: "Shipping Label", value: fees.etsy_shipping },
+          { label: "Other Postage", value: fees.other_postage_costs },
+          { label: "Share & Save Credit", value: fees.share_save_refunds_credits },
+          { label: "Other", value: fees.other_fees },
+        ].filter(item => item.value > 0);
+
         return (
-          <span className="text-rose-600">
-            {formatCurrency(fees?.total_fees || 0)}
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 cursor-help">
+                  <span className="text-rose-600 font-medium">
+                    {formatCurrency(fees.total_fees)}
+                  </span>
+                  <Info className="w-3 h-3 text-stone-400" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-xs">
+                <div className="space-y-1">
+                  <p className="font-semibold text-xs mb-2">Fee Breakdown</p>
+                  {feeBreakdown.map((item, idx) => (
+                    <div key={idx} className="flex justify-between gap-4 text-xs">
+                      <span className="text-stone-600">{item.label}:</span>
+                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t pt-1 mt-2 flex justify-between gap-4 text-xs font-semibold">
+                    <span>Total:</span>
+                    <span>{formatCurrency(fees.total_fees)}</span>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       },
     },
@@ -425,17 +484,85 @@ export default function Orders() {
 
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-rose-100 rounded-lg">
-                <CreditCard className="w-6 h-6 text-rose-600" />
-              </div>
-              <div>
-                <p className="text-sm text-stone-500">Total Fees</p>
-                <p className="text-2xl font-bold text-stone-900">
-                  {formatCurrency(totalFees)}
-                </p>
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-3 cursor-help">
+                    <div className="p-3 bg-rose-100 rounded-lg">
+                      <CreditCard className="w-6 h-6 text-rose-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-stone-500 flex items-center gap-1">
+                        Total Fees
+                        <Info className="w-3 h-3 text-stone-400" />
+                      </p>
+                      <p className="text-2xl font-bold text-stone-900">
+                        {formatCurrency(totalFees)}
+                      </p>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-xs mb-2">Fee Breakdown</p>
+                    {feeBreakdown.listing > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Listing Fees:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.listing)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.transaction > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Transaction Fees:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.transaction)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.processing > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Processing Fees:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.processing)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.etsy_ads > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Etsy Ads:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.etsy_ads)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.offsite_ads > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Offsite Ads:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.offsite_ads)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.shipping > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Shipping Labels:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.shipping)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.other_postage > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Other Postage:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.other_postage)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.share_save > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Share & Save Credits:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.share_save)}</span>
+                      </div>
+                    )}
+                    {feeBreakdown.other > 0 && (
+                      <div className="flex justify-between gap-4 text-xs">
+                        <span className="text-stone-600">Other Fees:</span>
+                        <span className="font-medium">{formatCurrency(feeBreakdown.other)}</span>
+                      </div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardContent>
         </Card>
 
