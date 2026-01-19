@@ -144,6 +144,7 @@ export default function Expenses() {
 
   const handleImport = async (rows) => {
     let added = 0, updated = 0, skipped = 0;
+    const skippedRecords = [];
     const appSettings = settings[0];
     const rules = appSettings?.auto_categorization_rules || [];
 
@@ -151,6 +152,10 @@ export default function Expenses() {
       const parsed = parseExpenseRow(row);
       if (!parsed.amount || !parsed.date) {
         skipped++;
+        skippedRecords.push({
+          row,
+          reason: !parsed.date ? "Missing date" : "Missing amount"
+        });
         continue;
       }
 
@@ -172,6 +177,10 @@ export default function Expenses() {
         const existing = expenses.find(e => e.transaction_id === parsed.transaction_id);
         if (existing) {
           skipped++;
+          skippedRecords.push({
+            row,
+            reason: "Duplicate transaction ID"
+          });
           continue;
         }
       }
@@ -185,7 +194,7 @@ export default function Expenses() {
     }
 
     queryClient.invalidateQueries({ queryKey: ["expenses"] });
-    return { success: true, added, updated, skipped };
+    return { success: true, added, updated, skipped, skippedRecords };
   };
 
   const parseExpenseRow = (row) => {

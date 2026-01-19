@@ -8,7 +8,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, Eye, Download } from "lucide-react";
 
 export default function CSVImporter({
   open,
@@ -24,6 +31,7 @@ export default function CSVImporter({
   const [preview, setPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
+  const [showSkipped, setShowSkipped] = useState(false);
   const fileInputRef = useRef(null);
 
   const parseCSV = (text) => {
@@ -107,7 +115,26 @@ export default function CSVImporter({
     setFile(null);
     setPreview(null);
     setResult(null);
+    setShowSkipped(false);
     onOpenChange(false);
+  };
+
+  const exportSkipped = () => {
+    if (!result?.skippedRecords) return;
+    
+    const headers = result.skippedRecords[0]?.row ? Object.keys(result.skippedRecords[0].row).concat(["Skip Reason"]) : [];
+    const rows = result.skippedRecords.map(sr => {
+      const rowValues = Object.values(sr.row || {});
+      return [...rowValues, sr.reason].join(",");
+    });
+    
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `skipped-records-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
   };
 
   return (
@@ -218,6 +245,27 @@ export default function CSVImporter({
                     <p className="text-sm text-stone-600">Skipped</p>
                   </div>
                 </div>
+                
+                {result.skipped > 0 && result.skippedRecords && result.skippedRecords.length > 0 && (
+                  <div className="mt-6 flex gap-2 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSkipped(true)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Skipped Records
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportSkipped}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Skipped
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center">
@@ -262,6 +310,56 @@ export default function CSVImporter({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Skipped Records Sheet */}
+      <Sheet open={showSkipped} onOpenChange={setShowSkipped}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Skipped Records ({result?.skipped || 0})</SheetTitle>
+            <SheetDescription>
+              These rows were skipped during import due to missing data or duplicates.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-4">
+            {result?.skippedRecords?.map((sr, idx) => (
+              <div key={idx} className="border rounded-lg p-4 bg-stone-50">
+                <div className="flex items-start justify-between mb-2">
+                  <span className="text-xs font-semibold text-stone-500">Row {idx + 1}</span>
+                  <span className="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-1 rounded">
+                    {sr.reason}
+                  </span>
+                </div>
+                <div className="space-y-1 text-sm">
+                  {Object.entries(sr.row || {}).slice(0, 5).map(([key, value]) => (
+                    <div key={key} className="flex gap-2">
+                      <span className="text-stone-500 min-w-32 truncate">{key}:</span>
+                      <span className="text-stone-900 truncate">{value || "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 flex gap-2">
+            <Button
+              variant="outline"
+              onClick={exportSkipped}
+              className="flex-1"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export All Skipped
+            </Button>
+            <Button
+              onClick={() => setShowSkipped(false)}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+            >
+              Close
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </Dialog>
   );
 }
