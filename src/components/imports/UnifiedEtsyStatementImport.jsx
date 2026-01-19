@@ -473,9 +473,22 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     const normalizeRow = (row) => {
       const normalized = {};
       Object.keys(row).forEach(key => {
-        normalized[key.trim()] = row[key];
+        const trimmedKey = key.trim();
+        const value = row[key];
+        normalized[trimmedKey] = value;
       });
       return normalized;
+    };
+
+    // Helper to safely get a value from a row, trying multiple key variations
+    const getRowValue = (row, ...keyOptions) => {
+      for (const key of keyOptions) {
+        const val = row[key];
+        if (val !== null && val !== undefined && val !== "") {
+          return val;
+        }
+      }
+      return "";
     };
 
     // Pre-process: classify all rows once and build fee lookup
