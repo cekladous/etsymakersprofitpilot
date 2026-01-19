@@ -106,16 +106,33 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
       let importRecord;
       
       if (existingImports.length > 0) {
-        // Update existing import
-        importRecord = existingImports[0];
+        // Mark old imports as replaced
+        for (const oldImport of existingImports) {
+          await base44.entities.EtsyStatementImport.update(oldImport.id, {
+            status: 'replaced',
+            reconciliation_notes: `Replaced by import at ${new Date().toISOString()}`
+          });
+          
+          // Delete old statement lines for this import
+          const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImport.id });
+          await Promise.all(oldLines.map(line => base44.entities.EtsyStatementLine.delete(line.id)));
+          
+          // Delete old fees for this import
+          const oldFees = await base44.entities.Fee.filter({ import_id: oldImport.id });
+          await Promise.all(oldFees.map(fee => base44.entities.Fee.delete(fee.id)));
+        }
         
-        // Delete old statement lines for this import
-        const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: importRecord.id });
-        await Promise.all(oldLines.map(line => base44.entities.EtsyStatementLine.delete(line.id)));
-        
-        // Delete old fees for this import
-        const oldFees = await base44.entities.Fee.filter({ import_id: importRecord.id });
-        await Promise.all(oldFees.map(fee => base44.entities.Fee.delete(fee.id)));
+        // Create new import record
+        importRecord = await base44.entities.EtsyStatementImport.create({
+          import_id: `import_${Date.now()}`,
+          statement_month: statementMonth,
+          date_range_start: dateRangeStart,
+          date_range_end: dateRangeEnd,
+          file_name: fileName,
+          file_hash: fileHash,
+          imported_at: new Date().toISOString(),
+          status: 'success',
+        });
       } else {
         // Create new import record
         importRecord = await base44.entities.EtsyStatementImport.create({

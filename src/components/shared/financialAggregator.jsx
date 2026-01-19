@@ -27,8 +27,9 @@ export function aggregateFinancials(data, dateRange) {
       profitMargin: 0,
       cashflow: { etsyDeposits: 0, ownerTransfers: 0 },
       unmatchedLedgerEntries: [],
+      unmatchedStatementLines: [],
       unmatchedNetImpact: 0,
-      _rawData: { etsyOrders: [], customSales: [], businessExpenses: [], transfers: [], materialPurchases: [], etsyLedgerEntries: [], expenses: [] }
+      _rawData: { etsyOrders: [], customSales: [], businessExpenses: [], transfers: [], materialPurchases: [], etsyLedgerEntries: [], expenses: [], fees: [] }
     };
   }
   
@@ -45,7 +46,18 @@ export function aggregateFinancials(data, dateRange) {
   const periodBusinessExpenses = filterByDate(Array.isArray(data.businessExpenses) ? data.businessExpenses : [], "date");
   const periodTransfers = filterByDate(Array.isArray(data.transfers) ? data.transfers : [], "date");
   const periodMaterialPurchases = filterByDate(Array.isArray(data.materialPurchases) ? data.materialPurchases : [], "purchase_date");
+  
+  // CRITICAL: Exclude replaced imports when reading ledger entries
   const periodLedgerEntries = filterByDate(Array.isArray(data.etsyLedgerEntries) ? data.etsyLedgerEntries : [], "entry_date");
+  
+  // Filter out fees from replaced imports
+  const periodFees = filterByDate(Array.isArray(data.fees) ? data.fees : [], "transaction_date")
+    .filter(fee => {
+      // Only include fees from active imports (not replaced)
+      if (!fee.import_id) return true; // Keep fees without import tracking
+      const feeImport = (data.etsyStatementImports || []).find(imp => imp.id === fee.import_id);
+      return !feeImport || feeImport.status !== 'replaced';
+    });
   
   // CRITICAL: Include legacy Expense entity (only reviewed ones, include both old and new category names)
   const periodLegacyExpenses = filterByDate(Array.isArray(data.expenses) ? data.expenses : [], "date")
@@ -127,7 +139,11 @@ export function aggregateFinancials(data, dateRange) {
     }, 0);
   };
 
-  // 1) Etsy Listing Fees
+  // 1) Etsy Listing Fees (prioritize Fee entity from statement imports)
+  const listingFeesFromFees = periodFees
+    .filter(f => f.fee_type === 'listing')
+    .reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
+  
   const listingFeeRows = matchLedgerRows([
     "listing fee*",
     "credit for listing fee*",
@@ -138,9 +154,13 @@ export function aggregateFinancials(data, dateRange) {
   const legacyListingFees = periodLegacyExpenses
     .filter(e => ["etsy_listing_fees"].includes(e.category))
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const etsyListingFees = toNumber(listingFeesFromLedger + legacyListingFees);
+  const etsyListingFees = toNumber(listingFeesFromFees || (listingFeesFromLedger + legacyListingFees));
 
-  // 2) Etsy Transaction Fees
+  // 2) Etsy Transaction Fees (prioritize Fee entity from statement imports)
+  const transactionFeesFromFees = periodFees
+    .filter(f => f.fee_type === 'transaction')
+    .reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
+  
   const transactionFeeRows = matchLedgerRows([
     "transaction fee*",
     "credit for transaction fee*",
@@ -150,9 +170,13 @@ export function aggregateFinancials(data, dateRange) {
   const legacyTransactionFees = periodLegacyExpenses
     .filter(e => ["etsy_transaction_fees"].includes(e.category))
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const etsyTransactionFees = toNumber(transactionFeesFromLedger + legacyTransactionFees);
+  const etsyTransactionFees = toNumber(transactionFeesFromFees || (transactionFeesFromLedger + legacyTransactionFees));
 
-  // 3) Etsy Processing Fees
+  // 3) Etsy Processing Fees (prioritize Fee entity from statement imports)
+  const processingFeesFromFees = periodFees
+    .filter(f => f.fee_type === 'processing')
+    .reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
+  
   const processingFeeRows = matchLedgerRows([
     "processing fee*",
     "credit for processing fee*",
@@ -162,7 +186,7 @@ export function aggregateFinancials(data, dateRange) {
   const legacyProcessingFees = periodLegacyExpenses
     .filter(e => ["etsy_processing_fees"].includes(e.category))
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const etsyProcessingFees = toNumber(processingFeesFromLedger + legacyProcessingFees);
+  const etsyProcessingFees = toNumber(processingFeesFromFees || (processingFeesFromLedger + legacyProcessingFees));
 
   // 4) Share & Save Fee Refunds & Misc. Credits
   const shareSaveRows = matchLedgerRows([
@@ -187,7 +211,11 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
   const otherFees = toNumber(otherFeesFromLedger + legacyOtherFees);
 
-  // 6) Etsy Ads
+  // 6) Etsy Ads (prioritize Fee entity from statement imports)
+  const adsFeesFromFees = periodFees
+    .filter(f => f.fee_type === 'etsy_ads')
+    .reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
+  
   const adsRows = matchLedgerRows([
     "etsy ads",
     "refund for invalid etsy ads clicks",
@@ -199,15 +227,19 @@ export function aggregateFinancials(data, dateRange) {
   const legacyAds = periodLegacyExpenses
     .filter(e => ["etsy_ads"].includes(e.category))
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const etsyAds = toNumber(adsFromLedger + legacyAds);
+  const etsyAds = toNumber(adsFeesFromFees || (adsFromLedger + legacyAds));
 
-  // 7) Etsy Offsite Ads Fees
+  // 7) Etsy Offsite Ads Fees (prioritize Fee entity from statement imports)
+  const offsiteAdsFeesFromFees = periodFees
+    .filter(f => f.fee_type === 'offsite_ads')
+    .reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
+  
   const offsiteAdsRows = matchLedgerRows(["offsite ads"]);
   const offsiteAdsFromLedger = toNumber(sumLedgerExpense(offsiteAdsRows));
   const legacyOffsiteAds = periodLegacyExpenses
     .filter(e => ["etsy_offsite_ads_fees"].includes(e.category))
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const etsyOffsiteAds = toNumber(offsiteAdsFromLedger + legacyOffsiteAds);
+  const etsyOffsiteAds = toNumber(offsiteAdsFeesFromFees || (offsiteAdsFromLedger + legacyOffsiteAds));
 
   // 8) Total Etsy Fees
   const totalEtsyFees = toNumber(
@@ -215,7 +247,11 @@ export function aggregateFinancials(data, dateRange) {
     shareSaveRefunds + otherFees + etsyAds + etsyOffsiteAds
   );
 
-  // 9) Etsy Shipping (shipping labels)
+  // 9) Etsy Shipping (shipping labels - prioritize Fee entity from statement imports)
+  const shippingFeesFromFees = periodFees
+    .filter(f => f.fee_type === 'shipping_label')
+    .reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
+  
   const shippingRows = matchLedgerRows([
     "shipping label",
     "postage",
@@ -228,7 +264,7 @@ export function aggregateFinancials(data, dateRange) {
   const legacyShipping = periodLegacyExpenses
     .filter(e => ["etsy_shipping"].includes(e.category))
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
-  const etsyShipping = toNumber(shippingFromLedger + legacyShipping);
+  const etsyShipping = toNumber(shippingFeesFromFees || (shippingFromLedger + legacyShipping));
 
   // 10) Other Postage Costs (from manual entries)
   const otherPostageFromBE = periodBusinessExpenses
@@ -359,12 +395,23 @@ export function aggregateFinancials(data, dateRange) {
 
   // ==================== F) UNMATCHED ====================
   
+  // CRITICAL: In normal views, we DON'T show raw unmatched rows - only count them for alerts
   const unmatchedLedgerEntries = periodLedgerEntries.filter(e => 
     e.status === "Unmatched" || !e.matched_category
   );
   
+  // Also check for unmatched statement lines (from new imports)
+  const unmatchedStatementLines = filterByDate(Array.isArray(data.etsyStatementLines) ? data.etsyStatementLines : [], "transaction_date")
+    .filter(line => {
+      // Only include lines from active imports (not replaced)
+      if (!line.import_id) return false;
+      const lineImport = (data.etsyStatementImports || []).find(imp => imp.id === line.import_id);
+      if (!lineImport || lineImport.status === 'replaced') return false;
+      return !line.matched || line.category === 'unmatched';
+    });
+  
   const unmatchedNetImpact = unmatchedLedgerEntries.reduce((sum, e) => 
-    sum + toNumber(e.net), 0);
+    sum + toNumber(e.net), 0) + unmatchedStatementLines.reduce((sum, l) => sum + toNumber(l.amount), 0);
 
   return {
     // Revenue breakdown
@@ -425,8 +472,9 @@ export function aggregateFinancials(data, dateRange) {
       ownerTransfers,
     },
     
-    // Alerts
-    unmatchedLedgerEntries,
+    // Alerts (counts only, not full rows - those go to Reconciliation page)
+    unmatchedLedgerEntriesCount: unmatchedLedgerEntries.length,
+    unmatchedStatementLinesCount: unmatchedStatementLines.length,
     unmatchedNetImpact,
     
     // Raw filtered data for drill-downs
@@ -438,6 +486,7 @@ export function aggregateFinancials(data, dateRange) {
       materialPurchases: periodMaterialPurchases,
       etsyLedgerEntries: periodLedgerEntries,
       expenses: periodLegacyExpenses,
+      fees: periodFees,
     },
   };
 }
