@@ -161,7 +161,7 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
                   <CardTitle className="text-base">Orders</CardTitle>
                 </div>
                 {orders.length > 0 && (
-                  <Link to={createPageUrl("Orders")}>
+                  <Link to={createPageUrl(`Orders?customer=${encodeURIComponent(customer.name)}`)}>
                     <Button size="sm" variant="outline">View All</Button>
                   </Link>
                 )}
