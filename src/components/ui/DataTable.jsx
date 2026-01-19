@@ -219,13 +219,28 @@ export default function DataTable({
         </Table>
       </div>
       {selectedCells.size > 0 && (
-        <div className="bg-stone-50 border-t border-stone-100 px-6 py-3 flex items-center justify-between">
-          <span className="text-sm text-stone-600">
-            {selectedCells.size} cell{selectedCells.size !== 1 ? 's' : ''} selected
-          </span>
-          <span className="text-sm font-semibold text-stone-900">
-            Total: <span className="text-emerald-600">{formatCurrency(calculateTotal())}</span>
-          </span>
+        <div className="bg-stone-50 border-t border-stone-100 px-6 py-3">
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-stone-200">
+            <span className="text-sm text-stone-600">
+              {selectedCells.size} cell{selectedCells.size !== 1 ? 's' : ''} selected
+            </span>
+          </div>
+          <div className="grid grid-cols-12 gap-4 text-sm">
+            {columns.map((col, colIndex) => {
+              const columnTotal = calculateColumnTotals()[colIndex];
+              const hasTotal = columnTotal && columnTotal > 0;
+              return hasTotal ? (
+                <div key={colIndex} className="flex flex-col">
+                  <span className="text-stone-600 text-xs mb-1">
+                    {typeof col.header === 'function' ? col.header() : col.header}
+                  </span>
+                  <span className="font-semibold text-emerald-600">
+                    {formatCurrency(columnTotal)}
+                  </span>
+                </div>
+              ) : null;
+            })}
+          </div>
         </div>
       )}
     </div>
