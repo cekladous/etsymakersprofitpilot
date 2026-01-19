@@ -234,7 +234,7 @@ const classifyStatementLine = (row) => {
   };
 };
 
-export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
+export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedded = false }) {
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState(null);
   const [importResult, setImportResult] = useState(null);
@@ -636,12 +636,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
     setImportResult(null);
     setPreview(null);
     setPendingData(null);
-    onOpenChange(false);
+    if (!embedded) onOpenChange(false);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+  if (embedded) {
+    return (
+      <div className="space-y-4 py-4">
         <DialogHeader>
           <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
           <DialogDescription>
@@ -761,6 +761,148 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
           )}
         </div>
 
+        {!preview && !importing && importResult && (
+          <Button onClick={handleClose} variant="outline" className="w-full">
+            Done
+          </Button>
+        )}
+
+        {preview && !importResult && (
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => { setPreview(null); setPendingData(null); }} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={confirmImport} className="bg-emerald-600 hover:bg-emerald-700 flex-1">
+              Confirm Import
+            </Button>
+          </div>
+        )}
+        </div>
+        );
+        }
+
+        return (
+        <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
+          <DialogDescription>
+            Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Payment Account → Download CSV.
+            This will automatically populate Orders, Fees, Ads, Shipping Labels, and Deposits throughout the entire app.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          {!importing && !preview && !importResult && (
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+              variant="outline"
+              size="lg"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              Select Etsy Statement File
+            </Button>
+          )}
+
+          {importing && (
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-sm text-stone-600">Analyzing statement...</p>
+            </div>
+          )}
+
+          {preview && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Import Preview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="bg-stone-50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-stone-900">Statement Period</p>
+                  <p className="text-lg font-semibold text-emerald-600">{preview.statementMonth}</p>
+                  <p className="text-xs text-stone-500">{preview.dateRange}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Orders</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.orders}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Fee Lines</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.fees}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Deposits</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.deposits}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Refunds</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.refunds}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Tax Lines</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.taxes}</p>
+                  </div>
+                  <div className={`border rounded-lg p-3 ${preview.unmatched > 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
+                    <p className="text-xs text-stone-500">Unmatched</p>
+                    <p className={`text-2xl font-bold ${preview.unmatched > 0 ? 'text-amber-600' : 'text-stone-900'}`}>
+                      {preview.unmatched}
+                    </p>
+                  </div>
+                </div>
+
+                {preview.unmatched > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-sm text-amber-800">
+                      ⚠ {preview.unmatched} rows need review after import
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {importResult && !importResult.error && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <p className="font-semibold text-emerald-900">Import Successful</p>
+              </div>
+              <div className="text-sm text-emerald-800 space-y-1">
+                <p>✓ Orders: {importResult.orders.created} created, {importResult.orders.updated} updated</p>
+                <p>✓ Fees: {importResult.fees.created} imported</p>
+                <p>✓ Deposits: {importResult.deposits.created} tracked</p>
+                {importResult.unmatched.count > 0 && (
+                  <p className="text-amber-700">⚠ {importResult.unmatched.count} unmatched rows (review needed)</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {importResult?.error && (
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <p className="font-semibold text-rose-900">Import Failed</p>
+              </div>
+              <p className="text-sm text-rose-800">{importResult.error}</p>
+            </div>
+          )}
+        </div>
+
         <DialogFooter>
           {preview && !importResult && (
             <>
@@ -778,7 +920,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
             </Button>
           )}
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogContent>
+        </Dialog>
+        );
+        }

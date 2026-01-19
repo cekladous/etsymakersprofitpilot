@@ -30,7 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
-import UnifiedEtsyStatementImport from "@/components/imports/UnifiedEtsyStatementImport";
+import UnifiedEtsyImportHub from "@/components/imports/UnifiedEtsyImportHub";
 
 export default function Orders() {
   const [activeTab, setActiveTab] = useState("orders");
@@ -679,7 +679,7 @@ export default function Orders() {
             onClick={() => setImportDialogOpen(true)}
           >
             <Upload className="w-4 h-4 mr-2" />
-            Import Etsy Monthly Statement
+            Import Etsy Data
           </Button>
         </div>
       </PageHeader>
@@ -687,14 +687,20 @@ export default function Orders() {
       {/* Helper Text */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-900 mb-2">
-          <strong>📊 How to import:</strong>
+          <strong>📊 Import Your Etsy Data:</strong>
         </p>
-        <ol className="text-sm text-blue-900 space-y-1 ml-4 list-decimal">
-          <li>Go to Etsy → Shop Manager → Finances → Payment Account</li>
-          <li>Select a month and click "Download CSV" (not PDF)</li>
-          <li>Click "Import Etsy Statement" above and upload the CSV file</li>
-          <li>All orders, fees, deposits automatically populate throughout the app</li>
-        </ol>
+        <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-900">
+          <div>
+            <p className="font-semibold mb-1">Monthly Statement (Required)</p>
+            <p className="text-xs">Finances → Payment Account → Download CSV</p>
+            <p className="text-xs opacity-75">Contains all financial data, fees, deposits</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1">Sold Orders Report (Optional)</p>
+            <p className="text-xs">Shop Manager → Orders → Download CSV</p>
+            <p className="text-xs opacity-75">Adds product details, SKUs, buyer info</p>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1024,7 +1030,7 @@ export default function Orders() {
         </TabsContent>
       </Tabs>
 
-      <UnifiedEtsyStatementImport
+      <UnifiedEtsyImportHub
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
