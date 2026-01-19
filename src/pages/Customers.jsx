@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, Mail, Phone, Building, List, Grid3x3, ArrowUp, ArrowDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +14,7 @@ import CustomerGridView from "@/components/customers/CustomerGridView";
 import { format } from "date-fns";
 
 export default function CustomersPage() {
+  const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailCustomer, setDetailCustomer] = useState(null);
@@ -24,8 +26,11 @@ export default function CustomersPage() {
   const queryClient = useQueryClient();
 
   const { data: customers = [] } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list("-created_date"),
+    queryKey: ["customers", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Customer.filter({
+      owner_user_id: user.id,
+    }, "-created_date"),
   });
 
   const deleteMutation = useMutation({
@@ -163,6 +168,14 @@ export default function CustomersPage() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
