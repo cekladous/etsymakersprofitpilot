@@ -95,26 +95,56 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
         const orders = jsonData.map((row, idx) => {
             const normalized = normalizeRow(row);
 
-            // ALWAYS capture shipping from "Shipping" column - this is the source of truth
             const shipping = parseMoney(normalized["Shipping"] || "");
+            const fullName = getRowValue(normalized, "Full Name");
+            const firstName = getRowValue(normalized, "First Name");
+            const lastName = getRowValue(normalized, "Last Name");
+            const street1 = getRowValue(normalized, "Street 1");
+            const street2 = getRowValue(normalized, "Street 2");
+            const city = getRowValue(normalized, "Ship City");
+            const state = getRowValue(normalized, "Ship State");
+            const zip = getRowValue(normalized, "Ship Zipcode");
+            const country = getRowValue(normalized, "Ship Country");
+
+            const address = [street1, street2, city, state, zip, country]
+              .filter(Boolean)
+              .join(", ");
 
             return {
              sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
              order_id: String(getRowValue(normalized, "Order ID") || ""),
              buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID"),
-             buyer_full_name: getRowValue(normalized, "Full Name"),
-             number_of_items: parseInt(getRowValue(normalized, "Quantity", "Number of Items") || "1"),
-             sku: getRowValue(normalized, "SKU", "Sku"),
+             buyer_full_name: fullName,
+             first_name: firstName,
+             last_name: lastName,
+             number_of_items: parseInt(getRowValue(normalized, "Number of Items") || "1"),
+             sku: getRowValue(normalized, "SKU"),
              product_name: getRowValue(normalized, "Title", "Product", "Item Title"),
-             coupon_code: getRowValue(normalized, "Coupon Code", "Coupon"),
-             order_value: parseMoney(getRowValue(normalized, "Order Value")),
+             coupon_code: getRowValue(normalized, "Coupon Code"),
+             discount_amount: parseMoney(getRowValue(normalized, "Discount Amount")),
+             shipping_discount: parseMoney(getRowValue(normalized, "Shipping Discount")),
              shipping_charged: shipping,
+             order_value: parseMoney(getRowValue(normalized, "Order Value")),
              sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
              order_total: parseMoney(getRowValue(normalized, "Order Total")),
-             order_net: parseMoney(getRowValue(normalized, "Order Net")),
-             discount_amount: parseMoney(getRowValue(normalized, "Discount Amount")),
+             adjusted_order_total: parseMoney(getRowValue(normalized, "Adjusted Order Total")),
              card_processing_fees: parseMoney(getRowValue(normalized, "Card Processing Fees")),
-             status: "completed",
+             adjusted_card_processing_fees: parseMoney(getRowValue(normalized, "Adjusted Card Processing Fees")),
+             order_net: parseMoney(getRowValue(normalized, "Order Net")),
+             adjusted_net_order_amount: parseMoney(getRowValue(normalized, "Adjusted Net Order Amount")),
+             payment_method: getRowValue(normalized, "Payment Method"),
+             date_shipped: parseDate(getRowValue(normalized, "Date Shipped")),
+             status: getRowValue(normalized, "Status") || "completed",
+             currency: getRowValue(normalized, "Currency"),
+             order_type: getRowValue(normalized, "Order Type"),
+             payment_type: getRowValue(normalized, "Payment Type"),
+             inperson_discount: parseMoney(getRowValue(normalized, "InPerson Discount")),
+             inperson_location: getRowValue(normalized, "InPerson Location"),
+             // Customer data for upsert
+             customer: {
+               name: fullName,
+               address: address || undefined,
+             }
            };
           }).filter(o => o.order_id);
 
