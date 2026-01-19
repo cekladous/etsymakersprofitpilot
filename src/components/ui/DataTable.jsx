@@ -238,14 +238,14 @@ export default function DataTable({
           <div className="grid grid-cols-12 gap-4 text-sm">
             {columns.map((col, colIndex) => {
               const columnTotal = calculateColumnTotals()[colIndex];
-              const hasTotal = columnTotal && columnTotal > 0;
-              return hasTotal ? (
+              const hasTotal = columnTotal !== 0 && columnTotal !== undefined;
+              return hasTotal && isNumericColumn(colIndex) ? (
                 <div key={colIndex} className="flex flex-col">
                   <span className="text-stone-600 text-xs mb-1">
                     {typeof col.header === 'function' ? col.header() : col.header}
                   </span>
-                  <span className="font-semibold text-emerald-600">
-                    {formatCurrency(columnTotal)}
+                  <span className={`font-semibold ${columnTotal < 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {formatCurrency(Math.abs(columnTotal))}
                   </span>
                 </div>
               ) : null;
