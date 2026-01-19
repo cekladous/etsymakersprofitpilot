@@ -41,7 +41,11 @@ export default function DataTable({
 
   const handleCellMouseEnter = (rowIndex, colIndex) => {
     if (!isSelecting || !selectionStart) return;
+    setCurrentRow(rowIndex);
+    updateSelection(rowIndex, colIndex);
+  };
 
+  const updateSelection = (rowIndex, colIndex) => {
     const minRow = Math.min(selectionStart.row, rowIndex);
     const maxRow = Math.max(selectionStart.row, rowIndex);
     const minCol = Math.min(selectionStart.col, colIndex);
@@ -54,17 +58,40 @@ export default function DataTable({
       }
     }
     setSelectedCells(newSelection);
-
-    // Auto-scroll if near bottom
-    const scrollContainer = document.querySelector('[data-table-scroll]');
-    if (scrollContainer && rowIndex === data.length - 1) {
-      scrollContainer.scrollTop += 50;
-    }
   };
 
-  const handleMouseUp = () => {
-    setIsSelecting(false);
-  };
+  React.useEffect(() => {
+    if (!isSelecting || !selectionStart) return;
+
+    const handleMouseMove = (e) => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      
+      // Auto-scroll near bottom
+      if (y > rect.height - 50 && container.scrollTop < container.scrollHeight - container.clientHeight) {
+        container.scrollTop += 10;
+      }
+      // Auto-scroll near top
+      else if (y < 50 && container.scrollTop > 0) {
+        container.scrollTop -= 10;
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsSelecting(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isSelecting, selectionStart]);
 
   const calculateTotal = () => {
     let total = 0;
