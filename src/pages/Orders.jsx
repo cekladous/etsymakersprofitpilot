@@ -440,24 +440,6 @@ export default function Orders() {
 
   const columns = [
     {
-      header: () => (
-        <input
-          type="checkbox"
-          checked={selectedIds.length === filteredOrders.length && filteredOrders.length > 0}
-          onChange={toggleSelectAll}
-          className="w-4 h-4 rounded border-stone-300"
-        />
-      ),
-      render: (row) => (
-        <input
-          type="checkbox"
-          checked={selectedIds.includes(row.id)}
-          onChange={() => toggleSelect(row.id)}
-          className="w-4 h-4 rounded border-stone-300"
-        />
-      ),
-    },
-    {
       header: "Order ID",
       render: (row) => (
         <div>
