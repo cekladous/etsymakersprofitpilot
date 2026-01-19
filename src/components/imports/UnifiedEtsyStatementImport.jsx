@@ -341,7 +341,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
 
       // Save all statement lines - batched
       const allLines = [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines];
-      await batchProcess(allLines, 25, async (line) => {
+      await batchProcess(allLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
           import_id: importRecord.id,
           ...line
