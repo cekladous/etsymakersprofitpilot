@@ -95,24 +95,25 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
         const orders = jsonData.map(row => {
           const normalized = normalizeRow(row);
           return {
-           sale_date: parseDate(row["Sale Date"] || row["Order Date"]),
-           order_id: String(row["Order ID"] || ""),
-           buyer_username: row["Buyer"] || row["Buyer User ID"] || "",
-           buyer_full_name: row["Full Name"] || "",
-           number_of_items: parseInt(row["Quantity"] || row["Number of Items"] || "1"),
-           sku: row["SKU"] || row["Sku"] || "",
-           product_name: row["Title"] || row["Product"] || row["Item Title"] || "",
-           coupon_code: row["Coupon Code"] || row["Coupon"] || "",
+           sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
+           order_id: String(getRowValue(normalized, "Order ID") || ""),
+           buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID"),
+           buyer_full_name: getRowValue(normalized, "Full Name"),
+           number_of_items: parseInt(getRowValue(normalized, "Quantity", "Number of Items") || "1"),
+           sku: getRowValue(normalized, "SKU", "Sku"),
+           product_name: getRowValue(normalized, "Title", "Product", "Item Title"),
+           coupon_code: getRowValue(normalized, "Coupon Code", "Coupon"),
            // Capture financial fields from Sold Orders CSV
-           order_value: parseMoney(row["Order Value"]),
-           shipping_charged: parseMoney(row["Shipping"]),
-           sales_tax: parseMoney(row["Sales Tax"]),
-           order_total: parseMoney(row["Order Total"]),
-           order_net: parseMoney(row["Order Net"]),
-           discount_amount: parseMoney(row["Discount Amount"]),
-           card_processing_fees: parseMoney(row["Card Processing Fees"]),
+           order_value: parseMoney(getRowValue(normalized, "Order Value")),
+           shipping_charged: parseMoney(getRowValue(normalized, "Shipping")),
+           sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
+           order_total: parseMoney(getRowValue(normalized, "Order Total")),
+           order_net: parseMoney(getRowValue(normalized, "Order Net")),
+           discount_amount: parseMoney(getRowValue(normalized, "Discount Amount")),
+           card_processing_fees: parseMoney(getRowValue(normalized, "Card Processing Fees")),
            status: "completed",
-         })).filter(o => o.order_id);
+          };
+          }).filter(o => o.order_id);
 
         setPreview({ count: orders.length });
         setPendingData({ orders });
