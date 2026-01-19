@@ -591,11 +591,11 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                return sum + Math.abs(taxAmount || 0);
              }, 0);
 
-            // Parse values from CSV - try multiple possible column names for each field
-            let orderValue = parseMoney(row["Order Value"] || row["Item(s) price"] || row["Item Total"]);
-            let shippingCharged = parseMoney(row["Shipping"] || row["Shipping price"] || row["Shipping Charged"]);
-            let salesTax = parseMoney(row["Sales Tax"] || row["Tax paid by buyer"]);
-            const orderTotal = parseMoney(row["Order Total"] || row["Total"]) || amount;
+            // Parse values from CSV - use safe getter for all fields
+            let orderValue = parseMoney(getRowValue(row, "Order Value", "Item(s) price", "Item Total"));
+            let shippingCharged = parseMoney(getRowValue(row, "Shipping", "Shipping price", "Shipping Charged"));
+            let salesTax = parseMoney(getRowValue(row, "Sales Tax", "Tax paid by buyer"));
+            const orderTotal = parseMoney(getRowValue(row, "Order Total", "Total")) || amount;
 
         // `orderValue` = Item(s) price from CSV. Only use if explicitly provided.
         // Do not derive from other fields to avoid double-counting deductions.
