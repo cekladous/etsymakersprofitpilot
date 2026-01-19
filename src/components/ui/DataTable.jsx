@@ -19,6 +19,8 @@ export default function DataTable({
   const [selectedCells, setSelectedCells] = useState(new Set());
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState(null);
+  const [currentRow, setCurrentRow] = useState(null);
+  const scrollContainerRef = React.useRef(null);
 
   const getNumericValue = (value) => {
     if (typeof value === 'number') return value;
