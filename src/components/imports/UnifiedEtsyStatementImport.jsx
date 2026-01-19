@@ -600,8 +600,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
         <DialogHeader>
           <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
           <DialogDescription>
-            Upload your <strong>Etsy Monthly Statement export</strong>. This will automatically populate Orders, Fees, Ads, Shipping Labels, and Deposits. 
-            This is the single source of truth for all Etsy financial data.
+            Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Payment Account → Download CSV.
+            This will automatically populate Orders, Fees, Ads, Shipping Labels, and Deposits throughout the entire app.
           </DialogDescription>
         </DialogHeader>
 
