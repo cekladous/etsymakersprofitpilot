@@ -523,21 +523,32 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Unmatched Rows Banner */}
+      {financialData.unmatchedLedgerEntries.length > 0 && (
+        <Link to={createPageUrl("ReconciliationReview")} className="block">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-amber-900">
+                  {financialData.unmatchedLedgerEntries.length} rows need review
+                </p>
+                <p className="text-sm text-amber-700">
+                  Some statement lines could not be automatically matched. Click to review.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="bg-white">
+                Review Now
+              </Button>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Alerts */}
-      {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0 || uncategorizedExpenses.length > 0 || financialData.unmatchedLedgerEntries.length > 0) && (
+      {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0) && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-stone-900">Needs Attention</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {financialData.unmatchedLedgerEntries.length > 0 && (
-              <div onClick={() => setActiveTab("summary")} className="cursor-pointer">
-                <AlertCard
-                  title="Unmatched Ledger Rows"
-                  count={financialData.unmatchedLedgerEntries.length}
-                  description="Review and categorize Etsy entries"
-                  type="danger"
-                />
-              </div>
-            )}
             <Link to={createPageUrl("Jobs")} className="block">
               <AlertCard
                 title="Orders Missing Jobs"

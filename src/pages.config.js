@@ -6,8 +6,8 @@ import Jobs from './pages/Jobs';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Quotes from './pages/Quotes';
-import Tools from './pages/Tools';
 import ReconciliationReview from './pages/ReconciliationReview';
+import Tools from './pages/Tools';
 import __Layout from './Layout.jsx';
 
 
@@ -20,8 +20,8 @@ export const PAGES = {
     "Orders": Orders,
     "Products": Products,
     "Quotes": Quotes,
-    "Tools": Tools,
     "ReconciliationReview": ReconciliationReview,
+    "Tools": Tools,
 }
 
 export const pagesConfig = {
