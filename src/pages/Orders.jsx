@@ -64,9 +64,19 @@ export default function Orders() {
     queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 10000),
   });
 
-  const { data: fees = [] } = useQuery({
+  const { data: fees = [], isLoading: feesLoading } = useQuery({
     queryKey: ["fees"],
-    queryFn: () => base44.entities.Fee.list(),
+    queryFn: () => base44.entities.Fee.list("-transaction_date", 5000),
+  });
+
+  const { data: etsyStatementImports = [] } = useQuery({
+    queryKey: ["etsy-statement-imports"],
+    queryFn: () => base44.entities.EtsyStatementImport.list("-imported_at"),
+  });
+
+  const { data: transfers = [] } = useQuery({
+    queryKey: ["transfers"],
+    queryFn: () => base44.entities.Transfer.list("-date", 1000),
   });
 
   const bulkDeleteMutation = useMutation({
