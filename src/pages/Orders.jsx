@@ -499,7 +499,7 @@ export default function Orders() {
     {
       header: "Fees",
       render: (row) => {
-        const fees = orderFees.find(f => f.order_id === row.id);
+        const fees = orderFees.find(f => f.order_id === row.order_id);
         if (!fees || fees.total_fees === 0) {
           return <span className="text-stone-400">—</span>;
         }
