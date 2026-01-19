@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -16,6 +16,72 @@ export default function DataTable({
   onRowClick,
   emptyMessage = "No data found"
 }) {
+  const [selectedCells, setSelectedCells] = useState(new Set());
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState(null);
+
+  const getNumericValue = (value) => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const num = parseFloat(value.replace(/[$,]/g, ''));
+      return isNaN(num) ? 0 : num;
+    }
+    return 0;
+  };
+
+  const getCellKey = (rowIndex, colIndex) => `${rowIndex}-${colIndex}`;
+
+  const handleCellMouseDown = (rowIndex, colIndex) => {
+    setIsSelecting(true);
+    setSelectionStart({ row: rowIndex, col: colIndex });
+    setSelectedCells(new Set([getCellKey(rowIndex, colIndex)]));
+  };
+
+  const handleCellMouseEnter = (rowIndex, colIndex) => {
+    if (!isSelecting || !selectionStart) return;
+
+    const minRow = Math.min(selectionStart.row, rowIndex);
+    const maxRow = Math.max(selectionStart.row, rowIndex);
+    const minCol = Math.min(selectionStart.col, colIndex);
+    const maxCol = Math.max(selectionStart.col, colIndex);
+
+    const newSelection = new Set();
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        newSelection.add(getCellKey(r, c));
+      }
+    }
+    setSelectedCells(newSelection);
+  };
+
+  const handleMouseUp = () => {
+    setIsSelecting(false);
+  };
+
+  const calculateTotal = () => {
+    let total = 0;
+    selectedCells.forEach(cellKey => {
+      const [rowIndex, colIndex] = cellKey.split('-').map(Number);
+      const row = data[rowIndex];
+      const col = columns[colIndex];
+      let cellValue = col.render ? col.render(row) : row[col.accessor];
+      
+      // Extract text content from React elements
+      if (React.isValidElement(cellValue)) {
+        cellValue = cellValue.props?.children || '';
+      }
+      
+      total += getNumericValue(cellValue);
+    });
+    return total;
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
