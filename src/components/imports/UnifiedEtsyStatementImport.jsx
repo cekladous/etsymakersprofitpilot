@@ -569,10 +569,10 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
            return sum + Math.abs(taxAmount || 0);
          }, 0);
 
-        // Parse values from CSV or fallback to derived values
-        let orderValue = parseMoney(row["Order Value"] || row["Item Total"]);
-        let shippingCharged = parseMoney(row["Shipping"]);
-        let salesTax = parseMoney(row["Sales Tax"]);
+        // Parse values from CSV
+        let orderValue = parseMoney(row["Order Value"] || row["Item Total"] || row["Item(s) price"]);
+        let shippingCharged = parseMoney(row["Shipping"] || row["Shipping price"] || row["Shipping Charged"]);
+        let salesTax = parseMoney(row["Sales Tax"] || row["Tax paid by buyer"]);
         const orderTotal = parseMoney(row["Order Total"]) || amount;
 
         // `orderValue` = Item(s) price from CSV. Only use if explicitly provided.
