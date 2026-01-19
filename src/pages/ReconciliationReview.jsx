@@ -280,11 +280,29 @@ export default function ReconciliationReview() {
           <CardTitle>Import History</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={importColumns}
-            data={imports}
-            emptyMessage="No statement imports yet"
-          />
+          {imports.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-stone-600 mb-2">No imports yet</p>
+              <p className="text-sm text-stone-500">Import an Etsy statement CSV from the Etsy Activity page</p>
+            </div>
+          ) : imports.filter(imp => imp.status !== 'replaced').length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-stone-600">No active imports</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-900">
+                  ℹ️ Each import populates Orders, Fees, Deposits across the app. Check the Orders and Etsy Activity pages to see your data.
+                </p>
+              </div>
+              <DataTable
+                columns={importColumns}
+                data={imports.filter(imp => imp.status !== 'replaced')}
+                emptyMessage="No statement imports yet"
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
