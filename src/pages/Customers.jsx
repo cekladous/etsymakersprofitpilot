@@ -18,8 +18,8 @@ export default function CustomersPage() {
   const [detailCustomer, setDetailCustomer] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
-  const [sortBy, setSortBy] = useState("created_date");
-  const [sortDir, setSortDir] = useState("desc");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
   
   const queryClient = useQueryClient();
 
