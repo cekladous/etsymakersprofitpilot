@@ -235,8 +235,8 @@ export default function ReconciliationReview() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Import Reconciliation Review"
-        description="Review imports and resolve unmatched statement lines"
+        title="Import History & Unmatched Items"
+        description="View your statement imports and resolve any unmatched lines"
       />
 
       {totalUnmatched > 0 && (
