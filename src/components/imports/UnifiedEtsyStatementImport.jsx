@@ -533,47 +533,47 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       };
 
       // A) DEPOSITS
-      if (classification.category === 'deposit') {
-        // Extract amount from description if amount column is 0 or empty
-        let depositAmount = Math.abs(amount);
-        if (!depositAmount || depositAmount === 0) {
-          const amountMatch = title.match(/\$[\d,]+\.?\d*/);
-          if (amountMatch) {
-            depositAmount = parseMoney(amountMatch[0]);
+          if (classification.category === 'deposit') {
+            // Extract amount from description if amount column is 0 or empty
+            let depositAmount = Math.abs(amount);
+            if (!depositAmount || depositAmount === 0) {
+              const amountMatch = title.match(/\$[\d,]+\.?\d*/);
+              if (amountMatch) {
+                depositAmount = parseMoney(amountMatch[0]);
+              }
+            }
+
+            deposits.push({
+              date: transactionDate,
+              type: "etsy_deposit",
+              amount: Math.abs(depositAmount),
+              notes: `${title} - ${info}`,
+              _rawLine: rawLine
+            });
           }
-        }
+          // B) ORDERS/SALES
+           else if (classification.category === 'sale' && classification.order_id) {
+             // Calculate total fees AND taxes for this order from the fees we found
+             const orderFees = feesByOrderId[classification.order_id] || [];
+             const orderTaxes = classifiedRows.filter(({ row: r, classification: c }) => 
+               c.category === 'tax' && c.order_id === classification.order_id
+             );
 
-        deposits.push({
-          date: transactionDate,
-          type: "etsy_deposit",
-          amount: Math.abs(depositAmount),
-          notes: `${title} - ${info}`,
-          _rawLine: rawLine
-        });
-      }
-      // B) ORDERS/SALES
-       else if (classification.category === 'sale' && classification.order_id) {
-         // Calculate total fees AND taxes for this order from the fees we found
-         const orderFees = feesByOrderId[classification.order_id] || [];
-         const orderTaxes = classifiedRows.filter(({ row: r, classification: c }) => 
-           c.category === 'tax' && c.order_id === classification.order_id
-         );
+             const totalOrderFees = orderFees.reduce((sum, f) => {
+               const feeAmount = parseMoney(f["Fees & Taxes"]);
+               return sum + Math.abs(feeAmount || 0);
+             }, 0);
 
-         const totalOrderFees = orderFees.reduce((sum, f) => {
-           const feeAmount = parseMoney(f["Fees & Taxes"]);
-           return sum + Math.abs(feeAmount || 0);
-         }, 0);
+             const totalTaxes = orderTaxes.reduce((sum, { row: r }) => {
+               const taxAmount = parseMoney(r["Amount"] || r["Fees & Taxes"]);
+               return sum + Math.abs(taxAmount || 0);
+             }, 0);
 
-         const totalTaxes = orderTaxes.reduce((sum, { row: r }) => {
-           const taxAmount = parseMoney(r["Amount"] || r["Fees & Taxes"]);
-           return sum + Math.abs(taxAmount || 0);
-         }, 0);
-
-        // Parse values from CSV
-        let orderValue = parseMoney(row["Order Value"] || row["Item Total"] || row["Item(s) price"]);
-        let shippingCharged = parseMoney(row["Shipping"] || row["Shipping price"] || row["Shipping Charged"]);
-        let salesTax = parseMoney(row["Sales Tax"] || row["Tax paid by buyer"]);
-        const orderTotal = parseMoney(row["Order Total"]) || amount;
+            // Parse values from CSV - try multiple possible column names for each field
+            let orderValue = parseMoney(row["Item(s) price"] || row["Order Value"] || row["Item Total"]);
+            let shippingCharged = parseMoney(row["Shipping price"] || row["Shipping Charged"] || row["Shipping"]);
+            let salesTax = parseMoney(row["Tax paid by buyer"] || row["Sales Tax"]);
+            const orderTotal = parseMoney(row["Order Total"] || row["Total"]) || amount;
 
         // `orderValue` = Item(s) price from CSV. Only use if explicitly provided.
         // Do not derive from other fields to avoid double-counting deductions.
