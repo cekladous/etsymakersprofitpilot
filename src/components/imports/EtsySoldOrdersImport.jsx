@@ -97,16 +97,22 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
            const shippingValue = getRowValue(normalized, "Shipping", "Shipping price", "Shipping Charged", "Shipping Amount", "Shipping Cost");
            const shippingParsed = parseMoney(shippingValue);
 
+           // Debug first row
+           if (idx === 0) {
+             console.log("Sample row keys:", Object.keys(normalized));
+             console.log("Raw shipping value:", shippingValue);
+             console.log("Parsed shipping:", shippingParsed);
+           }
+
            return {
             sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
             order_id: String(getRowValue(normalized, "Order ID") || ""),
-            buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID", "Buyer User ID"),
+            buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID"),
             buyer_full_name: getRowValue(normalized, "Full Name"),
             number_of_items: parseInt(getRowValue(normalized, "Quantity", "Number of Items") || "1"),
             sku: getRowValue(normalized, "SKU", "Sku"),
             product_name: getRowValue(normalized, "Title", "Product", "Item Title"),
             coupon_code: getRowValue(normalized, "Coupon Code", "Coupon"),
-            // Capture financial fields from Sold Orders CSV
             order_value: parseMoney(getRowValue(normalized, "Order Value")),
             shipping_charged: shippingParsed,
             sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
