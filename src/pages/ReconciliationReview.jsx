@@ -11,6 +11,7 @@ import { format } from "date-fns";
 
 export default function ReconciliationReview() {
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showBreakdown, setShowBreakdown] = useState(true);
   const queryClient = useQueryClient();
   const { data: imports = [] } = useQuery({
     queryKey: ["etsy-statement-imports"],
