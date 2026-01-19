@@ -105,7 +105,7 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
            coupon_code: getRowValue(normalized, "Coupon Code", "Coupon"),
            // Capture financial fields from Sold Orders CSV
            order_value: parseMoney(getRowValue(normalized, "Order Value")),
-           shipping_charged: parseMoney(getRowValue(normalized, "Shipping")),
+           shipping_charged: parseMoney(getRowValue(normalized, "Shipping", "Shipping price", "Shipping Charged", "Shipping Amount", "Shipping Cost")),
            sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
            order_total: parseMoney(getRowValue(normalized, "Order Total")),
            order_net: parseMoney(getRowValue(normalized, "Order Net")),
