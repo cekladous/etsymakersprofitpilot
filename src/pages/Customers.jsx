@@ -131,7 +131,7 @@ export default function CustomersPage() {
   ];
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       <PageHeader
         title="Customers"
         description="Manage customer contacts and view their quote and order history"
