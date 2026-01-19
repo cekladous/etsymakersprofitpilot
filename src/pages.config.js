@@ -5,11 +5,11 @@ import Expenses from './pages/Expenses';
 import Fees from './pages/Fees';
 import Inventory from './pages/Inventory';
 import Jobs from './pages/Jobs';
+import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Quotes from './pages/Quotes';
 import ReconciliationReview from './pages/ReconciliationReview';
 import Tools from './pages/Tools';
-import Orders from './pages/Orders';
 import __Layout from './Layout.jsx';
 
 
@@ -21,11 +21,11 @@ export const PAGES = {
     "Fees": Fees,
     "Inventory": Inventory,
     "Jobs": Jobs,
+    "Orders": Orders,
     "Products": Products,
     "Quotes": Quotes,
     "ReconciliationReview": ReconciliationReview,
     "Tools": Tools,
-    "Orders": Orders,
 }
 
 export const pagesConfig = {
