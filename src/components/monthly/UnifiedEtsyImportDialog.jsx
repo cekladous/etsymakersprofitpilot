@@ -150,24 +150,8 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
           status: "success",
         });
 
-        const existingEntries = await base44.entities.EtsyLedgerEntry.list("-entry_date", 10000);
-        result.existingEntriesCount = existingEntries.length;
-
+        // Import all entries without duplicate checking
         for (const entry of ledgerEntries) {
-          // Check if this exact entry already exists (by all key fields)
-          const duplicate = existingEntries.find(e => 
-            e.entry_date === entry.entry_date &&
-            e.type === entry.type &&
-            e.title === entry.title &&
-            Math.abs((e.amount || 0) - (entry.amount || 0)) < 0.01 &&
-            Math.abs((e.net || 0) - (entry.net || 0)) < 0.01
-          );
-          
-          if (duplicate) {
-            result.ledger.skipped++;
-            continue;
-          }
-          
           await base44.entities.EtsyLedgerEntry.create({ ...entry, source_batch_id: batch.id });
           result.ledger.created++;
         }
@@ -469,15 +453,7 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
                     </>
                   )}
                   {importResult.ledger && (
-                    <>
-                      <p>✓ Ledger entries created: {importResult.ledger.created}</p>
-                      {importResult.ledger.skipped > 0 && (
-                        <div className="text-amber-700">
-                          <p>⊗ Ledger entries skipped: {importResult.ledger.skipped} (duplicates detected)</p>
-                          <p className="text-sm mt-1">Database has {importResult.existingEntriesCount || 0} existing ledger entries. To re-import, delete existing entries first from the Orders page.</p>
-                        </div>
-                      )}
-                    </>
+                    <p>✓ Ledger entries created: {importResult.ledger.created}</p>
                   )}
                   {importResult.transfers && importResult.transfers.created > 0 && (
                     <p>✓ Deposits tracked: {importResult.transfers.created}</p>
