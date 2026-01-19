@@ -384,7 +384,7 @@ export default function Orders() {
             onClick={() => setImportDialogOpen(true)}
           >
             <Upload className="w-4 h-4 mr-2" />
-            Import Etsy Statement
+            Import Etsy Monthly Statement
           </Button>
         </div>
       </PageHeader>

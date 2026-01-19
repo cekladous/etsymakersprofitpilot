@@ -5,10 +5,13 @@
 export const BUSINESS_EXPENSE_CATEGORIES = [
   { value: "materials_supplies", label: "Materials & Supplies", group: "product" },
   { value: "tools_equipment", label: "Tools & Equipment", group: "product" },
-  { value: "advertising_marketing", label: "Advertising & Marketing", group: "business" },
-  { value: "office_expenses", label: "Office Expenses", group: "business" },
+  { value: "advertising_marketing", label: "Advertising & Marketing (non-Etsy)", group: "business" },
+  { value: "office_general_expenses", label: "Office / General Expenses", group: "business" },
+  { value: "gas_mileage", label: "Gas / Mileage", group: "business" },
+  { value: "utilities_cell_phone", label: "Utilities / Cell Phone", group: "business" },
+  { value: "software_subscriptions", label: "Software / Subscriptions", group: "business" },
   { value: "professional_services", label: "Professional Services", group: "business" },
-  { value: "other", label: "Other", group: "business" },
+  { value: "other", label: "Other Business Expenses", group: "business" },
   { value: "miscellaneous_expenses", label: "Miscellaneous", group: "business" },
 ];
 
@@ -43,7 +46,11 @@ export const CATEGORY_COLORS = {
   materials_supplies: "bg-blue-100 text-blue-700",
   tools_equipment: "bg-amber-100 text-amber-700",
   advertising_marketing: "bg-pink-100 text-pink-700",
+  office_general_expenses: "bg-emerald-100 text-emerald-700",
   office_expenses: "bg-emerald-100 text-emerald-700",
+  gas_mileage: "bg-cyan-100 text-cyan-700",
+  utilities_cell_phone: "bg-indigo-100 text-indigo-700",
+  software_subscriptions: "bg-purple-100 text-purple-700",
   professional_services: "bg-violet-100 text-violet-700",
   other: "bg-stone-100 text-stone-600",
   miscellaneous_expenses: "bg-stone-200 text-stone-700",

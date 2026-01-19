@@ -31,7 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 
-import { ALL_EXPENSE_CATEGORIES as CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
+import { BUSINESS_EXPENSE_CATEGORIES as CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
 
 export default function Expenses() {
   const [importOpen, setImportOpen] = useState(false);
@@ -673,6 +673,14 @@ export default function Expenses() {
           </Button>
         </div>
       )}
+
+      {/* Helper Text */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-900">
+          <strong>💳 Business Expenses Only:</strong> Import your credit card/bank statement for non-Etsy business expenses. 
+          For Etsy fees, ads, and shipping labels, use the <strong>Etsy Activity</strong> page.
+        </p>
+      </div>
 
       <PageHeader 
         title="Expenses" 

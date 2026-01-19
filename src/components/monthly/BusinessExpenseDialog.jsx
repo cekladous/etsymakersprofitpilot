@@ -23,23 +23,15 @@ import {
 import { Loader2 } from "lucide-react";
 
 const EXPENSE_CATEGORIES = [
-  { group: "selling_expenses", name: "etsy_listing_fees", label: "Etsy Listing Fees" },
-  { group: "selling_expenses", name: "etsy_transaction_fees", label: "Etsy Transaction Fees" },
-  { group: "selling_expenses", name: "etsy_processing_fees", label: "Etsy Processing Fees" },
-  { group: "selling_expenses", name: "share_save_refunds_credits", label: "Share & Save Refunds & Credits" },
-  { group: "selling_expenses", name: "other_fees", label: "Other Fees" },
-  { group: "selling_expenses", name: "etsy_ads", label: "Etsy Ads" },
-  { group: "selling_expenses", name: "etsy_offsite_ads_fees", label: "Etsy Offsite Ads Fees" },
-  { group: "selling_expenses", name: "etsy_shipping", label: "Etsy Shipping" },
-  { group: "selling_expenses", name: "other_postage_costs", label: "Other Postage Costs" },
-  { group: "selling_expenses", name: "custom_expense_a", label: "Custom Expense A" },
-  { group: "selling_expenses", name: "custom_expense_b", label: "Custom Expense B" },
   { group: "product_expenses", name: "materials_supplies", label: "Materials & Supplies" },
   { group: "product_expenses", name: "tools_equipment", label: "Tools & Equipment" },
-  { group: "business_expenses", name: "advertising_marketing", label: "Advertising & Marketing" },
-  { group: "business_expenses", name: "office_expenses", label: "Office Expenses" },
+  { group: "business_expenses", name: "advertising_marketing", label: "Advertising & Marketing (non-Etsy)" },
+  { group: "business_expenses", name: "office_general_expenses", label: "Office / General Expenses" },
+  { group: "business_expenses", name: "gas_mileage", label: "Gas / Mileage" },
+  { group: "business_expenses", name: "utilities_cell_phone", label: "Utilities / Cell Phone" },
+  { group: "business_expenses", name: "software_subscriptions", label: "Software / Subscriptions" },
   { group: "business_expenses", name: "professional_services", label: "Professional Services" },
-  { group: "business_expenses", name: "other", label: "Other" },
+  { group: "business_expenses", name: "other", label: "Other Business Expenses" },
   { group: "business_expenses", name: "miscellaneous_expenses", label: "Miscellaneous Expenses" },
 ];
 
