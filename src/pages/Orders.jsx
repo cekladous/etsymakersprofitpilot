@@ -399,6 +399,17 @@ export default function Orders() {
       ),
     },
     {
+      header: "Shipping",
+      render: (row) => {
+        const order = etsyOrders.find(o => o.order_id === row.order_id);
+        return (
+          <span className="text-stone-600">
+            {order ? formatCurrency(order.shipping_charged || 0) : "—"}
+          </span>
+        );
+      },
+    },
+    {
       header: "Amount",
       render: (row) => (
         <span className={`font-semibold ${row.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
@@ -406,7 +417,7 @@ export default function Orders() {
         </span>
       ),
     },
-  ];
+    ];
 
   const depositColumns = [
     {
