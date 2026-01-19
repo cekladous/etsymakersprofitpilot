@@ -571,6 +571,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           orderValue = Math.max(0, orderTotal - shippingCharged - totalOrderFees);
         }
 
+        // Calculate net payout correctly: order_value - total_fees
+        const calculatedNetPayout = orderValue - totalOrderFees;
+
         orders.push({
           sale_date: transactionDate,
           order_id: classification.order_id,
@@ -584,7 +587,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           sales_tax: salesTax,
           order_total: orderTotal,
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
-          order_net: net,
+          order_net: calculatedNetPayout,
           status: row["Status"] || "completed",
           total_fees: totalOrderFees,
           _rawLine: rawLine
