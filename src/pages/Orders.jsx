@@ -465,7 +465,12 @@ export default function Orders() {
       header: "Order ID",
       render: (row) => (
         <div>
-          <p className="font-medium text-stone-900">#{row.order_id}</p>
+          <button
+            onClick={() => setSelectedIds([row.id])}
+            className="font-medium text-blue-600 hover:underline"
+          >
+            #{row.order_id}
+          </button>
           <p className="text-sm text-stone-500">{row.sale_date}</p>
         </div>
       ),
