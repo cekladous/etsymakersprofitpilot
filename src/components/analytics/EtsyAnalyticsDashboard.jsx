@@ -105,41 +105,7 @@ export default function EtsyAnalyticsDashboard() {
       .sort((a, b) => new Date(a.month) - new Date(b.month));
   }, [filteredOrders]);
 
-  // Best-selling products
-  const bestSellingProducts = useMemo(() => {
-    const productData = {};
 
-    filteredOrders.forEach((order) => {
-      const productName = order.product_name || "Unknown Product";
-      if (!productData[productName]) {
-        productData[productName] = { name: productName, quantity: 0, revenue: 0 };
-      }
-      productData[productName].quantity += order.number_of_items || 1;
-      productData[productName].revenue += order.order_value || 0;
-    });
-
-    return Object.values(productData)
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 10);
-  }, [filteredOrders]);
-
-  // Customer order frequency
-  const customerOrderFrequency = useMemo(() => {
-    const customerData = {};
-
-    filteredOrders.forEach((order) => {
-      const buyer = order.buyer_username || "Unknown";
-      if (!customerData[buyer]) {
-        customerData[buyer] = { buyer, orders: 0, totalSpent: 0 };
-      }
-      customerData[buyer].orders += 1;
-      customerData[buyer].totalSpent += order.order_value || 0;
-    });
-
-    return Object.values(customerData)
-      .sort((a, b) => b.orders - a.orders)
-      .slice(0, 8);
-  }, [filteredOrders]);
 
   // Key metrics
   const metrics = useMemo(() => {
@@ -317,81 +283,7 @@ export default function EtsyAnalyticsDashboard() {
         </Card>
       )}
 
-      {/* Best-Selling Products & Customer Frequency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {bestSellingProducts.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Best-Selling Products</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={bestSellingProducts}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                  <XAxis dataKey="name" stroke="#78716c" angle={-45} textAnchor="end" height={100} />
-                  <YAxis stroke="#78716c" />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#fafaf8", border: "1px solid #e7e5e4" }}
-                  />
-                  <Legend />
-                  <Bar dataKey="quantity" fill="#059669" name="Units Sold" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
 
-        {customerOrderFrequency.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Top Customers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={customerOrderFrequency} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                  <XAxis type="number" stroke="#78716c" />
-                  <YAxis dataKey="buyer" type="category" stroke="#78716c" width={100} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#fafaf8", border: "1px solid #e7e5e4" }}
-                  />
-                  <Legend />
-                  <Bar dataKey="orders" fill="#059669" name="Orders" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Product Revenue Distribution */}
-      {bestSellingProducts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Revenue by Product</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={bestSellingProducts}
-                  dataKey="revenue"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label
-                >
-                  {bestSellingProducts.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
