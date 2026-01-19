@@ -7,6 +7,7 @@ import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Quotes from './pages/Quotes';
 import Tools from './pages/Tools';
+import ReconciliationReview from './pages/ReconciliationReview';
 import __Layout from './Layout.jsx';
 
 
@@ -20,6 +21,7 @@ export const PAGES = {
     "Products": Products,
     "Quotes": Quotes,
     "Tools": Tools,
+    "ReconciliationReview": ReconciliationReview,
 }
 
 export const pagesConfig = {

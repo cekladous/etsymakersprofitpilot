@@ -1,0 +1,612 @@
+import React, { useState, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Upload, Loader2, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+
+// Generate stable line_uid from transaction data
+const generateLineUID = (date, type, amount, description, orderId, month) => {
+  const str = `${date}|${type}|${amount}|${description}|${orderId || ''}|${month}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `${month}_${Math.abs(hash).toString(36)}`;
+};
+
+// Parse helpers
+const parseDate = (val) => {
+  if (!val) return null;
+  if (val instanceof Date) return format(val, 'yyyy-MM-dd');
+  if (typeof val === 'number') {
+    const date = new Date((val - 25569) * 86400 * 1000);
+    return format(date, 'yyyy-MM-dd');
+  }
+  const str = String(val).trim();
+  const ddmmmyy = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/);
+  if (ddmmmyy) {
+    const [, day, monthStr, year] = ddmmmyy;
+    const months = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
+    const month = months[monthStr.toLowerCase()];
+    if (month) {
+      const fullYear = parseInt(year) < 50 ? `20${year}` : `19${year}`;
+      return `${fullYear}-${month}-${day.padStart(2, "0")}`;
+    }
+  }
+  const date = new Date(str);
+  if (!isNaN(date.getTime())) return format(date, 'yyyy-MM-dd');
+  return null;
+};
+
+const parseMoney = (v) => {
+  if (v === null || v === undefined || v === "") return 0;
+  const str = String(v ?? "").trim().replace(/[$,]/g, "");
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+};
+
+const parseIntSafe = (v) => {
+  if (v === null || v === undefined || v === "") return 0;
+  const num = parseInt(String(v).trim());
+  return isNaN(num) ? 0 : num;
+};
+
+// Map statement line to fee_type
+const mapFeeType = (type, title, description) => {
+  const text = `${type} ${title} ${description}`.toLowerCase();
+  if (text.includes('listing fee')) return 'listing';
+  if (text.includes('transaction fee')) return 'transaction';
+  if (text.includes('processing fee') || text.includes('payment processing')) return 'processing';
+  if (text.includes('share') && text.includes('save')) return 'share_save_credit';
+  if (text.includes('etsy ads')) return 'etsy_ads';
+  if (text.includes('offsite ads')) return 'offsite_ads';
+  if (text.includes('shipping label')) return 'shipping_label';
+  if (text.includes('postage')) return 'other_postage';
+  return 'other_fee';
+};
+
+// Determine category from type
+const categorizeRow = (type) => {
+  const t = type.toLowerCase();
+  if (t.includes('sale') || t.includes('order')) return 'sale';
+  if (t.includes('refund')) return 'refund';
+  if (t.includes('fee') || t.includes('ads')) return 'fee';
+  if (t.includes('deposit')) return 'deposit';
+  if (t.includes('tax')) return 'tax';
+  if (t.includes('shipping')) return 'shipping';
+  return 'unmatched';
+};
+
+export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
+  const [importing, setImporting] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [pendingData, setPendingData] = useState(null);
+  const fileInputRef = useRef(null);
+  const queryClient = useQueryClient();
+
+  const importMutation = useMutation({
+    mutationFn: async ({ statementMonth, dateRangeStart, dateRangeEnd, fileName, fileHash, parsedData }) => {
+      const { orders, fees, deposits, refunds, taxes, unmatchedLines } = parsedData;
+      
+      // Check if this statement month was already imported
+      const existingImports = await base44.entities.EtsyStatementImport.filter({ statement_month: statementMonth });
+      let importRecord;
+      
+      if (existingImports.length > 0) {
+        // Update existing import
+        importRecord = existingImports[0];
+        
+        // Delete old statement lines for this import
+        const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: importRecord.id });
+        await Promise.all(oldLines.map(line => base44.entities.EtsyStatementLine.delete(line.id)));
+        
+        // Delete old fees for this import
+        const oldFees = await base44.entities.Fee.filter({ import_id: importRecord.id });
+        await Promise.all(oldFees.map(fee => base44.entities.Fee.delete(fee.id)));
+      } else {
+        // Create new import record
+        importRecord = await base44.entities.EtsyStatementImport.create({
+          import_id: `import_${Date.now()}`,
+          statement_month: statementMonth,
+          date_range_start: dateRangeStart,
+          date_range_end: dateRangeEnd,
+          file_name: fileName,
+          file_hash: fileHash,
+          imported_at: new Date().toISOString(),
+          status: 'success',
+        });
+      }
+
+      const result = {
+        orders: { created: 0, updated: 0 },
+        fees: { created: 0 },
+        deposits: { created: 0 },
+        refunds: { created: 0 },
+        taxes: { created: 0 },
+        unmatched: { count: 0 }
+      };
+
+      // Import orders (upsert by channel + order_id)
+      for (const order of orders) {
+        const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
+        if (existing.length > 0) {
+          await base44.entities.EtsyOrder.update(existing[0].id, order);
+          result.orders.updated++;
+        } else {
+          await base44.entities.EtsyOrder.create(order);
+          result.orders.created++;
+        }
+      }
+
+      // Import fees (normalized)
+      for (const fee of fees) {
+        await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
+        result.fees.created++;
+      }
+
+      // Import deposits as transfers
+      for (const deposit of deposits) {
+        await base44.entities.Transfer.create(deposit);
+        result.deposits.created++;
+      }
+
+      result.refunds.created = refunds.length;
+      result.taxes.created = taxes.length;
+      result.unmatched.count = unmatchedLines.length;
+
+      // Save all statement lines
+      for (const line of [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines]) {
+        await base44.entities.EtsyStatementLine.create({
+          import_id: importRecord.id,
+          ...line
+        });
+      }
+
+      // Update import counts
+      await base44.entities.EtsyStatementImport.update(importRecord.id, {
+        orders_count: result.orders.created + result.orders.updated,
+        fees_count: result.fees.created,
+        deposits_count: result.deposits.created,
+        refunds_count: result.refunds.created,
+        taxes_count: result.taxes.created,
+        unmatched_count: result.unmatched.count,
+        reconciliation_status: result.unmatched.count === 0 ? 'PASS' : 'PENDING'
+      });
+
+      return result;
+    },
+    onSuccess: (result) => {
+      setImportResult(result);
+      queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-lines"] });
+      setImporting(false);
+      setPreview(null);
+      setPendingData(null);
+    },
+    onError: (error) => {
+      setImportResult({ error: error.message });
+      setImporting(false);
+    },
+  });
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setImporting(true);
+    setImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const xlsxModule = await import("xlsx");
+        const XLSX = xlsxModule.default || xlsxModule;
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false });
+
+        if (jsonData.length === 0) {
+          setImportResult({ error: "File is empty" });
+          setImporting(false);
+          return;
+        }
+
+        // Parse statement
+        const parsed = parseEtsyStatement(jsonData, file.name);
+        
+        setPreview({
+          orders: parsed.orders.length,
+          fees: parsed.fees.length,
+          deposits: parsed.deposits.length,
+          refunds: parsed.refunds.length,
+          taxes: parsed.taxes.length,
+          unmatched: parsed.unmatchedLines.length,
+          statementMonth: parsed.statementMonth,
+          dateRange: `${parsed.dateRangeStart} to ${parsed.dateRangeEnd}`
+        });
+        
+        setPendingData({
+          statementMonth: parsed.statementMonth,
+          dateRangeStart: parsed.dateRangeStart,
+          dateRangeEnd: parsed.dateRangeEnd,
+          fileName: file.name,
+          fileHash: `hash_${Date.now()}`, // TODO: implement real hash
+          parsedData: parsed
+        });
+        
+        setImporting(false);
+      } catch (error) {
+        setImportResult({ error: `Failed to parse file: ${error.message}` });
+        setImporting(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = "";
+  };
+
+  const parseEtsyStatement = (jsonData, fileName) => {
+    const orders = [];
+    const fees = [];
+    const deposits = [];
+    const refunds = [];
+    const taxes = [];
+    const unmatchedLines = [];
+    
+    let minDate = null;
+    let maxDate = null;
+
+    jsonData.forEach((row, idx) => {
+      const dateVal = row["Date"] || row["Order Date"] || row["Sale Date"];
+      const transactionDate = parseDate(dateVal);
+      if (!transactionDate) {
+        unmatchedLines.push({
+          line_uid: `unmatched_${idx}`,
+          transaction_date: null,
+          type: row["Type"] || "Unknown",
+          description: row["Title"] || row["Description"] || "",
+          amount: parseMoney(row["Amount"] || row["Order Total"]),
+          category: 'unmatched',
+          section: 'unknown',
+          raw_json: JSON.stringify(row),
+          matched: false,
+          match_error: "Missing or invalid date"
+        });
+        return;
+      }
+
+      if (!minDate || transactionDate < minDate) minDate = transactionDate;
+      if (!maxDate || transactionDate > maxDate) maxDate = transactionDate;
+
+      const type = row["Type"] || "";
+      const title = row["Title"] || "";
+      const description = row["Info"] || row["Description"] || "";
+      const orderId = row["Order ID"] || "";
+      
+      const category = categorizeRow(type);
+      
+      const statementMonth = transactionDate.substring(0, 7); // YYYY-MM
+      const lineUID = generateLineUID(transactionDate, type, parseMoney(row["Amount"] || row["Order Total"]), title, orderId, statementMonth);
+
+      // Handle sales/orders
+      if (category === 'sale' && orderId) {
+        const orderValue = parseMoney(row["Order Value"]);
+        const shipping = parseMoney(row["Shipping"]);
+        const salesTax = parseMoney(row["Sales Tax"]);
+        const discount = parseMoney(row["Discount Amount"]);
+        const orderTotal = parseMoney(row["Order Total"]);
+        const orderNet = parseMoney(row["Order Net"]);
+
+        orders.push({
+          sale_date: transactionDate,
+          order_id: orderId,
+          buyer_username: row["Buyer User ID"] || "",
+          buyer_full_name: row["Full Name"] || "",
+          number_of_items: parseIntSafe(row["Number of Items"]),
+          payment_method: row["Payment Method"] || "",
+          order_value: orderValue,
+          shipping_charged: shipping,
+          discount_amount: discount,
+          sales_tax: salesTax,
+          order_total: orderTotal,
+          card_processing_fees: parseMoney(row["Card Processing Fees"]),
+          order_net: orderNet,
+          status: row["Status"] || "completed",
+          _rawLine: {
+            line_uid: lineUID,
+            transaction_date: transactionDate,
+            type,
+            description: title,
+            amount: orderTotal,
+            order_id: orderId,
+            category: 'sale',
+            section: 'sales',
+            raw_json: JSON.stringify(row),
+            matched: true
+          }
+        });
+
+        // Create fee records for this order
+        const feeTypes = [
+          { key: "Listing Fee", type: "listing" },
+          { key: "Transaction Fee", type: "transaction" },
+          { key: "Card Processing Fees", type: "processing" },
+          { key: "Share & Save", type: "share_save_credit" },
+          { key: "Other Fees", type: "other_fee" },
+          { key: "Etsy Ads", type: "etsy_ads" },
+          { key: "Offsite Ads", type: "offsite_ads" },
+          { key: "Etsy Shipping Label", type: "shipping_label" },
+          { key: "Other Postage", type: "other_postage" }
+        ];
+
+        feeTypes.forEach(({ key, type: feeType }) => {
+          const amount = parseMoney(row[key]);
+          if (amount !== 0) {
+            const feeLineUID = `${lineUID}_${feeType}`;
+            fees.push({
+              line_uid: feeLineUID,
+              order_id: orderId,
+              transaction_date: transactionDate,
+              fee_type: feeType,
+              amount,
+              description: `${key} for order ${orderId}`,
+              _rawLine: {
+                line_uid: feeLineUID,
+                transaction_date: transactionDate,
+                type: feeType,
+                description: key,
+                amount,
+                order_id: orderId,
+                fee_type: feeType,
+                category: 'fee',
+                section: 'fees',
+                raw_json: JSON.stringify({ key, amount, orderId }),
+                matched: true
+              }
+            });
+          }
+        });
+      } else if (category === 'fee') {
+        const feeType = mapFeeType(type, title, description);
+        const amount = parseMoney(row["Amount"] || row["Fees & Taxes"]);
+        fees.push({
+          line_uid: lineUID,
+          order_id: orderId || null,
+          transaction_date: transactionDate,
+          fee_type: feeType,
+          amount,
+          description: title || description,
+          _rawLine: {
+            line_uid: lineUID,
+            transaction_date: transactionDate,
+            type,
+            description: title,
+            amount,
+            order_id: orderId || null,
+            fee_type: feeType,
+            category: 'fee',
+            section: 'fees',
+            raw_json: JSON.stringify(row),
+            matched: true
+          }
+        });
+      } else if (category === 'deposit') {
+        const depositMatch = description.match(/\$?([\d,]+\.\d{2})/);
+        if (depositMatch) {
+          const depositAmount = parseFloat(depositMatch[1].replace(/,/g, ""));
+          deposits.push({
+            date: transactionDate,
+            type: "etsy_deposit",
+            amount: depositAmount,
+            notes: `${title} - ${description}`
+          });
+        }
+      } else if (category === 'refund') {
+        refunds.push({ transactionDate, orderId, amount: parseMoney(row["Amount"]) });
+      } else if (category === 'tax') {
+        taxes.push({ transactionDate, orderId, amount: parseMoney(row["Amount"]) });
+      } else {
+        unmatchedLines.push({
+          line_uid: lineUID,
+          transaction_date: transactionDate,
+          type,
+          description: title || description,
+          amount: parseMoney(row["Amount"]),
+          order_id: orderId || null,
+          category: 'unmatched',
+          section: 'unknown',
+          raw_json: JSON.stringify(row),
+          matched: false,
+          match_error: "Could not categorize"
+        });
+      }
+    });
+
+    const statementMonth = minDate ? minDate.substring(0, 7) : format(new Date(), 'yyyy-MM');
+
+    return {
+      orders,
+      fees,
+      deposits,
+      refunds,
+      taxes,
+      unmatchedLines,
+      statementMonth,
+      dateRangeStart: minDate || format(new Date(), 'yyyy-MM-dd'),
+      dateRangeEnd: maxDate || format(new Date(), 'yyyy-MM-dd')
+    };
+  };
+
+  const confirmImport = () => {
+    if (pendingData) {
+      setImporting(true);
+      setPreview(null);
+      importMutation.mutate(pendingData);
+    }
+  };
+
+  const handleClose = () => {
+    setImportResult(null);
+    setPreview(null);
+    setPendingData(null);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
+          <DialogDescription>
+            Upload your Etsy Monthly Statement (CSV or XLSX). The system will automatically detect and parse orders, fees, deposits, and refunds.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          {!importing && !preview && !importResult && (
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+              variant="outline"
+              size="lg"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              Select Etsy Statement File
+            </Button>
+          )}
+
+          {importing && (
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-sm text-stone-600">Analyzing statement...</p>
+            </div>
+          )}
+
+          {preview && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Import Preview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="bg-stone-50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-stone-900">Statement Period</p>
+                  <p className="text-lg font-semibold text-emerald-600">{preview.statementMonth}</p>
+                  <p className="text-xs text-stone-500">{preview.dateRange}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Orders</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.orders}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Fee Lines</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.fees}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Deposits</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.deposits}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Refunds</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.refunds}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-stone-500">Tax Lines</p>
+                    <p className="text-2xl font-bold text-stone-900">{preview.taxes}</p>
+                  </div>
+                  <div className={`border rounded-lg p-3 ${preview.unmatched > 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
+                    <p className="text-xs text-stone-500">Unmatched</p>
+                    <p className={`text-2xl font-bold ${preview.unmatched > 0 ? 'text-amber-600' : 'text-stone-900'}`}>
+                      {preview.unmatched}
+                    </p>
+                  </div>
+                </div>
+
+                {preview.unmatched > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-sm text-amber-800">
+                      ⚠ {preview.unmatched} rows need review after import
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {importResult && !importResult.error && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <p className="font-semibold text-emerald-900">Import Successful</p>
+              </div>
+              <div className="text-sm text-emerald-800 space-y-1">
+                <p>✓ Orders: {importResult.orders.created} created, {importResult.orders.updated} updated</p>
+                <p>✓ Fees: {importResult.fees.created} imported</p>
+                <p>✓ Deposits: {importResult.deposits.created} tracked</p>
+                {importResult.unmatched.count > 0 && (
+                  <p className="text-amber-700">⚠ {importResult.unmatched.count} unmatched rows (review needed)</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {importResult?.error && (
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <p className="font-semibold text-rose-900">Import Failed</p>
+              </div>
+              <p className="text-sm text-rose-800">{importResult.error}</p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          {preview && !importResult && (
+            <>
+              <Button variant="outline" onClick={() => { setPreview(null); setPendingData(null); }}>
+                Cancel
+              </Button>
+              <Button onClick={confirmImport} className="bg-emerald-600 hover:bg-emerald-700">
+                Confirm Import
+              </Button>
+            </>
+          )}
+          {!preview && !importing && (
+            <Button onClick={handleClose} variant="outline">
+              {importResult ? "Done" : "Cancel"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -23,7 +23,7 @@ import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
-import UnifiedEtsyImportDialog from "@/components/monthly/UnifiedEtsyImportDialog";
+import UnifiedEtsyStatementImport from "@/components/imports/UnifiedEtsyStatementImport";
 
 export default function Orders() {
   const [search, setSearch] = useState("");
@@ -369,7 +369,7 @@ export default function Orders() {
             onClick={() => setImportDialogOpen(true)}
           >
             <Upload className="w-4 h-4 mr-2" />
-            Import Etsy Data
+            Import Etsy Statement
           </Button>
         </div>
       </PageHeader>
@@ -488,7 +488,7 @@ export default function Orders() {
         />
       )}
 
-      <UnifiedEtsyImportDialog
+      <UnifiedEtsyStatementImport
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />

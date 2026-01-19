@@ -24,6 +24,7 @@ const navItems = [
   { name: "Products", icon: Package, page: "Products" },
   { name: "Inventory", icon: Layers, page: "Inventory" },
   { name: "Expenses", icon: Receipt, page: "Expenses" },
+  { name: "Reconciliation", icon: FileText, page: "ReconciliationReview" },
   { name: "Tools", icon: Wrench, page: "Tools" },
 ];
 
