@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid data format' }, { status: 400 });
     }
 
-    const result = { updated: 0, skipped: 0, failed: 0 };
+    const result = { updated: 0, skipped: 0, failed: 0, debug: [] };
 
     for (const order of orders) {
       if (!order.order_id) {
@@ -24,7 +24,13 @@ Deno.serve(async (req) => {
       }
 
       const existing = await base44.entities.EtsyOrder.filter({ 
-        order_id: order.order_id 
+        order_id: String(order.order_id).trim()
+      });
+
+      result.debug.push({ 
+        order_id: order.order_id, 
+        found: existing.length > 0,
+        shipping: order.shipping_charged 
       });
 
       if (existing.length > 0) {
