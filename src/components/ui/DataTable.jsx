@@ -120,8 +120,8 @@ export default function DataTable({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden" onMouseLeave={handleMouseUp}>
+      <div className="overflow-x-auto" onMouseUp={handleMouseUp}>
         <Table>
           <TableHeader>
             <TableRow className="bg-stone-50 hover:bg-stone-50">
@@ -142,16 +142,36 @@ export default function DataTable({
                 onClick={() => onRowClick?.(row)}
                 className={onRowClick ? "cursor-pointer hover:bg-stone-50" : ""}
               >
-                {columns.map((col, colIndex) => (
-                  <TableCell key={colIndex} className={col.cellClassName || ""}>
-                    {col.render ? col.render(row) : row[col.accessor]}
-                  </TableCell>
-                ))}
+                {columns.map((col, colIndex) => {
+                  const cellKey = getCellKey(rowIndex, colIndex);
+                  const isSelected = selectedCells.has(cellKey);
+                  return (
+                    <TableCell
+                      key={colIndex}
+                      className={`${col.cellClassName || ""} ${isSelected ? 'bg-blue-100' : ''}`}
+                      onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
+                      onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
+                      style={{ userSelect: 'none' }}
+                    >
+                      {col.render ? col.render(row) : row[col.accessor]}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+      {selectedCells.size > 0 && (
+        <div className="bg-stone-50 border-t border-stone-100 px-6 py-3 flex items-center justify-between">
+          <span className="text-sm text-stone-600">
+            {selectedCells.size} cell{selectedCells.size !== 1 ? 's' : ''} selected
+          </span>
+          <span className="text-sm font-semibold text-stone-900">
+            Total: <span className="text-emerald-600">{formatCurrency(calculateTotal())}</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
