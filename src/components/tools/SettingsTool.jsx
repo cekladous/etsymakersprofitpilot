@@ -34,7 +34,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
 
@@ -43,6 +43,8 @@ export default function SettingsTool() {
   const [editingMachine, setEditingMachine] = useState(null);
   const [saving, setSaving] = useState(false);
   const [feeChangeLogOpen, setFeeChangeLogOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
   
   const [settingsData, setSettingsData] = useState({
     electricity_rate: 0.12,
@@ -329,6 +331,51 @@ export default function SettingsTool() {
       });
     }
     setMachineFormOpen(true);
+  };
+
+  const handleResetApp = async () => {
+    setResetting(true);
+    try {
+      // Delete all entities
+      const entitiesToDelete = [
+        'EtsyOrder', 'OrderFee', 'Fee', 'EtsyStatementImport', 'EtsyStatementLine',
+        'EtsyLedgerEntry', 'BusinessExpense', 'Expense', 'Order', 'Quote', 'Customer',
+        'Job', 'Product', 'MaterialType', 'MaterialSheet', 'MaterialUsage', 'MaterialPurchase',
+        'Machine', 'LaserSetting', 'CustomSale', 'Transfer', 'InventoryItem', 'InventoryTransaction',
+        'BudgetPlan', 'BudgetLine', 'FeeChangeLog'
+      ];
+
+      for (const entityName of entitiesToDelete) {
+        try {
+          const records = await base44.entities[entityName].list('-created_date', 10000);
+          await Promise.all(records.map(r => base44.entities[entityName].delete(r.id)));
+        } catch (err) {
+          console.error(`Failed to delete ${entityName}:`, err);
+        }
+      }
+
+      // Reset settings to defaults
+      if (settings.length > 0) {
+        await base44.entities.Settings.update(settings[0].id, {
+          electricity_rate: 0.12,
+          monthly_overhead: 0,
+          default_markup: 0,
+          etsy_listing_fee: 0.20,
+          etsy_transaction_fee_percent: 6.5,
+          payment_processing_fee_percent: 3.0,
+          payment_processing_fee_fixed: 0.25,
+          auto_categorization_rules: []
+        });
+      }
+
+      queryClient.invalidateQueries();
+      setResetDialogOpen(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Reset failed:', error);
+    } finally {
+      setResetting(false);
+    }
   };
 
   return (
@@ -1008,8 +1055,16 @@ export default function SettingsTool() {
         </CardContent>
       </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex justify-between items-center">
+        <Button
+          variant="destructive"
+          onClick={() => setResetDialogOpen(true)}
+        >
+          <AlertTriangle className="w-4 h-4 mr-2" />
+          Reset App
+        </Button>
+        
         <Button
           onClick={handleSaveSettings}
           disabled={saving}
@@ -1232,6 +1287,62 @@ export default function SettingsTool() {
             <Button onClick={() => setFeeChangeLogOpen(false)}>Close</Button>
           </DialogFooter>
           </DialogContent>
+          </Dialog>
+
+          {/* Reset App Confirmation Dialog */}
+          <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-rose-600">
+                  <AlertTriangle className="w-5 h-5" />
+                  Reset Entire App
+                </DialogTitle>
+                <DialogDescription>
+                  This will permanently delete ALL data in your app including:
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-4">
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+                  <ul className="text-sm space-y-2 text-rose-900">
+                    <li>• All orders and sales records</li>
+                    <li>• All Etsy imports and fees</li>
+                    <li>• All expenses and business records</li>
+                    <li>• All quotes and customers</li>
+                    <li>• All products and inventory</li>
+                    <li>• All jobs and production data</li>
+                    <li>• All materials and machines</li>
+                  </ul>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm text-amber-900 font-semibold">
+                    ⚠️ This action cannot be undone!
+                  </p>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Settings will be reset to defaults. The app will reload after completion.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setResetDialogOpen(false)}
+                  disabled={resetting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleResetApp}
+                  disabled={resetting}
+                >
+                  {resetting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Yes, Delete Everything
+                </Button>
+              </DialogFooter>
+            </DialogContent>
           </Dialog>
           </div>
           );
