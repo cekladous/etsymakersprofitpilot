@@ -450,21 +450,32 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
     
+    console.log("File selected:", file.name, file.type);
     setImporting(true);
     setImportResult(null);
     setDuplicateWarning(null);
 
     const reader = new FileReader();
+    reader.onerror = (error) => {
+      console.error("FileReader error:", error);
+      setImportResult({ error: "Failed to read file" });
+      setImporting(false);
+    };
     reader.onload = async (e) => {
       try {
+        console.log("File loaded, parsing...");
         const xlsxModule = await import("xlsx");
         const XLSX = xlsxModule.default || xlsxModule;
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false });
+        console.log("Parsed rows:", jsonData.length);
 
         if (jsonData.length === 0) {
           setImportResult({ error: "File is empty" });
@@ -473,7 +484,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
 
         // Parse statement
+        console.log("Parsing statement data...");
         const parsed = parseEtsyStatement(jsonData, file.name);
+        console.log("Parsed:", {
+          orders: parsed.orders.length,
+          fees: parsed.fees.length,
+          deposits: parsed.deposits.length,
+          unmatched: parsed.unmatchedLines.length
+        });
         const fileHash = generateFileHash(jsonData);
         
         // Check for duplicate file
@@ -527,10 +545,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         
         setImporting(false);
       } catch (error) {
+        console.error("Parse error:", error);
         setImportResult({ error: `Failed to parse file: ${error.message}` });
         setImporting(false);
       }
     };
+    
+    console.log("Starting file read...");
     reader.readAsArrayBuffer(file);
     event.target.value = "";
   };
