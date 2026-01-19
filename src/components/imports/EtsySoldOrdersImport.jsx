@@ -21,20 +21,21 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
         
         if (existing.length > 0) {
-          // Merge with existing data - keep financial data from statement, add product details
-          await base44.entities.EtsyOrder.update(existing[0].id, {
-            ...existing[0],
-            buyer_full_name: order.buyer_full_name || existing[0].buyer_full_name,
-            buyer_username: order.buyer_username || existing[0].buyer_username,
-            number_of_items: order.number_of_items || existing[0].number_of_items,
-            // Don't override financial data from statement
-          });
-          result.updated++;
-        } else {
-          // Create new order with product data only (financial data comes from statement)
-          await base44.entities.EtsyOrder.create(order);
-          result.created++;
-        }
+           // Merge with existing data - keep financial data from statement, add product details
+           await base44.entities.EtsyOrder.update(existing[0].id, {
+             ...existing[0],
+             sale_date: order.sale_date || existing[0].sale_date,
+             buyer_full_name: order.buyer_full_name || existing[0].buyer_full_name,
+             buyer_username: order.buyer_username || existing[0].buyer_username,
+             number_of_items: order.number_of_items || existing[0].number_of_items,
+             // Don't override financial data from statement
+           });
+           result.updated++;
+         } else {
+           // Create new order with product data only (financial data comes from statement)
+           await base44.entities.EtsyOrder.create(order);
+           result.created++;
+         }
         
         // Small delay to prevent rate limiting
         if ((result.created + result.updated) % 10 === 0) {
