@@ -291,9 +291,7 @@ export default function Orders() {
   };
 
   const toggleSelect = (id) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedIds([id]);
   };
 
   const handleBulkDelete = () => {
