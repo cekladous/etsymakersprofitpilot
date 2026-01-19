@@ -312,7 +312,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
       };
 
       // Import orders (upsert by channel + order_id) - batched
-      await batchProcess(orders, 10, async (order) => {
+      await batchProcess(orders, 5, async (order) => {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
@@ -324,13 +324,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
       });
 
       // Import fees (normalized) - batched
-      await batchProcess(fees, 20, async (fee) => {
+      await batchProcess(fees, 10, async (fee) => {
         await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
         result.fees.created++;
       });
 
       // Import deposits as transfers - batched
-      await batchProcess(deposits, 20, async (deposit) => {
+      await batchProcess(deposits, 10, async (deposit) => {
         await base44.entities.Transfer.create(deposit);
         result.deposits.created++;
       });
