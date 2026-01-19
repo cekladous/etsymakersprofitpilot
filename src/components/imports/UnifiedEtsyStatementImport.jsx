@@ -252,9 +252,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const batchProcess = async (items, batchSize, processFn) => {
         for (let i = 0; i < items.length; i += batchSize) {
           const batch = items.slice(i, i + batchSize);
-          await Promise.all(batch.map(processFn));
-          // Longer wait between batches to prevent rate limiting
-          await new Promise(resolve => setTimeout(resolve, 800));
+          // Process sequentially instead of parallel to avoid rate limits
+          for (const item of batch) {
+            await processFn(item);
+            // Small delay between each item
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          // Wait between batches
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       };
       
@@ -313,8 +318,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         unmatched: { count: 0 }
       };
 
-      // Import orders (upsert by channel + order_id) - smaller batches
-      await batchProcess(orders, 3, async (order) => {
+      // Import orders (upsert by channel + order_id) - very conservative
+      await batchProcess(orders, 5, async (order) => {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
@@ -325,8 +330,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       });
 
-      // Import fees (normalized) - smaller batches
-      await batchProcess(fees, 5, async (fee) => {
+      // Import fees (normalized) - very conservative
+      await batchProcess(fees, 10, async (fee) => {
         await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
         result.fees.created++;
       });
@@ -387,9 +392,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save all statement lines - smaller batches
+      // Save all statement lines - very conservative
       const allLines = [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines];
-      await batchProcess(allLines, 5, async (line) => {
+      await batchProcess(allLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
           import_id: importRecord.id,
           ...line
