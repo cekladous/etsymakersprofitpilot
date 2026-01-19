@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Download, DollarSign, CreditCard, TrendingUp, Upload } from "lucide-react";
+import { Search, Download, DollarSign, CreditCard, TrendingUp, Upload, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
@@ -26,6 +26,10 @@ export default function EtsyActivity() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("fees");
   const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedFeeIds, setSelectedFeeIds] = useState([]);
+  const [selectedDepositIds, setSelectedDepositIds] = useState([]);
+
+  const queryClient = useQueryClient();
 
   const { data: fees = [], isLoading: feesLoading } = useQuery({
     queryKey: ["fees"],
@@ -40,6 +44,26 @@ export default function EtsyActivity() {
   const { data: transfers = [] } = useQuery({
     queryKey: ["transfers"],
     queryFn: () => base44.entities.Transfer.list("-date", 1000),
+  });
+
+  const bulkDeleteFeesMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all(ids.map(id => base44.entities.Fee.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      setSelectedFeeIds([]);
+    },
+  });
+
+  const bulkDeleteDepositsMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all(ids.map(id => base44.entities.Transfer.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      setSelectedDepositIds([]);
+    },
   });
 
   const formatCurrency = (amount) => {
@@ -136,7 +160,65 @@ export default function EtsyActivity() {
     XLSX.writeFile(wb, `etsy-fees-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
+  const toggleSelectAllFees = () => {
+    if (selectedFeeIds.length === filteredFees.length) {
+      setSelectedFeeIds([]);
+    } else {
+      setSelectedFeeIds(filteredFees.map(f => f.id));
+    }
+  };
+
+  const toggleSelectFee = (id) => {
+    setSelectedFeeIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllDeposits = () => {
+    if (selectedDepositIds.length === etsyDeposits.length) {
+      setSelectedDepositIds([]);
+    } else {
+      setSelectedDepositIds(etsyDeposits.map(d => d.id));
+    }
+  };
+
+  const toggleSelectDeposit = (id) => {
+    setSelectedDepositIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteFees = () => {
+    if (window.confirm(`Delete ${selectedFeeIds.length} fee(s)?`)) {
+      bulkDeleteFeesMutation.mutate(selectedFeeIds);
+    }
+  };
+
+  const handleBulkDeleteDeposits = () => {
+    if (window.confirm(`Delete ${selectedDepositIds.length} deposit(s)?`)) {
+      bulkDeleteDepositsMutation.mutate(selectedDepositIds);
+    }
+  };
+
   const feeColumns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedFeeIds.length === filteredFees.length && filteredFees.length > 0}
+          onChange={toggleSelectAllFees}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedFeeIds.includes(row.id)}
+          onChange={() => toggleSelectFee(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
     {
       header: "Date",
       render: (row) => row.transaction_date || "—",
@@ -180,6 +262,24 @@ export default function EtsyActivity() {
   ];
 
   const depositColumns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedDepositIds.length === etsyDeposits.length && etsyDeposits.length > 0}
+          onChange={toggleSelectAllDeposits}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedDepositIds.includes(row.id)}
+          onChange={() => toggleSelectDeposit(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
     {
       header: "Date",
       render: (row) => row.date || "—",
@@ -296,6 +396,24 @@ export default function EtsyActivity() {
         </TabsList>
 
         <TabsContent value="fees" className="space-y-4">
+          {/* Bulk Actions */}
+          {selectedFeeIds.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-900">
+                {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} selected
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteFees}
+                disabled={bulkDeleteFeesMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+
           {/* Filters */}
           <div className="flex gap-3">
             <div className="relative flex-1 max-w-md">
@@ -342,7 +460,25 @@ export default function EtsyActivity() {
           )}
         </TabsContent>
 
-        <TabsContent value="deposits">
+        <TabsContent value="deposits" className="space-y-4">
+          {/* Bulk Actions */}
+          {selectedDepositIds.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-900">
+                {selectedDepositIds.length} deposit{selectedDepositIds.length !== 1 ? "s" : ""} selected
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteDeposits}
+                disabled={bulkDeleteDepositsMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+
           {etsyDeposits.length === 0 ? (
             <EmptyState
               icon={DollarSign}
