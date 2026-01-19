@@ -599,7 +599,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         deposits.push({
           date: transactionDate,
           type: "etsy_deposit",
-          amount: net || amount,
+          amount: Math.abs(amount),
           notes: `${title} - ${info}`,
           _rawLine: rawLine
         });
