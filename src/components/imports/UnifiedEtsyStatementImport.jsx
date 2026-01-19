@@ -251,8 +251,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         for (let i = 0; i < items.length; i += batchSize) {
           const batch = items.slice(i, i + batchSize);
           await Promise.all(batch.map(processFn));
-          // Always wait between batches to prevent rate limiting
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Longer wait between batches to prevent rate limiting
+          await new Promise(resolve => setTimeout(resolve, 800));
         }
       };
       
@@ -270,11 +270,11 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           
           // Delete old statement lines for this import
           const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImport.id });
-          await batchProcess(oldLines, 10, line => base44.entities.EtsyStatementLine.delete(line.id));
-          
+          await batchProcess(oldLines, 5, line => base44.entities.EtsyStatementLine.delete(line.id));
+
           // Delete old fees for this import
           const oldFees = await base44.entities.Fee.filter({ import_id: oldImport.id });
-          await batchProcess(oldFees, 10, fee => base44.entities.Fee.delete(fee.id));
+          await batchProcess(oldFees, 5, fee => base44.entities.Fee.delete(fee.id));
         }
         
         // Create new import record
@@ -311,8 +311,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         unmatched: { count: 0 }
       };
 
-      // Import orders (upsert by channel + order_id) - batched
-      await batchProcess(orders, 5, async (order) => {
+      // Import orders (upsert by channel + order_id) - smaller batches
+      await batchProcess(orders, 3, async (order) => {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
@@ -323,8 +323,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       });
 
-      // Import fees (normalized) - batched
-      await batchProcess(fees, 10, async (fee) => {
+      // Import fees (normalized) - smaller batches
+      await batchProcess(fees, 5, async (fee) => {
         await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
         result.fees.created++;
       });
@@ -366,7 +366,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
       // Create/update OrderFee records
       const orderFeeRecords = Object.values(orderFeeMap);
-      await batchProcess(orderFeeRecords, 10, async (orderFee) => {
+      await batchProcess(orderFeeRecords, 5, async (orderFee) => {
         const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id });
         if (existing.length > 0) {
           await base44.entities.OrderFee.update(existing[0].id, orderFee);
@@ -375,8 +375,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       });
 
-      // Import deposits as transfers - batched
-      await batchProcess(deposits, 10, async (deposit) => {
+      // Import deposits as transfers - smaller batches
+      await batchProcess(deposits, 5, async (deposit) => {
         await base44.entities.Transfer.create(deposit);
         result.deposits.created++;
       });
@@ -385,9 +385,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save all statement lines - batched
+      // Save all statement lines - smaller batches
       const allLines = [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines];
-      await batchProcess(allLines, 10, async (line) => {
+      await batchProcess(allLines, 5, async (line) => {
         await base44.entities.EtsyStatementLine.create({
           import_id: importRecord.id,
           ...line
