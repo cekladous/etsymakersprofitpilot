@@ -289,44 +289,86 @@ export default function ReconciliationReview() {
       </Card>
 
       {totalUnmatched > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Unmatched Rows ({totalUnmatched})</span>
-              <Button variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Export for Review
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {selectedIds.length > 0 && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-                <p className="text-sm font-medium text-emerald-900">
-                  {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
-                </p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
-                      bulkDeleteMutation.mutate(selectedIds);
-                    }
-                  }}
-                  disabled={bulkDeleteMutation.isPending}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected
+        <>
+          {/* Unmatched Breakdown Panel */}
+          {Object.keys(unmatchedBreakdown).length > 0 && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Unmatched Patterns (Debug)</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowBreakdown(!showBreakdown)}
+                  >
+                    {showBreakdown ? "Hide" : "Show"}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              {showBreakdown && (
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(unmatchedBreakdown).map(([type, data]) => (
+                      <div key={type} className="bg-white rounded-lg border border-blue-200 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-semibold text-stone-900">{type}</p>
+                          <Badge variant="outline">{data.count} rows</Badge>
+                        </div>
+                        <div className="space-y-1 text-sm text-stone-600">
+                          {data.examples.map((ex, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span className="truncate max-w-md">{ex.description}</span>
+                              <span className="font-medium ml-2">${ex.amount?.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Unmatched Rows ({totalUnmatched})</span>
+                <Button variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export for Review
                 </Button>
-              </div>
-            )}
-            <DataTable
-              columns={columns}
-              data={allUnmatchedRows}
-              emptyMessage="No unmatched rows"
-            />
-          </CardContent>
-        </Card>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedIds.length > 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                  <p className="text-sm font-medium text-emerald-900">
+                    {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
+                  </p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
+                        bulkDeleteMutation.mutate(selectedIds);
+                      }
+                    }}
+                    disabled={bulkDeleteMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </Button>
+                </div>
+              )}
+              <DataTable
+                columns={columns}
+                data={allUnmatchedRows}
+                emptyMessage="No unmatched rows"
+              />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
