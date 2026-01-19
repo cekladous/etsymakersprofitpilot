@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,7 @@ import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 
 export default function Orders() {
+  const { user, loading } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
   const customerFilter = urlParams.get("customer");
   
@@ -56,33 +58,51 @@ export default function Orders() {
   const queryClient = useQueryClient();
 
   const { data: etsyOrders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ["etsy-orders"],
-    queryFn: () => base44.entities.EtsyOrder.list("-sale_date", 1000),
+    queryKey: ["etsy-orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyOrder.filter({
+      owner_user_id: user.id,
+    }, "-sale_date", 1000),
   });
 
   const { data: orderFees = [] } = useQuery({
-    queryKey: ["order-fees"],
-    queryFn: () => base44.entities.OrderFee.list(),
+    queryKey: ["order-fees", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.OrderFee.filter({
+      owner_user_id: user.id,
+    }),
   });
 
   const { data: etsyLedgerEntries = [] } = useQuery({
-    queryKey: ["etsy-ledger-entries"],
-    queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 10000),
+    queryKey: ["etsy-ledger-entries", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyLedgerEntry.filter({
+      owner_user_id: user.id,
+    }, "-entry_date", 10000),
   });
 
   const { data: fees = [], isLoading: feesLoading } = useQuery({
-    queryKey: ["fees"],
-    queryFn: () => base44.entities.Fee.list("-transaction_date", 5000),
+    queryKey: ["fees", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Fee.filter({
+      owner_user_id: user.id,
+    }, "-transaction_date", 5000),
   });
 
   const { data: etsyStatementImports = [] } = useQuery({
-    queryKey: ["etsy-statement-imports"],
-    queryFn: () => base44.entities.EtsyStatementImport.list("-imported_at"),
+    queryKey: ["etsy-statement-imports", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementImport.filter({
+      owner_user_id: user.id,
+    }, "-imported_at"),
   });
 
   const { data: transfers = [] } = useQuery({
-    queryKey: ["transfers"],
-    queryFn: () => base44.entities.Transfer.list("-date", 1000),
+    queryKey: ["transfers", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Transfer.filter({
+      owner_user_id: user.id,
+    }, "-date", 1000),
   });
 
   const bulkDeleteMutation = useMutation({
@@ -578,6 +598,14 @@ export default function Orders() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="space-y-6">
