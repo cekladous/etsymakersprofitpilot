@@ -170,6 +170,9 @@ export default function Orders() {
 
   // Revenue excludes sales tax (pass-through to government)
   const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0) - (o.sales_tax || 0), 0);
+  
+  // Shipping revenue (kept by seller)
+  const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
 
   // Aggregate all fee categories for filtered orders
   const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
