@@ -165,18 +165,27 @@ export default function CustomersPage() {
       </PageHeader>
 
       <Card className="flex-1 flex flex-col overflow-visible mt-0 rounded-none border-0">
-        <CardContent className="p-0 flex-1 overflow-visible flex flex-col">
-           {customers.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-              <p className="text-stone-500 mb-4">No customers yet</p>
-              <Button onClick={handleNew} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Add First Customer
-              </Button>
-            </div>
+        <CardContent className="p-6 flex-1 overflow-visible">
+           {viewMode === "grid" ? (
+            <CustomerGridView 
+              customers={customers} 
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={(customer) => handleDelete(customer.id)}
+            />
            ) : (
-            <DataTable data={customers} columns={columns} />
+            customers.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 mx-auto text-stone-300 mb-3" />
+                <p className="text-stone-500 mb-4">No customers yet</p>
+                <Button onClick={handleNew} variant="outline">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Customer
+                </Button>
+              </div>
+            ) : (
+              <DataTable data={customers} columns={columns} />
+            )
            )}
         </CardContent>
       </Card>
