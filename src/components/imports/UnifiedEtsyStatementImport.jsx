@@ -617,6 +617,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       }
       // B) ORDERS/SALES
       else if (classification.category === 'sale' && classification.order_id) {
+        // Calculate total fees for this order from the fees we found
+        const orderFees = feesByOrderId[classification.order_id] || [];
+        const totalOrderFees = orderFees.reduce((sum, f) => {
+          const feeAmount = parseMoney(f["Fees & Taxes"]);
+          return sum + Math.abs(feeAmount || 0);
+        }, 0);
+        
         orders.push({
           sale_date: transactionDate,
           order_id: classification.order_id,
@@ -632,6 +639,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
           order_net: net,
           status: row["Status"] || "completed",
+          total_fees: totalOrderFees,
           _rawLine: rawLine
         });
       }
