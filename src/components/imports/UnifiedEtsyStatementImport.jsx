@@ -465,15 +465,24 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     const refunds = [];
     const taxes = [];
     const unmatchedLines = [];
-    
+
     let minDate = null;
     let maxDate = null;
-    
+
+    // Normalize row keys by trimming whitespace
+    const normalizeRow = (row) => {
+      const normalized = {};
+      Object.keys(row).forEach(key => {
+        normalized[key.trim()] = row[key];
+      });
+      return normalized;
+    };
+
     // Pre-process: classify all rows once and build fee lookup
     const classifiedRows = jsonData.map((row, idx) => ({
-      row,
+      row: normalizeRow(row),
       idx,
-      classification: classifyStatementLine(row)
+      classification: classifyStatementLine(normalizeRow(row))
     }));
     
     const feesByOrderId = {};
