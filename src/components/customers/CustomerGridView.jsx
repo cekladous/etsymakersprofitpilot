@@ -26,28 +26,12 @@ export default function CustomerGridView({ customers, isLoading, onView, onEdit,
     );
   }
 
-  const SortHeader = ({ field, label }) => (
-    <button
-      onClick={() => onSort(field)}
-      className="flex items-center gap-1 hover:text-stone-900 transition-colors"
-    >
-      {label}
-      {sortBy === field && (
-        sortDir === "asc" ? (
-          <ArrowUp className="w-3 h-3" />
-        ) : (
-          <ArrowDown className="w-3 h-3" />
-        )
-      )}
-    </button>
-  );
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm font-semibold text-stone-600 px-2">
-        <SortHeader field="name" label="Name" />
-        <SortHeader field="email" label="Contact" />
-        <SortHeader field="created_date" label="Added" />
+        <div>Name</div>
+        <div>Contact</div>
+        <div>Added</div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {customers.map((customer) => (
