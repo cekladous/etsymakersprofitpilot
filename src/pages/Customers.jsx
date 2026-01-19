@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Mail, Phone, Building } from "lucide-react";
+import { Plus, Users, Mail, Phone, Building, List, Grid3x3 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
 import CustomerDetailSheet from "@/components/customers/CustomerDetailSheet";
+import CustomerGridView from "@/components/customers/CustomerGridView";
 import { format } from "date-fns";
 
 export default function CustomersPage() {
