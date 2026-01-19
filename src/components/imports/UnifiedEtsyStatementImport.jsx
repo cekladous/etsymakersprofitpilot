@@ -593,7 +593,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
             // Parse values from CSV - use safe getter for all fields
             let orderValue = parseMoney(getRowValue(row, "Order Value", "Item(s) price", "Item Total"));
-            let shippingCharged = parseMoney(getRowValue(row, "Shipping", "Shipping price", "Shipping Charged"));
+            let shippingCharged = parseMoney(getRowValue(row, "Shipping", "Shipping price", "Shipping Charged", "Shipping Amount", "Shipping Cost"));
             let salesTax = parseMoney(getRowValue(row, "Sales Tax", "Tax paid by buyer"));
             const orderTotal = parseMoney(getRowValue(row, "Order Total", "Total")) || amount;
 
