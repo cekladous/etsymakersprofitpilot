@@ -112,8 +112,8 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
            discount_amount: parseMoney(getRowValue(normalized, "Discount Amount")),
            card_processing_fees: parseMoney(getRowValue(normalized, "Card Processing Fees")),
            status: "completed",
-          };
-          }).filter(o => o.order_id);
+           };
+           }).filter(o => o.order_id);
 
         setPreview({ count: orders.length });
         setPendingData({ orders });
