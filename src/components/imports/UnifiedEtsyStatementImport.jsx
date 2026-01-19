@@ -534,10 +534,19 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
       // A) DEPOSITS
       if (classification.category === 'deposit') {
+        // Extract amount from description if amount column is 0 or empty
+        let depositAmount = Math.abs(amount);
+        if (!depositAmount || depositAmount === 0) {
+          const amountMatch = title.match(/\$[\d,]+\.?\d*/);
+          if (amountMatch) {
+            depositAmount = parseMoney(amountMatch[0]);
+          }
+        }
+
         deposits.push({
           date: transactionDate,
           type: "etsy_deposit",
-          amount: Math.abs(amount),
+          amount: Math.abs(depositAmount),
           notes: `${title} - ${info}`,
           _rawLine: rawLine
         });
