@@ -1,15 +1,17 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, FileText, Download } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, Download, Trash2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import { format } from "date-fns";
 
 export default function ReconciliationReview() {
+  const [selectedIds, setSelectedIds] = useState([]);
+  const queryClient = useQueryClient();
   const { data: imports = [] } = useQuery({
     queryKey: ["etsy-statement-imports"],
     queryFn: () => base44.entities.EtsyStatementImport.list("-imported_at"),
@@ -31,7 +33,77 @@ export default function ReconciliationReview() {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      const deletePromises = ids.map(async (item) => {
+        if (item.source === "New Import") {
+          const line = unmatchedStatementLines.find(l => 
+            l.transaction_date === item.transaction_date && 
+            l.type === item.type && 
+            l.amount === item.amount
+          );
+          if (line) await base44.entities.EtsyStatementLine.delete(line.id);
+        } else {
+          const entry = unmatchedLedgerEntries.find(e => 
+            e.entry_date === item.transaction_date && 
+            e.type === item.type
+          );
+          if (entry) await base44.entities.EtsyLedgerEntry.delete(entry.id);
+        }
+      });
+      await Promise.all(deletePromises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unmatched-statement-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["unmatched-ledger-entries"] });
+      setSelectedIds([]);
+    },
+  });
+
   const columns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedIds.length === allUnmatchedRows.length && allUnmatchedRows.length > 0}
+          onChange={() => {
+            if (selectedIds.length === allUnmatchedRows.length) {
+              setSelectedIds([]);
+            } else {
+              setSelectedIds(allUnmatchedRows);
+            }
+          }}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.some(item => 
+            item.transaction_date === row.transaction_date && 
+            item.type === row.type && 
+            item.amount === row.amount
+          )}
+          onChange={() => {
+            const isSelected = selectedIds.some(item => 
+              item.transaction_date === row.transaction_date && 
+              item.type === row.type && 
+              item.amount === row.amount
+            );
+            if (isSelected) {
+              setSelectedIds(selectedIds.filter(item => 
+                !(item.transaction_date === row.transaction_date && 
+                  item.type === row.type && 
+                  item.amount === row.amount)
+              ));
+            } else {
+              setSelectedIds([...selectedIds, row]);
+            }
+          }}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
     {
       header: "Date",
       render: (row) => row.transaction_date || "—",
@@ -225,6 +297,26 @@ export default function ReconciliationReview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {selectedIds.length > 0 && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                <p className="text-sm font-medium text-emerald-900">
+                  {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
+                </p>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
+                      bulkDeleteMutation.mutate(selectedIds);
+                    }
+                  }}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected
+                </Button>
+              </div>
+            )}
             <DataTable
               columns={columns}
               data={allUnmatchedRows}
