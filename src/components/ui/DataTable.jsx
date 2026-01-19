@@ -111,6 +111,27 @@ export default function DataTable({
     return total;
   };
 
+  const calculateColumnTotals = () => {
+    const totals = {};
+    selectedCells.forEach(cellKey => {
+      const [rowIndex, colIndex] = cellKey.split('-').map(Number);
+      const row = data[rowIndex];
+      const col = columns[colIndex];
+      
+      if (!totals[colIndex]) {
+        totals[colIndex] = 0;
+      }
+      
+      let cellValue = col.render ? col.render(row) : row[col.accessor];
+      if (React.isValidElement(cellValue)) {
+        cellValue = cellValue.props?.children || '';
+      }
+      
+      totals[colIndex] += getNumericValue(cellValue);
+    });
+    return totals;
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
