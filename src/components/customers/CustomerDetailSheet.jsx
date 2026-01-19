@@ -41,6 +41,7 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
   const totalOrderValue = orders.reduce((sum, o) => sum + (o.order_total || 0), 0);
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
@@ -202,5 +203,6 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
       open={!!selectedOrder}
       onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}
     />
+    </>
   );
 }
