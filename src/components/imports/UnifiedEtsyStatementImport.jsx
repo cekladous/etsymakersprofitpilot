@@ -458,144 +458,96 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
 
       const type = row["Type"] || "";
       const title = row["Title"] || "";
-      const description = row["Info"] || row["Description"] || "";
-      const orderId = row["Order ID"] || "";
+      const info = row["Info"] || row["Description"] || "";
+      const amount = parseMoney(row["Amount"]);
+      const feesTaxes = parseMoney(row["Fees & Taxes"]);
+      const net = parseMoney(row["Net"]);
       
-      const category = categorizeRow(type);
-      
-      const statementMonth = transactionDate.substring(0, 7); // YYYY-MM
-      const lineUID = generateLineUID(transactionDate, type, parseMoney(row["Amount"] || row["Order Total"]), title, orderId, statementMonth);
+      const classification = classifyStatementLine(row);
+      const statementMonth = transactionDate.substring(0, 7);
+      const lineUID = generateLineUID(transactionDate, type, amount, title, classification.order_id || "", statementMonth);
 
-      // Handle sales/orders
-      if (category === 'sale' && orderId) {
-        const orderValue = parseMoney(row["Order Value"]);
-        const shipping = parseMoney(row["Shipping"]);
-        const salesTax = parseMoney(row["Sales Tax"]);
-        const discount = parseMoney(row["Discount Amount"]);
-        const orderTotal = parseMoney(row["Order Total"]);
-        const orderNet = parseMoney(row["Order Net"]);
+      // Create raw line for this transaction
+      const rawLine = {
+        line_uid: lineUID,
+        transaction_date: transactionDate,
+        type,
+        description: title,
+        amount,
+        order_id: classification.order_id,
+        fee_type: classification.fee_type,
+        category: classification.category,
+        section: classification.section,
+        raw_json: JSON.stringify(row),
+        matched: classification.category !== 'unmatched'
+      };
 
+      // A) DEPOSITS
+      if (classification.category === 'deposit') {
+        deposits.push({
+          date: transactionDate,
+          type: "etsy_deposit",
+          amount: net || amount,
+          notes: `${title} - ${info}`
+        });
+      }
+      // B) ORDERS/SALES
+      else if (classification.category === 'sale' && classification.order_id) {
         orders.push({
           sale_date: transactionDate,
-          order_id: orderId,
-          buyer_username: row["Buyer User ID"] || "",
+          order_id: classification.order_id,
+          buyer_username: row["Buyer User ID"] || row["Buyer"] || "",
           buyer_full_name: row["Full Name"] || "",
-          number_of_items: parseIntSafe(row["Number of Items"]),
+          number_of_items: parseIntSafe(row["Number of Items"] || row["Quantity"]),
           payment_method: row["Payment Method"] || "",
-          order_value: orderValue,
-          shipping_charged: shipping,
-          discount_amount: discount,
-          sales_tax: salesTax,
-          order_total: orderTotal,
+          order_value: parseMoney(row["Order Value"] || row["Item Total"]),
+          shipping_charged: parseMoney(row["Shipping"]),
+          discount_amount: parseMoney(row["Discount Amount"] || row["Coupon"]),
+          sales_tax: parseMoney(row["Sales Tax"]),
+          order_total: parseMoney(row["Order Total"]) || amount,
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
-          order_net: orderNet,
+          order_net: net,
           status: row["Status"] || "completed",
-          _rawLine: {
-            line_uid: lineUID,
-            transaction_date: transactionDate,
-            type,
-            description: title,
-            amount: orderTotal,
-            order_id: orderId,
-            category: 'sale',
-            section: 'sales',
-            raw_json: JSON.stringify(row),
-            matched: true
-          }
+          _rawLine: rawLine
         });
-
-        // Create fee records for this order
-        const feeTypes = [
-          { key: "Listing Fee", type: "listing" },
-          { key: "Transaction Fee", type: "transaction" },
-          { key: "Card Processing Fees", type: "processing" },
-          { key: "Share & Save", type: "share_save_credit" },
-          { key: "Other Fees", type: "other_fee" },
-          { key: "Etsy Ads", type: "etsy_ads" },
-          { key: "Offsite Ads", type: "offsite_ads" },
-          { key: "Etsy Shipping Label", type: "shipping_label" },
-          { key: "Other Postage", type: "other_postage" }
-        ];
-
-        feeTypes.forEach(({ key, type: feeType }) => {
-          const amount = parseMoney(row[key]);
-          if (amount !== 0) {
-            const feeLineUID = `${lineUID}_${feeType}`;
-            fees.push({
-              line_uid: feeLineUID,
-              order_id: orderId,
-              transaction_date: transactionDate,
-              fee_type: feeType,
-              amount,
-              description: `${key} for order ${orderId}`,
-              _rawLine: {
-                line_uid: feeLineUID,
-                transaction_date: transactionDate,
-                type: feeType,
-                description: key,
-                amount,
-                order_id: orderId,
-                fee_type: feeType,
-                category: 'fee',
-                section: 'fees',
-                raw_json: JSON.stringify({ key, amount, orderId }),
-                matched: true
-              }
-            });
-          }
+      }
+      // C) REFUNDS
+      else if (classification.category === 'refund') {
+        refunds.push({
+          transactionDate,
+          orderId: classification.order_id,
+          amount: amount,
+          description: title
         });
-      } else if (category === 'fee') {
-        const feeType = mapFeeType(type, title, description);
-        const amount = parseMoney(row["Amount"] || row["Fees & Taxes"]);
+      }
+      // D) FEES (listing, transaction, processing, etc)
+      // E) ADS (etsy_ads, offsite_ads)
+      // F) SHIPPING (shipping_label, other_postage)
+      else if (classification.category === 'fee') {
         fees.push({
           line_uid: lineUID,
-          order_id: orderId || null,
+          order_id: classification.order_id,
           transaction_date: transactionDate,
-          fee_type: feeType,
-          amount,
-          description: title || description,
-          _rawLine: {
-            line_uid: lineUID,
-            transaction_date: transactionDate,
-            type,
-            description: title,
-            amount,
-            order_id: orderId || null,
-            fee_type: feeType,
-            category: 'fee',
-            section: 'fees',
-            raw_json: JSON.stringify(row),
-            matched: true
-          }
+          fee_type: classification.fee_type,
+          amount: feesTaxes || amount,
+          description: title || info,
+          _rawLine: rawLine
         });
-      } else if (category === 'deposit') {
-        const depositMatch = description.match(/\$?([\d,]+\.\d{2})/);
-        if (depositMatch) {
-          const depositAmount = parseFloat(depositMatch[1].replace(/,/g, ""));
-          deposits.push({
-            date: transactionDate,
-            type: "etsy_deposit",
-            amount: depositAmount,
-            notes: `${title} - ${description}`
-          });
-        }
-      } else if (category === 'refund') {
-        refunds.push({ transactionDate, orderId, amount: parseMoney(row["Amount"]) });
-      } else if (category === 'tax') {
-        taxes.push({ transactionDate, orderId, amount: parseMoney(row["Amount"]) });
-      } else {
+      }
+      // G) TAXES
+      else if (classification.category === 'tax') {
+        taxes.push({
+          transactionDate,
+          orderId: classification.order_id,
+          amount: amount,
+          taxDetails: row["Tax Details"] || ""
+        });
+      }
+      // UNMATCHED
+      else {
         unmatchedLines.push({
-          line_uid: lineUID,
-          transaction_date: transactionDate,
-          type,
-          description: title || description,
-          amount: parseMoney(row["Amount"]),
-          order_id: orderId || null,
-          category: 'unmatched',
-          section: 'unknown',
-          raw_json: JSON.stringify(row),
-          matched: false,
-          match_error: "Could not categorize"
+          ...rawLine,
+          match_error: `Unknown pattern: Type="${type}", Title="${title}"`
         });
       }
     });
