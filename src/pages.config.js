@@ -9,6 +9,7 @@ import Quotes from './pages/Quotes';
 import ReconciliationReview from './pages/ReconciliationReview';
 import Tools from './pages/Tools';
 import Fees from './pages/Fees';
+import EtsyActivity from './pages/EtsyActivity';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +25,7 @@ export const PAGES = {
     "ReconciliationReview": ReconciliationReview,
     "Tools": Tools,
     "Fees": Fees,
+    "EtsyActivity": EtsyActivity,
 }
 
 export const pagesConfig = {
