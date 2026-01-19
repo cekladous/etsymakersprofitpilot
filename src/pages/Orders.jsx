@@ -835,23 +835,7 @@ export default function Orders() {
         </Card>
       </div>
 
-          {/* Bulk Actions */}
-          {selectedIds.length > 0 && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
-              <p className="text-sm font-medium text-emerald-900">
-                {selectedIds.length} order{selectedIds.length !== 1 ? "s" : ""} selected
-              </p>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={bulkDeleteMutation.isPending}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected
-              </Button>
-            </div>
-          )}
+
 
           {/* Search */}
           <div className="relative">
