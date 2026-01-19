@@ -544,6 +544,18 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     
     let minDate = null;
     let maxDate = null;
+    
+    // First pass: group fees by order_id for later lookup
+    const feesByOrderId = {};
+    jsonData.forEach(row => {
+      const classification = classifyStatementLine(row);
+      if (classification.category === 'fee' && classification.order_id) {
+        if (!feesByOrderId[classification.order_id]) {
+          feesByOrderId[classification.order_id] = [];
+        }
+        feesByOrderId[classification.order_id].push(row);
+      }
+    });
 
     jsonData.forEach((row, idx) => {
       const dateVal = row["Date"] || row["Order Date"] || row["Sale Date"];
