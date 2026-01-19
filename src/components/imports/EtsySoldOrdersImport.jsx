@@ -47,6 +47,8 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
     onSuccess: (result) => {
       setImportResult(result);
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order-fees"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
       setImporting(false);
       setPreview(null);
       setPendingData(null);
