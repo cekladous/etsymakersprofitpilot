@@ -833,13 +833,16 @@ export default function Orders() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-stone-100 rounded-lg">
-                <DollarSign className="w-6 h-6 text-stone-600" />
+              <div className="p-3 bg-emerald-100 rounded-lg">
+                <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-stone-500">Sales Tax (collected)</p>
+                <p className="text-sm text-stone-500">Net After Fees</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {formatCurrency(totalSalesTax)}
+                  {formatCurrency(totalRevenue - totalFees)}
+                </p>
+                <p className="text-xs text-stone-500 mt-1">
+                  {totalRevenue > 0 ? ((((totalRevenue - totalFees) / totalRevenue) * 100).toFixed(1)) : 0}% of revenue
                 </p>
               </div>
             </div>
