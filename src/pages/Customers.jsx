@@ -142,9 +142,9 @@ export default function CustomersPage() {
         </Button>
       </PageHeader>
 
-      <Card>
-        <CardContent className="p-0">
-          {customers.length === 0 ? (
+      <Card className="flex-1 flex flex-col">
+        <CardContent className="p-0 flex-1 flex flex-col">
+           {customers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 mx-auto text-stone-300 mb-3" />
               <p className="text-stone-500 mb-4">No customers yet</p>
@@ -153,9 +153,9 @@ export default function CustomersPage() {
                 Add First Customer
               </Button>
             </div>
-          ) : (
+           ) : (
             <DataTable data={customers} columns={columns} />
-          )}
+           )}
         </CardContent>
       </Card>
 
