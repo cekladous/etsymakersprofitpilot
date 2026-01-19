@@ -15,11 +15,19 @@ export default function ReconciliationReview() {
     queryFn: () => base44.entities.EtsyStatementImport.list("-imported_at"),
   });
 
-  const { data: unmatchedLines = [] } = useQuery({
-    queryKey: ["unmatched-lines"],
+  const { data: unmatchedStatementLines = [] } = useQuery({
+    queryKey: ["unmatched-statement-lines"],
     queryFn: async () => {
       const all = await base44.entities.EtsyStatementLine.list("-transaction_date", 1000);
       return all.filter(line => !line.matched);
+    },
+  });
+
+  const { data: unmatchedLedgerEntries = [] } = useQuery({
+    queryKey: ["unmatched-ledger-entries"],
+    queryFn: async () => {
+      const all = await base44.entities.EtsyLedgerEntry.list("-entry_date", 5000);
+      return all.filter(e => e.status === "Unmatched" || !e.matched_category);
     },
   });
 
@@ -46,6 +54,14 @@ export default function ReconciliationReview() {
         <span className="font-medium">
           ${row.amount?.toFixed(2) || "0.00"}
         </span>
+      ),
+    },
+    {
+      header: "Source",
+      render: (row) => (
+        <Badge variant="outline" className="text-xs">
+          {row.source}
+        </Badge>
       ),
     },
     {
@@ -119,7 +135,27 @@ export default function ReconciliationReview() {
     },
   ];
 
-  const totalUnmatched = unmatchedLines.length;
+  const totalUnmatched = unmatchedStatementLines.length + unmatchedLedgerEntries.length;
+
+  // Combine both sources for display
+  const allUnmatchedRows = [
+    ...unmatchedStatementLines.map(line => ({
+      transaction_date: line.transaction_date,
+      type: line.type,
+      description: line.description,
+      amount: line.amount,
+      match_error: line.match_error,
+      source: "New Import"
+    })),
+    ...unmatchedLedgerEntries.map(entry => ({
+      transaction_date: entry.entry_date,
+      type: entry.type,
+      description: entry.title || entry.info,
+      amount: entry.amount || entry.net,
+      match_error: "Legacy unmatched entry",
+      source: "Legacy Data"
+    }))
+  ];
 
   return (
     <div className="space-y-6">
@@ -191,7 +227,7 @@ export default function ReconciliationReview() {
           <CardContent>
             <DataTable
               columns={columns}
-              data={unmatchedLines}
+              data={allUnmatchedRows}
               emptyMessage="No unmatched rows"
             />
           </CardContent>
