@@ -1020,6 +1020,14 @@ export default function Orders() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
-    </div>
-  );
-}
+      </div>
+
+      {/* Order Detail Sheet - Always Available */}
+      <OrderDetailSheet 
+      order={filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])}
+      orderFees={orderFees.find(f => filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id === f.order_id)}
+      open={selectedIds.length === 1 && !bulkDeleteMutation.isPending}
+      onOpenChange={() => setSelectedIds([])}
+      />
+      );
+      }
