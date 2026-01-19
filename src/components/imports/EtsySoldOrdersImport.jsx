@@ -100,19 +100,22 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
         }
 
         const orders = jsonData.map(row => ({
-          sale_date: parseDate(row["Sale Date"] || row["Order Date"]),
-          order_id: String(row["Order ID"] || ""),
-          buyer_username: row["Buyer"] || row["Buyer User ID"] || "",
-          buyer_full_name: row["Full Name"] || "",
-          number_of_items: parseInt(row["Quantity"] || row["Number of Items"] || "1"),
-          // Financial fields left empty - will be filled by Monthly Statement
-          order_value: 0,
-          shipping_charged: 0,
-          sales_tax: 0,
-          order_total: 0,
-          order_net: 0,
-          status: "completed",
-        })).filter(o => o.order_id);
+           sale_date: parseDate(row["Sale Date"] || row["Order Date"]),
+           order_id: String(row["Order ID"] || ""),
+           buyer_username: row["Buyer"] || row["Buyer User ID"] || "",
+           buyer_full_name: row["Full Name"] || "",
+           number_of_items: parseInt(row["Quantity"] || row["Number of Items"] || "1"),
+           sku: row["SKU"] || row["Sku"] || "",
+           product_name: row["Title"] || row["Product"] || row["Item Title"] || "",
+           coupon_code: row["Coupon Code"] || row["Coupon"] || "",
+           // Financial fields left empty - will be filled by Monthly Statement
+           order_value: 0,
+           shipping_charged: 0,
+           sales_tax: 0,
+           order_total: 0,
+           order_net: 0,
+           status: "completed",
+         })).filter(o => o.order_id);
 
         setPreview({ count: orders.length });
         setPendingData({ orders });
