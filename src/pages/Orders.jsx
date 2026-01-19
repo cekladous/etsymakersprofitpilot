@@ -283,11 +283,7 @@ export default function Orders() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredOrders.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredOrders.map(o => o.id));
-    }
+    setSelectedIds([]);
   };
 
   const toggleSelect = (id) => {
