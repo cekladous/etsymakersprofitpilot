@@ -713,8 +713,16 @@ export default function Orders() {
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Order Detail Sheet */}
+                <OrderDetailSheet 
+                  order={filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])}
+                  orderFees={orderFees.find(f => filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id === f.order_id)}
+                  open={selectedIds.length === 1 && !bulkDeleteMutation.isPending}
+                  onOpenChange={() => setSelectedIds([])}
+                />
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
