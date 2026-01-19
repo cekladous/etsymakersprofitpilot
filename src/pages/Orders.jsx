@@ -52,15 +52,6 @@ export default function Orders() {
     queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 10000),
   });
 
-  const deleteLedgerMutation = useMutation({
-    mutationFn: async (ids) => {
-      await Promise.all(ids.map(id => base44.entities.EtsyLedgerEntry.delete(id)));
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["etsy-ledger-entries"] });
-    },
-  });
-
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids) => {
       await Promise.all(ids.map(id => base44.entities.EtsyOrder.delete(id)));
@@ -501,33 +492,6 @@ export default function Orders() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
-
-      {/* Ledger Entries Management */}
-      {etsyLedgerEntries.length > 0 && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Payment Ledger Entries ({etsyLedgerEntries.length})</span>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (window.confirm(`Delete all ${etsyLedgerEntries.length} ledger entries? This cannot be undone.`)) {
-                    deleteLedgerMutation.mutate(etsyLedgerEntries.map(e => e.id));
-                  }
-                }}
-                disabled={deleteLedgerMutation.isPending}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete All Ledger Data
-              </Button>
-            </CardTitle>
-            <p className="text-sm text-stone-500">
-              These entries are used for financial reporting on the Dashboard. Delete all to re-import fresh data.
-            </p>
-          </CardHeader>
-        </Card>
-      )}
       </div>
       );
       }
