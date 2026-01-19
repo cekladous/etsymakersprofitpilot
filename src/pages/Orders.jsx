@@ -52,13 +52,28 @@ export default function Orders() {
     queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 10000),
   });
 
+  const { data: fees = [] } = useQuery({
+    queryKey: ["fees"],
+    queryFn: () => base44.entities.Fee.list(),
+  });
+
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids) => {
+      // Delete associated fees first
+      const feesToDelete = fees.filter(f => ids.includes(f.order_id));
+      await Promise.all(feesToDelete.map(f => base44.entities.Fee.delete(f.id)));
+      
+      // Delete order fees
+      const orderFeesToDelete = orderFees.filter(f => ids.includes(f.order_id));
+      await Promise.all(orderFeesToDelete.map(f => base44.entities.OrderFee.delete(f.id)));
+      
+      // Then delete orders
       await Promise.all(ids.map(id => base44.entities.EtsyOrder.delete(id)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
       queryClient.invalidateQueries({ queryKey: ["order-fees"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
       setSelectedIds([]);
     },
   });
