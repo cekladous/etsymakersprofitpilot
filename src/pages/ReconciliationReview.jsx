@@ -40,15 +40,20 @@ export default function ReconciliationReview() {
           const line = unmatchedStatementLines.find(l => 
             l.transaction_date === item.transaction_date && 
             l.type === item.type && 
-            l.amount === item.amount
+            Math.abs((l.amount || 0) - (item.amount || 0)) < 0.01
           );
-          if (line) await base44.entities.EtsyStatementLine.delete(line.id);
+          if (line) {
+            await base44.entities.EtsyStatementLine.delete(line.id);
+          }
         } else {
           const entry = unmatchedLedgerEntries.find(e => 
             e.entry_date === item.transaction_date && 
-            e.type === item.type
+            e.type === item.type &&
+            Math.abs((e.amount || e.net || 0) - (item.amount || 0)) < 0.01
           );
-          if (entry) await base44.entities.EtsyLedgerEntry.delete(entry.id);
+          if (entry) {
+            await base44.entities.EtsyLedgerEntry.delete(entry.id);
+          }
         }
       });
       await Promise.all(deletePromises);
@@ -56,6 +61,7 @@ export default function ReconciliationReview() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unmatched-statement-lines"] });
       queryClient.invalidateQueries({ queryKey: ["unmatched-ledger-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
       setSelectedIds([]);
     },
   });
