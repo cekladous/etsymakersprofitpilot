@@ -246,14 +246,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
     mutationFn: async ({ statementMonth, dateRangeStart, dateRangeEnd, fileName, fileHash, parsedData }) => {
       const { orders, fees, deposits, refunds, taxes, unmatchedLines } = parsedData;
       
-      // Helper to batch operations
+      // Helper to batch operations with better rate limiting
       const batchProcess = async (items, batchSize, processFn) => {
         for (let i = 0; i < items.length; i += batchSize) {
           const batch = items.slice(i, i + batchSize);
           await Promise.all(batch.map(processFn));
-          if (i + batchSize < items.length) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
+          // Always wait between batches to prevent rate limiting
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       };
       
