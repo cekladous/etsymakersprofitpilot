@@ -109,7 +109,7 @@ export default function EtsyAnalyticsDashboard() {
 
   // Key metrics
   const metrics = useMemo(() => {
-    const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
+    const totalRevenue = filteredOrders.reduce((sum, o) => sum + ((o.order_value || 0) + (o.shipping_charged || 0)), 0);
     const totalOrders = filteredOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const totalItems = filteredOrders.reduce((sum, o) => sum + (o.number_of_items || 1), 0);
