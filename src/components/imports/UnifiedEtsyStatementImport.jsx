@@ -329,6 +329,52 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
         result.fees.created++;
       });
 
+      // Aggregate fees into OrderFee records for each order
+      const orderFeeMap = {};
+      fees.forEach(fee => {
+        if (fee.order_id) {
+          if (!orderFeeMap[fee.order_id]) {
+            orderFeeMap[fee.order_id] = {
+              order_id: fee.order_id,
+              listing_fees: 0,
+              transaction_fees: 0,
+              processing_fees: 0,
+              share_save_refunds_credits: 0,
+              other_fees: 0,
+              etsy_ads: 0,
+              offsite_ads_fees: 0,
+              etsy_shipping: 0,
+              other_postage_costs: 0,
+              total_fees: 0
+            };
+          }
+          
+          const amount = Math.abs(fee.amount);
+          if (fee.fee_type === 'listing') orderFeeMap[fee.order_id].listing_fees += amount;
+          else if (fee.fee_type === 'transaction') orderFeeMap[fee.order_id].transaction_fees += amount;
+          else if (fee.fee_type === 'processing') orderFeeMap[fee.order_id].processing_fees += amount;
+          else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_refunds_credits += amount;
+          else if (fee.fee_type === 'etsy_ads') orderFeeMap[fee.order_id].etsy_ads += amount;
+          else if (fee.fee_type === 'offsite_ads') orderFeeMap[fee.order_id].offsite_ads_fees += amount;
+          else if (fee.fee_type === 'shipping_label') orderFeeMap[fee.order_id].etsy_shipping += amount;
+          else if (fee.fee_type === 'other_postage') orderFeeMap[fee.order_id].other_postage_costs += amount;
+          else orderFeeMap[fee.order_id].other_fees += amount;
+          
+          orderFeeMap[fee.order_id].total_fees += amount;
+        }
+      });
+
+      // Create/update OrderFee records
+      const orderFeeRecords = Object.values(orderFeeMap);
+      await batchProcess(orderFeeRecords, 10, async (orderFee) => {
+        const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id });
+        if (existing.length > 0) {
+          await base44.entities.OrderFee.update(existing[0].id, orderFee);
+        } else {
+          await base44.entities.OrderFee.create(orderFee);
+        }
+      });
+
       // Import deposits as transfers - batched
       await batchProcess(deposits, 10, async (deposit) => {
         await base44.entities.Transfer.create(deposit);
