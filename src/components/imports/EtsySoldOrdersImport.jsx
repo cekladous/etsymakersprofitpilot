@@ -82,12 +82,14 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
            sku: row["SKU"] || row["Sku"] || "",
            product_name: row["Title"] || row["Product"] || row["Item Title"] || "",
            coupon_code: row["Coupon Code"] || row["Coupon"] || "",
-           // Financial fields left empty - will be filled by Monthly Statement
-           order_value: 0,
-           shipping_charged: 0,
-           sales_tax: 0,
-           order_total: 0,
-           order_net: 0,
+           // Capture financial fields from Sold Orders CSV
+           order_value: parseMoney(row["Order Value"]),
+           shipping_charged: parseMoney(row["Shipping"]),
+           sales_tax: parseMoney(row["Sales Tax"]),
+           order_total: parseMoney(row["Order Total"]),
+           order_net: parseMoney(row["Order Net"]),
+           discount_amount: parseMoney(row["Discount Amount"]),
+           card_processing_fees: parseMoney(row["Card Processing Fees"]),
            status: "completed",
          })).filter(o => o.order_id);
 
