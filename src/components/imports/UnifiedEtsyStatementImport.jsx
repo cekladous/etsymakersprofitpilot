@@ -357,7 +357,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
         refunds_count: result.refunds.created,
         taxes_count: result.taxes.created,
         unmatched_count: result.unmatched.count,
-        reconciliation_status: result.unmatched.count === 0 ? 'PASS' : 'PENDING'
+        reconciliation_status: 'success'
       });
 
       return result;
