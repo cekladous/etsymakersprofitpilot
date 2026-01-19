@@ -26,16 +26,23 @@ export default function CustomerGridView({ customers, isLoading, onView, onEdit,
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {customers.map((customer) => (
-        <CustomerCard
-          key={customer.id}
-          customer={customer}
-          onView={onView}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      ))}
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm font-semibold text-stone-600 px-2">
+        <div>Name</div>
+        <div>Contact</div>
+        <div>Added</div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {customers.map((customer) => (
+          <CustomerCard
+            key={customer.id}
+            customer={customer}
+            onView={onView}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
     </div>
   );
 }
