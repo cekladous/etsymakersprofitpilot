@@ -70,10 +70,29 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
             <CardHeader>
               <CardTitle className="text-sm">Items</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-lg font-semibold text-stone-900">
-                {order.number_of_items} item{order.number_of_items !== 1 ? "s" : ""}
-              </p>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-xs text-stone-500 mb-1">Quantity</p>
+                <p className="font-medium text-stone-900">{order.number_of_items} item{order.number_of_items !== 1 ? "s" : ""}</p>
+              </div>
+              {order.product_name && (
+                <div>
+                  <p className="text-xs text-stone-500 mb-1">Product</p>
+                  <p className="font-medium text-stone-900">{order.product_name}</p>
+                </div>
+              )}
+              {order.sku && (
+                <div>
+                  <p className="text-xs text-stone-500 mb-1">SKU</p>
+                  <p className="font-medium text-stone-900">{order.sku}</p>
+                </div>
+              )}
+              {order.coupon_code && (
+                <div>
+                  <p className="text-xs text-stone-500 mb-1">Coupon Code</p>
+                  <p className="font-medium text-stone-900">{order.coupon_code}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
