@@ -393,7 +393,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       result.unmatched.count = unmatchedLines.length;
 
       // Save all statement lines - very conservative
-      const allLines = [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines];
+      const allLines = [
+        ...orders.map(o => o._rawLine), 
+        ...fees.map(f => f._rawLine), 
+        ...deposits.map(d => d._rawLine),
+        ...unmatchedLines
+      ];
       await batchProcess(allLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
           import_id: importRecord.id,
@@ -595,7 +600,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           date: transactionDate,
           type: "etsy_deposit",
           amount: net || amount,
-          notes: `${title} - ${info}`
+          notes: `${title} - ${info}`,
+          _rawLine: rawLine
         });
       }
       // B) ORDERS/SALES
