@@ -210,22 +210,19 @@ export default function Dashboard() {
       };
     }
     
-    // Filter EtsyOrders for period (by transaction date = sale_date)
-    const periodEtsyOrders = etsyOrders.filter(o => {
-      if (!o.sale_date) return false;
-      const d = new Date(o.sale_date);
-      return d >= periodStart && d <= periodEnd;
-    });
+    // Use financialData for all calculations to ensure consistency
+    const periodRevenue = financialData.totalRevenue;
+    const totalExpenses = financialData.totalExpenses;
+    const periodOrderFees = financialData.sellingExpenses.etsyTransactionFees + 
+                             financialData.sellingExpenses.etsyProcessingFees + 
+                             financialData.sellingExpenses.etsyListingFees +
+                             financialData.sellingExpenses.otherFees +
+                             financialData.sellingExpenses.etsyAds +
+                             financialData.sellingExpenses.etsyOffsiteAdsFees;
+    const periodBusinessExpenses = totalExpenses - periodOrderFees;
     
-    // Calculate revenue (exclude sales tax - pass-through to government)
-    const periodRevenue = periodEtsyOrders.reduce((sum, o) => 
-      sum + (o.order_value || 0), 0);
-    
-    // Use shared expense calculator for total expenses
-    const { totalExpenses, orderFees: periodOrderFees, businessExpenses: periodBusinessExpenses } = expenseMetrics;
-    
-    const periodProfit = periodRevenue - totalExpenses;
-    const periodMargin = periodRevenue > 0 ? (periodProfit / periodRevenue) * 100 : 0;
+    const periodProfit = financialData.netProfit;
+    const periodMargin = financialData.profitMargin;
 
     return {
       periodRevenue,
@@ -234,9 +231,9 @@ export default function Dashboard() {
       totalExpenses,
       periodProfit,
       periodMargin,
-      orderCount: periodEtsyOrders.length,
+      orderCount: financialData._rawData.etsyOrders.length,
     };
-  }, [etsyOrders, periodStart, periodEnd, expenseMetrics]);
+  }, [financialData]);
 
   // Alerts
   const ordersWithoutJobs = Array.isArray(orders) ? orders.filter(o => !o.job_id && o.status !== "shipped") : [];
