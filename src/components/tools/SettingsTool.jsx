@@ -414,11 +414,17 @@ export default function SettingsTool() {
 
           {/* Marketplace Fees */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <CircleDollarSign className="w-4 h-4 text-blue-600" />
-                <h3 className="font-semibold text-stone-900">Payment Processor Fees</h3>
+                <h3 className="font-semibold text-stone-900">Payment Processor Fee Rates</h3>
               </div>
+              <p className="text-sm text-stone-600">
+                These are <strong>default rates for estimates only</strong>. When you import Etsy statements, actual fees from the statement will be used instead of these rates.
+                Keep these updated for accurate profit calculations when actual fees are not available.
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
               <Button
                 variant="outline"
                 size="sm"

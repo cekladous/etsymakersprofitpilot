@@ -131,6 +131,21 @@ export default function Dashboard() {
     queryFn: () => base44.entities.EtsyLedgerEntry.list("-entry_date", 5000),
   });
 
+  const { data: fees = [] } = useQuery({
+    queryKey: ["fees"],
+    queryFn: () => base44.entities.Fee.list(),
+  });
+
+  const { data: etsyStatementLines = [] } = useQuery({
+    queryKey: ["etsy-statement-lines"],
+    queryFn: () => base44.entities.EtsyStatementLine.list(),
+  });
+
+  const { data: etsyStatementImports = [] } = useQuery({
+    queryKey: ["etsy-statement-imports"],
+    queryFn: () => base44.entities.EtsyStatementImport.list(),
+  });
+
   const now = new Date();
   
   // Calculate date range based on selected timeRange or custom dates
@@ -180,6 +195,9 @@ export default function Dashboard() {
       etsyLedgerEntries,
       orderFees,
       expenses, // CRITICAL: Include legacy Expense entity
+      fees,
+      etsyStatementLines,
+      etsyStatementImports,
     }, dateRange);
   }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, dateRange]);
 
@@ -531,16 +549,16 @@ export default function Dashboard() {
       </div>
 
       {/* Unmatched Rows Banner */}
-      {financialData.unmatchedLedgerEntries.length > 0 && (
+      {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)) > 0 && (
         <Link to={createPageUrl("ReconciliationReview")} className="block">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-amber-900">
-                  {financialData.unmatchedLedgerEntries.length} rows need review
+                  {(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)} rows need review
                 </p>
                 <p className="text-sm text-amber-700">
-                  Some statement lines could not be automatically matched. Click to review.
+                  Some transactions could not be automatically categorized. Click to review.
                 </p>
               </div>
               <Button variant="outline" size="sm" className="bg-white">
