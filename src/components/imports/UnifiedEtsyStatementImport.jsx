@@ -81,160 +81,82 @@ const extractOrderId = (text) => {
   return null;
 };
 
-// Comprehensive classification logic for Etsy statement lines
+// Comprehensive classification logic for Etsy statement lines (optimized)
 const classifyStatementLine = (row) => {
-  const type = (row["Type"] || "").toLowerCase();
-  const title = (row["Title"] || "").toLowerCase();
-  const info = (row["Info"] || "").toLowerCase();
-  const taxDetails = (row["Tax Details"] || "").toLowerCase();
+  const type = row["Type"] || "";
+  const title = row["Title"] || "";
+  const info = row["Info"] || row["Description"] || "";
+  const taxDetails = row["Tax Details"] || "";
+  
+  // Quick lowercase check - only lowercase once
+  const typeL = type.toLowerCase();
+  const titleL = title.toLowerCase();
+  const infoL = info.toLowerCase();
+  const taxDetailsL = taxDetails.toLowerCase();
+  
   const amount = parseMoney(row["Amount"]);
-  const feesTaxes = parseMoney(row["Fees & Taxes"]);
-  const net = parseMoney(row["Net"]);
   
-  const allText = `${type} ${title} ${info} ${taxDetails}`;
+  // Extract order ID once
+  const orderId = extractOrderId(titleL) || extractOrderId(infoL) || extractOrderId(taxDetailsL);
   
-  // Extract order ID if present
-  const orderId = extractOrderId(title) || extractOrderId(info) || extractOrderId(taxDetails);
-  
-  // A) DEPOSITS/PAYOUTS
-  if (allText.includes('deposit') || allText.includes('payout') || 
-      allText.includes('transfer') || allText.includes('etsy payments deposit')) {
-    return {
-      category: 'deposit',
-      section: 'deposits',
-      fee_type: null,
-      order_id: null
-    };
+  // Fast path checks - most common patterns first
+  if (titleL.includes('deposit') || titleL.includes('payout') || titleL.includes('transfer')) {
+    return { category: 'deposit', section: 'deposits', fee_type: null, order_id: null };
   }
   
-  // B) ORDERS/SALES - positive revenue transactions
-  if ((allText.includes('sale') || allText.includes('order') || allText.includes('payment for order')) 
-      && amount > 0 && !allText.includes('refund')) {
-    return {
-      category: 'sale',
-      section: 'orders',
-      fee_type: null,
-      order_id: orderId
-    };
+  if (titleL.includes('refund') || titleL.includes('chargeback')) {
+    return { category: 'refund', section: 'refunds', fee_type: null, order_id: orderId };
   }
   
-  // C) REFUNDS - negative or explicit refund
-  if (allText.includes('refund') || allText.includes('chargeback') || 
-      allText.includes('reversal') || allText.includes('cancellation')) {
-    return {
-      category: 'refund',
-      section: 'refunds',
-      fee_type: null,
-      order_id: orderId
-    };
+  if (titleL.includes('listing') && titleL.includes('fee')) {
+    return { category: 'fee', section: 'fees', fee_type: 'listing', order_id: orderId };
   }
   
-  // D) ETSY FEES
-  if (allText.includes('listing') && allText.includes('fee')) {
-    return {
-      category: 'fee',
-      section: 'fees',
-      fee_type: 'listing',
-      order_id: orderId
-    };
-  }
-  if (allText.includes('transaction') && allText.includes('fee')) {
-    return {
-      category: 'fee',
-      section: 'fees',
-      fee_type: 'transaction',
-      order_id: orderId
-    };
-  }
-  if ((allText.includes('processing') && allText.includes('fee')) || 
-      allText.includes('payment processing')) {
-    return {
-      category: 'fee',
-      section: 'fees',
-      fee_type: 'processing',
-      order_id: orderId
-    };
-  }
-  if (allText.includes('share') && allText.includes('save')) {
-    return {
-      category: 'fee',
-      section: 'fees',
-      fee_type: 'share_save_credit',
-      order_id: orderId
-    };
-  }
-  if (allText.includes('regulatory operating fee')) {
-    return {
-      category: 'fee',
-      section: 'fees',
-      fee_type: 'other_fee',
-      order_id: orderId
-    };
+  if (titleL.includes('transaction') && titleL.includes('fee')) {
+    return { category: 'fee', section: 'fees', fee_type: 'transaction', order_id: orderId };
   }
   
-  // E) ADS
-  if (allText.includes('etsy ads') || allText.includes('etsy ad')) {
-    return {
-      category: 'fee',
-      section: 'ads',
-      fee_type: 'etsy_ads',
-      order_id: orderId
-    };
-  }
-  if (allText.includes('offsite ads') || allText.includes('offsite ad')) {
-    return {
-      category: 'fee',
-      section: 'ads',
-      fee_type: 'offsite_ads',
-      order_id: orderId
-    };
+  if (titleL.includes('processing') || titleL.includes('payment processing')) {
+    return { category: 'fee', section: 'fees', fee_type: 'processing', order_id: orderId };
   }
   
-  // F) SHIPPING/POSTAGE
-  if (allText.includes('shipping label') || allText.includes('etsy shipping')) {
-    return {
-      category: 'fee',
-      section: 'shipping',
-      fee_type: 'shipping_label',
-      order_id: orderId
-    };
-  }
-  if (allText.includes('postage')) {
-    return {
-      category: 'fee',
-      section: 'shipping',
-      fee_type: 'other_postage',
-      order_id: orderId
-    };
+  if (titleL.includes('etsy ads') || titleL.includes('etsy ad')) {
+    return { category: 'fee', section: 'ads', fee_type: 'etsy_ads', order_id: orderId };
   }
   
-  // G) TAXES
-  if (taxDetails || allText.includes('sales tax') || allText.includes('tax collected')) {
-    return {
-      category: 'tax',
-      section: 'taxes',
-      fee_type: null,
-      order_id: orderId
-    };
+  if (titleL.includes('offsite ads') || titleL.includes('offsite ad')) {
+    return { category: 'fee', section: 'ads', fee_type: 'offsite_ads', order_id: orderId };
   }
   
-  // Catch-all: if has "fee" in text
-  if (allText.includes('fee')) {
-    return {
-      category: 'fee',
-      section: 'fees',
-      fee_type: 'other_fee',
-      order_id: orderId
-    };
+  if (titleL.includes('shipping label')) {
+    return { category: 'fee', section: 'shipping', fee_type: 'shipping_label', order_id: orderId };
   }
   
-  // UNMATCHED
-  return {
-    category: 'unmatched',
-    section: 'unknown',
-    fee_type: null,
-    order_id: orderId
-  };
+  if (titleL.includes('postage')) {
+    return { category: 'fee', section: 'shipping', fee_type: 'other_postage', order_id: orderId };
+  }
+  
+  if (titleL.includes('share') && titleL.includes('save')) {
+    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
+  }
+  
+  if (titleL.includes('regulatory operating fee')) {
+    return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
+  }
+  
+  if (typeL.includes('sale') && amount > 0) {
+    return { category: 'sale', section: 'orders', fee_type: null, order_id: orderId };
+  }
+  
+  if (taxDetailsL) {
+    return { category: 'tax', section: 'taxes', fee_type: null, order_id: orderId };
+  }
+  
+  if (titleL.includes('fee')) {
+    return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
+  }
+  
+  return { category: 'unmatched', section: 'unknown', fee_type: null, order_id: orderId };
 };
 
 export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedded = false }) {
