@@ -361,17 +361,27 @@ export default function Orders() {
       render: (row) => row.transaction_date || "—",
     },
     {
-      header: "Order ID",
-      render: (row) => (
-        <div className="max-w-32 truncate">
-          {row.order_id ? (
-            <span className="text-blue-600">#{row.order_id}</span>
-          ) : (
-            <span className="text-stone-400">—</span>
-          )}
-        </div>
-      ),
-    },
+          header: "Order ID",
+          render: (row) => (
+            <div className="max-w-32 truncate">
+              {row.order_id ? (
+                <button
+                  onClick={() => {
+                    const order = etsyOrders.find(o => o.order_id === row.order_id);
+                    if (order) {
+                      setSelectedIds([order.id]);
+                    }
+                  }}
+                  className="text-blue-600 hover:underline cursor-pointer"
+                >
+                  #{row.order_id}
+                </button>
+              ) : (
+                <span className="text-stone-400">—</span>
+              )}
+            </div>
+          ),
+        },
     {
       header: "Fee Type",
       render: (row) => (
