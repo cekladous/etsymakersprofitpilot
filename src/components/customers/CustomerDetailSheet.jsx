@@ -25,19 +25,18 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
   const { data: orders = [] } = useQuery({
     queryKey: ["customer-orders", customer?.id],
     queryFn: async () => {
-      const allOrders = await base44.entities.Order.list();
-      return allOrders.filter(o => 
-        o.notes?.includes(customer?.name) || 
-        quotes.some(q => o.order_id === `QUOTE-${q.quote_number}`)
-      );
+      const etsyOrders = await base44.entities.EtsyOrder.filter({ 
+        buyer_full_name: customer?.name 
+      });
+      return etsyOrders || [];
     },
-    enabled: !!customer && quotes.length > 0,
+    enabled: !!customer,
   });
 
   if (!customer) return null;
 
   const totalQuoteValue = quotes.reduce((sum, q) => sum + (q.total || 0), 0);
-  const totalOrderValue = orders.reduce((sum, o) => sum + (o.gross_total || 0), 0);
+  const totalOrderValue = orders.reduce((sum, o) => sum + (o.order_total || 0), 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -180,8 +179,7 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
                         </div>
                       </div>
                       <div className="text-right">
-                        <StatusBadge status={order.status} />
-                        <div className="font-semibold text-sm mt-1">${order.gross_total?.toFixed(2)}</div>
+                        <div className="font-semibold text-sm">${order.order_total?.toFixed(2)}</div>
                       </div>
                     </div>
                   ))}
