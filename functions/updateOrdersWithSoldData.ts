@@ -25,16 +25,20 @@ Deno.serve(async (req) => {
 
       // Create or update customer if buyer info exists
       if (order.customer?.name) {
-        const existingCustomers = await base44.entities.Customer.filter({ 
-          name: order.customer.name 
-        });
-        
-        if (existingCustomers.length > 0) {
-          await base44.entities.Customer.update(existingCustomers[0].id, order.customer);
-          result.customers_updated++;
-        } else {
-          await base44.entities.Customer.create(order.customer);
-          result.customers_created++;
+        try {
+          const existingCustomers = await base44.entities.Customer.filter({ 
+            name: order.customer.name 
+          });
+          
+          if (existingCustomers.length > 0) {
+            await base44.entities.Customer.update(existingCustomers[0].id, order.customer);
+            result.customers_updated++;
+          } else {
+            await base44.entities.Customer.create(order.customer);
+            result.customers_created++;
+          }
+        } catch (err) {
+          console.log("Customer error:", err.message);
         }
       }
 
