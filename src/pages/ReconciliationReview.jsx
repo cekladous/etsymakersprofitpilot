@@ -34,26 +34,12 @@ export default function ReconciliationReview() {
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids) => {
-      const deletePromises = ids.map(async (item) => {
+    mutationFn: async (items) => {
+      const deletePromises = items.map(async (item) => {
         if (item.source === "New Import") {
-          const line = unmatchedStatementLines.find(l => 
-            l.transaction_date === item.transaction_date && 
-            l.type === item.type && 
-            Math.abs((l.amount || 0) - (item.amount || 0)) < 0.01
-          );
-          if (line) {
-            await base44.entities.EtsyStatementLine.delete(line.id);
-          }
+          await base44.entities.EtsyStatementLine.delete(item.id);
         } else {
-          const entry = unmatchedLedgerEntries.find(e => 
-            e.entry_date === item.transaction_date && 
-            e.type === item.type &&
-            Math.abs((e.amount || e.net || 0) - (item.amount || 0)) < 0.01
-          );
-          if (entry) {
-            await base44.entities.EtsyLedgerEntry.delete(entry.id);
-          }
+          await base44.entities.EtsyLedgerEntry.delete(item.id);
         }
       });
       await Promise.all(deletePromises);
@@ -85,23 +71,11 @@ export default function ReconciliationReview() {
       render: (row) => (
         <input
           type="checkbox"
-          checked={selectedIds.some(item => 
-            item.transaction_date === row.transaction_date && 
-            item.type === row.type && 
-            item.amount === row.amount
-          )}
+          checked={selectedIds.some(item => item.id === row.id)}
           onChange={() => {
-            const isSelected = selectedIds.some(item => 
-              item.transaction_date === row.transaction_date && 
-              item.type === row.type && 
-              item.amount === row.amount
-            );
+            const isSelected = selectedIds.some(item => item.id === row.id);
             if (isSelected) {
-              setSelectedIds(selectedIds.filter(item => 
-                !(item.transaction_date === row.transaction_date && 
-                  item.type === row.type && 
-                  item.amount === row.amount)
-              ));
+              setSelectedIds(selectedIds.filter(item => item.id !== row.id));
             } else {
               setSelectedIds([...selectedIds, row]);
             }
@@ -218,6 +192,7 @@ export default function ReconciliationReview() {
   // Combine both sources for display
   const allUnmatchedRows = [
     ...unmatchedStatementLines.map(line => ({
+      id: line.id,
       transaction_date: line.transaction_date,
       type: line.type,
       description: line.description,
@@ -226,6 +201,7 @@ export default function ReconciliationReview() {
       source: "New Import"
     })),
     ...unmatchedLedgerEntries.map(entry => ({
+      id: entry.id,
       transaction_date: entry.entry_date,
       type: entry.type,
       description: entry.title || entry.info,
