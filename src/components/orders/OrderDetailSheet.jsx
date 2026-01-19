@@ -115,11 +115,11 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     {formatCurrency(order.shipping_charged || 0)}
                   </span>
                 </div>
-                {order.discount_amount > 0 && (
+                {(order.discount_amount || 0) > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-stone-600">Discount</span>
                     <span className="font-semibold text-red-600">
-                      -{formatCurrency(order.discount_amount || 0)}
+                      -{formatCurrency(order.discount_amount)}
                     </span>
                   </div>
                 )}
