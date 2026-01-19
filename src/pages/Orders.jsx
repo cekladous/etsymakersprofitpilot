@@ -396,7 +396,7 @@ export default function Orders() {
       header: "Amount",
       render: (row) => (
         <span className={`font-semibold ${row.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-          {formatCurrency(row.amount || 0)}
+          {formatCurrency(Math.abs(row.amount || 0))}
         </span>
       ),
     },
