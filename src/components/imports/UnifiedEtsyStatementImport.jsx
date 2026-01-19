@@ -246,6 +246,17 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
     mutationFn: async ({ statementMonth, dateRangeStart, dateRangeEnd, fileName, fileHash, parsedData }) => {
       const { orders, fees, deposits, refunds, taxes, unmatchedLines } = parsedData;
       
+      // Helper to batch operations
+      const batchProcess = async (items, batchSize, processFn) => {
+        for (let i = 0; i < items.length; i += batchSize) {
+          const batch = items.slice(i, i + batchSize);
+          await Promise.all(batch.map(processFn));
+          if (i + batchSize < items.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+      };
+      
       // Check if this statement month was already imported
       const existingImports = await base44.entities.EtsyStatementImport.filter({ statement_month: statementMonth });
       let importRecord;
@@ -260,11 +271,11 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
           
           // Delete old statement lines for this import
           const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImport.id });
-          await Promise.all(oldLines.map(line => base44.entities.EtsyStatementLine.delete(line.id)));
+          await batchProcess(oldLines, 20, line => base44.entities.EtsyStatementLine.delete(line.id));
           
           // Delete old fees for this import
           const oldFees = await base44.entities.Fee.filter({ import_id: oldImport.id });
-          await Promise.all(oldFees.map(fee => base44.entities.Fee.delete(fee.id)));
+          await batchProcess(oldFees, 20, fee => base44.entities.Fee.delete(fee.id));
         }
         
         // Create new import record
@@ -301,8 +312,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
         unmatched: { count: 0 }
       };
 
-      // Import orders (upsert by channel + order_id)
-      for (const order of orders) {
+      // Import orders (upsert by channel + order_id) - batched
+      await batchProcess(orders, 10, async (order) => {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
@@ -311,31 +322,32 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange }) {
           await base44.entities.EtsyOrder.create(order);
           result.orders.created++;
         }
-      }
+      });
 
-      // Import fees (normalized)
-      for (const fee of fees) {
+      // Import fees (normalized) - batched
+      await batchProcess(fees, 20, async (fee) => {
         await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
         result.fees.created++;
-      }
+      });
 
-      // Import deposits as transfers
-      for (const deposit of deposits) {
+      // Import deposits as transfers - batched
+      await batchProcess(deposits, 20, async (deposit) => {
         await base44.entities.Transfer.create(deposit);
         result.deposits.created++;
-      }
+      });
 
       result.refunds.created = refunds.length;
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save all statement lines
-      for (const line of [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines]) {
+      // Save all statement lines - batched
+      const allLines = [...orders.map(o => o._rawLine), ...fees.map(f => f._rawLine), ...unmatchedLines];
+      await batchProcess(allLines, 25, async (line) => {
         await base44.entities.EtsyStatementLine.create({
           import_id: importRecord.id,
           ...line
         });
-      }
+      });
 
       // Update import counts
       await base44.entities.EtsyStatementImport.update(importRecord.id, {
