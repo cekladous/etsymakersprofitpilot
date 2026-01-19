@@ -127,7 +127,7 @@ export default function DataTable({
 
   return (
     <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden" onMouseLeave={handleMouseUp}>
-      <div className="overflow-x-auto" onMouseUp={handleMouseUp}>
+      <div className="overflow-x-auto overflow-y-auto max-h-96" onMouseUp={handleMouseUp} data-table-scroll>
         <Table>
           <TableHeader>
             <TableRow className="bg-stone-50 hover:bg-stone-50">
