@@ -16,6 +16,7 @@ export default function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailCustomer, setDetailCustomer] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("grid");
   
   const queryClient = useQueryClient();
 
