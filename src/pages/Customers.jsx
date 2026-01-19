@@ -138,10 +138,30 @@ export default function CustomersPage() {
         title="Customers"
         description="Manage customer contacts and view their quote and order history"
       >
-        <Button onClick={handleNew} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="w-4 h-4 mr-2" />
-          New Customer
-        </Button>
+        <div className="flex gap-2">
+          <div className="flex gap-1 bg-stone-100 rounded-lg p-1">
+            <Button
+              size="sm"
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              onClick={() => setViewMode("grid")}
+              className={viewMode === "grid" ? "bg-white text-stone-900" : ""}
+            >
+              <Grid3x3 className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              onClick={() => setViewMode("list")}
+              className={viewMode === "list" ? "bg-white text-stone-900" : ""}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
+          <Button onClick={handleNew} className="bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="w-4 h-4 mr-2" />
+            New Customer
+          </Button>
+        </div>
       </PageHeader>
 
       <Card className="flex-1 flex flex-col overflow-visible mt-0 rounded-none border-0">
