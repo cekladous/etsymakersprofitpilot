@@ -545,10 +545,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     let minDate = null;
     let maxDate = null;
     
-    // First pass: group fees by order_id for later lookup
+    // Pre-process: classify all rows once and build fee lookup
+    const classifiedRows = jsonData.map((row, idx) => ({
+      row,
+      idx,
+      classification: classifyStatementLine(row)
+    }));
+    
     const feesByOrderId = {};
-    jsonData.forEach(row => {
-      const classification = classifyStatementLine(row);
+    classifiedRows.forEach(({ row, classification }) => {
       if (classification.category === 'fee' && classification.order_id) {
         if (!feesByOrderId[classification.order_id]) {
           feesByOrderId[classification.order_id] = [];
@@ -557,7 +562,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       }
     });
 
-    jsonData.forEach((row, idx) => {
+    classifiedRows.forEach(({ row, idx, classification }) => {
       const dateVal = row["Date"] || row["Order Date"] || row["Sale Date"];
       const transactionDate = parseDate(dateVal);
       if (!transactionDate) {
@@ -585,8 +590,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const amount = parseMoney(row["Amount"]);
       const feesTaxes = parseMoney(row["Fees & Taxes"]);
       const net = parseMoney(row["Net"]);
-      
-      const classification = classifyStatementLine(row);
       const statementMonth = transactionDate.substring(0, 7);
       const lineUID = generateLineUID(transactionDate, type, amount, title, classification.order_id || "", statementMonth);
 
