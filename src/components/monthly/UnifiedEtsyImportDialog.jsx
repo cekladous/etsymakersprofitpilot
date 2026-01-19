@@ -123,20 +123,31 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
       if (orders && orders.length > 0) {
         const existingOrders = await base44.entities.EtsyOrder.list();
         
-        for (const order of orders) {
-          const existing = existingOrders.find(o => o.order_id === order.order_id);
-          if (existing) {
-            result.orders.skipped++;
-            continue;
+        // Batch create orders in groups to avoid rate limits
+        const batchSize = 25;
+        for (let i = 0; i < orders.length; i += batchSize) {
+          const chunk = orders.slice(i, i + batchSize);
+          
+          for (const order of chunk) {
+            const existing = existingOrders.find(o => o.order_id === order.order_id);
+            if (existing) {
+              result.orders.skipped++;
+              continue;
+            }
+            
+            const newOrder = await base44.entities.EtsyOrder.create(order);
+            
+            const feeData = fees.find(f => f.order_id === order.order_id);
+            if (feeData) {
+              await base44.entities.OrderFee.create({ ...feeData, order_id: newOrder.id });
+            }
+            result.orders.created++;
           }
           
-          const newOrder = await base44.entities.EtsyOrder.create(order);
-          
-          const feeData = fees.find(f => f.order_id === order.order_id);
-          if (feeData) {
-            await base44.entities.OrderFee.create({ ...feeData, order_id: newOrder.id });
+          // Small delay between batches
+          if (i + batchSize < orders.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
-          result.orders.created++;
         }
       }
 
@@ -150,18 +161,37 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
           status: "success",
         });
 
-        // Import all entries without duplicate checking
-        for (const entry of ledgerEntries) {
-          await base44.entities.EtsyLedgerEntry.create({ ...entry, source_batch_id: batch.id });
-          result.ledger.created++;
+        // Batch create entries in groups of 50 to avoid rate limits
+        const batchSize = 50;
+        for (let i = 0; i < ledgerEntries.length; i += batchSize) {
+          const chunk = ledgerEntries.slice(i, i + batchSize);
+          await Promise.all(
+            chunk.map(entry => 
+              base44.entities.EtsyLedgerEntry.create({ ...entry, source_batch_id: batch.id })
+            )
+          );
+          result.ledger.created += chunk.length;
+          
+          // Small delay between batches to prevent rate limiting
+          if (i + batchSize < ledgerEntries.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
         }
       }
 
       // Import transfers if present
       if (transfers && transfers.length > 0) {
-        for (const transfer of transfers) {
-          await base44.entities.Transfer.create(transfer);
-          result.transfers.created++;
+        const batchSize = 50;
+        for (let i = 0; i < transfers.length; i += batchSize) {
+          const chunk = transfers.slice(i, i + batchSize);
+          await Promise.all(
+            chunk.map(transfer => base44.entities.Transfer.create(transfer))
+          );
+          result.transfers.created += chunk.length;
+          
+          if (i + batchSize < transfers.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
         }
       }
 
