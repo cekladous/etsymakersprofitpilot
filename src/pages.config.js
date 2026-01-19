@@ -1,6 +1,8 @@
 import Customers from './pages/Customers';
 import Dashboard from './pages/Dashboard';
+import EtsyActivity from './pages/EtsyActivity';
 import Expenses from './pages/Expenses';
+import Fees from './pages/Fees';
 import Inventory from './pages/Inventory';
 import Jobs from './pages/Jobs';
 import Orders from './pages/Orders';
@@ -8,15 +10,15 @@ import Products from './pages/Products';
 import Quotes from './pages/Quotes';
 import ReconciliationReview from './pages/ReconciliationReview';
 import Tools from './pages/Tools';
-import Fees from './pages/Fees';
-import EtsyActivity from './pages/EtsyActivity';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Customers": Customers,
     "Dashboard": Dashboard,
+    "EtsyActivity": EtsyActivity,
     "Expenses": Expenses,
+    "Fees": Fees,
     "Inventory": Inventory,
     "Jobs": Jobs,
     "Orders": Orders,
@@ -24,8 +26,6 @@ export const PAGES = {
     "Quotes": Quotes,
     "ReconciliationReview": ReconciliationReview,
     "Tools": Tools,
-    "Fees": Fees,
-    "EtsyActivity": EtsyActivity,
 }
 
 export const pagesConfig = {

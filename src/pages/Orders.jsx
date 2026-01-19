@@ -32,7 +32,10 @@ import EmptyState from "@/components/ui/EmptyState";
 import UnifiedEtsyStatementImport from "@/components/imports/UnifiedEtsyStatementImport";
 
 export default function Orders() {
+  const [activeTab, setActiveTab] = useState("orders");
   const [search, setSearch] = useState("");
+  const [feeSearch, setFeeSearch] = useState("");
+  const [feeTypeFilter, setFeeTypeFilter] = useState("all");
   const [timeRange, setTimeRange] = useState("all");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [customStartDate, setCustomStartDate] = useState(null);
@@ -40,6 +43,8 @@ export default function Orders() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedFeeIds, setSelectedFeeIds] = useState([]);
+  const [selectedDepositIds, setSelectedDepositIds] = useState([]);
 
   const queryClient = useQueryClient();
 
@@ -81,6 +86,26 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["order-fees"] });
       queryClient.invalidateQueries({ queryKey: ["fees"] });
       setSelectedIds([]);
+    },
+  });
+
+  const bulkDeleteFeesMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all(ids.map(id => base44.entities.Fee.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      setSelectedFeeIds([]);
+    },
+  });
+
+  const bulkDeleteDepositsMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all(ids.map(id => base44.entities.Transfer.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      setSelectedDepositIds([]);
     },
   });
 
@@ -149,6 +174,64 @@ export default function Orders() {
   
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
 
+  // Filter fees from active imports only
+  const activeFees = useMemo(() => {
+    return fees.filter(fee => {
+      if (!fee.import_id) return true;
+      const feeImport = etsyStatementImports.find(imp => imp.id === fee.import_id);
+      return !feeImport || feeImport.status !== 'replaced';
+    });
+  }, [fees, etsyStatementImports]);
+
+  const filteredFees = useMemo(() => {
+    let filtered = activeFees;
+
+    if (timeRange !== "all" && dateRange) {
+      filtered = filtered.filter(f => {
+        const date = new Date(f.transaction_date);
+        return date >= dateRange.start && date <= dateRange.end;
+      });
+    }
+
+    return filtered.filter(fee => {
+      const matchesSearch = !feeSearch || 
+        fee.description?.toLowerCase().includes(feeSearch.toLowerCase()) ||
+        fee.order_id?.toLowerCase().includes(feeSearch.toLowerCase());
+      
+      const matchesType = feeTypeFilter === "all" || fee.fee_type === feeTypeFilter;
+      
+      return matchesSearch && matchesType;
+    });
+  }, [activeFees, feeSearch, feeTypeFilter, dateRange, timeRange]);
+
+  const etsyDeposits = useMemo(() => {
+    let deposits = transfers.filter(t => t.type === "etsy_deposit");
+
+    if (timeRange !== "all" && dateRange) {
+      deposits = deposits.filter(d => {
+        const date = new Date(d.date);
+        return date >= dateRange.start && date <= dateRange.end;
+      });
+    }
+
+    return deposits;
+  }, [transfers, dateRange, timeRange]);
+
+  const totalAllFees = filteredFees.reduce((sum, f) => sum + Math.abs(f.amount || 0), 0);
+  const totalDeposits = etsyDeposits.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+  const feeTypeLabels = {
+    listing: "Listing Fee",
+    transaction: "Transaction Fee",
+    processing: "Processing Fee",
+    share_save_credit: "Share & Save Credit",
+    other_fee: "Other Fee",
+    etsy_ads: "Etsy Ads",
+    offsite_ads: "Offsite Ads",
+    shipping_label: "Shipping Label",
+    other_postage: "Other Postage",
+  };
+
   const getPeriodLabel = () => {
     if (timeRange === "all") return "All Orders";
     if (customStartDate && customEndDate) {
@@ -206,6 +289,148 @@ export default function Orders() {
       bulkDeleteMutation.mutate(selectedIds);
     }
   };
+
+  const toggleSelectAllFees = () => {
+    if (selectedFeeIds.length === filteredFees.length) {
+      setSelectedFeeIds([]);
+    } else {
+      setSelectedFeeIds(filteredFees.map(f => f.id));
+    }
+  };
+
+  const toggleSelectFee = (id) => {
+    setSelectedFeeIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllDeposits = () => {
+    if (selectedDepositIds.length === etsyDeposits.length) {
+      setSelectedDepositIds([]);
+    } else {
+      setSelectedDepositIds(etsyDeposits.map(d => d.id));
+    }
+  };
+
+  const toggleSelectDeposit = (id) => {
+    setSelectedDepositIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteFees = () => {
+    if (window.confirm(`Delete ${selectedFeeIds.length} fee(s)?`)) {
+      bulkDeleteFeesMutation.mutate(selectedFeeIds);
+    }
+  };
+
+  const handleBulkDeleteDeposits = () => {
+    if (window.confirm(`Delete ${selectedDepositIds.length} deposit(s)?`)) {
+      bulkDeleteDepositsMutation.mutate(selectedDepositIds);
+    }
+  };
+
+  const feeColumns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedFeeIds.length === filteredFees.length && filteredFees.length > 0}
+          onChange={toggleSelectAllFees}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedFeeIds.includes(row.id)}
+          onChange={() => toggleSelectFee(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
+    {
+      header: "Date",
+      render: (row) => row.transaction_date || "—",
+    },
+    {
+      header: "Order ID",
+      render: (row) => (
+        <div className="max-w-32 truncate">
+          {row.order_id ? (
+            <span className="text-blue-600">#{row.order_id}</span>
+          ) : (
+            <span className="text-stone-400">—</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Fee Type",
+      render: (row) => (
+        <span className="text-sm">
+          {feeTypeLabels[row.fee_type] || row.fee_type}
+        </span>
+      ),
+    },
+    {
+      header: "Description",
+      render: (row) => (
+        <div className="max-w-xs truncate text-stone-600 text-sm">
+          {row.description || "—"}
+        </div>
+      ),
+    },
+    {
+      header: "Amount",
+      render: (row) => (
+        <span className={`font-semibold ${row.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+          {formatCurrency(row.amount || 0)}
+        </span>
+      ),
+    },
+  ];
+
+  const depositColumns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedDepositIds.length === etsyDeposits.length && etsyDeposits.length > 0}
+          onChange={toggleSelectAllDeposits}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedDepositIds.includes(row.id)}
+          onChange={() => toggleSelectDeposit(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+    },
+    {
+      header: "Date",
+      render: (row) => row.date || "—",
+    },
+    {
+      header: "Description",
+      render: (row) => (
+        <div className="text-stone-600">
+          {row.notes || "Etsy Deposit"}
+        </div>
+      ),
+    },
+    {
+      header: "Amount",
+      render: (row) => (
+        <span className="font-semibold text-emerald-600">
+          {formatCurrency(row.amount || 0)}
+        </span>
+      ),
+    },
+  ];
 
   const columns = [
     {
@@ -323,7 +548,7 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Etsy Orders" description={getPeriodLabel()}>
+      <PageHeader title="Etsy" description={getPeriodLabel()}>
         <div className="flex gap-2 flex-wrap items-center">
           {/* Time Range Buttons */}
           <div className="flex gap-2 items-center">
@@ -448,8 +673,30 @@ export default function Orders() {
         </div>
       </PageHeader>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Helper Text */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-900 mb-2">
+          <strong>📊 How to import:</strong>
+        </p>
+        <ol className="text-sm text-blue-900 space-y-1 ml-4 list-decimal">
+          <li>Go to Etsy → Shop Manager → Finances → Payment Account</li>
+          <li>Select a month and click "Download CSV" (not PDF)</li>
+          <li>Click "Import Etsy Statement" above and upload the CSV file</li>
+          <li>All orders, fees, deposits automatically populate throughout the app</li>
+        </ol>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="fees">Fees & Charges</TabsTrigger>
+          <TabsTrigger value="deposits">Deposits</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="orders" className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -583,57 +830,193 @@ export default function Orders() {
         </Card>
       </div>
 
-      {/* Bulk Actions */}
-      {selectedIds.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-sm font-medium text-emerald-900">
-            {selectedIds.length} order{selectedIds.length !== 1 ? "s" : ""} selected
-          </p>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleBulkDelete}
-            disabled={bulkDeleteMutation.isPending}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete Selected
-          </Button>
-        </div>
-      )}
+          {/* Bulk Actions */}
+          {selectedIds.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-900">
+                {selectedIds.length} order{selectedIds.length !== 1 ? "s" : ""} selected
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-        <Input
-          placeholder="Search by order ID or buyer..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <Input
+              placeholder="Search by order ID or buyer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-      {/* Table */}
-      {etsyOrders.length === 0 && !ordersLoading ? (
-        <EmptyState
-          icon={ShoppingBag}
-          title="No orders imported"
-          description="Import your Etsy Sold Orders CSV to view them here."
-          actionLabel="Import Orders"
-          onAction={() => setImportDialogOpen(true)}
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={filteredOrders}
-          isLoading={ordersLoading}
-          emptyMessage="No orders match your filters"
-        />
-      )}
+          {/* Table */}
+          {etsyOrders.length === 0 && !ordersLoading ? (
+            <EmptyState
+              icon={ShoppingBag}
+              title="No orders imported"
+              description="Import your Etsy Monthly Statement to view orders here."
+              actionLabel="Import Statement"
+              onAction={() => setImportDialogOpen(true)}
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={filteredOrders}
+              isLoading={ordersLoading}
+              emptyMessage="No orders match your filters"
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="fees" className="space-y-6">
+          {/* Summary Card */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-100 rounded-lg">
+                  <CreditCard className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-stone-500">Total Fees & Charges</p>
+                  <p className="text-2xl font-bold text-stone-900">
+                    {formatCurrency(totalAllFees)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bulk Actions */}
+          {selectedFeeIds.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-900">
+                {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} selected
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteFees}
+                disabled={bulkDeleteFeesMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="flex gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <Input
+                placeholder="Search by order ID or description..."
+                value={feeSearch}
+                onChange={(e) => setFeeSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select value={feeTypeFilter} onValueChange={setFeeTypeFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Fee Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Fee Types</SelectItem>
+                {Object.keys(feeTypeLabels).map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {feeTypeLabels[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Table */}
+          {fees.length === 0 && !feesLoading ? (
+            <EmptyState
+              icon={CreditCard}
+              title="No fees imported"
+              description="Import an Etsy Monthly Statement to view fees, ads, and shipping charges."
+              actionLabel="Import Statement"
+              onAction={() => setImportDialogOpen(true)}
+            />
+          ) : (
+            <DataTable
+              columns={feeColumns}
+              data={filteredFees}
+              isLoading={feesLoading}
+              emptyMessage="No fees match your filters"
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="deposits" className="space-y-6">
+          {/* Summary Card */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-100 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-stone-500">Total Deposits</p>
+                  <p className="text-2xl font-bold text-stone-900">
+                    {formatCurrency(totalDeposits)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bulk Actions */}
+          {selectedDepositIds.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-900">
+                {selectedDepositIds.length} deposit{selectedDepositIds.length !== 1 ? "s" : ""} selected
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteDeposits}
+                disabled={bulkDeleteDepositsMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+
+          {/* Table */}
+          {etsyDeposits.length === 0 ? (
+            <EmptyState
+              icon={DollarSign}
+              title="No deposits recorded"
+              description="Deposits are tracked separately as cashflow, not revenue."
+            />
+          ) : (
+            <DataTable
+              columns={depositColumns}
+              data={etsyDeposits}
+              emptyMessage="No deposits for selected period"
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
       <UnifiedEtsyStatementImport
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
-      </div>
-      );
-      }
+    </div>
+  );
+}
