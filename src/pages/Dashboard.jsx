@@ -48,6 +48,7 @@ import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
+import EtsyAnalyticsDashboard from "@/components/analytics/EtsyAnalyticsDashboard";
 // xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
@@ -481,6 +482,10 @@ export default function Dashboard() {
             <BarChart3 className="w-4 h-4 mr-2" />
             Actuals
           </TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Etsy Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8 mt-6">
@@ -642,30 +647,34 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="budget" className="mt-6">
-          {/* Reconciliation Warning */}
-          <div className="mb-6">
-            <ReconciliationWarning
-              dashboardTotal={metrics.totalExpenses}
-              netProfitTotal={financialData.totalExpenses}
-              actualsTotal={financialData.totalExpenses}
-              periodLabel={getPeriodLabel()}
-            />
-          </div>
-          
-          <ActualsSpendingMatrix
-            dateRange={dateRange}
-            viewMode={timeRange}
-            etsyOrders={etsyOrders}
-            customSales={customSales}
-            businessExpenses={businessExpenses}
-            transfers={transfers}
-            materialPurchases={materialPurchases}
-            etsyLedgerEntries={etsyLedgerEntries}
-            orderFees={orderFees}
-            expenses={expenses}
-          />
+           {/* Reconciliation Warning */}
+           <div className="mb-6">
+             <ReconciliationWarning
+               dashboardTotal={metrics.totalExpenses}
+               netProfitTotal={financialData.totalExpenses}
+               actualsTotal={financialData.totalExpenses}
+               periodLabel={getPeriodLabel()}
+             />
+           </div>
+
+           <ActualsSpendingMatrix
+             dateRange={dateRange}
+             viewMode={timeRange}
+             etsyOrders={etsyOrders}
+             customSales={customSales}
+             businessExpenses={businessExpenses}
+             transfers={transfers}
+             materialPurchases={materialPurchases}
+             etsyLedgerEntries={etsyLedgerEntries}
+             orderFees={orderFees}
+             expenses={expenses}
+           />
         </TabsContent>
-      </Tabs>
+
+        <TabsContent value="analytics" className="mt-6">
+          <EtsyAnalyticsDashboard />
+        </TabsContent>
+        </Tabs>
 
       {/* Dialogs */}
       <CustomSaleDialog
