@@ -131,7 +131,7 @@ export default function CustomersPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       <PageHeader
         title="Customers"
         description="Manage customer contacts and view their quote and order history"
@@ -142,8 +142,8 @@ export default function CustomersPage() {
         </Button>
       </PageHeader>
 
-      <Card className="flex-1 flex flex-col">
-        <CardContent className="p-0 flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col overflow-hidden">
+        <CardContent className="p-0 flex-1 overflow-y-auto">
            {customers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 mx-auto text-stone-300 mb-3" />
