@@ -22,6 +22,7 @@ const navItems = [
   { name: "Quotes", icon: FileText, page: "Quotes" },
   { name: "Production", icon: Wrench, page: "Production" },
   { name: "Etsy", icon: ShoppingBag, page: "Orders" },
+  { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
   { name: "Products", icon: Package, page: "Products" },
   { name: "Inventory", icon: Layers, page: "Inventory" },
   { name: "Expenses", icon: Receipt, page: "Expenses" },
