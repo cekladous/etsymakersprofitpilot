@@ -189,8 +189,10 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       };
       
-      // Get all existing statement lines to check for duplicates (only for current user)
+      // Get owner_user_id from authenticated user
       const currentUser = await base44.auth.me();
+      
+      // Get all existing statement lines to check for duplicates (only for current user)
       const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
       const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
       
@@ -405,10 +407,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         const fileHash = generateFileHash(jsonData);
         
         // Check for duplicate file (only for current user)
-        const currentUser = await base44.auth.me();
         const existingImports = await base44.entities.EtsyStatementImport.filter({ 
           file_hash: fileHash,
-          owner_user_id: currentUser.id
+          owner_user_id: user.id
         });
         if (existingImports.length > 0) {
           const existing = existingImports[0];
