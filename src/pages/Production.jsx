@@ -1,18 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
+import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
 import JobDetailSheet from "@/components/jobs/JobDetailSheet";
 import JobKanbanView from "@/components/jobs/JobKanbanView";
+import JobSpreadsheetView from "@/components/jobs/JobSpreadsheetView";
+import JobFormDialog from "@/components/jobs/JobFormDialog";
 import ProductionEntryDialog from "@/components/quotes/ProductionEntryDialog";
 import { format } from "date-fns";
-import { Wrench, TrendingUp, DollarSign } from "lucide-react";
+import { Wrench, TrendingUp, DollarSign, Plus, Search, List, LayoutGrid, TableIcon, MoreHorizontal, CheckCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ProductionPage() {
   const { user, loading } = useAuth();
