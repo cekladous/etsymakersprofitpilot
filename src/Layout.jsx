@@ -75,8 +75,8 @@ export default function Layout({ children, currentPageName }) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 flex-shrink-0">
-          <Link to={createPageUrl("Welcome")} className="font-bold text-xl text-stone-900 tracking-tight hover:text-emerald-600 transition-colors">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 flex-shrink-0 gap-2">
+          <Link to={createPageUrl("Welcome")} className="font-bold text-lg text-stone-900 tracking-tight hover:text-emerald-600 transition-colors flex-1 min-w-0">
             Etsy Maker's Profit Pilot
           </Link>
           <button
