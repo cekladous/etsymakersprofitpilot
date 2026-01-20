@@ -149,21 +149,55 @@ export function aggregateFinancials(data, dateRange) {
   const totalRevenue = (totalEtsySales - etsyRefunds) + customSaleA + customSaleB;
 
   // ==================== B) SELLING EXPENSES ====================
-  
+
   /**
-   * Helper to match ledger rows by keywords (case-insensitive, wildcard)
+   * Calculate confidence score for ledger matching (0-100)
+   * Prevents false positives from overly broad keyword matches
    */
-  const matchLedgerRows = (keywords) => {
+  const calculateMatchConfidence = (entry, keywords) => {
+    const title = (entry.title || "").toLowerCase();
+    const type = (entry.type || "").toLowerCase();
+    const info = (entry.info || "").toLowerCase();
+    const combined = `${type} ${title} ${info}`;
+
+    // Find matching keyword and its specificity
+    let bestScore = 0;
+    for (const kw of keywords) {
+      const pattern = kw.toLowerCase().replace("*", "");
+      if (!combined.includes(pattern)) continue;
+
+      // Confidence scoring:
+      // - Exact match in type field: 100%
+      // - Exact match in title field: 90%
+      // - Exact match in info field: 70%
+      // - Longer keywords = higher confidence (less broad)
+      const typeMatch = type.includes(pattern);
+      const titleMatch = title.includes(pattern);
+      const infoMatch = info.includes(pattern);
+
+      let score = 0;
+      if (typeMatch) score = Math.max(score, 100);
+      else if (titleMatch) score = Math.max(score, 90);
+      else if (infoMatch) score = Math.max(score, 70);
+
+      // Boost confidence for longer, more specific keywords
+      const lengthBoost = Math.min(pattern.length / 30 * 10, 10);
+      score = Math.min(100, score + lengthBoost);
+
+      bestScore = Math.max(bestScore, score);
+    }
+
+    return bestScore;
+  };
+
+  /**
+   * Helper to match ledger rows by keywords with confidence threshold
+   * Returns entries with confidence >= 80% by default
+   */
+  const matchLedgerRows = (keywords, minConfidence = 80) => {
     return periodLedgerEntries.filter(e => {
-      const title = (e.title || "").toLowerCase();
-      const type = (e.type || "").toLowerCase();
-      const info = (e.info || "").toLowerCase();
-      const combined = `${type} ${title} ${info}`;
-      
-      return keywords.some(kw => {
-        const pattern = kw.toLowerCase().replace("*", "");
-        return combined.includes(pattern);
-      });
+      const confidence = calculateMatchConfidence(e, keywords);
+      return confidence >= minConfidence;
     });
   };
 
