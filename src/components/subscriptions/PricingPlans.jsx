@@ -59,8 +59,11 @@ export default function PricingPlans({ currentPlan, onSelectPlan }) {
     
     setLoading(planId);
     try {
-      await base44.functions.invoke('createSquareCheckout', { planId });
-      onSelectPlan(planId);
+      const response = await base44.functions.invoke('createSquareCheckout', { planId });
+      // Redirect to checkout page
+      if (response.data?.checkoutUrl) {
+        window.location.href = response.data.checkoutUrl;
+      }
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Error starting checkout: ' + error.message);
