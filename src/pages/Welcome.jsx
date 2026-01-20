@@ -73,6 +73,26 @@ export default function Welcome() {
 
   const userName = getFirstName();
 
+  const encouragingQuotes = [
+    "Your creativity is your superpower. Keep making magic!",
+    "Every masterpiece starts with a single cut. You've got this!",
+    "Success is the sum of small efforts, repeated day in and day out.",
+    "The only way to do great work is to love what you do.",
+    "Your passion is your profit. Keep creating with purpose!",
+    "Dream big, work hard, stay focused. Your vision matters!",
+    "Today's challenges are tomorrow's success stories.",
+    "Innovation distinguishes between a leader and a follower.",
+    "Quality is not an act, it's a habit. Keep crafting excellence!",
+    "Your next breakthrough is just one project away.",
+    "Believe in your craft. Your hands create what your heart imagines.",
+    "Progress over perfection. Every cut brings you closer!",
+    "The best time to start was yesterday. The next best time is now.",
+    "Your unique perspective is what makes your work irreplaceable.",
+    "Stay curious, stay creative, stay committed to your craft."
+  ];
+
+  const quoteOfTheDay = encouragingQuotes[new Date().getDate() % encouragingQuotes.length];
+
   const quickActions = [
   {
     icon: Users,
@@ -216,14 +236,14 @@ export default function Welcome() {
             <div className="flex items-center justify-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-amber-400" />
               <span className="text-sm font-medium text-amber-400 uppercase tracking-wide">
-                Maker Mantra
+                Quote of the Day
               </span>
             </div>
             <blockquote className="text-2xl md:text-3xl text-stone-100 font-light italic mb-4">
-              "Measure twice, cut once, profit always."
+              "{quoteOfTheDay}"
             </blockquote>
             <p className="text-xs text-stone-400 uppercase tracking-widest">
-              The MakerLedger Way
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </CardContent>
         </Card>
