@@ -28,6 +28,7 @@ import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import CSVImporter from "@/components/shared/CSVImporter";
 import ExpenseFormDialog from "@/components/expenses/ExpenseFormDialog";
+import RefundConflictWarning from "@/components/reconciliation/RefundConflictWarning";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
@@ -125,6 +126,18 @@ export default function Expenses() {
     queryKey: ["etsy-ledger-entries", user?.id],
     enabled: !!user,
     queryFn: () => base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000),
+  });
+
+  const { data: etsyStatementLines = [] } = useQuery({
+    queryKey: ["etsy-statement-lines", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }),
+  });
+
+  const { data: etsyStatementImports = [] } = useQuery({
+    queryKey: ["etsy-statement-imports", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }),
   });
 
   const deleteMutation = useMutation({
@@ -1086,6 +1099,16 @@ export default function Expenses() {
         description="Upload your bank or credit card statement CSV. Duplicates will be skipped."
         onImport={handleImport}
       />
+
+      {/* Refund Conflict Warning */}
+      {formOpen && editingExpense?.order_id && (
+        <RefundConflictWarning
+          etsyOrders={etsyOrders}
+          etsyStatementLines={etsyStatementLines}
+          etsyStatementImports={etsyStatementImports}
+          orderIdBeingEdited={editingExpense.order_id}
+        />
+      )}
 
       <ExpenseFormDialog
         open={formOpen}
