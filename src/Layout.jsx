@@ -20,6 +20,7 @@ const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
   { name: "Customers", icon: Users, page: "Customers" },
   { name: "Quotes", icon: FileText, page: "Quotes" },
+  { name: "Production", icon: Wrench, page: "Production" },
   { name: "Etsy", icon: ShoppingBag, page: "Orders" },
   { name: "Products", icon: Package, page: "Products" },
   { name: "Inventory", icon: Layers, page: "Inventory" },
