@@ -53,7 +53,9 @@ export default function Layout({ children, currentPageName }) {
         >
           <Menu className="w-6 h-6 text-stone-700" />
         </button>
-        <span className="ml-4 font-semibold text-stone-900 text-lg">MakerLedger</span>
+        <Link to={createPageUrl("Welcome")} className="ml-4 font-semibold text-stone-900 text-lg hover:text-emerald-600 transition-colors">
+          MakerLedger
+        </Link>
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -71,7 +73,9 @@ export default function Layout({ children, currentPageName }) {
         }`}
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100">
-          <span className="font-bold text-xl text-stone-900 tracking-tight">MakerLedger</span>
+          <Link to={createPageUrl("Welcome")} className="font-bold text-xl text-stone-900 tracking-tight hover:text-emerald-600 transition-colors">
+            MakerLedger
+          </Link>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-1 hover:bg-stone-100 rounded-lg"
