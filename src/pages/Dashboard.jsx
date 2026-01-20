@@ -51,7 +51,7 @@ import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
 
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
-import BudgetVsActualCard from "@/components/dashboard/BudgetVsActualCard";
+
 // xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
@@ -704,11 +704,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Product Profitability & Budget Comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ProductProfitabilityChart financialData={financialData} dateRange={dateRange} />
-          <BudgetVsActualCard dateRange={dateRange} />
-        </div>
+        {/* Product Profitability */}
+         <ProductProfitabilityChart financialData={financialData} dateRange={dateRange} />
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-6 mt-6">
