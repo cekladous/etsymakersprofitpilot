@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
+import BulkQuoteActions from "@/components/quotes/BulkQuoteActions";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { format } from "date-fns";
 
@@ -205,6 +206,14 @@ export default function QuotesPage() {
           New Quote
         </Button>
       </PageHeader>
+
+      {selectedQuotes.length > 0 && (
+        <BulkQuoteActions 
+          selectedQuotes={selectedQuotes} 
+          quotes={quotes}
+          settings={settings}
+        />
+      )}
 
       <Card>
         <CardContent className="p-0">

@@ -50,6 +50,8 @@ import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
 import EtsyAnalyticsDashboard from "@/components/analytics/EtsyAnalyticsDashboard";
+import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
+import BudgetVsActualCard from "@/components/dashboard/BudgetVsActualCard";
 // xlsx imported dynamically in handleExport
 
 export default function Dashboard() {
@@ -686,6 +688,12 @@ export default function Dashboard() {
           <div>
             <ProfitCalculatorWidget />
           </div>
+        </div>
+
+        {/* Product Profitability & Budget Comparison */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProductProfitabilityChart financialData={financialData} dateRange={dateRange} />
+          <BudgetVsActualCard dateRange={dateRange} />
         </div>
         </TabsContent>
 
