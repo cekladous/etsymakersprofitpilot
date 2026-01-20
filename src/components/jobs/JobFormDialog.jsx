@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
 export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     job_number: "",
     order_ids: [],
@@ -163,6 +165,7 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
               if (inventoryItem) {
                 // Create usage transaction
                 await base44.entities.InventoryTransaction.create({
+                  owner_user_id: user.id,
                   inventory_item_id: inventoryItem.id,
                   transaction_date: new Date().toISOString().split("T")[0],
                   transaction_type: "usage",
@@ -190,7 +193,7 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
       }
       
       // Create new job
-      const result = await base44.entities.Job.create(payload);
+      const result = await base44.entities.Job.create({ ...payload, owner_user_id: user.id });
       
       // Link orders
       for (const orderId of data.order_ids) {
@@ -215,6 +218,7 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
             
             if (inventoryItem) {
               await base44.entities.InventoryTransaction.create({
+                owner_user_id: user.id,
                 inventory_item_id: inventoryItem.id,
                 transaction_date: new Date().toISOString().split("T")[0],
                 transaction_type: "usage",

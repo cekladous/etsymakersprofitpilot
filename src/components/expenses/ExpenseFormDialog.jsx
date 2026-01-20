@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ const CATEGORIES = [
 ];
 
 export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     date: "",
     description: "",
@@ -84,7 +86,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
       if (expense) {
         return base44.entities.Expense.update(expense.id, payload);
       }
-      return base44.entities.Expense.create(payload);
+      return base44.entities.Expense.create({ ...payload, owner_user_id: user.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ import {
 import { Loader2 } from "lucide-react";
 
 export default function ProductFormDialog({ open, onOpenChange, product, materialTypes, onClose }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     sku: "",
     name: "",
@@ -74,7 +76,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, materia
       if (product) {
         return base44.entities.Product.update(product.id, payload);
       }
-      return base44.entities.Product.create(payload);
+      return base44.entities.Product.create({ ...payload, owner_user_id: user.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });

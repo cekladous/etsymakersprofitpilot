@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ const generateQuoteNumber = () => {
 };
 
 export default function QuoteFormDialog({ open, onOpenChange, quote }) {
+  const { user } = useAuth();
   const [currency, setCurrency] = useState("USD");
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -293,7 +295,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
       if (quote) {
         return base44.entities.Quote.update(quote.id, data);
       } else {
-        return base44.entities.Quote.create(data);
+        return base44.entities.Quote.create({ ...data, owner_user_id: user.id });
       }
     },
     onSuccess: () => {
@@ -307,6 +309,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     mutationFn: async () => {
       const grandTotal = calculateGrandTotal();
       const order = await base44.entities.Order.create({
+        owner_user_id: user.id,
         channel: "custom",
         order_id: `QUOTE-${formData.quote_number}`,
         sale_date: new Date().toISOString().split("T")[0],
@@ -486,7 +489,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                       disabled={!newCustomerData.name || isCreatingCustomer}
                       onClick={async () => {
                         setIsCreatingCustomer(true);
-                        const customer = await base44.entities.Customer.create(newCustomerData);
+                        const customer = await base44.entities.Customer.create({ ...newCustomerData, owner_user_id: user.id });
                         queryClient.invalidateQueries({ queryKey: ["customers"] });
                         setFormData({
                           ...formData,
