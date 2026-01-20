@@ -766,6 +766,7 @@ export default function Orders() {
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="fees">Fees & Charges</TabsTrigger>
           <TabsTrigger value="deposits">Deposits</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
@@ -1071,6 +1072,10 @@ export default function Orders() {
                emptyMessage="No deposits for selected period"
              />
            )}
+         </TabsContent>
+
+         <TabsContent value="reconciliation" className="space-y-6">
+           <ReconciliationTab user={user} />
          </TabsContent>
       </Tabs>
 
