@@ -353,19 +353,28 @@ export default function Dashboard() {
     return format(selectedDate, "MMMM yyyy");
   };
 
-  const handleExport = () => {
-    const csv = [
-      ["Period", "Total Revenue", "Total Expenses", "Net Profit"],
-      [getPeriodLabel(), metrics.periodRevenue.toFixed(2), metrics.periodExpenses.toFixed(2), metrics.periodProfit.toFixed(2)]
-    ].map(row => row.join(",")).join("\n");
+  const handleExport = async (exportFormat) => {
+    try {
+      const response = await base44.functions.invoke('exportDashboardReport', {
+        format: exportFormat,
+        financialData,
+        settings: settings[0] || {},
+        periodLabel: getPeriodLabel()
+      });
 
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dashboard-${format(selectedDate, "yyyy-MM")}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      const blob = new Blob([response.data], {
+        type: exportFormat === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report_${format(selectedDate, "yyyy-MM")}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export report. Please try again.');
+    }
   };
 
   if (loading) {
@@ -382,7 +391,7 @@ export default function Dashboard() {
         title="Dashboard"
         description={getPeriodLabel()}>
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <div className="flex gap-2 items-center">
             {["month", "quarter", "year"].map((range) =>
             <Button
@@ -477,8 +486,30 @@ export default function Dashboard() {
               </div>
             </PopoverContent>
           </Popover>
-        </div>
-      </PageHeader>
+          </div>
+
+          <div className="h-6 w-px bg-stone-300 mx-2"></div>
+
+          <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handleExport('pdf')}
+            className="gap-2">
+            <Download className="w-4 h-4" />
+            PDF Report
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handleExport('xlsx')}
+            className="gap-2">
+            <Download className="w-4 h-4" />
+            Excel Report
+          </Button>
+          </div>
+          </div>
+          </PageHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-stone-100">
