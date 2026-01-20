@@ -64,7 +64,7 @@ export default function Welcome() {
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
   const pendingQuotes = quotes.filter((q) => q.status === "Draft" || q.status === "Sent").length;
 
-  const userName = settings?.user_name || user?.full_name?.split(" ")[0] || "Maker";
+  const userName = settings?.user_name || user?.full_name || "Maker";
 
   const quickActions = [
   {
