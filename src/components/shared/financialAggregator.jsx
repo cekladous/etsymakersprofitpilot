@@ -104,10 +104,10 @@ export function aggregateFinancials(data, dateRange) {
   // 3) Total Etsy Sales (includes tax for reporting)
   const totalEtsySales = etsySales + taxCollectedByEtsy;
   
-  // 4) Etsy Refunds - from orders (primary) + ledger (secondary for edge cases)
+  // 4) Etsy Refunds - CANONICAL: from orders (per-order data is most reliable)
   const refundsFromOrders = dedupedEtsyOrders.reduce((sum, o) => 
     sum + toNumber(o.refund_amount || 0), 0);
-  
+
   const etsyRefundsFromLedger = periodLedgerEntries
     .filter(e => {
       const title = (e.title || "").toLowerCase();
@@ -119,9 +119,18 @@ export function aggregateFinancials(data, dateRange) {
              title.includes("refund to buyer for vat");
     })
     .reduce((sum, e) => sum + Math.abs(toNumber(e.net)), 0);
-  
-  // Use order refunds first; only use ledger if orders don't have refunds
-  const etsyRefunds = refundsFromOrders || etsyRefundsFromLedger;
+
+  // ALWAYS use order refunds as canonical (they're per-order, more reliable)
+  // But warn if ledger refunds differ significantly
+  const etsyRefunds = refundsFromOrders;
+  const refundDifference = Math.abs(refundsFromOrders - etsyRefundsFromLedger);
+  const refundDifferencePercent = refundsFromOrders > 0 ? (refundDifference / refundsFromOrders) * 100 : 0;
+  if (refundDifference > 0.01 && refundDifferencePercent > 5) {
+    deduplicationWarnings.push(
+      `Refund discrepancy detected: Orders show $${refundsFromOrders.toFixed(2)}, ` +
+      `Ledger shows $${etsyRefundsFromLedger.toFixed(2)}. Using order refunds (canonical source).`
+    );
+  }
   
   // 5) Custom Sales A/B - use pre_tax_amount as revenue
   const customSaleA = periodCustomSales
