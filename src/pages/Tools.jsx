@@ -22,22 +22,10 @@ export default function Tools() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-4xl grid-cols-6">
+        <TabsList className="grid w-full max-w-4xl grid-cols-3">
           <TabsTrigger value="calculator" className="flex items-center gap-2">
             <Calculator className="w-4 h-4" />
             <span className="hidden sm:inline">Calculator</span>
-          </TabsTrigger>
-          <TabsTrigger value="nametag" className="flex items-center gap-2">
-            <Tag className="w-4 h-4" />
-            <span className="hidden sm:inline">Name Tags</span>
-          </TabsTrigger>
-          <TabsTrigger value="svg" className="flex items-center gap-2">
-            <FileImage className="w-4 h-4" />
-            <span className="hidden sm:inline">SVG</span>
-          </TabsTrigger>
-          <TabsTrigger value="raster" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
-            <span className="hidden sm:inline">Raster</span>
           </TabsTrigger>
           <TabsTrigger value="materials" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
@@ -51,18 +39,6 @@ export default function Tools() {
 
         <TabsContent value="calculator" className="mt-6">
           <CalculatorTool />
-        </TabsContent>
-
-        <TabsContent value="nametag" className="mt-6">
-          <NameTagGenerator />
-        </TabsContent>
-
-        <TabsContent value="svg" className="mt-6">
-          <SVGConverterTool />
-        </TabsContent>
-
-        <TabsContent value="raster" className="mt-6">
-          <RasterAssistantTool />
         </TabsContent>
 
         <TabsContent value="materials" className="mt-6">
