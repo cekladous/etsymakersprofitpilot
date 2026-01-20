@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Trash2, Download, Calendar } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Trash2, Download, Calendar, ShoppingBag } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -382,7 +382,7 @@ export default function CustomSales() {
             <CardTitle className="text-sm font-medium">Pre-Tax Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">${stats.pre税.toFixed(2)}</p>
+            <p className="text-2xl font-bold">${stats.preTax.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
