@@ -54,14 +54,8 @@ export default function Welcome() {
 
   const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
-    queryFn: async () => {
-      const results = await base44.entities.Settings.filter({ 
-        owner_user_id: user?.id,
-        setting_key: 'default'
-      });
-      return results;
-    },
-    enabled: !!user
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id })
   });
 
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
