@@ -55,7 +55,10 @@ export default function Welcome() {
   const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id })
+    queryFn: () => base44.entities.Settings.filter({ 
+      owner_user_id: user.id,
+      setting_key: 'default'
+    })
   });
 
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
@@ -63,7 +66,7 @@ export default function Welcome() {
 
   const getFirstName = () => {
     const userName = settings[0]?.user_name;
-    if (userName) return userName.split(" ")[0];
+    if (userName) return userName;
     if (!user?.full_name) return "Maker";
     return user.full_name.split(" ")[0];
   };
