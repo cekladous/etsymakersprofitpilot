@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
       if (order.customer?.name) {
         try {
           const existingCustomers = await base44.entities.Customer.filter({ 
+            owner_user_id: user.id,
             name: order.customer.name 
           });
           
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
             await base44.entities.Customer.update(existingCustomers[0].id, order.customer);
             result.customers_updated++;
           } else {
-            await base44.entities.Customer.create(order.customer);
+            await base44.entities.Customer.create({ ...order.customer, owner_user_id: user.id });
             result.customers_created++;
           }
         } catch (err) {
@@ -43,6 +44,7 @@ Deno.serve(async (req) => {
       }
 
       const existing = await base44.entities.EtsyOrder.filter({ 
+        owner_user_id: user.id,
         order_id: String(order.order_id).trim()
       });
 

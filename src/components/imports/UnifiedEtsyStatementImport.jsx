@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -160,6 +161,7 @@ const classifyStatementLine = (row) => {
 };
 
 export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedded = false }) {
+  const { user } = useAuth();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState(null);
   const [importResult, setImportResult] = useState(null);
@@ -200,8 +202,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const existingImports = await base44.entities.EtsyStatementImport.filter({ statement_month: statementMonth });
       let importRecord;
       
+      // Get owner_user_id from authenticated user
+      const currentUser = await base44.auth.me();
+      
       // Create new import record
       importRecord = await base44.entities.EtsyStatementImport.create({
+        owner_user_id: currentUser.id,
         import_id: `import_${Date.now()}`,
         statement_month: statementMonth,
         date_range_start: dateRangeStart,
@@ -223,19 +229,19 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
       // Import only new orders (upsert by order_id)
       await batchProcess(newOrders, 5, async (order) => {
-        const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id });
+        const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id, owner_user_id: currentUser.id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
           result.orders.updated++;
         } else {
-          await base44.entities.EtsyOrder.create(order);
+          await base44.entities.EtsyOrder.create({ ...order, owner_user_id: currentUser.id });
           result.orders.created++;
         }
       });
 
       // Import only new fees
       await batchProcess(newFees, 10, async (fee) => {
-        await base44.entities.Fee.create({ ...fee, import_id: importRecord.id });
+        await base44.entities.Fee.create({ ...fee, owner_user_id: currentUser.id, import_id: importRecord.id });
         result.fees.created++;
       });
 
@@ -277,17 +283,17 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // Create/update OrderFee records
       const orderFeeRecords = Object.values(orderFeeMap);
       await batchProcess(orderFeeRecords, 5, async (orderFee) => {
-        const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id });
+        const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id, owner_user_id: currentUser.id });
         if (existing.length > 0) {
           await base44.entities.OrderFee.update(existing[0].id, orderFee);
         } else {
-          await base44.entities.OrderFee.create(orderFee);
+          await base44.entities.OrderFee.create({ ...orderFee, owner_user_id: currentUser.id });
         }
       });
 
       // Import only new deposits as transfers
       await batchProcess(newDeposits, 5, async (deposit) => {
-        await base44.entities.Transfer.create(deposit);
+        await base44.entities.Transfer.create({ ...deposit, owner_user_id: currentUser.id });
         result.deposits.created++;
       });
 
@@ -303,6 +309,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       ];
       await batchProcess(newLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
+          owner_user_id: currentUser.id,
           import_id: importRecord.id,
           ...line
         });

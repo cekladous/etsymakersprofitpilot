@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Upload, AlertCircle, CheckCircle } from "lucide-react";
@@ -8,6 +9,7 @@ import { Download, Upload, AlertCircle, CheckCircle } from "lucide-react";
 const TEMPLATE_HEADERS = ["SKU", "Product Name", "Default Material", "Area per Unit (sq in)", "Laser Minutes per Unit", "Packaging Cost"];
 
 export default function BulkProductImportTool() {
+  const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState(null);
@@ -56,6 +58,7 @@ export default function BulkProductImportTool() {
       for (const row of rows) {
         try {
           await base44.entities.Product.create({
+            owner_user_id: user.id,
             sku: row["SKU"],
             name: row["Product Name"],
             default_material_id: row["Default Material"] || "",

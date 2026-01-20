@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Upload, AlertCircle, CheckCircle } from "lucide-react";
@@ -8,6 +9,7 @@ import { Download, Upload, AlertCircle, CheckCircle } from "lucide-react";
 const TEMPLATE_HEADERS = ["Material Name", "Quantity", "Reorder Level"];
 
 export default function BulkInventoryImportTool() {
+  const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState(null);
@@ -56,6 +58,7 @@ export default function BulkInventoryImportTool() {
       for (const row of rows) {
         try {
           await base44.entities.InventoryItem.create({
+            owner_user_id: user.id,
             material_name: row["Material Name"],
             quantity_on_hand: parseInt(row["Quantity"]) || 0,
             reorder_level: parseInt(row["Reorder Level"]) || 0,
