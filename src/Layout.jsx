@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import Footer from "@/components/Footer";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -119,7 +120,9 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
+
+      <Footer />
       </div>
-    </AuthProvider>
-  );
-}
+      </AuthProvider>
+      );
+      }
