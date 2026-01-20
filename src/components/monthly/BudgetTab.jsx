@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2 } from "lucide-react";
 import { startOfMonth, format, addMonths, startOfQuarter, startOfYear } from "date-fns";
-import * as XLSX from "xlsx";
 import { EXPENSE_CATEGORY_GROUPS } from "@/components/shared/expenseCategories";
 import LineItemDrillDown from "./LineItemDrillDown";
 
@@ -202,7 +201,8 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
     setDrillDownOpen(true);
   };
 
-  const handleExport = (fileType) => {
+  const handleExport = async (fileType) => {
+    const XLSX = (await import("xlsx")).default;
     const data = [];
     
     // Header row
