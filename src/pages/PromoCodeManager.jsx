@@ -31,11 +31,11 @@ export default function PromoCodeManager() {
 
   const { data: promoCodes } = useQuery({
     queryKey: ['promoCodes'],
-    queryFn: () => base44.asServiceRole.entities.PromoCode.list('-created_date')
+    queryFn: () => base44.entities.PromoCode.list('-created_date')
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.asServiceRole.entities.PromoCode.create(data),
+    mutationFn: (data) => base44.functions.invoke('createPromoCode', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['promoCodes'] });
       setOpen(false);
@@ -54,14 +54,14 @@ export default function PromoCodeManager() {
       toast.success('Promo code created');
     },
     onError: (err) => {
-      const message = err.message || 'Failed to create promo code';
+      const message = err.response?.data?.error || err.message || 'Failed to create promo code';
       setError(message);
       toast.error(message);
     }
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.asServiceRole.entities.PromoCode.delete(id),
+    mutationFn: (id) => base44.entities.PromoCode.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['promoCodes'] })
   });
 
