@@ -548,13 +548,13 @@ export default function Dashboard() {
             )}
           </div>
         </Link>
-        <Link to={createPageUrl("CustomSales")} className="block">
+        <div onClick={() => setActiveTab("summary")} className="cursor-pointer block transition-transform hover:scale-105">
           <div className="bg-white rounded-xl border border-stone-200 p-4 hover:shadow-md transition-shadow">
             <p className="text-xs font-semibold text-stone-600 uppercase">Custom Revenue</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">${financialData.revenue.customRevenueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p className="text-xs text-stone-500 mt-2">Direct sales & quotes</p>
+            <p className="text-xs text-stone-500 mt-2">View in Net Profit</p>
           </div>
-        </Link>
+        </div>
         <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl border border-emerald-200 p-4">
           <p className="text-xs font-semibold text-stone-600 uppercase">Total Revenue</p>
           <p className="text-2xl font-bold text-stone-900 mt-1">${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
