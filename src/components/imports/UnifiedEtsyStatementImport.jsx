@@ -233,13 +233,17 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       };
 
       // Import only new orders (upsert by order_id)
+      // Build a map of order_id -> EtsyOrder entity ID for later linking
+      const orderIdToEntityId = {};
       await batchProcess(newOrders, 5, async (order) => {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id, owner_user_id: currentUser.id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
+          orderIdToEntityId[order.order_id] = existing[0].id;
           result.orders.updated++;
         } else {
-          await base44.entities.EtsyOrder.create({ ...order, owner_user_id: currentUser.id });
+          const created = await base44.entities.EtsyOrder.create({ ...order, owner_user_id: currentUser.id });
+          orderIdToEntityId[order.order_id] = created.id;
           result.orders.created++;
         }
       });
@@ -325,12 +329,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save only new statement lines (including refunds)
+      // Save only new statement lines (including refunds) with source_etsy_order_id links
       const newLines = [
-        ...newOrders.map(o => o._rawLine), 
-        ...newFees.map(f => f._rawLine), 
+        ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })), 
+        ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })), 
         ...newDeposits.map(d => d._rawLine),
-        ...newRefunds.map(r => r._rawLine)
+        ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
       ];
       await batchProcess(newLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
