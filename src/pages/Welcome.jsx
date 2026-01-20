@@ -117,61 +117,69 @@ export default function Welcome() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-orange-50 rounded-lg">
-                  <Package className="w-5 h-5 text-orange-600" />
+          <Link to={createPageUrl("Products")}>
+            <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-orange-50 rounded-lg">
+                    <Package className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-stone-900">{products.length}</div>
+                    <div className="text-xs text-stone-500 uppercase tracking-wide">Products</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-stone-900">{products.length}</div>
-                  <div className="text-xs text-stone-500 uppercase tracking-wide">Products</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 rounded-lg">
-                  <Users className="w-5 h-5 text-blue-600" />
+          <Link to={createPageUrl("Customers")}>
+            <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-50 rounded-lg">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-stone-900">{customers.length}</div>
+                    <div className="text-xs text-stone-500 uppercase tracking-wide">Customers</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-stone-900">{customers.length}</div>
-                  <div className="text-xs text-stone-500 uppercase tracking-wide">Customers</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-purple-50 rounded-lg">
-                  <FileText className="w-5 h-5 text-purple-600" />
+          <Link to={createPageUrl("Quotes")}>
+            <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-purple-50 rounded-lg">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-stone-900">{pendingQuotes}</div>
+                    <div className="text-xs text-stone-500 uppercase tracking-wide">Pending Quotes</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-stone-900">{pendingQuotes}</div>
-                  <div className="text-xs text-stone-500 uppercase tracking-wide">Pending Quotes</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-50 rounded-lg">
-                  <ShoppingBag className="w-5 h-5 text-emerald-600" />
+          <Link to={createPageUrl("Jobs")}>
+            <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-50 rounded-lg">
+                    <ShoppingBag className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-stone-900">{activeJobs}</div>
+                    <div className="text-xs text-stone-500 uppercase tracking-wide">Active Jobs</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-stone-900">{activeJobs}</div>
-                  <div className="text-xs text-stone-500 uppercase tracking-wide">Active Jobs</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Quick Actions */}
