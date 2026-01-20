@@ -1,6 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, PackageX, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,14 +9,18 @@ import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 
 export default function LowStockNotifications() {
+  const { user } = useAuth();
+
   const { data: materialTypes = [] } = useQuery({
-    queryKey: ["materialTypes"],
-    queryFn: () => base44.entities.MaterialType.list(),
+    queryKey: ["materialTypes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }),
   });
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ["inventory-items"],
-    queryFn: () => base44.entities.InventoryItem.list(),
+    queryKey: ["inventory-items", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }),
   });
 
   // Check for low stock and out of stock items

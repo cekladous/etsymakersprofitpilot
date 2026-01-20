@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
@@ -37,6 +38,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 const COLORS = ["#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5"];
 
 export default function EtsyAnalyticsDashboard() {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("6months");
   const [customStartDate, setCustomStartDate] = useState(null);
   const [customEndDate, setCustomEndDate] = useState(null);
@@ -44,8 +46,9 @@ export default function EtsyAnalyticsDashboard() {
   const [selectedProduct, setSelectedProduct] = useState("all");
 
   const { data: etsyOrders = [] } = useQuery({
-    queryKey: ["etsy-orders"],
-    queryFn: () => base44.entities.EtsyOrder.list("-sale_date", 1000),
+    queryKey: ["etsy-orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyOrder.filter({ owner_user_id: user.id }, "-sale_date", 1000),
   });
 
   const formatCurrency = (amount) => {
