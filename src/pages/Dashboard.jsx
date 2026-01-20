@@ -49,7 +49,7 @@ import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
-import EtsyAnalyticsDashboard from "@/components/analytics/EtsyAnalyticsDashboard";
+
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
 import BudgetVsActualCard from "@/components/dashboard/BudgetVsActualCard";
 // xlsx imported dynamically in handleExport
@@ -523,10 +523,7 @@ export default function Dashboard() {
             <BarChart3 className="w-4 h-4 mr-2" />
             Actuals
           </TabsTrigger>
-          <TabsTrigger value="analytics">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Etsy Analytics
-          </TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8 mt-6">
@@ -751,9 +748,7 @@ export default function Dashboard() {
 
         </TabsContent>
 
-        <TabsContent value="analytics" className="mt-6">
-          <EtsyAnalyticsDashboard />
-        </TabsContent>
+
         </Tabs>
 
       {/* Dialogs */}
