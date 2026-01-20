@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ShoppingBag } from "lucide-react";
 
 export default function ConvertQuoteDialog({
   open,
@@ -17,6 +17,8 @@ export default function ConvertQuoteDialog({
   onConfirm,
   isPending,
 }) {
+  const [selectedChannel, setSelectedChannel] = useState("custom");
+
   if (!quote) return null;
 
   const grandTotal =
@@ -60,6 +62,36 @@ export default function ConvertQuoteDialog({
             </CardContent>
           </Card>
 
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-stone-700">Where should this order be recorded?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setSelectedChannel("etsy")}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  selectedChannel === "etsy"
+                    ? "border-blue-600 bg-blue-50"
+                    : "border-stone-200 bg-white hover:border-stone-300"
+                }`}
+              >
+                <ShoppingBag className={`w-5 h-5 mx-auto mb-2 ${selectedChannel === "etsy" ? "text-blue-600" : "text-stone-400"}`} />
+                <div className="text-sm font-semibold text-stone-900">Etsy Sales</div>
+                <div className="text-xs text-stone-500 mt-1">Etsy marketplace order</div>
+              </button>
+              <button
+                onClick={() => setSelectedChannel("custom")}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  selectedChannel === "custom"
+                    ? "border-emerald-600 bg-emerald-50"
+                    : "border-stone-200 bg-white hover:border-stone-300"
+                }`}
+              >
+                <ShoppingBag className={`w-5 h-5 mx-auto mb-2 ${selectedChannel === "custom" ? "text-emerald-600" : "text-stone-400"}`} />
+                <div className="text-sm font-semibold text-stone-900">Custom Sales</div>
+                <div className="text-xs text-stone-500 mt-1">Non-Etsy order</div>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800 space-y-2">
             <div className="flex gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -88,7 +120,7 @@ export default function ConvertQuoteDialog({
           <Button
             type="button"
             disabled={isPending}
-            onClick={onConfirm}
+            onClick={() => onConfirm(selectedChannel)}
             className="flex-1 bg-emerald-600 hover:bg-emerald-700"
           >
             {isPending ? "Converting..." : "Convert to Order"}
