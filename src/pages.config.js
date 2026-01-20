@@ -1,6 +1,5 @@
 import Customers from './pages/Customers';
 import Dashboard from './pages/Dashboard';
-import EtsyActivity from './pages/EtsyActivity';
 import Expenses from './pages/Expenses';
 import Fees from './pages/Fees';
 import Inventory from './pages/Inventory';
@@ -18,7 +17,6 @@ import __Layout from './Layout.jsx';
 export const PAGES = {
     "Customers": Customers,
     "Dashboard": Dashboard,
-    "EtsyActivity": EtsyActivity,
     "Expenses": Expenses,
     "Fees": Fees,
     "Inventory": Inventory,
