@@ -53,13 +53,11 @@ export default function Welcome() {
   });
 
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings", user?.id],
+    queryKey: ["settings"],
     enabled: !!user,
     staleTime: 0,
     cacheTime: 0,
-    queryFn: () => base44.entities.Settings.filter({ 
-      owner_user_id: user.id
-    })
+    queryFn: () => base44.entities.Settings.list()
   });
 
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
