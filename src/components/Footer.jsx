@@ -158,9 +158,6 @@ export default function Footer() {
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div>
               <p className="font-semibold text-stone-200 mb-2">Built by Etsy Maker's Profit Pilot</p>
-              <p className="text-xs">
-                Disclosure: We use affiliate links throughout the site. If you make a purchase using a link on this site, we may receive a small commission at no cost to you.
-              </p>
             </div>
             <div className="flex flex-wrap gap-4 md:justify-end">
               <button
