@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
 import Checkout from './pages/Checkout';
+import PromoCodeManager from './pages/PromoCodeManager';
 import __Layout from './Layout.jsx';
 
 
@@ -28,6 +29,7 @@ export const PAGES = {
     "Tools": Tools,
     "Welcome": Welcome,
     "Checkout": Checkout,
+    "PromoCodeManager": PromoCodeManager,
 }
 
 export const pagesConfig = {
