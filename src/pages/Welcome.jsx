@@ -55,6 +55,8 @@ export default function Welcome() {
   const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
     enabled: !!user,
+    staleTime: 0,
+    cacheTime: 0,
     queryFn: () => base44.entities.Settings.filter({ 
       owner_user_id: user.id,
       setting_key: 'default'
