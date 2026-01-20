@@ -424,7 +424,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     reader.onload = async (e) => {
       try {
          console.log("File loaded, parsing...");
-         const XLSX = (await import("xlsx")).default;
+         const XLSX = await import("xlsx");
          const data = new Uint8Array(e.target.result);
          const workbook = XLSX.read(data, { type: "array" });
          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
