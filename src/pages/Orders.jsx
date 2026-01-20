@@ -1073,6 +1073,10 @@ export default function Orders() {
              />
            )}
          </TabsContent>
+
+         <TabsContent value="reconciliation" className="space-y-6">
+           <ReconciliationTab user={user} />
+         </TabsContent>
       </Tabs>
 
       <UnifiedEtsyImportHub
