@@ -26,19 +26,6 @@ export default function PromoCodeManager() {
   });
   const [copied, setCopied] = useState(null);
 
-  // Check if user is admin
-  if (user?.role !== 'admin') {
-    return (
-      <div className="p-8">
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <p className="text-amber-800">Only admins can manage promo codes.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const { data: promoCodes } = useQuery({
     queryKey: ['promoCodes'],
     queryFn: () => base44.asServiceRole.entities.PromoCode.list('-created_date')
@@ -66,6 +53,19 @@ export default function PromoCodeManager() {
     mutationFn: (id) => base44.asServiceRole.entities.PromoCode.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['promoCodes'] })
   });
+
+  // Check if user is admin
+  if (user?.role !== 'admin') {
+    return (
+      <div className="p-8">
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <p className="text-amber-800">Only admins can manage promo codes.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleCreate = () => {
     createMutation.mutate({
