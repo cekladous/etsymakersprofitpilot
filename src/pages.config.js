@@ -7,9 +7,9 @@ import Orders from './pages/Orders';
 import Production from './pages/Production';
 import Products from './pages/Products';
 import Quotes from './pages/Quotes';
+import Settings from './pages/Settings';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
-import Settings from './pages/Settings';
 import __Layout from './Layout.jsx';
 
 
@@ -23,9 +23,9 @@ export const PAGES = {
     "Production": Production,
     "Products": Products,
     "Quotes": Quotes,
+    "Settings": Settings,
     "Tools": Tools,
     "Welcome": Welcome,
-    "Settings": Settings,
 }
 
 export const pagesConfig = {
