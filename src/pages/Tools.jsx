@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, Zap, Settings as SettingsIcon, Database, Tag, FileImage } from "lucide-react";
+import { Calculator, Zap, Settings as SettingsIcon, Database, Tag, FileImage, CreditCard } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
 // Import tool components
@@ -13,6 +13,7 @@ import SettingsTool from "@/components/tools/SettingsTool";
 import MaterialsLibraryTool from "@/components/tools/MaterialsLibraryTool";
 import NameTagGenerator from "@/components/tools/NameTagGenerator";
 import SVGConverterTool from "@/components/tools/SVGConverterTool";
+import PaymentSettingsTool from "@/components/tools/PaymentSettingsTool";
 
 export default function Tools() {
   const { user } = useAuth();
@@ -39,10 +40,10 @@ export default function Tools() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full max-w-4xl ${
           nameTagsEnabled && svgEnabled && rasterEnabled 
-            ? "grid-cols-6" 
+            ? "grid-cols-7" 
             : nameTagsEnabled || svgEnabled || rasterEnabled
-            ? "grid-cols-5"
-            : "grid-cols-3"
+            ? "grid-cols-6"
+            : "grid-cols-4"
         }`}>
           <TabsTrigger value="calculator" className="flex items-center gap-2">
             <Calculator className="w-4 h-4" />
@@ -74,6 +75,10 @@ export default function Tools() {
             <SettingsIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            <span className="hidden sm:inline">Payments</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="calculator" className="mt-6">
@@ -104,6 +109,10 @@ export default function Tools() {
 
         <TabsContent value="settings" className="mt-6">
           <SettingsTool />
+        </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <PaymentSettingsTool />
         </TabsContent>
       </Tabs>
     </div>
