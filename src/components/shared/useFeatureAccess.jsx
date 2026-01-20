@@ -18,21 +18,21 @@ export function useFeatureAccess() {
     enabled: !!user
   });
 
-  const planConfig = subscription ? PLAN_CONFIG[subscription.plan_id] : PLAN_CONFIG[PLANS.FREE];
+  const activePlan = subscription?.plan_id || 'free';
+  const planConfig = PLAN_CONFIG[activePlan];
+  const isExpiredOrNoSub = !subscription || subscription.status === 'expired';
 
   const hasFeature = (feature) => {
-    if (!subscription || subscription.status === 'expired') {
-      return PLAN_CONFIG[PLANS.FREE][feature] ?? false;
-    }
-    return planConfig[feature] ?? false;
+    const config = isExpiredOrNoSub ? PLAN_CONFIG.free : planConfig;
+    return config.features[feature] ?? false;
   };
 
   const canImportEtsy = () => {
-    if (!subscription) return false;
-    if (subscription.plan_id === PLANS.FREE) {
-      return subscription.imports_used_this_month < 1;
+    if (isExpiredOrNoSub) return false;
+    if (activePlan === 'free') {
+      return (subscription?.imports_used_this_month || 0) < 1;
     }
-    return true; // Pro and Plus have unlimited
+    return true;
   };
 
   const canExportCSV = () => hasFeature('csv_exports');
