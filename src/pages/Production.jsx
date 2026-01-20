@@ -221,14 +221,50 @@ export default function ProductionPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Production Dashboard"
-        description="Track jobs, costs, and production workflow"
-      />
+    <div className="space-y-6">
+      <PageHeader title="Production" description="Track work orders, material usage, and production costs">
+        <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className={viewMode === "list" ? "bg-white shadow-sm" : ""}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("kanban")}
+              className={viewMode === "kanban" ? "bg-white shadow-sm" : ""}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "spreadsheet" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("spreadsheet")}
+              className={viewMode === "spreadsheet" ? "bg-white shadow-sm" : ""}
+            >
+              <TableIcon className="w-4 h-4" />
+            </Button>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingJob(null);
+              setFormOpen(true);
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Job
+          </Button>
+        </div>
+      </PageHeader>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -268,57 +304,90 @@ export default function ProductionPage() {
         </Card>
       </div>
 
-      {/* View Tabs */}
-      <Tabs value={activeView} onValueChange={setActiveView} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="list">List View</TabsTrigger>
-          <TabsTrigger value="kanban">Kanban</TabsTrigger>
-        </TabsList>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <Input
+            placeholder="Search jobs..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full md:w-40">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        <TabsContent value="list">
-          <Card>
-            <CardContent className="p-0">
-              {jobs.length === 0 ? (
-                <div className="text-center py-12">
-                  <Wrench className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-                  <p className="text-stone-500 mb-2">No production jobs yet</p>
-                  <p className="text-stone-400 text-sm">Jobs created from accepted quotes will appear here</p>
-                </div>
-              ) : (
-                <DataTable data={jobs} columns={columns} />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="kanban">
-          {jobs.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Wrench className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-                <p className="text-stone-500">No production jobs yet</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <JobKanbanView
-              jobs={jobs}
-              onJobClick={setSelectedJob}
-              onStatusChange={(jobId, newStatus) => {
-                const job = jobs.find(j => j.id === jobId);
-                if (job) {
-                  updateJobMutation.mutate({
-                    id: jobId,
-                    data: {
-                      status: newStatus,
-                      ...(newStatus === "completed" && { completed_at: new Date().toISOString() }),
-                    },
-                  });
-                }
-              }}
+      {/* Views */}
+      {jobs.length === 0 && !loading ? (
+        <EmptyState
+          icon={Wrench}
+          title="No production jobs yet"
+          description="Create jobs to track material usage, production time, and costs per order."
+          actionLabel="Create Job"
+          onAction={() => setFormOpen(true)}
+        />
+      ) : (
+        <>
+          {viewMode === "list" && (
+            <DataTable
+              columns={columns}
+              data={filteredJobs}
+              isLoading={loading}
+              onRowClick={(row) => setSelectedJob(row)}
+              emptyMessage="No jobs match your filters"
             />
           )}
-        </TabsContent>
-      </Tabs>
+          
+          {viewMode === "kanban" && (
+            <JobKanbanView
+              jobs={filteredJobs}
+              products={products}
+              orders={orders}
+              onEditJob={(job) => {
+                setEditingJob(job);
+                setFormOpen(true);
+              }}
+              onViewDetails={(job) => setSelectedJob(job)}
+              onMarkComplete={markComplete}
+            />
+          )}
+          
+          {viewMode === "spreadsheet" && (
+            <JobSpreadsheetView
+              jobs={filteredJobs}
+              products={products}
+              orders={orders}
+              onEditJob={(job) => {
+                setEditingJob(job);
+                setFormOpen(true);
+              }}
+              onViewDetails={(job) => setSelectedJob(job)}
+              onMarkComplete={markComplete}
+            />
+          )}
+        </>
+      )}
+
+      <JobFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        job={editingJob}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingJob(null);
+        }}
+      />
 
       <JobDetailSheet
         job={selectedJob}
