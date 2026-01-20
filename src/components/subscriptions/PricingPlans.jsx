@@ -59,7 +59,15 @@ export default function PricingPlans({ currentPlan, onSelectPlan }) {
     if (planId === 'free' || planId === currentPlan?.plan_id) return;
     
     setLoading(planId);
-    onSelectPlan(planId);
+    try {
+      await base44.functions.invoke('createSquareCheckout', { planId });
+      onSelectPlan(planId);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Error starting checkout: ' + error.message);
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
