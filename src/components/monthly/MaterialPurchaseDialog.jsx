@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Command,
@@ -29,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 
 export default function MaterialPurchaseDialog({ open, onOpenChange, purchase }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     purchase_date: new Date().toISOString().split("T")[0],
     material_name: "",
@@ -111,7 +113,7 @@ export default function MaterialPurchaseDialog({ open, onOpenChange, purchase })
       if (purchase) {
         result = await base44.entities.MaterialPurchase.update(purchase.id, payload);
       } else {
-        result = await base44.entities.MaterialPurchase.create(payload);
+        result = await base44.entities.MaterialPurchase.create({ ...payload, owner_user_id: user.id });
       }
       
       // Auto-update inventory

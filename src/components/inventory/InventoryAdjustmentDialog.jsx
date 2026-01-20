@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Command,
   CommandEmpty,
@@ -27,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 
 export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) {
+  const { user } = useAuth();
   const [quantityChange, setQuantityChange] = useState("");
   const [notes, setNotes] = useState("");
   const [materialName, setMaterialName] = useState("");
@@ -54,6 +56,7 @@ export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) 
 
       // Create transaction record
       await base44.entities.InventoryTransaction.create({
+        owner_user_id: user.id,
         inventory_item_id: item.id,
         transaction_date: new Date().toISOString().split("T")[0],
         transaction_type: "adjustment",

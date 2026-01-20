@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ import {
 import { clsx } from "clsx";
 
 export default function MaterialTypeDialog({ open, onOpenChange, materialType, onClose }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     category: "wood",
@@ -112,7 +114,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
       if (materialType) {
         return base44.entities.MaterialType.update(materialType.id, payload);
       }
-      return base44.entities.MaterialType.create(payload);
+      return base44.entities.MaterialType.create({ ...payload, owner_user_id: user.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["materialTypes"] });

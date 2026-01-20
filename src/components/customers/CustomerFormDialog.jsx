@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function CustomerFormDialog({ open, onOpenChange, customer }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -44,7 +46,7 @@ export default function CustomerFormDialog({ open, onOpenChange, customer }) {
       if (customer) {
         return base44.entities.Customer.update(customer.id, data);
       } else {
-        return base44.entities.Customer.create(data);
+        return base44.entities.Customer.create({ ...data, owner_user_id: user.id });
       }
     },
     onSuccess: () => {
