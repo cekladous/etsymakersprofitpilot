@@ -274,20 +274,21 @@ export default function ReconciliationReview() {
     <div className="space-y-6">
       <PageHeader
         title="Import History & Unmatched Items"
-        description="View your statement imports and resolve any unmatched lines"
+        description="Resolve these before your monthly numbers are reliable"
       />
 
       {totalUnmatched > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-red-300 bg-red-50 border-l-4 border-l-red-600">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-6 h-6 text-amber-600" />
-              <div>
-                <p className="font-semibold text-amber-900">
-                  {totalUnmatched} rows need review
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-bold text-red-900 text-lg">
+                  ⚠️ {totalUnmatched} unmatched transactions block month closure
                 </p>
-                <p className="text-sm text-amber-700">
-                  These statement lines could not be automatically matched or categorized.
+                <p className="text-sm text-red-800 mt-1">
+                  These are <strong>excluded from your profit calculations</strong> until resolved. 
+                  Categorize or ignore each one below to unlock month closure.
                 </p>
               </div>
             </div>
