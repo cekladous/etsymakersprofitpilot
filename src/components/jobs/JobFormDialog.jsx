@@ -39,30 +39,45 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
     status: "pending",
     notes: "",
   });
+  const [orderSearch, setOrderSearch] = useState("");
 
   const queryClient = useQueryClient();
 
   const { data: orders = [] } = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => base44.entities.Order.list(),
+    queryKey: ["orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Order.filter({ owner_user_id: user.id }),
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list(),
+    queryKey: ["products", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Product.filter({ owner_user_id: user.id }),
   });
 
   const { data: machines = [] } = useQuery({
-    queryKey: ["machines"],
-    queryFn: () => base44.entities.Machine.list(),
+    queryKey: ["machines", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Machine.filter({ owner_user_id: user.id }),
   });
 
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
   });
 
-  const availableOrders = orders.filter(o => !o.job_id || job?.order_ids?.includes(o.id));
+  const availableOrders = orders
+    .filter(o => !o.job_id || job?.order_ids?.includes(o.id))
+    .filter(o => {
+      if (!orderSearch) return true;
+      const search = orderSearch.toLowerCase();
+      return (
+        o.order_id?.toLowerCase().includes(search) ||
+        o.product_name?.toLowerCase().includes(search) ||
+        o.sku?.toLowerCase().includes(search)
+      );
+    });
 
   useEffect(() => {
     if (job) {
@@ -97,7 +112,8 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
         notes: "",
       });
     }
-  }, [job]);
+    setOrderSearch("");
+  }, [job, open]);
 
   const calculateCosts = () => {
     const appSettings = settings[0] || {};
@@ -334,9 +350,15 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
           </div>
 
           {/* Link Orders */}
-          {availableOrders.length > 0 && (
-            <div className="space-y-3">
-              <Label>Link Orders</Label>
+          <div className="space-y-3">
+            <Label>Link Orders (Optional)</Label>
+            <Input
+              placeholder="Search orders by ID, product, or SKU..."
+              value={orderSearch}
+              onChange={(e) => setOrderSearch(e.target.value)}
+              className="mb-2"
+            />
+            {availableOrders.length > 0 ? (
               <div className="border rounded-xl p-3 max-h-40 overflow-y-auto space-y-2">
                 {availableOrders.map((order) => (
                   <div key={order.id} className="flex items-center gap-3">
@@ -352,8 +374,12 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-stone-500 text-center py-4">
+                {orderSearch ? "No orders match your search" : "No available orders"}
+              </p>
+            )}
+          </div>
 
           {/* Operations */}
           <div className="space-y-3">
