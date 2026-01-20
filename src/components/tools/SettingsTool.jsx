@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
 
 export default function SettingsTool() {
+  const { user } = useAuth();
   const [machineFormOpen, setMachineFormOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -138,18 +140,21 @@ export default function SettingsTool() {
   const queryClient = useQueryClient();
 
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
+    enabled: !!user,
   });
 
   const { data: machines = [], isLoading: machinesLoading } = useQuery({
-    queryKey: ["machines"],
-    queryFn: () => base44.entities.Machine.list(),
+    queryKey: ["machines", user?.id],
+    queryFn: () => base44.entities.Machine.filter({ owner_user_id: user.id }),
+    enabled: !!user,
   });
 
   const { data: feeChangeLogs = [] } = useQuery({
-    queryKey: ["fee-change-logs"],
-    queryFn: () => base44.entities.FeeChangeLog.list("-created_date", 50),
+    queryKey: ["fee-change-logs", user?.id],
+    queryFn: () => base44.entities.FeeChangeLog.filter({ owner_user_id: user.id }, "-created_date", 50),
+    enabled: !!user,
   });
 
   useEffect(() => {
@@ -211,6 +216,7 @@ export default function SettingsTool() {
         
         if (oldValue !== undefined && newValue !== undefined && oldValue !== newValue) {
           await base44.entities.FeeChangeLog.create({
+            owner_user_id: user.id,
             fee_type: field.label,
             old_value: oldValue,
             new_value: newValue,
@@ -225,7 +231,7 @@ export default function SettingsTool() {
       if (settings.length > 0) {
         return base44.entities.Settings.update(settings[0].id, data);
       }
-      return base44.entities.Settings.create({ ...data, setting_key: "global" });
+      return base44.entities.Settings.create({ ...data, owner_user_id: user.id, setting_key: "default" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
@@ -238,6 +244,7 @@ export default function SettingsTool() {
     mutationFn: async (data) => {
       const payload = {
         ...data,
+        owner_user_id: user.id,
         wattage: parseFloat(data.wattage) || 0,
         hourly_rate: parseFloat(data.hourly_rate) || 0,
         purchase_price: parseFloat(data.purchase_price) || 0,
@@ -350,8 +357,8 @@ export default function SettingsTool() {
       for (const entityName of entitiesToDelete) {
         try {
           console.log(`Deleting ${entityName}...`);
-          // Fetch with high limit to get all records
-          const records = await base44.entities[entityName].list('-created_date', 10000);
+          // Fetch only current user's records
+          const records = await base44.entities[entityName].filter({ owner_user_id: user.id }, '-created_date', 10000);
           console.log(`Found ${records.length} ${entityName} records`);
           
           if (records && records.length > 0) {
@@ -371,6 +378,7 @@ export default function SettingsTool() {
       // Reset settings to defaults
       if (settings.length > 0) {
         await base44.entities.Settings.update(settings[0].id, {
+          owner_user_id: user.id,
           electricity_rate: 0.12,
           monthly_overhead: 0,
           default_markup: 0,
