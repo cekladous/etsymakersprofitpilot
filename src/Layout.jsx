@@ -71,11 +71,11 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-stone-200 z-50 transform transition-transform duration-300 ease-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-stone-200 z-50 transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 flex-shrink-0">
           <Link to={createPageUrl("Welcome")} className="font-bold text-xl text-stone-900 tracking-tight hover:text-emerald-600 transition-colors">
             Etsy Maker's Profit Pilot
           </Link>
@@ -87,7 +87,7 @@ export default function Layout({ children, currentPageName }) {
           </button>
         </div>
 
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 overflow-y-auto flex-1">
           {navItems.map((item) => {
             const isActive = currentPageName === item.page;
             return (
