@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, FileText, Download, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, Download, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
+import UnmatchedLineCard from "@/components/reconciliation/UnmatchedLineCard";
 import { format } from "date-fns";
 
 export default function ReconciliationReview() {
@@ -21,14 +22,18 @@ export default function ReconciliationReview() {
     queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }, "-imported_at"),
   });
 
-  const { data: unmatchedStatementLines = [] } = useQuery({
-    queryKey: ["unmatched-statement-lines", user?.id],
+  const { data: allStatementLines = [] } = useQuery({
+    queryKey: ["statement-lines", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const all = await base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }, "-transaction_date", 1000);
-      return all.filter(line => !line.matched);
+      return await base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }, "-transaction_date", 1000);
     },
   });
+
+  const unmatchedStatementLines = useMemo(() => 
+    allStatementLines.filter(line => line.resolution_status === 'unresolved'),
+    [allStatementLines]
+  );
 
   const { data: unmatchedLedgerEntries = [] } = useQuery({
     queryKey: ["unmatched-ledger-entries", user?.id],
@@ -36,6 +41,13 @@ export default function ReconciliationReview() {
     queryFn: async () => {
       const all = await base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000);
       return all.filter(e => e.status === "Unmatched" || !e.matched_category);
+    },
+  });
+
+  const resolveLineMutation = useMutation({
+    mutationFn: (payload) => base44.functions.invoke('resolveStatementLine', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["statement-lines"] });
     },
   });
 
@@ -51,7 +63,7 @@ export default function ReconciliationReview() {
       await Promise.all(deletePromises);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["unmatched-statement-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["statement-lines"] });
       queryClient.invalidateQueries({ queryKey: ["unmatched-ledger-entries"] });
       queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
       setSelectedIds([]);
@@ -194,6 +206,19 @@ export default function ReconciliationReview() {
   ];
 
   const totalUnmatched = unmatchedStatementLines.length + unmatchedLedgerEntries.length;
+
+  const reconciliationStats = useMemo(() => {
+    const unresolvedAmount = unmatchedStatementLines.reduce((sum, line) => sum + line.amount, 0);
+    const totalUnresolved = unmatchedStatementLines.length;
+    const totalLegacy = unmatchedLedgerEntries.length;
+    
+    return {
+      totalUnresolved,
+      totalLegacy,
+      unresolvedAmount,
+      status: totalUnresolved === 0 ? 'PASS' : 'FAIL'
+    };
+  }, [unmatchedStatementLines, unmatchedLedgerEntries]);
 
   // Combine both sources for display
   const allUnmatchedRows = [
