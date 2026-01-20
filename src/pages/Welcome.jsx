@@ -52,25 +52,23 @@ export default function Welcome() {
     enabled: !!user
   });
 
-  const { data: settings } = useQuery({
+  const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
     queryFn: async () => {
       const results = await base44.entities.Settings.filter({ 
         owner_user_id: user?.id,
         setting_key: 'default'
       });
-      return results[0];
+      return results;
     },
-    enabled: !!user,
-    staleTime: 0,
-    cacheTime: 0
+    enabled: !!user
   });
 
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
   const pendingQuotes = quotes.filter((q) => q.status === "Draft" || q.status === "Sent").length;
 
   const getFirstName = () => {
-    const userName = settings?.user_name;
+    const userName = settings[0]?.user_name;
     if (userName) return userName.split(" ")[0];
     if (!user?.full_name) return "Maker";
     return user.full_name.split(" ")[0];
