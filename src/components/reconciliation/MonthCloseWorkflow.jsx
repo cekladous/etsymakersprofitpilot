@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, AlertCircle, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
+import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 
 export default function MonthCloseWorkflow({
   open,
@@ -24,7 +26,9 @@ export default function MonthCloseWorkflow({
   });
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("provisional");
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const queryClient = useQueryClient();
+  const { canCloseMonth, planConfig } = useFeatureAccess();
 
   const closeMonthMutation = useMutation({
     mutationFn: async () => {
@@ -55,8 +59,20 @@ export default function MonthCloseWorkflow({
   const allChecked = Object.values(checklist).every((v) => v);
   const canClose = status === "provisional" || allChecked;
 
+  if (!canCloseMonth()) {
+    return (
+      <UpgradeCTA
+        open={open}
+        onOpenChange={onOpenChange}
+        feature="month_close"
+        currentPlan={planConfig?.name || 'Free'}
+      />
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -202,7 +218,14 @@ export default function MonthCloseWorkflow({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogContent>
+        </Dialog>
+        <UpgradeCTA
+        open={showUpgrade}
+        onOpenChange={setShowUpgrade}
+        feature="month_close"
+        currentPlan={planConfig?.name || 'Free'}
+        />
+        </>
+        );
+        }
