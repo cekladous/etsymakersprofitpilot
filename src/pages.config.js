@@ -4,12 +4,12 @@ import Expenses from './pages/Expenses';
 import Inventory from './pages/Inventory';
 import Jobs from './pages/Jobs';
 import Orders from './pages/Orders';
+import Production from './pages/Production';
 import Products from './pages/Products';
 import Quotes from './pages/Quotes';
 import ReconciliationReview from './pages/ReconciliationReview';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
-import Production from './pages/Production';
 import __Layout from './Layout.jsx';
 
 
@@ -20,12 +20,12 @@ export const PAGES = {
     "Inventory": Inventory,
     "Jobs": Jobs,
     "Orders": Orders,
+    "Production": Production,
     "Products": Products,
     "Quotes": Quotes,
     "ReconciliationReview": ReconciliationReview,
     "Tools": Tools,
     "Welcome": Welcome,
-    "Production": Production,
 }
 
 export const pagesConfig = {
