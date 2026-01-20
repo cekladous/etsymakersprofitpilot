@@ -9,19 +9,37 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UnifiedEtsyStatementImport from "./UnifiedEtsyStatementImport";
 import EtsySoldOrdersImport from "./EtsySoldOrdersImport";
+import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
+import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 
 export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
   const [activeTab, setActiveTab] = useState("statement");
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { canImportEtsy, planConfig } = useFeatureAccess();
+
+  if (!canImportEtsy()) {
+    return (
+      <>
+        <UpgradeCTA
+          open={open}
+          onOpenChange={onOpenChange}
+          feature="etsy_import"
+          currentPlan={planConfig?.name || 'Free'}
+        />
+      </>
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Import Etsy Data</DialogTitle>
-          <DialogDescription>
-            Choose which type of data to import. Both sources will merge together automatically.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Import Etsy Data</DialogTitle>
+            <DialogDescription>
+              Choose which type of data to import. Both sources will merge together automatically.
+            </DialogDescription>
+          </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
@@ -65,7 +83,14 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
             </div>
           </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogContent>
+        </Dialog>
+        <UpgradeCTA
+        open={showUpgrade}
+        onOpenChange={setShowUpgrade}
+        feature="etsy_import"
+        currentPlan={planConfig?.name || 'Free'}
+        />
+        </>
+        );
+        }
