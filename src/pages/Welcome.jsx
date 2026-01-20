@@ -12,8 +12,8 @@ import {
   Plus,
   Calculator,
   Settings,
-  Sparkles
-} from "lucide-react";
+  Sparkles } from
+"lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -23,29 +23,29 @@ export default function Welcome() {
 
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
+    if (hour < 12) setGreeting("Good morning");else
+    if (hour < 18) setGreeting("Good afternoon");else
+    setGreeting("Good evening");
   }, []);
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list(),
+    queryFn: () => base44.entities.Product.list()
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list(),
+    queryFn: () => base44.entities.Customer.list()
   });
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["quotes"],
-    queryFn: () => base44.entities.Quote.list(),
+    queryFn: () => base44.entities.Quote.list()
   });
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs"],
-    queryFn: () => base44.entities.Job.list(),
+    queryFn: () => base44.entities.Job.list()
   });
 
   const { data: settings } = useQuery({
@@ -54,7 +54,7 @@ export default function Welcome() {
       const results = await base44.entities.Settings.filter({ owner_user_id: user?.id });
       return results[0];
     },
-    enabled: !!user,
+    enabled: !!user
   });
 
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
@@ -63,38 +63,38 @@ export default function Welcome() {
   const userName = settings?.user_name || user?.full_name?.split(" ")[0] || "Maker";
 
   const quickActions = [
-    {
-      icon: Users,
-      label: "New Customer",
-      description: "Add customer details",
-      color: "bg-blue-50",
-      iconColor: "text-blue-600",
-      page: "Customers",
-    },
-    {
-      icon: FileText,
-      label: "Create Quote",
-      description: "Generate professional quote",
-      color: "bg-purple-50",
-      iconColor: "text-purple-600",
-      page: "Quotes",
-    },
-    {
-      icon: Calculator,
-      label: "Profit Calculator",
-      description: "Estimate product costs",
-      color: "bg-emerald-50",
-      iconColor: "text-emerald-600",
-      page: "Tools",
-    },
-  ];
+  {
+    icon: Users,
+    label: "New Customer",
+    description: "Add customer details",
+    color: "bg-blue-50",
+    iconColor: "text-blue-600",
+    page: "Customers"
+  },
+  {
+    icon: FileText,
+    label: "Create Quote",
+    description: "Generate professional quote",
+    color: "bg-purple-50",
+    iconColor: "text-purple-600",
+    page: "Quotes"
+  },
+  {
+    icon: Calculator,
+    label: "Profit Calculator",
+    description: "Estimate product costs",
+    color: "bg-emerald-50",
+    iconColor: "text-emerald-600",
+    page: "Tools"
+  }];
+
 
   if (loading) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
         <div className="text-stone-400">Loading...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -176,8 +176,8 @@ export default function Welcome() {
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {quickActions.map((action) => (
-            <Link key={action.label} to={createPageUrl(action.page)}>
+          {quickActions.map((action) =>
+          <Link key={action.label} to={createPageUrl(action.page)}>
               <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer group">
                 <CardContent className="p-6 text-center">
                   <div className={`w-14 h-14 ${action.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
@@ -188,12 +188,12 @@ export default function Welcome() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+          )}
         </div>
 
         {/* Maker Mantra */}
         <Card className="bg-gradient-to-br from-stone-800 to-stone-900 border-none shadow-xl">
-          <CardContent className="p-8 text-center">
+          <CardContent className="bg-gray-700 p-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-amber-400" />
               <span className="text-sm font-medium text-amber-400 uppercase tracking-wide">
@@ -218,6 +218,6 @@ export default function Welcome() {
           </Link>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
