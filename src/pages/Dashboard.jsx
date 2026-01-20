@@ -50,6 +50,8 @@ import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
 import ReconciliationCheckCard from "@/components/dashboard/ReconciliationCheckCard";
+import CashflowReconciliationCard from "@/components/reconciliation/CashflowReconciliationCard";
+import MonthCloseWorkflow from "@/components/reconciliation/MonthCloseWorkflow";
 
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
 
@@ -66,6 +68,7 @@ export default function Dashboard() {
   const [customSaleDialogOpen, setCustomSaleDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [monthCloseOpen, setMonthCloseOpen] = useState(false);
 
   const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
@@ -616,11 +619,20 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Reconciliation Check */}
+      {/* Reconciliation Cards */}
       <ReconciliationCheckCard
         etsyOrders={etsyOrders}
         etsyStatementImports={etsyStatementImports}
         etsyStatementLines={etsyStatementLines}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+      />
+      
+      <CashflowReconciliationCard
+        etsyOrders={etsyOrders}
+        etsyStatementImports={etsyStatementImports}
+        orderFees={orderFees}
+        transfers={transfers}
         periodStart={periodStart}
         periodEnd={periodEnd}
       />
@@ -743,6 +755,10 @@ export default function Dashboard() {
               <Plus className="w-4 h-4 mr-2" />
               Add Transfer
             </Button>
+            <Button onClick={() => setMonthCloseOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Close Month
+            </Button>
           </div>
 
           {/* Net Profit Statement */}
@@ -789,6 +805,15 @@ export default function Dashboard() {
       <TransferDialog
         open={transferDialogOpen}
         onOpenChange={setTransferDialogOpen} />
+
+      <MonthCloseWorkflow
+        open={monthCloseOpen}
+        onOpenChange={setMonthCloseOpen}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+        hasUnmatchedEntries={financialData.hasUnmatchedEntries}
+        unmatchedCount={(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)}
+        cashflowStatus="success" />
 
     </div>);
 
