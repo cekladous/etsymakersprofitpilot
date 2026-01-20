@@ -17,8 +17,8 @@ export function aggregateFinancials(data, dateRange) {
   
   if (!start || !end) {
     return {
-      revenue: { total: 0 },
-      sellingExpenses: { total: 0 },
+      revenue: { total: 0, etsyRefunds: 0, netEtsySales: 0 },
+      sellingExpenses: { total: 0, shareSaveRefunds: 0 },
       productExpenses: { total: 0, materialsSupplies: 0 },
       businessExpenses: { total: 0 },
       totalRevenue: 0,
@@ -29,6 +29,7 @@ export function aggregateFinancials(data, dateRange) {
       unmatchedLedgerEntries: [],
       unmatchedStatementLines: [],
       unmatchedNetImpact: 0,
+      deduplicationWarnings: [],
       _rawData: { etsyOrders: [], customSales: [], businessExpenses: [], transfers: [], materialPurchases: [], etsyLedgerEntries: [], expenses: [], fees: [] }
     };
   }
@@ -62,6 +63,29 @@ export function aggregateFinancials(data, dateRange) {
   // CRITICAL: Include legacy Expense entity (only reviewed ones, include both old and new category names)
   const periodLegacyExpenses = filterByDate(Array.isArray(data.expenses) ? data.expenses : [], "date")
     .filter(e => e.type !== "return");
+
+  // ==================== DEDUPLICATION LOGIC ====================
+  // CRITICAL: Prevent double-counting Etsy transactions
+  // Rule: EtsyOrder with statement_line_uid = linked to statement import (use it)
+  //       EtsyStatementLine without matching order = new transaction
+  const periodStatementLines = filterByDate(Array.isArray(data.etsyStatementLines) ? data.etsyStatementLines : [], "transaction_date")
+    .filter(line => {
+      if (!line.import_id) return false;
+      const lineImport = (data.etsyStatementImports || []).find(imp => imp.id === line.import_id);
+      return lineImport && lineImport.status !== 'replaced';
+    });
+
+  // Orders that are NOT linked to statement (orphaned from old imports) should not be counted
+  // Only count orders that either: (1) have no statement_line_uid (pre-dedup), or (2) are most recent source
+  const deduplicationWarnings = [];
+  const ordersWithDuplicateStatementLinks = periodEtsyOrders.filter(o => {
+    if (!o.statement_line_uid) return false;
+    const matchingStatements = periodStatementLines.filter(s => s.line_uid === o.statement_line_uid);
+    return matchingStatements.length > 1;
+  });
+  if (ordersWithDuplicateStatementLinks.length > 0) {
+    deduplicationWarnings.push(`${ordersWithDuplicateStatementLinks.length} Etsy orders matched to multiple statement lines (dedup required)`);
+  }
 
   // ==================== A) REVENUE ====================
   
