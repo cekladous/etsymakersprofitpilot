@@ -75,8 +75,8 @@ export function useFeatureAccess() {
   };
 
   const canImportEtsy = () => {
-    if (isExpiredOrNoSub) return false;
-    if (activePlan === 'free') {
+    if (subscription && subscription.status === 'expired') return false;
+    if (activePlan === 'free' || !subscription) {
       return (subscription?.imports_used_this_month || 0) < 1;
     }
     return true;
