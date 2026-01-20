@@ -476,9 +476,31 @@ export function aggregateFinancials(data, dateRange) {
   // They represent unknown fees/credits that could significantly impact actual profit
   // Force user to reconcile before finalizing monthly numbers
   
-  const unmatchedLedgerEntries = periodLedgerEntries.filter(e => 
-    e.status === "Unmatched" || !e.matched_category
-  );
+  const unmatchedLedgerEntries = periodLedgerEntries.filter(e => {
+    // Flag as unmatched if explicitly unmatched OR if auto-matched with low confidence
+    if (e.status === "Unmatched" || !e.matched_category) return true;
+    
+    // Check if entry was auto-matched but has low confidence
+    if (e.matched_category) {
+      // Re-evaluate with confidence scoring to flag uncertain matches
+      const categoryKeywordMap = {
+        'etsy_listing_fees': ["listing fee", "credit for listing fee", "tax: auto-renew", "tax: listing"],
+        'etsy_transaction_fees': ["transaction fee", "credit for transaction fee", "tax: transaction"],
+        'etsy_processing_fees': ["processing fee", "credit for processing fee", "tax: processing fee"],
+        'share_save_refunds_credits': ["share & save refund", "etsy miscellaneous credit"],
+        'other_fees': ["buyer fee", "regulatory operating fee", "tax: regulatory operating fee"],
+        'etsy_ads': ["etsy ads", "refund for invalid etsy ads clicks", "etsy plus subscription fee", "credit for etsy ads fee"],
+        'etsy_offsite_ads_fees': ["offsite ads"],
+        'etsy_shipping': ["shipping label", "postage", "etsy shipping"]
+      };
+      
+      const keywords = categoryKeywordMap[e.matched_category] || [];
+      const confidence = calculateMatchConfidence(e, keywords);
+      return confidence < 80; // Flag low-confidence matches for review
+    }
+    
+    return false;
+  });
   
   // Calculate NET IMPACT of unmatched ledger entries (expenses reduce profit, credits increase it)
   const unmatchedLedgerNetImpact = unmatchedLedgerEntries.reduce((sum, e) => 
