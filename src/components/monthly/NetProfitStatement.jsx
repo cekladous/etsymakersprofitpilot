@@ -398,6 +398,18 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             linkTo={buildExpensesLink("office_expenses")}
           />
           <Row 
+            label="Gas & Mileage" 
+            amount={businessExpenses.gasMileage || 0} 
+            categoryName="gas_mileage"
+            linkTo={buildExpensesLink("gas_mileage")}
+          />
+          <Row 
+            label="Utilities & Cell Phone" 
+            amount={businessExpenses.utilitiesCellPhone || 0} 
+            categoryName="utilities_cell_phone"
+            linkTo={buildExpensesLink("utilities_cell_phone")}
+          />
+          <Row 
             label="Professional Services" 
             amount={businessExpenses.professionalServices || 0} 
             categoryName="professional_services"
