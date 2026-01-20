@@ -8,6 +8,7 @@ import Products from './pages/Products';
 import Quotes from './pages/Quotes';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
+import CustomSales from './pages/CustomSales';
 import __Layout from './Layout.jsx';
 
 
@@ -22,6 +23,7 @@ export const PAGES = {
     "Quotes": Quotes,
     "Tools": Tools,
     "Welcome": Welcome,
+    "CustomSales": CustomSales,
 }
 
 export const pagesConfig = {
