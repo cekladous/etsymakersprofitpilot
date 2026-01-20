@@ -22,18 +22,31 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
+// Map legacy categories to BusinessExpense schema
+const CATEGORY_MAP = {
+  materials: "materials_supplies",
+  shipping: "shipping_costs",
+  tools: "tools_equipment",
+  software: "software_subscriptions",
+  advertising: "advertising_marketing",
+  utilities: "utilities_cell_phone",
+  etsy_fees: "etsy_transaction_fees",
+  packaging: "packaging_materials",
+  equipment: "tools_equipment",
+  maintenance: "miscellaneous_expenses",
+  other: "other"
+};
+
 const CATEGORIES = [
-  { value: "materials", label: "Materials" },
-  { value: "shipping", label: "Shipping" },
-  { value: "tools", label: "Tools" },
-  { value: "software", label: "Software" },
-  { value: "advertising", label: "Advertising" },
-  { value: "utilities", label: "Utilities" },
-  { value: "etsy_fees", label: "Etsy Fees" },
-  { value: "packaging", label: "Packaging" },
-  { value: "equipment", label: "Equipment" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "other", label: "Other" },
+  { value: "materials_supplies", label: "Materials & Supplies" },
+  { value: "packaging_materials", label: "Packaging" },
+  { value: "tools_equipment", label: "Tools & Equipment" },
+  { value: "software_subscriptions", label: "Software" },
+  { value: "advertising_marketing", label: "Advertising" },
+  { value: "utilities_cell_phone", label: "Utilities" },
+  { value: "etsy_transaction_fees", label: "Etsy Fees" },
+  { value: "shipping_costs", label: "Shipping" },
+  { value: "miscellaneous_expenses", label: "Other" },
 ];
 
 export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose }) {
@@ -42,7 +55,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
     date: "",
     description: "",
     amount: "",
-    category: "other",
+    category: "miscellaneous_expenses",
     vendor: "",
     payment_method: "",
     notes: "",
@@ -66,7 +79,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         date: new Date().toISOString().split("T")[0],
         description: "",
         amount: "",
-        category: "other",
+        category: "miscellaneous_expenses",
         vendor: "",
         payment_method: "",
         notes: "",
@@ -77,19 +90,34 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
   const mutation = useMutation({
     mutationFn: async (data) => {
       const payload = {
-        ...data,
+        date: data.date,
+        description: data.description,
         amount: parseFloat(data.amount) || 0,
-        is_categorized: true,
-        transaction_id: expense?.transaction_id || `manual-${Date.now()}`,
+        category_name: data.category,
+        vendor: data.vendor,
+        payment_source: data.payment_method,
+        notes: data.notes,
       };
       
-      if (expense) {
-        return base44.entities.Expense.update(expense.id, payload);
+      if (expense && expense.source === "business") {
+        return base44.entities.BusinessExpense.update(expense.id, payload);
+      } else if (expense) {
+        // Legacy expense - still update via Expense entity
+        return base44.entities.Expense.update(expense.id, {
+          ...data,
+          amount: parseFloat(data.amount) || 0,
+          is_categorized: true,
+        });
       }
-      return base44.entities.Expense.create({ ...payload, owner_user_id: user.id });
+      // New expenses go to BusinessExpense
+      return base44.entities.BusinessExpense.create({ 
+        ...payload,
+        owner_user_id: user.id 
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
       onClose();
     },
   });
@@ -154,6 +182,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
                   {CATEGORIES.map((cat) => (
                     <SelectItem key={cat.value} value={cat.value}>
                       {cat.label}
+                      {cat.value === "materials_supplies" && " (material purchases go here)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
