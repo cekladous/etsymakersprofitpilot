@@ -34,13 +34,16 @@ import EmptyState from "@/components/ui/EmptyState";
 import UnifiedEtsyImportHub from "@/components/imports/UnifiedEtsyImportHub";
 import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
+import ReconciliationTab from "@/components/etsy/ReconciliationTab";
 
 export default function Orders() {
   const { user, loading } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
   const customerFilter = urlParams.get("customer");
   
-  const [activeTab, setActiveTab] = useState("orders");
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get("tab") || "orders";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [search, setSearch] = useState("");
   const [feeSearch, setFeeSearch] = useState("");
   const [feeTypeFilter, setFeeTypeFilter] = useState("all");
@@ -759,6 +762,7 @@ export default function Orders() {
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="fees">Fees & Charges</TabsTrigger>
           <TabsTrigger value="deposits">Deposits</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
@@ -1064,6 +1068,10 @@ export default function Orders() {
               emptyMessage="No deposits for selected period"
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="reconciliation" className="space-y-6">
+          <ReconciliationTab user={user} />
         </TabsContent>
       </Tabs>
 
