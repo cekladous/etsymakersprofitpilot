@@ -157,7 +157,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div>
-              <p className="font-semibold text-stone-200 mb-2 pr-4">Built by Etsy Maker's Profit Pilot</p>
+              <p className="font-semibold text-stone-200 mb-2 pr-12">Built by Etsy Maker's Profit Pilot</p>
             </div>
             <div className="flex flex-wrap gap-4 md:justify-end">
               <button
