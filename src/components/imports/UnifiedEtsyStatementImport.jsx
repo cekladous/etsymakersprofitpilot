@@ -189,8 +189,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
       };
       
-      // Get all existing statement lines to check for duplicates
-      const allExistingLines = await base44.entities.EtsyStatementLine.list();
+      // Get all existing statement lines to check for duplicates (only for current user)
+      const currentUser = await base44.auth.me();
+      const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
       const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
       
       // Filter out rows that already exist
@@ -198,12 +199,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const newFees = fees.filter(f => !existingLineUIDs.has(f._rawLine.line_uid));
       const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
       
-      // Check if this statement month was already imported
-      const existingImports = await base44.entities.EtsyStatementImport.filter({ statement_month: statementMonth });
+      // Check if this statement month was already imported (only for current user)
+      const existingImports = await base44.entities.EtsyStatementImport.filter({ 
+        statement_month: statementMonth,
+        owner_user_id: currentUser.id
+      });
       let importRecord;
-      
-      // Get owner_user_id from authenticated user
-      const currentUser = await base44.auth.me();
       
       // Create new import record
       importRecord = await base44.entities.EtsyStatementImport.create({
@@ -403,8 +404,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         });
         const fileHash = generateFileHash(jsonData);
         
-        // Check for duplicate file
-        const existingImports = await base44.entities.EtsyStatementImport.filter({ file_hash: fileHash });
+        // Check for duplicate file (only for current user)
+        const currentUser = await base44.auth.me();
+        const existingImports = await base44.entities.EtsyStatementImport.filter({ 
+          file_hash: fileHash,
+          owner_user_id: currentUser.id
+        });
         if (existingImports.length > 0) {
           const existing = existingImports[0];
           setDuplicateWarning({
