@@ -1,7 +1,7 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { PLAN_CONFIG, PLANS } from '@/components/shared/subscriptionHelper';
+import { PLAN_CONFIG, PLANS } from '@/components/shared/subscriptionHelper.js';
 
 export function useFeatureAccess() {
   const { user } = useAuth();

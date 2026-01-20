@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, AlertCircle } from 'lucide-react';
-import { PLAN_CONFIG, formatRenewalDate } from '@/components/shared/subscriptionHelper';
+import { PLAN_CONFIG, formatRenewalDate } from '@/components/shared/subscriptionHelper.js';
 
 export default function SubscriptionStatus({ subscription }) {
   if (!subscription) return null;
