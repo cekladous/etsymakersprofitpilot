@@ -378,9 +378,27 @@ export default function ReconciliationReview() {
 
       {reconciliationStats.totalUnresolved > 0 && (
         <div className="space-y-4">
+          {/* Section 1: Unmatched Rows Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+                Unmatched Rows ({unmatchedStatementLines.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={columns}
+                data={allUnmatchedRows.filter(r => r.source === 'New Import')}
+                emptyMessage="No unmatched statement lines"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Section 2 & 3: Auto-Match Suggestions + Manual Actions */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-900">
-              <strong>🔍 How to resolve:</strong> Each card below shows why a line couldn't be auto-matched. Review the recommendation and choose an action.
+              <strong>🔍 Resolution Guide:</strong> Below are suggestions to resolve each line. Review and take action or mark as excluded.
             </p>
           </div>
 
