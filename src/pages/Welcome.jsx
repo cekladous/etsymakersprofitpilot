@@ -58,8 +58,7 @@ export default function Welcome() {
     staleTime: 0,
     cacheTime: 0,
     queryFn: () => base44.entities.Settings.filter({ 
-      owner_user_id: user.id,
-      setting_key: 'default'
+      owner_user_id: user.id
     })
   });
 
