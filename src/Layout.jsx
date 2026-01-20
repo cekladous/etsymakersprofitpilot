@@ -18,17 +18,18 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-  { name: "Customers", icon: Users, page: "Customers" },
-  { name: "Quotes", icon: FileText, page: "Quotes" },
-  { name: "Production", icon: Wrench, page: "Production" },
-  { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
-  { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
-  { name: "Products", icon: Package, page: "Products" },
-  { name: "Inventory", icon: Layers, page: "Inventory" },
-  { name: "Expenses", icon: Receipt, page: "Expenses" },
-  { name: "Tools", icon: Wrench, page: "Tools" },
-];
+        { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
+        { name: "Customers", icon: Users, page: "Customers" },
+        { name: "Quotes", icon: FileText, page: "Quotes" },
+        { name: "Production", icon: Wrench, page: "Production" },
+        { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
+        { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
+        { name: "Products", icon: Package, page: "Products" },
+        { name: "Inventory", icon: Layers, page: "Inventory" },
+        { name: "Expenses", icon: Receipt, page: "Expenses" },
+        { name: "Tools", icon: Wrench, page: "Tools" },
+        { name: "Settings", icon: LayoutDashboard, page: "Settings" },
+      ];
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
