@@ -27,8 +27,9 @@ export default function MonthCloseWorkflow({
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("provisional");
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showLockUpgrade, setShowLockUpgrade] = useState(false);
   const queryClient = useQueryClient();
-  const { canCloseMonth, planConfig } = useFeatureAccess();
+  const { canCloseMonth, canLockMonths, planConfig } = useFeatureAccess();
 
   const closeMonthMutation = useMutation({
     mutationFn: async () => {
@@ -175,19 +176,26 @@ export default function MonthCloseWorkflow({
                   <p className="text-xs text-slate-600">Review done, but can still edit this month</p>
                 </div>
               </label>
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50"
+              <label className={`flex items-center gap-3 p-3 border rounded-lg ${!canLockMonths() ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50'}`}
                 style={{ borderColor: status === "final" ? "#059669" : "#e2e8f0" }}>
                 <input
                   type="radio"
                   name="status"
                   value="final"
                   checked={status === "final"}
-                  onChange={(e) => setStatus(e.target.value)}
+                  onChange={(e) => {
+                    if (!canLockMonths()) {
+                      setShowLockUpgrade(true);
+                      return;
+                    }
+                    setStatus(e.target.value);
+                  }}
+                  disabled={!canLockMonths()}
                   className="w-4 h-4"
                 />
                 <div>
                   <p className="font-medium text-slate-900">Final Close (Tax Ready)</p>
-                  <p className="text-xs text-slate-600">Locks month. No edits allowed.</p>
+                  <p className="text-xs text-slate-600">Locks month. No edits allowed. {!canLockMonths() && '(Upgrade to unlock)'}</p>
                 </div>
               </label>
             </div>
@@ -224,6 +232,12 @@ export default function MonthCloseWorkflow({
         open={showUpgrade}
         onOpenChange={setShowUpgrade}
         feature="month_close"
+        currentPlan={planConfig?.name || 'Free'}
+        />
+        <UpgradeCTA
+        open={showLockUpgrade}
+        onOpenChange={setShowLockUpgrade}
+        feature="locked_months"
         currentPlan={planConfig?.name || 'Free'}
         />
         </>
