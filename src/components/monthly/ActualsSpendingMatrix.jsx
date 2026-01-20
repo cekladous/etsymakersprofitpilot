@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { startOfMonth, endOfMonth, format, eachMonthOfInterval } from "date-fns";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { createPageUrl } from "@/utils";
+import { getBusinessExpenseCategories, getFeeCategories, getSchemaNameForKey } from "@/components/shared/categoryMappings";
 
 export default function ActualsSpendingMatrix({ 
   dateRange, 
