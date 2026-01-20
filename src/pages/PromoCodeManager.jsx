@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Copy, Trash2, Check } from 'lucide-react';
+import { Plus, Copy, Trash2, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { toast } from 'sonner';
 
 export default function PromoCodeManager() {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export default function PromoCodeManager() {
     description: ''
   });
   const [copied, setCopied] = useState(null);
+  const [error, setError] = useState('');
 
   const { data: promoCodes } = useQuery({
     queryKey: ['promoCodes'],
@@ -37,6 +39,7 @@ export default function PromoCodeManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['promoCodes'] });
       setOpen(false);
+      setError('');
       setFormData({
         code: '',
         plan_id: 'maker_pro',
@@ -48,6 +51,12 @@ export default function PromoCodeManager() {
         expires_at: '',
         description: ''
       });
+      toast.success('Promo code created');
+    },
+    onError: (err) => {
+      const message = err.message || 'Failed to create promo code';
+      setError(message);
+      toast.error(message);
     }
   });
 
@@ -70,6 +79,11 @@ export default function PromoCodeManager() {
   }
 
   const handleCreate = () => {
+    setError('');
+    if (!formData.code.trim()) {
+      setError('Code is required');
+      return;
+    }
     const { duration_type, ...submitData } = formData;
     createMutation.mutate({
       ...submitData,
@@ -104,8 +118,14 @@ export default function PromoCodeManager() {
               <DialogTitle>Create Promo Code</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-stone-700">Code</label>
+               {error && (
+                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                   <AlertCircle className="w-4 h-4 text-red-600" />
+                   <span className="text-sm text-red-800">{error}</span>
+                 </div>
+               )}
+               <div>
+                 <label className="text-sm font-medium text-stone-700">Code</label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
@@ -207,8 +227,12 @@ export default function PromoCodeManager() {
                 />
               </div>
 
-              <Button onClick={handleCreate} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                Create Code
+              <Button 
+                onClick={handleCreate} 
+                disabled={createMutation.isPending}
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                {createMutation.isPending ? 'Creating...' : 'Create Code'}
               </Button>
             </div>
           </DialogContent>
