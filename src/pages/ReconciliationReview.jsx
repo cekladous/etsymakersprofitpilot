@@ -344,87 +344,75 @@ export default function ReconciliationReview() {
         </CardContent>
       </Card>
 
-      {totalUnmatched > 0 && (
-        <>
-          {/* Unmatched Breakdown Panel */}
-          {Object.keys(unmatchedBreakdown).length > 0 && (
-            <Card className="border-blue-200 bg-blue-50">
+      {/* Reconciliation Status Card */}
+      {imports.length > 0 && (
+        <Card className={reconciliationStats.status === 'PASS' ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}>
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                {reconciliationStats.status === 'PASS' ? (
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-6 h-6 text-rose-600 flex-shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className={`font-bold text-lg ${reconciliationStats.status === 'PASS' ? 'text-emerald-900' : 'text-rose-900'}`}>
+                    Reconciliation: {reconciliationStats.status}
+                  </p>
+                  {reconciliationStats.status === 'FAIL' && (
+                    <div className="text-sm mt-1 space-y-1">
+                      <p className={reconciliationStats.status === 'FAIL' ? 'text-rose-700' : 'text-emerald-700'}>
+                        {reconciliationStats.totalUnresolved} rows unresolved
+                      </p>
+                      <p className={`font-mono font-bold ${reconciliationStats.unresolvedAmount < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                        Δ ${Math.abs(reconciliationStats.unresolvedAmount).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {reconciliationStats.totalUnresolved > 0 && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-900">
+              <strong>🔍 How to resolve:</strong> Each card below shows why a line couldn't be auto-matched. Review the recommendation and choose an action.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {unmatchedStatementLines.map((line) => (
+              <UnmatchedLineCard
+                key={line.id}
+                line={line}
+                onResolve={(payload) => resolveLineMutation.mutate(payload)}
+                isLoading={resolveLineMutation.isPending}
+              />
+            ))}
+          </div>
+
+          {unmatchedLedgerEntries.length > 0 && (
+            <Card className="border-stone-300">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span>Unmatched Patterns (Debug)</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setShowBreakdown(!showBreakdown)}
-                  >
-                    {showBreakdown ? "Hide" : "Show"}
-                  </Button>
-                </CardTitle>
+                <CardTitle className="text-base">Legacy Unmatched Entries ({unmatchedLedgerEntries.length})</CardTitle>
               </CardHeader>
-              {showBreakdown && (
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(unmatchedBreakdown).map(([type, data]) => (
-                      <div key={type} className="bg-white rounded-lg border border-blue-200 p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-stone-900">{type}</p>
-                          <Badge variant="outline">{data.count} rows</Badge>
-                        </div>
-                        <div className="space-y-1 text-sm text-stone-600">
-                          {data.examples.map((ex, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span className="truncate max-w-md">{ex.description}</span>
-                              <span className="font-medium ml-2">${ex.amount?.toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              )}
+              <CardContent>
+                <p className="text-sm text-stone-600 mb-4">
+                  These are from older imports. They don't affect current reconciliation but may need cleanup.
+                </p>
+                <DataTable
+                  columns={columns}
+                  data={allUnmatchedRows.filter(r => r.source === 'Legacy Data')}
+                  emptyMessage="No legacy entries"
+                />
+              </CardContent>
             </Card>
           )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Unmatched Rows ({totalUnmatched})</span>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export for Review
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {selectedIds.length > 0 && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-                  <p className="text-sm font-medium text-emerald-900">
-                    {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
-                  </p>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
-                        bulkDeleteMutation.mutate(selectedIds);
-                      }
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Selected
-                  </Button>
-                </div>
-              )}
-              <DataTable
-                columns={columns}
-                data={allUnmatchedRows}
-                emptyMessage="No unmatched rows"
-              />
-            </CardContent>
-          </Card>
-        </>
+        </div>
       )}
     </div>
   );
