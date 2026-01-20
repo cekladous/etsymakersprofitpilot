@@ -65,13 +65,15 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
 
   useEffect(() => {
     if (expense) {
+      // Handle both legacy and new BusinessExpense formats
+      const category = expense.category_name || expense.category;
       setFormData({
         date: expense.date || "",
         description: expense.description || "",
         amount: expense.amount?.toString() || "",
-        category: expense.category || "other",
+        category: category || "miscellaneous_expenses",
         vendor: expense.vendor || "",
-        payment_method: expense.payment_method || "",
+        payment_method: expense.payment_source || expense.payment_method || "",
         notes: expense.notes || "",
       });
     } else {
