@@ -86,7 +86,7 @@ export default function ActualsSpendingMatrix({
 
   const handleCellClick = (category, monthIndex) => {
     const monthRange = months[monthIndex];
-    const categoryName = getCategoryNameMapping(category.key);
+    const categoryName = category.schemaName;
     
     // Navigate to Expenses page with filters (spreadsheet-style drill-down)
     const url = createPageUrl("Expenses") + 
@@ -97,28 +97,6 @@ export default function ActualsSpendingMatrix({
       `&category=${categoryName}`;
     
     window.location.href = url;
-  };
-
-  const getCategoryNameMapping = (key) => {
-    const mapping = {
-      materialsSupplies: "materials_supplies",
-      toolsEquipment: "tools_equipment",
-      advertisingMarketing: "advertising_marketing",
-      officeExpenses: "office_expenses",
-      gasMileage: "gas_mileage",
-      utilitiesCellPhone: "utilities_cell_phone",
-      professionalServices: "professional_services",
-      other: "other",
-      miscellaneous: "miscellaneous_expenses",
-      etsyListingFees: "etsy_listing_fees",
-      etsyTransactionFees: "etsy_transaction_fees",
-      etsyProcessingFees: "etsy_processing_fees",
-      etsyAds: "etsy_ads",
-      etsyOffsiteAds: "etsy_offsite_ads_fees",
-      etsyShipping: "etsy_shipping",
-      otherPostage: "other_postage_costs",
-    };
-    return mapping[key] || key;
   };
 
   // Calculate grand total for validation
