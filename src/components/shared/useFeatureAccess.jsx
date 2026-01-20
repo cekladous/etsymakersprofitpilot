@@ -2,6 +2,12 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 
+const PLANS = {
+  FREE: 'free',
+  MAKER_PRO: 'maker_pro',
+  MAKER_PLUS: 'maker_plus'
+};
+
 const PLAN_CONFIG = {
   free: {
     name: 'Free',
