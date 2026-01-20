@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -32,16 +33,17 @@ export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <style>{`
-        :root {
-          --color-primary: #1a1a1a;
-          --color-accent: #059669;
-          --color-accent-light: #d1fae5;
-          --color-warm: #fef3c7;
-          --color-danger: #dc2626;
-        }
-      `}</style>
+    <AuthProvider>
+      <div className="min-h-screen bg-stone-50">
+        <style>{`
+          :root {
+            --color-primary: #1a1a1a;
+            --color-accent: #059669;
+            --color-accent-light: #d1fae5;
+            --color-warm: #fef3c7;
+            --color-danger: #dc2626;
+          }
+        `}</style>
 
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-stone-200 z-50 flex items-center px-4">
@@ -113,6 +115,7 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
-    </div>
+      </div>
+    </AuthProvider>
   );
 }
