@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, FileText, Loader2, Upload } from "lucide-react";
-import * as XLSX from "xlsx";
 
 // Generate stable line_uid from transaction data
 const generateLineUID = (date, type, amount, description, orderId, month) => {
@@ -406,11 +405,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     };
     reader.onload = async (e) => {
       try {
-        console.log("File loaded, parsing...");
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false });
+         console.log("File loaded, parsing...");
+         const XLSX = (await import("xlsx")).default;
+         const data = new Uint8Array(e.target.result);
+         const workbook = XLSX.read(data, { type: "array" });
+         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false });
         console.log("Parsed rows:", jsonData.length);
 
         if (jsonData.length === 0) {
