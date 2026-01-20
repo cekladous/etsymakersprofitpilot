@@ -3,7 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, AlertCircle } from 'lucide-react';
-import { PLAN_CONFIG, formatRenewalDate } from '@/components/shared/subscriptionHelper.js';
+import { format } from 'date-fns';
+
+const PLAN_CONFIG = {
+  free: { name: 'Free', price: 0 },
+  maker_pro: { name: 'Maker Pro', price: 9 },
+  maker_plus: { name: 'Maker Plus', price: 14 }
+};
+
+const formatRenewalDate = (dateString) => {
+  if (!dateString) return 'Not set';
+  try {
+    return format(new Date(dateString), 'MMM d, yyyy');
+  } catch {
+    return dateString;
+  }
+};
 
 export default function SubscriptionStatus({ subscription }) {
   if (!subscription) return null;
