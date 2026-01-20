@@ -11,6 +11,7 @@ import DataTable from "@/components/ui/DataTable";
 import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
 import StatusBadge from "@/components/shared/StatusBadge";
 import JobDetailSheet from "@/components/jobs/JobDetailSheet";
+import ProductionEntryDialog from "@/components/quotes/ProductionEntryDialog";
 import { format } from "date-fns";
 
 export default function QuotesPage() {
@@ -20,6 +21,8 @@ export default function QuotesPage() {
   const [selectedQuotes, setSelectedQuotes] = useState([]);
   const [activeTab, setActiveTab] = useState("quotes");
   const [selectedJob, setSelectedJob] = useState(null);
+  const [productionEntryOpen, setProductionEntryOpen] = useState(false);
+  const [jobForProduction, setJobForProduction] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: quotes = [] } = useQuery({
@@ -259,7 +262,7 @@ export default function QuotesPage() {
     {
       key: "quoted_cost",
       label: "Quoted Cost",
-      render: (job) => <span className="font-medium">${(job.depreciation_cost || 0).toFixed(2)}</span>,
+      render: (job) => <span className="font-medium">${(job.quoted_total_cost || 0).toFixed(2)}</span>,
     },
     {
       key: "actual_cost",
@@ -270,11 +273,14 @@ export default function QuotesPage() {
       key: "variance",
       label: "Variance",
       render: (job) => {
-        const variance = (job.total_cost || 0) - (job.depreciation_cost || 0);
+        const variance = (job.total_cost || 0) - (job.quoted_total_cost || 0);
         const isOver = variance > 0;
+        const variancePercent = job.quoted_total_cost > 0 
+          ? ((job.total_cost || 0) / (job.quoted_total_cost || 1) * 100)
+          : 0;
         return (
           <span className={isOver ? "text-rose-600 font-medium" : "text-emerald-600 font-medium"}>
-            ${Math.abs(variance).toFixed(2)} {isOver ? "over" : "under"}
+            ${Math.abs(variance).toFixed(2)} ({variancePercent.toFixed(0)}%)
           </span>
         );
       },
@@ -288,13 +294,25 @@ export default function QuotesPage() {
       key: "actions",
       label: "",
       render: (job) => (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setSelectedJob(job)}
-        >
-          Details
-        </Button>
+        <div className="flex gap-2 justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setJobForProduction(job);
+              setProductionEntryOpen(true);
+            }}
+          >
+            Log Entry
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelectedJob(job)}
+          >
+            Details
+          </Button>
+        </div>
       ),
     },
   ];
@@ -363,6 +381,15 @@ export default function QuotesPage() {
         job={selectedJob}
         open={!!selectedJob}
         onOpenChange={(open) => !open && setSelectedJob(null)}
+      />
+
+      <ProductionEntryDialog
+        job={jobForProduction}
+        open={productionEntryOpen}
+        onOpenChange={setProductionEntryOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["jobs"] });
+        }}
       />
     </div>
   );
