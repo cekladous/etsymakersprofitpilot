@@ -53,7 +53,7 @@ export default function Welcome() {
   });
 
   const { data: settings } = useQuery({
-    queryKey: ["settings"],
+    queryKey: ["settings", user?.id],
     queryFn: async () => {
       const results = await base44.entities.Settings.filter({ owner_user_id: user?.id });
       return results[0];
