@@ -352,7 +352,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
                 <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer" />
               </Link>
               <span className="text-sm text-emerald-600 min-w-[100px] text-right">
-                {formatCurrency(-(sellingExpenses.shareSaveRefunds || 0))}
+                {formatCurrency(sellingExpenses.shareSaveRefunds || 0)}
               </span>
               <span className="text-xs text-stone-500 min-w-[50px] text-right">
                 {totalRevenue > 0 ? `${((Math.abs(sellingExpenses.shareSaveRefunds || 0) / totalRevenue) * 100).toFixed(1)}%` : ''}
