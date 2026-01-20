@@ -450,6 +450,7 @@ export function aggregateFinancials(data, dateRange) {
       taxCollectedByEtsy,
       totalEtsySales,
       etsyRefunds,
+      netEtsySales: totalEtsySales - etsyRefunds, // CRITICAL: Show net after refunds
       customSaleA,
       customSaleB,
       customSalesTaxCollected,
@@ -461,7 +462,7 @@ export function aggregateFinancials(data, dateRange) {
       etsyListingFees,
       etsyTransactionFees,
       etsyProcessingFees,
-      shareSaveRefunds,
+      shareSaveRefunds, // NOTE: Negative value (credit)
       otherFees,
       etsyAds,
       etsyOffsiteAds,
@@ -507,6 +508,9 @@ export function aggregateFinancials(data, dateRange) {
     unmatchedStatementLinesCount: unmatchedStatementLines.length,
     unmatchedNetImpact,
     
+    // Deduplication warnings
+    deduplicationWarnings,
+    
     // Raw filtered data for drill-downs
     _rawData: {
       etsyOrders: periodEtsyOrders,
@@ -517,6 +521,7 @@ export function aggregateFinancials(data, dateRange) {
       etsyLedgerEntries: periodLedgerEntries,
       expenses: periodLegacyExpenses,
       fees: periodFees,
+      statementLines: periodStatementLines,
     },
   };
 }
