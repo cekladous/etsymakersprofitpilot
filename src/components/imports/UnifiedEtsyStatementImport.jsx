@@ -1023,7 +1023,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         return (
         <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
           <DialogDescription>
