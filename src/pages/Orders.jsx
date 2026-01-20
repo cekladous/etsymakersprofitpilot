@@ -2,7 +2,9 @@ import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 import { Button } from "@/components/ui/button";
+import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,6 +39,7 @@ import ReconciliationTab from "@/components/etsy/ReconciliationTab";
 
 export default function Orders() {
   const { user, loading } = useAuth();
+  const { canExportCSV } = useFeatureAccess();
   const urlParams = new URLSearchParams(window.location.search);
   const customerFilter = urlParams.get("customer");
   const initialTab = urlParams.get("tab") || "orders";
@@ -55,6 +58,7 @@ export default function Orders() {
   const [selectedFeeIds, setSelectedFeeIds] = useState([]);
   const [selectedDepositIds, setSelectedDepositIds] = useState([]);
   const [selectedFeeOrderId, setSelectedFeeOrderId] = useState(null);
+  const [showExportUpgrade, setShowExportUpgrade] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -301,6 +305,11 @@ export default function Orders() {
   };
 
   const exportOrders = () => {
+    if (!canExportCSV()) {
+      setShowExportUpgrade(true);
+      return;
+    }
+
     const csv = [
       ["Order ID", "Date", "Buyer", "Items", "Order Value", "Shipping", "Sales Tax", "Total Fees", "Net"],
       ...filteredOrders.map(o => {
@@ -1090,6 +1099,13 @@ export default function Orders() {
         open={selectedIds.length === 1 && !bulkDeleteMutation.isPending}
         onOpenChange={() => setSelectedIds([])}
       />
+
+      {showExportUpgrade && (
+        <UpgradeCTA
+          feature="CSV exports"
+          onClose={() => setShowExportUpgrade(false)}
+        />
+      )}
     </div>
   );
 }
