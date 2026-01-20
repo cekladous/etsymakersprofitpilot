@@ -374,36 +374,62 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
                     </td>
                   </tr>
 
-                  {/* Category Rows */}
+                  {/* Category Rows - Budget & Actual */}
                   {group.categories.map(cat => {
                     let yearActual = 0;
+                    let yearBudget = 0;
                     periods.forEach(p => {
                       yearActual += getActual(cat.name, p.start);
+                      yearBudget += getBudget(cat.name, p.start);
                     });
 
                     return (
-                      <tr key={cat.name} className="border-b border-stone-200">
-                        <td className="p-2 pl-6 text-stone-700 sticky left-0 bg-white">
-                          {cat.label}
-                        </td>
-                        {periods.map((p, idx) => (
-                          <td key={idx} className="border-l border-stone-200">
-                            <ActualCell
-                              categoryName={cat.name}
-                              period={p}
-                              label={cat.label}
-                            />
+                      <React.Fragment key={cat.name}>
+                        {/* Budget Row */}
+                        <tr className="border-b border-stone-100 bg-blue-50">
+                          <td className="p-2 pl-8 text-stone-600 text-xs font-medium sticky left-0 bg-blue-50">
+                            Budget: {cat.label}
                           </td>
-                        ))}
-                        <td className="border-l-2 border-stone-300 bg-stone-50">
-                          <div
-                            onClick={() => yearActual > 0 && handleDrillDown(cat.label, cat.name, dateRange.start)}
-                            className={`text-xs text-center py-1 font-semibold ${yearActual > 0 ? "cursor-pointer hover:bg-emerald-50" : ""}`}
-                          >
-                            {yearActual > 0 ? formatCurrency(yearActual) : "—"}
-                          </div>
-                        </td>
-                      </tr>
+                          {periods.map((p, idx) => (
+                            <td key={idx} className="border-l border-stone-200">
+                              <BudgetCell
+                                categoryName={cat.name}
+                                categoryGroup={group.label}
+                                period={p}
+                              />
+                            </td>
+                          ))}
+                          <td className="border-l-2 border-stone-300 bg-blue-100">
+                            <div className="text-xs text-center py-1 font-semibold text-stone-700">
+                              {yearBudget > 0 ? formatCurrency(yearBudget) : "—"}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Actual Row */}
+                        <tr className="border-b border-stone-200">
+                          <td className="p-2 pl-8 text-stone-700 text-xs font-medium sticky left-0 bg-white">
+                            Actual: {cat.label}
+                          </td>
+                          {periods.map((p, idx) => (
+                            <td key={idx} className="border-l border-stone-200">
+                              <ActualCell
+                                categoryName={cat.name}
+                                period={p}
+                                label={cat.label}
+                              />
+                            </td>
+                          ))}
+                          <td className="border-l-2 border-stone-300 bg-stone-50">
+                            <div
+                              onClick={() => yearActual > 0 && handleDrillDown(cat.label, cat.name, dateRange.start)}
+                              className={`text-xs text-center py-1 font-semibold ${yearActual > 0 ? "cursor-pointer hover:bg-emerald-50" : ""}`}
+                            >
+                              {yearActual > 0 ? formatCurrency(yearActual) : "—"}
+                            </div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
                     );
                   })}
                 </React.Fragment>
