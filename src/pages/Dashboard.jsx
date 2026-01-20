@@ -353,19 +353,19 @@ export default function Dashboard() {
     return format(selectedDate, "MMMM yyyy");
   };
 
-  const handleExport = async () => {
-    const XLSX = (await import("xlsx")).default;
-    const exportData = {
-      "Period": getPeriodLabel(),
-      "Total Revenue": metrics.periodRevenue,
-      "Total Expenses": metrics.periodExpenses,
-      "Net Profit": metrics.periodProfit
-    };
+  const handleExport = () => {
+    const csv = [
+      ["Period", "Total Revenue", "Total Expenses", "Net Profit"],
+      [getPeriodLabel(), metrics.periodRevenue.toFixed(2), metrics.periodExpenses.toFixed(2), metrics.periodProfit.toFixed(2)]
+    ].map(row => row.join(",")).join("\n");
 
-    const worksheet = XLSX.utils.json_to_sheet([exportData]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
-    XLSX.writeFile(workbook, `dashboard-${format(selectedDate, "yyyy-MM")}.xlsx`);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dashboard-${format(selectedDate, "yyyy-MM")}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (loading) {
