@@ -766,6 +766,7 @@ export default function Orders() {
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="fees">Fees & Charges</TabsTrigger>
           <TabsTrigger value="deposits">Deposits</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
