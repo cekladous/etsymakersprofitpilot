@@ -156,14 +156,21 @@ export default function MaterialsLibraryTool() {
 
 
 
+  const { data: user } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => base44.auth.me(),
+  });
+
   const { data: allSettings = [], isLoading: settingsLoading } = useQuery({
-    queryKey: ["laser-settings"],
-    queryFn: () => base44.entities.LaserSetting.list(),
+    queryKey: ["laser-settings", user?.id],
+    queryFn: () => base44.entities.LaserSetting.filter({ owner_user_id: user.id }),
+    enabled: !!user,
   });
 
   const { data: userMachines = [], isLoading: machinesLoading } = useQuery({
-    queryKey: ["machines"],
-    queryFn: () => base44.entities.Machine.list(),
+    queryKey: ["machines", user?.id],
+    queryFn: () => base44.entities.Machine.filter({ owner_user_id: user.id }),
+    enabled: !!user,
   });
 
   const filteredSettings = allSettings.filter(setting => {
