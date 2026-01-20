@@ -196,14 +196,14 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     <span className="text-rose-600">{formatCurrency(orderFees.other_postage_costs)}</span>
                   </div>
                 )}
-                {orderFees.share_save_refunds_credits !== 0 && orderFees.share_save_refunds_credits !== undefined && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Share & Save Credit</span>
-                    <span className={orderFees.share_save_refunds_credits > 0 ? "text-emerald-600" : "text-rose-600"}>
-                      {formatCurrency(Math.abs(orderFees.share_save_refunds_credits))}
-                    </span>
-                  </div>
-                )}
+                {orderFees.share_save_credit > 0 && (
+                   <div className="flex justify-between items-center p-2 bg-emerald-100 rounded text-sm border border-emerald-300">
+                     <span className="text-emerald-700 font-semibold">✓ Share & Save Credit</span>
+                     <span className="text-emerald-700 font-bold">
+                       −{formatCurrency(orderFees.share_save_credit)}
+                     </span>
+                   </div>
+                 )}
                 {orderFees.other_fees > 0 && (
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-stone-600">Other Fees</span>
