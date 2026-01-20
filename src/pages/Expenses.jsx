@@ -2,7 +2,9 @@ import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 import { Button } from "@/components/ui/button";
+import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,6 +39,7 @@ import { BUSINESS_EXPENSE_CATEGORIES as CATEGORIES, CATEGORY_COLORS as categoryC
 
 export default function Expenses() {
   const { user, loading } = useAuth();
+  const { canExportCSV } = useFeatureAccess();
   const [importOpen, setImportOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -52,6 +55,7 @@ export default function Expenses() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [materialFilter, setMaterialFilter] = useState("all");
   const [navSource, setNavSource] = useState(null);
+  const [showExportUpgrade, setShowExportUpgrade] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -513,6 +517,11 @@ export default function Expenses() {
   ];
 
   const exportCSV = () => {
+    if (!canExportCSV()) {
+      setShowExportUpgrade(true);
+      return;
+    }
+
     const headers = ["Date", "Description", "Amount", "Category", "Vendor"];
     const rows = filteredExpenses.map(e => [
       e.date,
@@ -1119,6 +1128,13 @@ export default function Expenses() {
           setEditingExpense(null);
         }}
       />
+
+      {showExportUpgrade && (
+        <UpgradeCTA
+          feature="CSV exports"
+          onClose={() => setShowExportUpgrade(false)}
+        />
+      )}
     </div>
   );
 }
