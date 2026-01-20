@@ -27,7 +27,7 @@ export default function Settings() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-4xl grid-cols-4">
+        <TabsList className="grid w-full max-w-4xl grid-cols-3">
           <TabsTrigger value="business" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Business</span>
