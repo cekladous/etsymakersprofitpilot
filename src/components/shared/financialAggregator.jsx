@@ -527,10 +527,12 @@ export function aggregateFinancials(data, dateRange) {
       ownerTransfers,
     },
     
-    // Alerts (counts only, not full rows - those go to Reconciliation page)
+    // Alerts: CRITICAL - Unmatched entries are EXCLUDED from profit
+    // User MUST reconcile these before financial numbers are reliable
     unmatchedLedgerEntriesCount: unmatchedLedgerEntries.length,
     unmatchedStatementLinesCount: unmatchedStatementLines.length,
-    unmatchedNetImpact,
+    unmatchedNetImpact, // Total $ impact of unmatched entries (affects actual profit)
+    hasUnmatchedEntries: unmatchedLedgerEntries.length > 0 || unmatchedStatementLines.length > 0,
     
     // Deduplication warnings
     deduplicationWarnings,
