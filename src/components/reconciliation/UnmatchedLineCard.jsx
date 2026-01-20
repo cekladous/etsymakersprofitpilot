@@ -120,10 +120,26 @@ export default function UnmatchedLineCard({
             </div>
           </div>
 
-          {/* Auto-Match Suggestion */}
+          {/* Auto-Suggestion Based on Ledger Entry Logic */}
+          {suggestedCategory !== 'unmatched' && (
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 flex gap-2">
+              <Lightbulb className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-blue-900 mb-1">
+                  AI Suggestion: {suggestedCategory}
+                </p>
+                <p className="text-xs text-blue-800">
+                  Based on the description and type, this appears to be a <strong>{suggestedCategory}</strong>. 
+                  Click "Categorize" below to apply.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Manual description-based suggestion */}
           <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
             <p className="text-xs font-semibold text-emerald-900 mb-1">
-              ✨ Auto-Match Suggestion:
+              ✨ Manual Suggestion:
             </p>
             <p className="text-xs text-emerald-800">
               {generateAutoMatchSuggestion(line)}
@@ -133,7 +149,7 @@ export default function UnmatchedLineCard({
           {/* What it likely is + guide */}
           <div className="bg-white rounded-lg p-3 border border-amber-100">
             <p className="text-xs font-semibold text-stone-700 mb-1">
-              Likely: <span className="text-amber-700">{inferredCategory}</span>
+              Category Details: <span className="text-amber-700">{inferredCategory}</span>
             </p>
             <p className="text-xs text-stone-600 leading-relaxed">
               {CATEGORY_HELP[inferredCategory]}
