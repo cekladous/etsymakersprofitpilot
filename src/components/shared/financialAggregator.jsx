@@ -76,8 +76,11 @@ export function aggregateFinancials(data, dateRange) {
   // 3) Total Etsy Sales (includes tax for reporting)
   const totalEtsySales = etsySales + taxCollectedByEtsy;
   
-  // 4) Etsy Refunds - three components
-  const etsyRefunds = periodLedgerEntries
+  // 4) Etsy Refunds - from orders (primary) + ledger (secondary for edge cases)
+  const refundsFromOrders = periodEtsyOrders.reduce((sum, o) => 
+    sum + toNumber(o.refund_amount || 0), 0);
+  
+  const etsyRefundsFromLedger = periodLedgerEntries
     .filter(e => {
       const title = (e.title || "").toLowerCase();
       const type = (e.type || "").toLowerCase();
@@ -88,6 +91,9 @@ export function aggregateFinancials(data, dateRange) {
              title.includes("refund to buyer for vat");
     })
     .reduce((sum, e) => sum + Math.abs(toNumber(e.net)), 0);
+  
+  // Use order refunds first; only use ledger if orders don't have refunds
+  const etsyRefunds = refundsFromOrders || etsyRefundsFromLedger;
   
   // 5) Custom Sales A/B - use pre_tax_amount as revenue
   const customSaleA = periodCustomSales
@@ -188,16 +194,16 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, e) => sum + toNumber(e.amount), 0);
   const etsyProcessingFees = toNumber(processingFeesFromFees || (processingFeesFromLedger + legacyProcessingFees));
 
-  // 4) Share & Save Fee Refunds & Misc. Credits
+  // 4) Share & Save Fee Refunds & Misc. Credits (NEGATIVE = credits that reduce fees)
   const shareSaveRows = matchLedgerRows([
     "share & save refund*",
     "etsy miscellaneous credit*"
   ]);
-  const shareSaveFromLedger = toNumber(sumLedgerExpense(shareSaveRows));
+  const shareSaveFromLedger = toNumber(sumLedgerExpense(shareSaveRows)); // Already negative from sumLedgerExpense
   const legacyShareSave = periodLegacyExpenses
     .filter(e => ["share_save_refunds_credits"].includes(e.category))
-    .reduce((sum, e) => sum - toNumber(e.amount), 0); // Credits reduce expenses
-  const shareSaveRefunds = toNumber(shareSaveFromLedger + legacyShareSave);
+    .reduce((sum, e) => sum - toNumber(e.amount), 0); // Credits reduce expenses (negative)
+  const shareSaveRefunds = toNumber(shareSaveFromLedger + legacyShareSave); // Already negative
 
   // 5) Other Fees
   const otherFeeRows = matchLedgerRows([
