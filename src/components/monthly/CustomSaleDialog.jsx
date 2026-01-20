@@ -30,11 +30,8 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
   });
   
   const appSettings = settings[0] || {};
-  const customSaleALabel = appSettings.custom_sale_a_label || "Custom Sale A";
-  const customSaleBLabel = appSettings.custom_sale_b_label || "Custom Sale B";
   
   const [formData, setFormData] = useState({
-    sale_type: "A",
     date: new Date().toISOString().split("T")[0],
     pre_tax_amount: "",
     sales_tax_collected: "",
@@ -62,7 +59,6 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
       queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
       onOpenChange(false);
       setFormData({
-        sale_type: "A",
         date: new Date().toISOString().split("T")[0],
         pre_tax_amount: "",
         sales_tax_collected: "",
@@ -71,7 +67,6 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         description: "",
         payment_source: "",
         notes: "",
-        budget_amount: "",
       });
     },
   });
@@ -89,31 +84,14 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Sale Type *</Label>
-              <Select
-                value={formData.sale_type}
-                onValueChange={(v) => setFormData({ ...formData, sale_type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A">{customSaleALabel}</SelectItem>
-                  <SelectItem value="B">{customSaleBLabel}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Date *</Label>
-              <Input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Date *</Label>
+            <Input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -188,16 +166,6 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
                 onChange={(e) => setFormData({ ...formData, shipping_or_postage_cost: e.target.value })}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Budget (optional)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={formData.budget_amount}
-              onChange={(e) => setFormData({ ...formData, budget_amount: e.target.value })}
-            />
           </div>
 
           <div className="space-y-2">
