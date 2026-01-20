@@ -73,6 +73,7 @@ export default function PromoCodeManager() {
     createMutation.mutate({
       ...formData,
       code: formData.code.toUpperCase(),
+      duration_months: formData.duration_type === 'permanent' ? 999 : formData.duration_months,
       current_uses: 0
     });
   };
@@ -152,14 +153,27 @@ export default function PromoCodeManager() {
                 </div>
               )}
 
-              <div>
-                <label className="text-sm font-medium text-stone-700">Duration (months)</label>
-                <Input
-                  type="number"
-                  value={formData.duration_months}
-                  onChange={(e) => setFormData({ ...formData, duration_months: parseInt(e.target.value) })}
-                  className="mt-1"
-                />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-stone-700">Duration</label>
+                <Select value={formData.duration_type} onValueChange={(v) => setFormData({ ...formData, duration_type: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="months">Specific Months</SelectItem>
+                    <SelectItem value="permanent">Permanent</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formData.duration_type === 'months' && (
+                  <Input
+                    type="number"
+                    min="1"
+                    value={formData.duration_months}
+                    onChange={(e) => setFormData({ ...formData, duration_months: parseInt(e.target.value) || 1 })}
+                    placeholder="Number of months"
+                    className="mt-1"
+                  />
+                )}
               </div>
 
               <div>
@@ -244,7 +258,7 @@ export default function PromoCodeManager() {
                 </div>
                 <div>
                   <span className="text-stone-600">Duration:</span>
-                  <p className="font-semibold text-stone-900">{promo.duration_months} month{promo.duration_months !== 1 ? 's' : ''}</p>
+                  <p className="font-semibold text-stone-900">{promo.duration_months >= 999 ? 'Permanent' : `${promo.duration_months} month${promo.duration_months !== 1 ? 's' : ''}`}</p>
                 </div>
                 <div>
                   <span className="text-stone-600">Uses:</span>
