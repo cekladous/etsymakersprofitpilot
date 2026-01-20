@@ -306,11 +306,11 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   });
 
   const convertMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (channel = "custom") => {
       const grandTotal = calculateGrandTotal();
       const order = await base44.entities.Order.create({
         owner_user_id: user.id,
-        channel: "custom",
+        channel: channel,
         order_id: `QUOTE-${formData.quote_number}`,
         sale_date: new Date().toISOString().split("T")[0],
         product_name: formData.project_name,
@@ -349,8 +349,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     }
   };
 
-  const handleConfirmConversion = () => {
-    convertMutation.mutate();
+  const handleConfirmConversion = (channel) => {
+    convertMutation.mutate(channel);
   };
 
   const handleSubmit = (e) => {
