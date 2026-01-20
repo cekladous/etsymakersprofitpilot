@@ -111,79 +111,103 @@ export default function ProductionPage() {
 
   const columns = [
     {
-      key: "job_number",
-      label: "Job #",
-      render: (job) => <span className="font-mono text-sm font-medium">{job.job_number}</span>,
+      header: "Job #",
+      render: (row) => (
+        <span className="font-mono font-medium text-stone-900">{row.job_number}</span>
+      ),
     },
     {
-      key: "product",
-      label: "Product",
-      render: (job) => <span className="text-stone-700">{getProductName(job.product_id)}</span>,
+      header: "Product",
+      render: (row) => (
+        <span className="text-stone-700">{getProductName(row.product_id)}</span>
+      ),
     },
     {
-      key: "quantity",
-      label: "Qty",
-      render: (job) => <span className="text-stone-600">{job.quantity || 1}</span>,
+      header: "Qty",
+      render: (row) => <span className="text-stone-600">{row.quantity || 1}</span>,
     },
     {
-      key: "quoted_cost",
-      label: "Quoted Cost",
-      render: (job) => <span className="font-medium">${(job.quoted_total_cost || 0).toFixed(2)}</span>,
+      header: "Orders",
+      render: (row) => {
+        const jobOrders = getOrdersForJob(row);
+        return (
+          <span className="text-stone-600">{jobOrders.length} linked</span>
+        );
+      },
     },
     {
-      key: "actual_cost",
-      label: "Actual Cost",
-      render: (job) => <span className="font-medium">${(job.total_cost || 0).toFixed(2)}</span>,
+      header: "Quoted",
+      render: (row) => (
+        <span className="font-medium text-stone-900">
+          ${(row.quoted_total_cost || 0).toFixed(2)}
+        </span>
+      ),
     },
     {
-      key: "variance",
-      label: "Variance",
-      render: (job) => {
-        const variance = (job.total_cost || 0) - (job.quoted_total_cost || 0);
+      header: "Actual",
+      render: (row) => (
+        <span className="font-medium text-stone-900">
+          ${(row.total_cost || 0).toFixed(2)}
+        </span>
+      ),
+    },
+    {
+      header: "Variance",
+      render: (row) => {
+        const variance = (row.total_cost || 0) - (row.quoted_total_cost || 0);
         const isOver = variance > 0;
-        const variancePercent = job.quoted_total_cost > 0 
-          ? ((job.total_cost || 0) / (job.quoted_total_cost || 1) * 100)
-          : 0;
         return (
           <span className={isOver ? "text-rose-600 font-medium" : "text-emerald-600 font-medium"}>
-            ${Math.abs(variance).toFixed(2)} ({variancePercent.toFixed(0)}%)
+            ${Math.abs(variance).toFixed(2)}
           </span>
         );
       },
     },
     {
-      key: "status",
-      label: "Status",
-      render: (job) => <StatusBadge status={job.status} />,
+      header: "Status",
+      render: (row) => <StatusBadge status={row.status} />,
     },
     {
-      key: "created_date",
-      label: "Created",
-      render: (job) => format(new Date(job.created_date), "MMM dd, yyyy"),
+      header: "Created",
+      render: (row) => (
+        <span className="text-stone-500 text-sm">
+          {row.created_date ? format(new Date(row.created_date), "MMM d") : "-"}
+        </span>
+      ),
     },
     {
-      key: "actions",
-      label: "",
-      render: (job) => (
-        <div className="flex gap-2 justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setJobForProduction(job);
+      header: "",
+      render: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setSelectedJob(row)}>
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              setEditingJob(row);
+              setFormOpen(true);
+            }}>
+              Edit Job
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              setJobForProduction(row);
               setProductionEntryOpen(true);
-            }}
-          >
-            Log Entry
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSelectedJob(job)}
-          >
-            Details
-          </Button>
-        </div>
+            }}>
+              Log Entry
+            </DropdownMenuItem>
+            {row.status !== "completed" && (
+              <DropdownMenuItem onClick={() => markComplete(row)}>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Mark Complete
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
