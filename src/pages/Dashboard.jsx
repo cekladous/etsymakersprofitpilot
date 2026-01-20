@@ -52,6 +52,8 @@ import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning"
 import ReconciliationCheckCard from "@/components/dashboard/ReconciliationCheckCard";
 import CashflowReconciliationCard from "@/components/reconciliation/CashflowReconciliationCard";
 import MonthCloseWorkflow from "@/components/reconciliation/MonthCloseWorkflow";
+import GracePeriodWarning from "@/components/subscriptions/GracePeriodWarning";
+import ExpiredSubscriptionWarning from "@/components/subscriptions/ExpiredSubscriptionWarning";
 
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
 
@@ -164,6 +166,15 @@ export default function Dashboard() {
     queryKey: ["etsy-statement-imports", user?.id],
     enabled: !!user,
     queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id })
+  });
+
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const subs = await base44.entities.Subscription.filter({ owner_user_id: user.id });
+      return subs[0] || null;
+    }
   });
 
   const now = new Date();
@@ -393,6 +404,14 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Subscription Warnings */}
+      {subscription && (
+        <>
+          <GracePeriodWarning subscription={subscription} />
+          <ExpiredSubscriptionWarning subscription={subscription} />
+        </>
+      )}
+
       <PageHeader
         title="Dashboard"
         description={getPeriodLabel()}>
