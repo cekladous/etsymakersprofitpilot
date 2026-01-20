@@ -1,11 +1,13 @@
 import React, { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = false }) {
+  const { user } = useAuth();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState(null);
   const [importResult, setImportResult] = useState(null);
@@ -15,8 +17,14 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
 
   const importMutation = useMutation({
     mutationFn: async ({ orders }) => {
+      // Add owner_user_id to all orders before sending to backend
+      const ordersWithOwner = orders.map(order => ({
+        ...order,
+        owner_user_id: user.id,
+        customer: order.customer ? { ...order.customer, owner_user_id: user.id } : undefined
+      }));
       // Use backend function to update orders with product details
-      const { data } = await base44.functions.invoke('updateOrdersWithSoldData', { orders });
+      const { data } = await base44.functions.invoke('updateOrdersWithSoldData', { orders: ordersWithOwner });
       return data;
     },
     onSuccess: (result) => {
