@@ -1,10 +1,13 @@
-import React from 'react';
-import { AlertCircle, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, Lock, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 
 export default function UpgradeCTA({ open, onOpenChange, feature, currentPlan }) {
+  const [loading, setLoading] = useState(false);
   const featureMap = {
     'etsy_import': {
       title: 'Unlimited Imports',
@@ -30,6 +33,22 @@ export default function UpgradeCTA({ open, onOpenChange, feature, currentPlan })
 
   const info = featureMap[feature] || {};
 
+  const handleUpgrade = async () => {
+    const planId = info.plan === 'Maker Plus' ? 'maker_plus' : 'maker_pro';
+    setLoading(true);
+    try {
+      const response = await base44.functions.invoke('createSquareCheckout', { planId });
+      if (response.data?.checkoutUrl) {
+        window.location.href = createPageUrl(response.data.checkoutUrl);
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Error starting checkout: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -47,8 +66,19 @@ export default function UpgradeCTA({ open, onOpenChange, feature, currentPlan })
           <p className="text-xs text-emerald-600 mb-4">
             Prices will increase as we add features — early makers keep this rate.
           </p>
-          <Button className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2">
-            Upgrade Now
+          <Button 
+            onClick={handleUpgrade}
+            disabled={loading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Upgrade Now'
+            )}
           </Button>
         </Card>
 
