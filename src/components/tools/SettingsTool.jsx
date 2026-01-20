@@ -35,7 +35,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
 
@@ -81,6 +81,9 @@ export default function SettingsTool() {
     etsy_ads_rate_type: "percent",
     offsite_ads_rate: 15,
     auto_categorization_rules: [],
+    tool_name_tags_enabled: false,
+    tool_svg_enabled: false,
+    tool_raster_enabled: false,
     });
 
   const [machineData, setMachineData] = useState({
@@ -193,6 +196,9 @@ export default function SettingsTool() {
         etsy_ads_rate_type: s.etsy_ads_rate_type || "percent",
         offsite_ads_rate: s.offsite_ads_rate || 15,
         auto_categorization_rules: s.auto_categorization_rules || [],
+        tool_name_tags_enabled: s.tool_name_tags_enabled || false,
+        tool_svg_enabled: s.tool_svg_enabled || false,
+        tool_raster_enabled: s.tool_raster_enabled || false,
         });
     }
   }, [settings]);
@@ -1021,6 +1027,78 @@ export default function SettingsTool() {
                 No machines configured. Add your first machine to track costs.
               </div>
             )}
+          </div>
+
+          <div className="border-t border-stone-200"></div>
+
+          {/* Tools Visibility */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-indigo-600" />
+              <h3 className="font-semibold text-stone-900">Tools Visibility</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                <div>
+                  <Label className="font-medium">Name Tags Tool</Label>
+                  <p className="text-xs text-stone-500 mt-1">Show/hide the name tags generator</p>
+                </div>
+                <button
+                  onClick={() => setSettingsData({ ...settingsData, tool_name_tags_enabled: !settingsData.tool_name_tags_enabled })}
+                  className={`p-2 rounded-lg transition-colors ${
+                    settingsData.tool_name_tags_enabled
+                      ? "bg-indigo-100 text-indigo-600"
+                      : "bg-stone-200 text-stone-400"
+                  }`}
+                >
+                  {settingsData.tool_name_tags_enabled ? (
+                    <Eye className="w-5 h-5" />
+                  ) : (
+                    <EyeOff className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                <div>
+                  <Label className="font-medium">SVG Converter Tool</Label>
+                  <p className="text-xs text-stone-500 mt-1">Show/hide the SVG converter</p>
+                </div>
+                <button
+                  onClick={() => setSettingsData({ ...settingsData, tool_svg_enabled: !settingsData.tool_svg_enabled })}
+                  className={`p-2 rounded-lg transition-colors ${
+                    settingsData.tool_svg_enabled
+                      ? "bg-indigo-100 text-indigo-600"
+                      : "bg-stone-200 text-stone-400"
+                  }`}
+                >
+                  {settingsData.tool_svg_enabled ? (
+                    <Eye className="w-5 h-5" />
+                  ) : (
+                    <EyeOff className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                <div>
+                  <Label className="font-medium">Raster Assistant Tool</Label>
+                  <p className="text-xs text-stone-500 mt-1">Show/hide the raster settings assistant</p>
+                </div>
+                <button
+                  onClick={() => setSettingsData({ ...settingsData, tool_raster_enabled: !settingsData.tool_raster_enabled })}
+                  className={`p-2 rounded-lg transition-colors ${
+                    settingsData.tool_raster_enabled
+                      ? "bg-indigo-100 text-indigo-600"
+                      : "bg-stone-200 text-stone-400"
+                  }`}
+                >
+                  {settingsData.tool_raster_enabled ? (
+                    <Eye className="w-5 h-5" />
+                  ) : (
+                    <EyeOff className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-stone-200"></div>
