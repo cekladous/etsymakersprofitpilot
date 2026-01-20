@@ -49,6 +49,7 @@ import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
+import ReconciliationCheckCard from "@/components/dashboard/ReconciliationCheckCard";
 
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
 
@@ -612,6 +613,15 @@ export default function Dashboard() {
           <p className="text-violet-200 text-xs mt-1">Spent • Click to view breakdown</p>
         </div>
       </div>
+
+      {/* Reconciliation Check */}
+      <ReconciliationCheckCard
+        etsyOrders={etsyOrders}
+        etsyStatementImports={etsyStatementImports}
+        etsyStatementLines={etsyStatementLines}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+      />
 
       {/* Sales Tax Warning */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
