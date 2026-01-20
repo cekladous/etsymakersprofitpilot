@@ -503,9 +503,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
           <KPICard
-                title="Revenue (excl. tax)"
+                title="Revenue (after refunds)"
                 value={`$${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                subtitle={`${metrics.orderCount} orders • View all orders`}
+                subtitle={`${metrics.orderCount} orders • ${financialData.revenue.etsyRefunds > 0 ? `$${financialData.revenue.etsyRefunds.toFixed(2)} refunded` : 'No refunds'}`}
                 icon={DollarSign}
                 accentColor="emerald" />
 
@@ -563,25 +563,27 @@ export default function Dashboard() {
       </div>
 
       {/* Unmatched Rows Banner */}
-      {(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0 &&
-          <Link to={createPageUrl("ReconciliationReview")} className="block">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-amber-900">
-                  {(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)} rows need review
-                </p>
-                <p className="text-sm text-amber-700">
-                  Some transactions could not be automatically categorized. Click to review.
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="bg-white">
-                Review Now
-              </Button>
-            </div>
-          </div>
-        </Link>
-          }
+      {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0 || (financialData.deduplicationWarnings || []).length > 0) &&
+         <Link to={createPageUrl("ReconciliationReview")} className="block">
+         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
+           <div className="flex items-center justify-between">
+             <div>
+               <p className="font-semibold text-amber-900">
+                 {(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)} rows need review
+                 {(financialData.deduplicationWarnings || []).length > 0 && ' • Deduplication required'}
+               </p>
+               <p className="text-sm text-amber-700">
+                 {(financialData.deduplicationWarnings || []).map((w, i) => <div key={i}>{w}</div>)}
+                 {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0) && <div>Some transactions not yet categorized.</div>}
+               </p>
+             </div>
+             <Button variant="outline" size="sm" className="bg-white">
+               Review Now
+             </Button>
+           </div>
+         </div>
+       </Link>
+         }
 
       {/* Alerts */}
       {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0) &&
