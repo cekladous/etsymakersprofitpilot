@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { Search, Download, DollarSign, CreditCard, TrendingUp, Upload, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import * as XLSX from "xlsx";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -146,18 +145,24 @@ export default function EtsyActivity() {
   }, [etsyStatementImports]);
 
   const exportFees = () => {
-    const data = filteredFees.map(f => ({
-      "Date": f.transaction_date,
-      "Order ID": f.order_id || "—",
-      "Fee Type": feeTypeLabels[f.fee_type] || f.fee_type,
-      "Amount": f.amount,
-      "Description": f.description,
-    }));
+    const csv = [
+      ["Date", "Order ID", "Fee Type", "Amount", "Description"],
+      ...filteredFees.map(f => [
+        f.transaction_date,
+        f.order_id || "—",
+        feeTypeLabels[f.fee_type] || f.fee_type,
+        f.amount,
+        f.description || ""
+      ])
+    ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Etsy Fees");
-    XLSX.writeFile(wb, `etsy-fees-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `etsy-fees-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const toggleSelectAllFees = () => {
