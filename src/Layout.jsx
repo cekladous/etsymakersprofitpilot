@@ -14,7 +14,8 @@ import {
   X,
   ChevronRight,
   FileText,
-  Users
+  Users,
+  Settings as SettingsIcon
 } from "lucide-react";
 
 const navItems = [
