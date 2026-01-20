@@ -12,7 +12,8 @@ import {
   Plus,
   Calculator,
   Settings,
-  Sparkles } from
+  Sparkles,
+  MessageCircle } from
 "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
