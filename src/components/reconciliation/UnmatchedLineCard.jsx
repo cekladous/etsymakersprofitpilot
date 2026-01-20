@@ -25,6 +25,30 @@ const RESOLUTION_GUIDE = {
   unmatched: 'Determine what this is (sale, fee, deposit?) then resolve'
 };
 
+// Generate auto-match suggestions based on description and amount
+const generateAutoMatchSuggestion = (line) => {
+  const desc = (line.description || '').toLowerCase();
+  const amount = Math.abs(line.amount);
+  
+  if (desc.includes('refund') && desc.includes('to')) {
+    const match = line.description.match(/to\s+([A-Za-z\s]+)/i);
+    if (match) {
+      return `Refund of $${amount.toFixed(2)} to ${match[1].trim()}`;
+    }
+    return `Refund of $${amount.toFixed(2)}`;
+  }
+  
+  if (desc.includes('deposit') || desc.includes('payout')) {
+    return `Deposit/Payout of $${amount.toFixed(2)}`;
+  }
+  
+  if (desc.includes('fee') || desc.includes('charge')) {
+    return `Fee of $${amount.toFixed(2)} for ${desc.substring(0, 40)}`;
+  }
+  
+  return `Transaction of $${amount.toFixed(2)}`;
+};
+
 export default function UnmatchedLineCard({ 
   line, 
   onResolve, 
@@ -87,6 +111,16 @@ export default function UnmatchedLineCard({
             </div>
           </div>
 
+          {/* Auto-Match Suggestion */}
+          <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+            <p className="text-xs font-semibold text-emerald-900 mb-1">
+              ✨ Auto-Match Suggestion:
+            </p>
+            <p className="text-xs text-emerald-800">
+              {generateAutoMatchSuggestion(line)}
+            </p>
+          </div>
+
           {/* What it likely is + guide */}
           <div className="bg-white rounded-lg p-3 border border-amber-100">
             <p className="text-xs font-semibold text-stone-700 mb-1">
@@ -100,29 +134,29 @@ export default function UnmatchedLineCard({
             </p>
           </div>
 
-          {/* Resolution Options */}
+          {/* Manual Actions */}
           <div className="space-y-2 pt-2 border-t border-amber-200">
             {!resolutionMode ? (
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setResolutionMode('auto')}
+                  onClick={() => setResolutionMode('manual')}
                   disabled={isLoading}
-                  className="text-xs"
+                  className="text-xs bg-emerald-50 border-emerald-300 hover:bg-emerald-100"
                 >
-                  <Link2 className="w-3 h-3 mr-1" />
-                  Auto-Match
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Match
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setResolutionMode('manual')}
+                  onClick={() => setResolutionMode('categorize')}
                   disabled={isLoading}
                   className="text-xs"
                 >
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Manual Match
+                  <Badge className="w-3 h-3 mr-1" />
+                  Categorize
                 </Button>
                 <Button
                   variant="outline"
@@ -132,29 +166,46 @@ export default function UnmatchedLineCard({
                   className="text-xs"
                 >
                   <X className="w-3 h-3 mr-1" />
-                  Mark as Excluded
+                  Ignore
                 </Button>
               </div>
             ) : (
               <div className="bg-white rounded p-3 border border-amber-300 space-y-2">
                 <p className="text-xs font-semibold text-stone-700 capitalize">
-                  {resolutionMode === 'exclude' ? 'Exclude from reconciliation' : `${resolutionMode} match this line`}
+                  {resolutionMode === 'exclude' ? 'Ignore this transaction' : resolutionMode === 'categorize' ? 'Categorize this line' : 'Link to matching transaction'}
                 </p>
-                
+
                 {(resolutionMode === 'manual') && (
                   <input
                     type="text"
                     placeholder="Enter order ID, fee ID, or description..."
                     className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
                     onChange={(e) => setNotes(e.target.value)}
+                    value={notes}
                   />
                 )}
-                
+
+                {(resolutionMode === 'categorize') && (
+                  <select
+                    className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  >
+                    <option value="">Select category...</option>
+                    <option value="sale">Sale</option>
+                    <option value="refund">Refund</option>
+                    <option value="fee">Fee</option>
+                    <option value="deposit">Deposit</option>
+                    <option value="tax">Tax</option>
+                    <option value="shipping">Shipping</option>
+                  </select>
+                )}
+
                 <textarea
-                  placeholder="Notes about this resolution..."
+                  placeholder={resolutionMode === 'exclude' ? 'Why ignore this?' : 'Notes about this resolution...'}
                   className="w-full px-2 py-1 text-xs border border-stone-300 rounded h-12"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  value={resolutionMode === 'categorize' ? '' : notes}
+                  onChange={(e) => !['categorize'].includes(resolutionMode) && setNotes(e.target.value)}
                 />
 
                 <div className="flex gap-2">
@@ -162,9 +213,9 @@ export default function UnmatchedLineCard({
                     size="sm"
                     className="text-xs bg-emerald-600 hover:bg-emerald-700"
                     onClick={() => handleResolve(resolutionMode)}
-                    disabled={isLoading}
+                    disabled={isLoading || (resolutionMode === 'categorize' && !notes)}
                   >
-                    Confirm
+                    {isLoading ? 'Saving...' : 'Confirm'}
                   </Button>
                   <Button
                     variant="outline"
