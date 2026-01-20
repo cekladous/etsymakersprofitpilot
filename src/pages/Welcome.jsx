@@ -249,12 +249,18 @@ export default function Welcome() {
         </Card>
 
         {/* Footer Navigation */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-center gap-3">
           <Link to={createPageUrl("Dashboard")}>
             <Button variant="outline" className="gap-2">
               Go to Dashboard
             </Button>
           </Link>
+          <a href={base44.agents.getWhatsAppConnectURL('onboarding_assistant')} target="_blank" rel="noopener noreferrer">
+            <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+              <MessageCircle className="w-4 h-4" />
+              Chat with Assistant
+            </Button>
+          </a>
         </div>
       </div>
     </div>);
