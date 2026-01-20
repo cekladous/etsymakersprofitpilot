@@ -175,19 +175,19 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const { orders, fees, deposits, refunds, taxes, unmatchedLines } = parsedData;
       
       // Helper to batch operations with better rate limiting
-      const batchProcess = async (items, batchSize, processFn) => {
-        for (let i = 0; i < items.length; i += batchSize) {
-          const batch = items.slice(i, i + batchSize);
-          // Process sequentially instead of parallel to avoid rate limits
-          for (const item of batch) {
-            await processFn(item);
-            // Small delay between each item
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          // Wait between batches
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      };
+       const batchProcess = async (items, batchSize, processFn) => {
+         for (let i = 0; i < items.length; i += batchSize) {
+           const batch = items.slice(i, i + batchSize);
+           // Process sequentially instead of parallel to avoid rate limits
+           for (const item of batch) {
+             await processFn(item);
+             // Larger delay between each item to avoid rate limits
+             await new Promise(resolve => setTimeout(resolve, 300));
+           }
+           // Longer wait between batches
+           await new Promise(resolve => setTimeout(resolve, 1000));
+         }
+       };
       
       // Get owner_user_id from authenticated user
       const currentUser = await base44.auth.me();
