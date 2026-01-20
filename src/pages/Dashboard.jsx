@@ -486,7 +486,6 @@ export default function Dashboard() {
               </div>
             </PopoverContent>
           </Popover>
-          </div>
 
           <div className="h-6 w-px bg-stone-300 mx-2"></div>
 
