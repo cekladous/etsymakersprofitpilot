@@ -15,8 +15,8 @@ import {
   Plus,
   Calendar,
   BarChart3,
-  Table as TableIcon
-} from "lucide-react";
+  Table as TableIcon } from
+"lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, subMonths, startOfQuarter, endOfQuarter, endOfYear, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,13 +25,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from
+"@/components/ui/select";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from
+"@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
@@ -67,105 +67,105 @@ export default function Dashboard() {
   const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id })
   });
 
   const { data: orders = [] } = useQuery({
     queryKey: ["orders", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Order.filter({ owner_user_id: user.id }, "-sale_date"),
+    queryFn: () => base44.entities.Order.filter({ owner_user_id: user.id }, "-sale_date")
   });
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
+    queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date")
   });
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["expenses", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Expense.filter({ owner_user_id: user.id }, "-date"),
+    queryFn: () => base44.entities.Expense.filter({ owner_user_id: user.id }, "-date")
   });
 
   const { data: sheets = [] } = useQuery({
     queryKey: ["sheets", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.MaterialSheet.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.MaterialSheet.filter({ owner_user_id: user.id })
   });
 
   const { data: materialTypes = [] } = useQuery({
     queryKey: ["materialTypes", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id })
   });
 
   const { data: etsyOrders = [] } = useQuery({
     queryKey: ["etsy-orders", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EtsyOrder.filter({ owner_user_id: user.id }, "-sale_date", 1000),
+    queryFn: () => base44.entities.EtsyOrder.filter({ owner_user_id: user.id }, "-sale_date", 1000)
   });
 
   const { data: orderFees = [] } = useQuery({
     queryKey: ["order-fees", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.OrderFee.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.OrderFee.filter({ owner_user_id: user.id })
   });
 
   const { data: customSales = [] } = useQuery({
     queryKey: ["custom-sales", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.CustomSale.filter({ owner_user_id: user.id }, "-date", 1000),
+    queryFn: () => base44.entities.CustomSale.filter({ owner_user_id: user.id }, "-date", 1000)
   });
 
   const { data: businessExpenses = [] } = useQuery({
     queryKey: ["business-expenses", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, "-date", 1000),
+    queryFn: () => base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, "-date", 1000)
   });
 
   const { data: transfers = [] } = useQuery({
     queryKey: ["transfers", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Transfer.filter({ owner_user_id: user.id }, "-date", 1000),
+    queryFn: () => base44.entities.Transfer.filter({ owner_user_id: user.id }, "-date", 1000)
   });
 
   const { data: materialPurchases = [] } = useQuery({
     queryKey: ["material-purchases", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 1000),
+    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 1000)
   });
 
   const { data: etsyLedgerEntries = [] } = useQuery({
     queryKey: ["etsy-ledger-entries", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000),
+    queryFn: () => base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000)
   });
 
   const { data: fees = [] } = useQuery({
     queryKey: ["fees", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Fee.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.Fee.filter({ owner_user_id: user.id })
   });
 
   const { data: etsyStatementLines = [] } = useQuery({
     queryKey: ["etsy-statement-lines", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id })
   });
 
   const { data: etsyStatementImports = [] } = useQuery({
     queryKey: ["etsy-statement-imports", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }),
+    queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id })
   });
 
   const now = new Date();
-  
+
   // Calculate date range based on selected timeRange or custom dates
   const dateRange = useMemo(() => {
     let start, end;
-    
+
     // If custom dates are set, use those
     if (customStartDate && customEndDate) {
       start = customStartDate;
@@ -211,7 +211,7 @@ export default function Dashboard() {
       expenses, // CRITICAL: Include legacy Expense entity
       fees,
       etsyStatementLines,
-      etsyStatementImports,
+      etsyStatementImports
     }, dateRange);
   }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, dateRange]);
 
@@ -225,7 +225,7 @@ export default function Dashboard() {
       orderFees,
       businessExpenses,
       expenses, // Include legacy expenses for complete reconciliation
-      dateRange: periodStart && periodEnd ? { start: periodStart, end: periodEnd } : null,
+      dateRange: periodStart && periodEnd ? { start: periodStart, end: periodEnd } : null
     });
   }, [etsyOrders, orderFees, businessExpenses, expenses, periodStart, periodEnd]);
 
@@ -238,28 +238,28 @@ export default function Dashboard() {
         totalExpenses: 0,
         periodProfit: 0,
         periodMargin: 0,
-        orderCount: 0,
+        orderCount: 0
       };
     }
-    
+
     // Use financialData for all calculations to ensure consistency
     const toNumber = (v) => {
       const num = Number(v);
       return Number.isFinite(num) ? num : 0;
     };
-    
+
     const periodRevenue = toNumber(financialData.totalRevenue);
     const totalExpenses = toNumber(financialData.totalExpenses);
     const periodOrderFees = toNumber(
-      toNumber(financialData.sellingExpenses.etsyTransactionFees) + 
-      toNumber(financialData.sellingExpenses.etsyProcessingFees) + 
+      toNumber(financialData.sellingExpenses.etsyTransactionFees) +
+      toNumber(financialData.sellingExpenses.etsyProcessingFees) +
       toNumber(financialData.sellingExpenses.etsyListingFees) +
       toNumber(financialData.sellingExpenses.otherFees) +
       toNumber(financialData.sellingExpenses.etsyAds) +
       toNumber(financialData.sellingExpenses.etsyOffsiteAdsFees)
     );
     const periodBusinessExpenses = toNumber(totalExpenses - periodOrderFees);
-    
+
     const periodProfit = toNumber(financialData.netProfit);
     const periodMargin = toNumber(financialData.profitMargin);
 
@@ -270,16 +270,16 @@ export default function Dashboard() {
       totalExpenses: toNumber(totalExpenses),
       periodProfit: toNumber(periodProfit),
       periodMargin: toNumber(periodMargin),
-      orderCount: financialData._rawData.etsyOrders.length,
+      orderCount: financialData._rawData.etsyOrders.length
     };
   }, [financialData]);
 
   // Alerts
-  const ordersWithoutJobs = Array.isArray(orders) ? orders.filter(o => !o.job_id && o.status !== "shipped") : [];
-  const uncategorizedExpenses = Array.isArray(expenses) ? expenses.filter(e => !e.is_categorized) : [];
-  
-  const lowStockSheets = Array.isArray(sheets) ? sheets.filter(sheet => {
-    const type = Array.isArray(materialTypes) ? materialTypes.find(t => t.id === sheet.material_type_id) : null;
+  const ordersWithoutJobs = Array.isArray(orders) ? orders.filter((o) => !o.job_id && o.status !== "shipped") : [];
+  const uncategorizedExpenses = Array.isArray(expenses) ? expenses.filter((e) => !e.is_categorized) : [];
+
+  const lowStockSheets = Array.isArray(sheets) ? sheets.filter((sheet) => {
+    const type = Array.isArray(materialTypes) ? materialTypes.find((t) => t.id === sheet.material_type_id) : null;
     return type && sheet.remaining_percentage <= 20 && sheet.status !== "depleted";
   }) : [];
 
@@ -287,35 +287,35 @@ export default function Dashboard() {
   const chartData = useMemo(() => {
     const periods = [];
     const monthsToShow = timeRange === "month" ? 6 : timeRange === "quarter" ? 6 : 12;
-    
+
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const date = subMonths(selectedDate, i);
       const start = startOfMonth(date);
       const end = endOfMonth(date);
-      
-      const periodEtsyOrders = etsyOrders.filter(o => {
+
+      const periodEtsyOrders = etsyOrders.filter((o) => {
         const d = new Date(o.sale_date);
         return d >= start && d <= end;
       });
-      
-      const revenue = periodEtsyOrders.reduce((sum, o) => 
-        sum + (o.order_value || 0), 0);
-      
-      const fees = orderFees
-        .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
-        .reduce((sum, f) => sum + (f.total_fees || 0), 0);
-      
-      const periodExpenses = businessExpenses
-        .filter(e => e?.date && new Date(e.date) >= start && new Date(e.date) <= end)
-        .reduce((sum, e) => sum + (e.amount || 0), 0);
-      
+
+      const revenue = periodEtsyOrders.reduce((sum, o) =>
+      sum + (o.order_value || 0), 0);
+
+      const fees = orderFees.
+      filter((f) => periodEtsyOrders.some((o) => o.id === f.order_id)).
+      reduce((sum, f) => sum + (f.total_fees || 0), 0);
+
+      const periodExpenses = businessExpenses.
+      filter((e) => e?.date && new Date(e.date) >= start && new Date(e.date) <= end).
+      reduce((sum, e) => sum + (e.amount || 0), 0);
+
       periods.push({
         period: format(date, "MMM"),
         revenue: Math.round(revenue),
-        profit: Math.round(revenue - fees - periodExpenses),
+        profit: Math.round(revenue - fees - periodExpenses)
       });
     }
-    
+
     return periods;
   }, [etsyOrders, orderFees, businessExpenses, timeRange, selectedDate]);
 
@@ -359,7 +359,7 @@ export default function Dashboard() {
       "Period": getPeriodLabel(),
       "Total Revenue": metrics.periodRevenue,
       "Total Expenses": metrics.periodExpenses,
-      "Net Profit": metrics.periodProfit,
+      "Net Profit": metrics.periodProfit
     };
 
     const worksheet = XLSX.utils.json_to_sheet([exportData]);
@@ -379,8 +379,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      {user && (
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg">
+      {user &&
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg">
           <h1 className="text-2xl font-bold mb-1">
             {getGreeting()}, {getFirstName()}! 👋
           </h1>
@@ -388,29 +388,29 @@ export default function Dashboard() {
             "Success is the sum of small efforts, repeated day in and day out." - Robert Collier
           </p>
         </div>
-      )}
+      }
 
       <PageHeader
         title="Dashboard"
-        description={getPeriodLabel()}
-      >
+        description={getPeriodLabel()}>
+
         <div className="flex gap-2 flex-wrap">
           <div className="flex gap-2 items-center">
-            {["month", "quarter", "year"].map((range) => (
-              <Button
-                key={range}
-                variant={timeRange === range && !customStartDate ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setTimeRange(range);
-                  setCustomStartDate(null);
-                  setCustomEndDate(null);
-                }}
-                className={timeRange === range && !customStartDate ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-              >
+            {["month", "quarter", "year"].map((range) =>
+            <Button
+              key={range}
+              variant={timeRange === range && !customStartDate ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setTimeRange(range);
+                setCustomStartDate(null);
+                setCustomEndDate(null);
+              }}
+              className={timeRange === range && !customStartDate ? "bg-emerald-600 hover:bg-emerald-700" : ""}>
+
                 {range.charAt(0).toUpperCase() + range.slice(1)}
               </Button>
-            ))}
+            )}
             
             <div className="h-6 w-px bg-stone-300 mx-1"></div>
             
@@ -423,8 +423,8 @@ export default function Dashboard() {
                 } else if (timeRange === "year") {
                   setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth()));
                 }
-              }}
-            >
+              }}>
+
               ←
             </Button>
             <Button
@@ -436,8 +436,8 @@ export default function Dashboard() {
                 } else if (timeRange === "year") {
                   setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth()));
                 }
-              }}
-            >
+              }}>
+
               →
             </Button>
           </div>
@@ -446,9 +446,9 @@ export default function Dashboard() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
-                {customStartDate && customEndDate 
-                  ? `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}`
-                  : format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
+                {customStartDate && customEndDate ?
+                `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}` :
+                format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
                 }
               </Button>
             </PopoverTrigger>
@@ -462,8 +462,8 @@ export default function Dashboard() {
                     setCustomStartDate(range?.from || null);
                     setCustomEndDate(range?.to || null);
                   }}
-                  numberOfMonths={1}
-                />
+                  numberOfMonths={1} />
+
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -473,16 +473,16 @@ export default function Dashboard() {
                       setDatePickerOpen(false);
                     }}
                     variant="outline"
-                    className="flex-1"
-                  >
+                    className="flex-1">
+
                     Clear
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => setDatePickerOpen(false)}
                     className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-                    disabled={!customStartDate || !customEndDate}
-                  >
+                    disabled={!customStartDate || !customEndDate}>
+
                     Apply
                   </Button>
                 </div>
@@ -515,59 +515,59 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
           <KPICard
-            title="Revenue (excl. tax)"
-            value={`$${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            subtitle={`${metrics.orderCount} orders • View all orders`}
-            icon={DollarSign}
-            accentColor="emerald"
-          />
+                title="Revenue (excl. tax)"
+                value={`$${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle={`${metrics.orderCount} orders • View all orders`}
+                icon={DollarSign}
+                accentColor="emerald" />
+
         </Link>
         <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
           <KPICard
-            title="Net Profit"
-            value={`$${metrics.periodProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            subtitle={`${metrics.periodMargin.toFixed(1)}% margin • View breakdown`}
-            icon={TrendingUp}
-            accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"}
-          />
+                title="Net Profit"
+                value={`$${metrics.periodProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle={`${metrics.periodMargin.toFixed(1)}% margin • View breakdown`}
+                icon={TrendingUp}
+                accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"} />
+
         </div>
         <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
           <KPICard
-            title="Total Fees"
-            value={`$${metrics.periodFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            subtitle="Etsy + processing • View details"
-            icon={Receipt}
-            accentColor="rose"
-          />
+                title="Total Fees"
+                value={`$${metrics.periodFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle="Etsy + processing • View details"
+                icon={Receipt}
+                accentColor="rose" />
+
         </Link>
-        <Link 
-          to={createPageUrl("Expenses") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}&source=dashboard`}
-          className="block transition-transform hover:scale-105"
-        >
+        <Link
+              to={createPageUrl("Expenses") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}&source=dashboard`}
+              className="block transition-transform hover:scale-105">
+
           <KPICard
-            title="Total Expenses"
-            value={`$${metrics.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            subtitle={`Fees + Business expenses • View all`}
-            icon={Percent}
-            accentColor="amber"
-          />
+                title="Total Expenses"
+                value={`$${metrics.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle={`Fees + Business expenses • View all`}
+                icon={Percent}
+                accentColor="amber" />
+
         </Link>
       </div>
 
       {/* All Time Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div 
-          onClick={() => setActiveTab("summary")}
-          className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105"
-        >
+        <div
+              onClick={() => setActiveTab("summary")}
+              className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105">
+
           <p className="text-emerald-100 text-sm font-medium mb-1">Deposits from Etsy</p>
           <p className="text-3xl font-bold">${financialData.cashflow.etsyDeposits.toLocaleString()}</p>
           <p className="text-emerald-200 text-xs mt-1">{getPeriodLabel()} • Click for cashflow details</p>
         </div>
-        <div 
-          onClick={() => setActiveTab("budget")}
-          className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105"
-        >
+        <div
+              onClick={() => setActiveTab("budget")} className="bg-gray-800 text-white p-6 rounded-2xl from-violet-600 to-violet-700 cursor-pointer transition-transform hover:scale-105">
+
+
           <p className="text-violet-100 text-sm font-medium mb-1">Actual Spending</p>
           <p className="text-3xl font-bold">${financialData.totalExpenses.toLocaleString()}</p>
           <p className="text-violet-200 text-xs mt-1">Spent • Click to view breakdown</p>
@@ -575,8 +575,8 @@ export default function Dashboard() {
       </div>
 
       {/* Unmatched Rows Banner */}
-      {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)) > 0 && (
-        <Link to={createPageUrl("ReconciliationReview")} className="block">
+      {(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0 &&
+          <Link to={createPageUrl("ReconciliationReview")} className="block">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
             <div className="flex items-center justify-between">
               <div>
@@ -593,32 +593,32 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
-      )}
+          }
 
       {/* Alerts */}
-      {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0) && (
-        <div className="space-y-3">
+      {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0) &&
+          <div className="space-y-3">
           <h2 className="text-lg font-semibold text-stone-900">Needs Attention</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <Link to={createPageUrl("Jobs")} className="block">
               <AlertCard
-                title="Orders Missing Jobs"
-                count={ordersWithoutJobs.length}
-                description="Create production jobs for these orders"
-                type="warning"
-              />
+                  title="Orders Missing Jobs"
+                  count={ordersWithoutJobs.length}
+                  description="Create production jobs for these orders"
+                  type="warning" />
+
             </Link>
             <Link to={createPageUrl("Inventory")} className="block">
               <AlertCard
-                title="Low Stock Materials"
-                count={lowStockSheets.length}
-                description="Sheets running low"
-                type="warning"
-              />
+                  title="Low Stock Materials"
+                  count={lowStockSheets.length}
+                  description="Sheets running low"
+                  type="warning" />
+
             </Link>
           </div>
         </div>
-      )}
+          }
 
         {/* Low Stock Notifications */}
         <LowStockNotifications />
@@ -627,10 +627,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <ProfitChart
-              data={chartData}
-              timeRange={timeRange}
-              onTimeRangeChange={setTimeRange}
-            />
+                data={chartData}
+                timeRange={timeRange}
+                onTimeRangeChange={setTimeRange} />
+
           </div>
           <div>
             <ProfitCalculatorWidget />
@@ -644,8 +644,8 @@ export default function Dashboard() {
             dashboardTotal={metrics.totalExpenses}
             netProfitTotal={financialData.totalExpenses}
             actualsTotal={financialData.totalExpenses}
-            periodLabel={getPeriodLabel()}
-          />
+            periodLabel={getPeriodLabel()} />
+
           
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap">
@@ -671,25 +671,25 @@ export default function Dashboard() {
            {/* Reconciliation Warning */}
            <div className="mb-6">
              <ReconciliationWarning
-               dashboardTotal={metrics.totalExpenses}
-               netProfitTotal={financialData.totalExpenses}
-               actualsTotal={financialData.totalExpenses}
-               periodLabel={getPeriodLabel()}
-             />
+              dashboardTotal={metrics.totalExpenses}
+              netProfitTotal={financialData.totalExpenses}
+              actualsTotal={financialData.totalExpenses}
+              periodLabel={getPeriodLabel()} />
+
            </div>
 
            <ActualsSpendingMatrix
-             dateRange={dateRange}
-             viewMode={timeRange}
-             etsyOrders={etsyOrders}
-             customSales={customSales}
-             businessExpenses={businessExpenses}
-             transfers={transfers}
-             materialPurchases={materialPurchases}
-             etsyLedgerEntries={etsyLedgerEntries}
-             orderFees={orderFees}
-             expenses={expenses}
-           />
+            dateRange={dateRange}
+            viewMode={timeRange}
+            etsyOrders={etsyOrders}
+            customSales={customSales}
+            businessExpenses={businessExpenses}
+            transfers={transfers}
+            materialPurchases={materialPurchases}
+            etsyLedgerEntries={etsyLedgerEntries}
+            orderFees={orderFees}
+            expenses={expenses} />
+
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">
@@ -700,16 +700,16 @@ export default function Dashboard() {
       {/* Dialogs */}
       <CustomSaleDialog
         open={customSaleDialogOpen}
-        onOpenChange={setCustomSaleDialogOpen}
-      />
+        onOpenChange={setCustomSaleDialogOpen} />
+
       <BusinessExpenseDialog
         open={expenseDialogOpen}
-        onOpenChange={setExpenseDialogOpen}
-      />
+        onOpenChange={setExpenseDialogOpen} />
+
       <TransferDialog
         open={transferDialogOpen}
-        onOpenChange={setTransferDialogOpen}
-      />
-    </div>
-  );
+        onOpenChange={setTransferDialogOpen} />
+
+    </div>);
+
 }
