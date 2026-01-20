@@ -3,15 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Download, Wrench, CheckCircle, Clock } from "lucide-react";
+import { Plus, FileText, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
 import StatusBadge from "@/components/shared/StatusBadge";
-import JobDetailSheet from "@/components/jobs/JobDetailSheet";
-import ProductionEntryDialog from "@/components/quotes/ProductionEntryDialog";
 import { format } from "date-fns";
 
 export default function QuotesPage() {
@@ -19,10 +16,6 @@ export default function QuotesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [selectedQuotes, setSelectedQuotes] = useState([]);
-  const [activeTab, setActiveTab] = useState("quotes");
-  const [selectedJob, setSelectedJob] = useState(null);
-  const [productionEntryOpen, setProductionEntryOpen] = useState(false);
-  const [jobForProduction, setJobForProduction] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: quotes = [] } = useQuery({
@@ -46,39 +39,7 @@ export default function QuotesPage() {
     queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
-  const { data: orders = [] } = useQuery({
-    queryKey: ["orders", user?.id],
-    enabled: !!user,
-    queryFn: () => base44.entities.Order.filter({ owner_user_id: user.id }),
-  });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ["products", user?.id],
-    enabled: !!user,
-    queryFn: () => base44.entities.Product.filter({ owner_user_id: user.id }),
-  });
-
-  const updateJobMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Job.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-    },
-  });
-
-  const markJobComplete = async (job) => {
-    await updateJobMutation.mutateAsync({
-      id: job.id,
-      data: {
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      },
-    });
-    const jobOrders = orders.filter(o => job.order_ids?.includes(o.id));
-    for (const order of jobOrders) {
-      await base44.entities.Order.update(order.id, { status: "completed" });
-    }
-  };
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Quote.delete(id),
@@ -231,97 +192,13 @@ export default function QuotesPage() {
     return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
   }
 
-  const getJobsForQuotes = () => {
-    return jobs.filter(job => {
-      const quote = quotes.find(q => q.converted_to_order_id && job.order_ids?.includes(q.converted_to_order_id));
-      return !!quote;
-    });
-  };
 
-  const getProductName = (productId) => {
-    const product = products.find(p => p.id === productId);
-    return product?.name || "-";
-  };
-
-  const jobColumns = [
-    {
-      key: "job_number",
-      label: "Job #",
-      render: (job) => <span className="font-mono text-sm font-medium">{job.job_number}</span>,
-    },
-    {
-      key: "product",
-      label: "Product",
-      render: (job) => <span className="text-stone-700">{getProductName(job.product_id)}</span>,
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      render: (job) => <span className="text-stone-600">{job.quantity || 1}</span>,
-    },
-    {
-      key: "quoted_cost",
-      label: "Quoted Cost",
-      render: (job) => <span className="font-medium">${(job.quoted_total_cost || 0).toFixed(2)}</span>,
-    },
-    {
-      key: "actual_cost",
-      label: "Actual Cost",
-      render: (job) => <span className="font-medium">${(job.total_cost || 0).toFixed(2)}</span>,
-    },
-    {
-      key: "variance",
-      label: "Variance",
-      render: (job) => {
-        const variance = (job.total_cost || 0) - (job.quoted_total_cost || 0);
-        const isOver = variance > 0;
-        const variancePercent = job.quoted_total_cost > 0 
-          ? ((job.total_cost || 0) / (job.quoted_total_cost || 1) * 100)
-          : 0;
-        return (
-          <span className={isOver ? "text-rose-600 font-medium" : "text-emerald-600 font-medium"}>
-            ${Math.abs(variance).toFixed(2)} ({variancePercent.toFixed(0)}%)
-          </span>
-        );
-      },
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (job) => <StatusBadge status={job.status} />,
-    },
-    {
-      key: "actions",
-      label: "",
-      render: (job) => (
-        <div className="flex gap-2 justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setJobForProduction(job);
-              setProductionEntryOpen(true);
-            }}
-          >
-            Log Entry
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSelectedJob(job)}
-          >
-            Details
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   return (
     <div>
       <PageHeader
-        title="Quotes & Production"
-        description="Manage quotes from estimate to production"
+        title="Quotes"
+        description="Manage client quotes and estimates"
       >
         <Button onClick={handleNew} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="w-4 h-4 mr-2" />
@@ -329,67 +206,27 @@ export default function QuotesPage() {
         </Button>
       </PageHeader>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="quotes">Quotes</TabsTrigger>
-          <TabsTrigger value="production">Production ({getJobsForQuotes().length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="quotes">
-          <Card>
-            <CardContent className="p-0">
-              {quotes.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-                  <p className="text-stone-500 mb-4">No quotes yet</p>
-                  <Button onClick={handleNew} variant="outline">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Quote
-                  </Button>
-                </div>
-              ) : (
-                <DataTable data={quotes} columns={columns} />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="production">
-          <Card>
-            <CardContent className="p-0">
-              {getJobsForQuotes().length === 0 ? (
-                <div className="text-center py-12">
-                  <Wrench className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-                  <p className="text-stone-500 mb-4">No production jobs yet</p>
-                  <p className="text-stone-400 text-sm">Accept a quote to create a production job</p>
-                </div>
-              ) : (
-                <DataTable data={getJobsForQuotes()} columns={jobColumns} />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardContent className="p-0">
+          {quotes.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-12 h-12 mx-auto text-stone-300 mb-3" />
+              <p className="text-stone-500 mb-4">No quotes yet</p>
+              <Button onClick={handleNew} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Quote
+              </Button>
+            </div>
+          ) : (
+            <DataTable data={quotes} columns={columns} />
+          )}
+        </CardContent>
+      </Card>
 
       <QuoteFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         quote={selectedQuote}
-      />
-
-      <JobDetailSheet
-        job={selectedJob}
-        open={!!selectedJob}
-        onOpenChange={(open) => !open && setSelectedJob(null)}
-      />
-
-      <ProductionEntryDialog
-        job={jobForProduction}
-        open={productionEntryOpen}
-        onOpenChange={setProductionEntryOpen}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ["jobs"] });
-        }}
       />
     </div>
   );
