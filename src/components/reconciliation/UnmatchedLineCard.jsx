@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle2, HelpCircle, Link2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, HelpCircle, Link2, X, Lightbulb } from 'lucide-react';
 import { format } from 'date-fns';
+import { classifyEtsyLedgerEntry } from '@/components/shared/financialAggregator';
 
 const CATEGORY_HELP = {
   sale: 'Payment for an item sold. Match to an EtsyOrder or mark as processed.',
