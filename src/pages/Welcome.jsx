@@ -195,7 +195,7 @@ export default function Welcome() {
             </Card>
           </Link>
 
-          <Link to={createPageUrl("Jobs")}>
+          <Link to={createPageUrl("Production")}>
             <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
