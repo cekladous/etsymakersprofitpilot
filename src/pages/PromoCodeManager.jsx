@@ -54,7 +54,8 @@ export default function PromoCodeManager() {
       toast.success('Promo code created');
     },
     onError: (err) => {
-      const message = err.response?.data?.error || err.message || 'Failed to create promo code';
+      console.error('Create promo code error:', err);
+      const message = err?.response?.data?.error || err?.message || 'Failed to create promo code';
       setError(message);
       toast.error(message);
     }
