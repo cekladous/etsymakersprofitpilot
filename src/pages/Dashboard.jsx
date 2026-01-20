@@ -496,6 +496,8 @@ export default function Dashboard() {
             variant="outline" 
             size="sm"
             onClick={() => handleExport('pdf')}
+            disabled={financialData.hasUnmatchedEntries}
+            title={financialData.hasUnmatchedEntries ? "Reconcile unmatched entries before exporting" : ""}
             className="gap-2">
             <Download className="w-4 h-4" />
             PDF Report
@@ -504,6 +506,8 @@ export default function Dashboard() {
             variant="outline" 
             size="sm"
             onClick={() => handleExport('xlsx')}
+            disabled={financialData.hasUnmatchedEntries}
+            title={financialData.hasUnmatchedEntries ? "Reconcile unmatched entries before exporting" : ""}
             className="gap-2">
             <Download className="w-4 h-4" />
             Excel Report
