@@ -378,18 +378,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Banner */}
-      {user && (
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg">
-          <h1 className="text-2xl font-bold mb-1">
-            {getGreeting()}, {getFirstName()}! 👋
-          </h1>
-          <p className="text-emerald-100 text-sm">
-            "Success is the sum of small efforts, repeated day in and day out." - Robert Collier
-          </p>
-        </div>
-      )}
-
       <PageHeader
         title="Dashboard"
         description={getPeriodLabel()}
