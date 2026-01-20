@@ -24,6 +24,7 @@ import { Loader2 } from "lucide-react";
 
 const EXPENSE_CATEGORIES = [
   { group: "product_expenses", name: "materials_supplies", label: "Materials & Supplies" },
+  { group: "product_expenses", name: "packaging_materials", label: "Packaging Materials" },
   { group: "product_expenses", name: "tools_equipment", label: "Tools & Equipment" },
   { group: "business_expenses", name: "advertising_marketing", label: "Advertising & Marketing (non-Etsy)" },
   { group: "business_expenses", name: "office_general_expenses", label: "Office / General Expenses" },
