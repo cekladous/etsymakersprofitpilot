@@ -47,7 +47,7 @@ export default function ReconciliationCheckCard({ etsyOrders, etsyStatementImpor
   if (!reconciliation) return null;
 
   return (
-    <Card className={isMatched ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}>
+    <Card className={reconciliation.isMatched ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           {reconciliation.isMatched ? (
