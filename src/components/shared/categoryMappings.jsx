@@ -22,15 +22,15 @@ const CATEGORY_MAPPINGS = {
   miscellaneous_expenses: { label: "Miscellaneous", key: "miscellaneous", section: "business" },
   
   // Selling Expenses (Etsy Fees)
-  etsy_listing_fees: { label: "Listing Fees", key: "etsyListingFees", section: "fees" },
-  etsy_transaction_fees: { label: "Transaction Fees", key: "etsyTransactionFees", section: "fees" },
-  etsy_processing_fees: { label: "Processing Fees", key: "etsyProcessingFees", section: "fees" },
-  share_save_refunds_credits: { label: "Share & Save Credits", key: "shareSaveRefunds", section: "fees" },
-  other_fees: { label: "Other Fees", key: "otherFees", section: "fees" },
-  etsy_ads: { label: "Etsy Ads", key: "etsyAds", section: "fees" },
-  etsy_offsite_ads_fees: { label: "Offsite Ads", key: "etsyOffsiteAds", section: "fees" },
-  etsy_shipping: { label: "Shipping Labels", key: "etsyShipping", section: "fees" },
-  other_postage_costs: { label: "Other Postage", key: "otherPostage", section: "fees" },
+  etsy_listing_fees: { label: "Listing Fees", key: "etsyListingFees", section: "fees", isCredit: false },
+  etsy_transaction_fees: { label: "Transaction Fees", key: "etsyTransactionFees", section: "fees", isCredit: false },
+  etsy_processing_fees: { label: "Processing Fees", key: "etsyProcessingFees", section: "fees", isCredit: false },
+  share_save_refunds_credits: { label: "Share & Save Credits (reduce fees)", key: "shareSaveRefunds", section: "fees", isCredit: true },
+  other_fees: { label: "Other Fees", key: "otherFees", section: "fees", isCredit: false },
+  etsy_ads: { label: "Etsy Ads", key: "etsyAds", section: "fees", isCredit: false },
+  etsy_offsite_ads_fees: { label: "Offsite Ads", key: "etsyOffsiteAds", section: "fees", isCredit: false },
+  etsy_shipping: { label: "Shipping Labels", key: "etsyShipping", section: "fees", isCredit: false },
+  other_postage_costs: { label: "Other Postage", key: "otherPostage", section: "fees", isCredit: false },
 };
 
 /**
