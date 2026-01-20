@@ -22,11 +22,22 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 export default function ProductionPage() {
   const { user, loading } = useAuth();
-  const [activeView, setActiveView] = useState("list");
+  const [viewMode, setViewMode] = useState("list"); // list, kanban, spreadsheet
   const [selectedJob, setSelectedJob] = useState(null);
   const [productionEntryOpen, setProductionEntryOpen] = useState(false);
   const [jobForProduction, setJobForProduction] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("create") === "true") {
+      setFormOpen(true);
+    }
+  }, []);
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs", user?.id],
