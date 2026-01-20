@@ -23,7 +23,6 @@ Deno.serve(async (req) => {
       owner_user_id: user.id,
       setting_key: 'default',
       business_name: 'My Shop',
-      user_name: user.full_name || user.email,
       electricity_rate: 0.15,
       monthly_overhead: 500,
       default_markup: 30,
