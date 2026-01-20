@@ -27,16 +27,9 @@ Deno.serve(async (req) => {
     });
     subscription = subscription[0];
 
-    // Generate a checkout token/session
-    const checkoutSession = {
-      user_id: user.id,
-      plan_id: planId,
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min expiry
-    };
-
+    // Redirect to checkout page
     return Response.json({
-      checkoutUrl: `/checkout?plan=${planId}&session=${btoa(JSON.stringify(checkoutSession))}`
+      checkoutUrl: `checkout?plan=${planId}`
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Zap } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 
 const PLANS = [
   {
@@ -60,9 +61,8 @@ export default function PricingPlans({ currentPlan, onSelectPlan }) {
     setLoading(planId);
     try {
       const response = await base44.functions.invoke('createSquareCheckout', { planId });
-      // Redirect to checkout page
       if (response.data?.checkoutUrl) {
-        window.location.href = response.data.checkoutUrl;
+        window.location.href = createPageUrl(response.data.checkoutUrl);
       }
     } catch (error) {
       console.error('Checkout error:', error);
