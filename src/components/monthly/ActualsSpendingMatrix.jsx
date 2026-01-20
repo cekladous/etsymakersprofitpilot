@@ -65,28 +65,9 @@ export default function ActualsSpendingMatrix({
     );
   }, [months, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses]);
 
-  // Define expense categories
-  const expenseCategories = [
-    { label: "Materials & Supplies", key: "materialsSupplies", section: "product" },
-    { label: "Tools & Equipment", key: "toolsEquipment", section: "product" },
-    { label: "Advertising & Marketing", key: "advertisingMarketing", section: "business" },
-    { label: "Office Expenses", key: "officeExpenses", section: "business" },
-    { label: "Gas & Mileage", key: "gasMileage", section: "business" },
-    { label: "Utilities & Cell Phone", key: "utilitiesCellPhone", section: "business" },
-    { label: "Professional Services", key: "professionalServices", section: "business" },
-    { label: "Other", key: "other", section: "business" },
-    { label: "Miscellaneous", key: "miscellaneous", section: "business" },
-  ];
-
-  const feeCategories = [
-    { label: "Listing Fees", key: "etsyListingFees", section: "fees" },
-    { label: "Transaction Fees", key: "etsyTransactionFees", section: "fees" },
-    { label: "Processing Fees", key: "etsyProcessingFees", section: "fees" },
-    { label: "Etsy Ads", key: "etsyAds", section: "fees" },
-    { label: "Offsite Ads", key: "etsyOffsiteAds", section: "fees" },
-    { label: "Shipping Labels", key: "etsyShipping", section: "fees" },
-    { label: "Other Postage", key: "otherPostage", section: "fees" },
-  ];
+  // Load categories dynamically from schema (single source of truth)
+  const expenseCategories = useMemo(() => getBusinessExpenseCategories(), []);
+  const feeCategories = useMemo(() => getFeeCategories(), []);
 
   const allCategories = includeFees 
     ? [...feeCategories, ...expenseCategories]
