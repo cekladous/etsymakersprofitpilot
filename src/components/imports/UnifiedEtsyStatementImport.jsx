@@ -356,13 +356,31 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
       return result;
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      // Track import usage for Free users
+      try {
+        const currentUser = await base44.auth.me();
+        const subscriptions = await base44.entities.Subscription.filter({
+          owner_user_id: currentUser.id
+        });
+        const subscription = subscriptions[0];
+
+        if (subscription?.plan_id === 'free') {
+          await base44.entities.Subscription.update(subscription.id, {
+            imports_used_this_month: (subscription.imports_used_this_month || 0) + 1
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to track import usage:', err);
+      }
+
       setImportResult(result);
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
       queryClient.invalidateQueries({ queryKey: ["fees"] });
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
       queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
       queryClient.invalidateQueries({ queryKey: ["etsy-statement-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       setImporting(false);
       setPreview(null);
       setPendingData(null);
