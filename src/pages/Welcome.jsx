@@ -30,22 +30,26 @@ export default function Welcome() {
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list()
+    queryFn: () => base44.entities.Product.filter({ owner_user_id: user?.id }),
+    enabled: !!user
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list()
+    queryFn: () => base44.entities.Customer.filter({ owner_user_id: user?.id }),
+    enabled: !!user
   });
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["quotes"],
-    queryFn: () => base44.entities.Quote.list()
+    queryFn: () => base44.entities.Quote.filter({ owner_user_id: user?.id }),
+    enabled: !!user
   });
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs"],
-    queryFn: () => base44.entities.Job.list()
+    queryFn: () => base44.entities.Job.filter({ owner_user_id: user?.id }),
+    enabled: !!user
   });
 
   const { data: settings } = useQuery({
