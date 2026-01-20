@@ -458,6 +458,7 @@ export function aggregateFinancials(data, dateRange) {
       customSaleA,
       customSaleB,
       customSalesTaxCollected,
+      customRevenueTotal: customSaleA + customSaleB, // NEW: Total custom revenue (non-Etsy)
       total: totalRevenue,
     },
     
