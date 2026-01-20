@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
-import * as XLSX from "xlsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
@@ -302,25 +301,31 @@ export default function Orders() {
   };
 
   const exportOrders = () => {
-    const data = filteredOrders.map(o => {
-      const fees = orderFees.find(f => f.order_id === o.order_id);
-      return {
-        "Order ID": o.order_id,
-        "Date": o.sale_date,
-        "Buyer": o.buyer_username,
-        "Items": o.number_of_items,
-        "Order Value": o.order_value,
-        "Shipping": o.shipping_charged,
-        "Sales Tax": o.sales_tax,
-        "Total Fees": fees?.total_fees || 0,
-        "Net": o.order_net,
-      };
-    });
+    const csv = [
+      ["Order ID", "Date", "Buyer", "Items", "Order Value", "Shipping", "Sales Tax", "Total Fees", "Net"],
+      ...filteredOrders.map(o => {
+        const fees = orderFees.find(f => f.order_id === o.order_id);
+        return [
+          o.order_id,
+          o.sale_date,
+          o.buyer_username,
+          o.number_of_items,
+          o.order_value,
+          o.shipping_charged,
+          o.sales_tax,
+          fees?.total_fees || 0,
+          o.order_net
+        ];
+      })
+    ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Orders");
-    XLSX.writeFile(wb, `etsy-orders-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `etsy-orders-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const toggleSelectAll = () => {
