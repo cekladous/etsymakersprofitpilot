@@ -65,6 +65,7 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
     inventory_flag: false,
     budget_amount: "",
   });
+  const [shippingWarning, setShippingWarning] = useState(false);
 
   // Update category when preselectedCategory changes
   React.useEffect(() => {
@@ -72,6 +73,14 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
       setFormData(prev => ({ ...prev, category_name: preselectedCategory }));
     }
   }, [preselectedCategory, open]);
+
+  // Detect shipping keywords in description
+  React.useEffect(() => {
+    const shippingKeywords = ['ship', 'postage', 'freight', 'label', 'tracking'];
+    const text = (formData.description + formData.vendor).toLowerCase();
+    const hasShipping = shippingKeywords.some(kw => text.includes(kw));
+    setShippingWarning(hasShipping);
+  }, [formData.description, formData.vendor]);
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -184,6 +193,11 @@ export default function BusinessExpenseDialog({ open, onOpenChange, preselectedC
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Expense details"
             />
+            {shippingWarning && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-800">
+                <strong>⚠️ Shipping detected:</strong> Use the <strong>shipping_cost</strong> field on the Order instead. Shipping should be tracked at the order level, not as a business expense.
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
