@@ -23,6 +23,7 @@ export default function ActualsSpendingMatrix({
   expenses
 }) {
   const [includeFees, setIncludeFees] = useState(false);
+  const [showRevenue, setShowRevenue] = useState(false);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -69,9 +70,15 @@ export default function ActualsSpendingMatrix({
   const expenseCategories = useMemo(() => getBusinessExpenseCategories(), []);
   const feeCategories = useMemo(() => getFeeCategories(), []);
 
-  const allCategories = includeFees 
-    ? [...feeCategories, ...expenseCategories]
-    : expenseCategories;
+  const revenueCategories = [
+    { label: "Etsy Sales", key: "etsy_sales", section: "revenue" },
+    { label: "Custom Sale A", key: "custom_sale_a", section: "revenue" },
+    { label: "Custom Sale B", key: "custom_sale_b", section: "revenue" }
+  ];
+
+  const allCategories = showRevenue 
+    ? [...revenueCategories, ...(includeFees ? [...feeCategories, ...expenseCategories] : expenseCategories)]
+    : (includeFees ? [...feeCategories, ...expenseCategories] : expenseCategories);
 
   const getCategoryValue = (data, category) => {
     if (category.section === "product") {
@@ -80,6 +87,10 @@ export default function ActualsSpendingMatrix({
       return data.businessExpenses?.[category.key] || 0;
     } else if (category.section === "fees") {
       return data.sellingExpenses?.[category.key] || 0;
+    } else if (category.section === "revenue") {
+      if (category.key === "etsy_sales") return data.revenue?.etsySales || 0;
+      if (category.key === "custom_sale_a") return data.revenue?.customSaleA || 0;
+      if (category.key === "custom_sale_b") return data.revenue?.customSaleB || 0;
     }
     return 0;
   };
@@ -113,31 +124,43 @@ export default function ActualsSpendingMatrix({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle>Actual Spending Matrix</CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <HelpCircle className="w-4 h-4 text-stone-400" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    <p className="text-xs font-semibold mb-1">Actual Spending Matrix</p>
-                    <p className="text-xs mb-2">Shows all business expenses by category and period. Click any cell to drill into transaction details.</p>
-                    <p className="text-xs text-stone-500">Note: Totals here must exactly match Dashboard Total Expenses and Net Profit Statement totals for the same period.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch 
-                id="include-fees" 
-                checked={includeFees}
-                onCheckedChange={setIncludeFees}
-              />
-              <Label htmlFor="include-fees" className="text-sm cursor-pointer">
-                Include Etsy Fees
-              </Label>
-            </div>
+           <div className="flex items-center gap-2">
+             <CardTitle>Actual Spending & Revenue Matrix</CardTitle>
+             <TooltipProvider>
+               <Tooltip>
+                 <TooltipTrigger>
+                   <HelpCircle className="w-4 h-4 text-stone-400" />
+                 </TooltipTrigger>
+                 <TooltipContent className="max-w-sm">
+                   <p className="text-xs font-semibold mb-1">Actual Spending & Revenue Matrix</p>
+                   <p className="text-xs mb-2">Shows revenue and all business expenses by category and period. Click any cell to drill into transaction details.</p>
+                   <p className="text-xs text-stone-500">Note: Totals here must exactly match Dashboard Total Expenses and Net Profit Statement totals for the same period.</p>
+                 </TooltipContent>
+               </Tooltip>
+             </TooltipProvider>
+           </div>
+           <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2">
+               <Switch 
+                 id="show-revenue" 
+                 checked={showRevenue}
+                 onCheckedChange={setShowRevenue}
+               />
+               <Label htmlFor="show-revenue" className="text-sm cursor-pointer">
+                 Show Revenue
+               </Label>
+             </div>
+             <div className="flex items-center gap-2">
+               <Switch 
+                 id="include-fees" 
+                 checked={includeFees}
+                 onCheckedChange={setIncludeFees}
+               />
+               <Label htmlFor="include-fees" className="text-sm cursor-pointer">
+                 Include Etsy Fees
+               </Label>
+             </div>
+           </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -171,34 +194,44 @@ export default function ActualsSpendingMatrix({
                          return (
                            <td 
                              key={monthIdx} 
-                             className={`text-right py-2 px-4 ${absValue > 0 ? 'cursor-pointer' : 'text-stone-400'} ${isCredit ? 'bg-emerald-50 text-emerald-700 font-medium' : 'hover:bg-stone-100'}`}
+                             className={`text-right py-2 px-4 ${absValue > 0 ? 'cursor-pointer' : 'text-stone-400'} ${
+                               category.section === 'revenue' ? 'bg-blue-50 text-blue-700 font-medium' :
+                               isCredit ? 'bg-emerald-50 text-emerald-700 font-medium' : 'hover:bg-stone-100'
+                             }`}
                              onClick={() => absValue > 0 && handleCellClick(category, monthIdx)}
                            >
-                             {isCredit ? `-${formatCurrency(absValue)}` : formatCurrency(value)}
+                             {category.section === 'revenue' ? formatCurrency(value) :
+                              isCredit ? `-${formatCurrency(absValue)}` : formatCurrency(value)}
                            </td>
                          );
                        })}
-                      <td className={`text-right py-2 px-4 font-semibold ${category.isCredit ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-50'}`}>
-                        {category.isCredit ? `-${formatCurrency(Math.abs(categoryTotal))}` : formatCurrency(categoryTotal)}
+                      <td className={`text-right py-2 px-4 font-semibold ${
+                        category.section === 'revenue' ? 'bg-blue-50 text-blue-700' :
+                        category.isCredit ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-50'
+                      }`}>
+                        {category.section === 'revenue' ? formatCurrency(categoryTotal) : 
+                         category.isCredit ? `-${formatCurrency(Math.abs(categoryTotal))}` : formatCurrency(categoryTotal)}
                       </td>
                     </tr>
                   );
                 })}
                 <tr className="border-t-2 border-stone-300 font-bold bg-stone-100">
-                  <td className="py-3 px-4 sticky left-0 bg-stone-100 z-10">Total Spending</td>
-                  {monthlyData.map((data, idx) => {
-                    const monthTotal = allCategories.reduce((sum, cat) => 
-                      sum + getCategoryValue(data, cat), 0);
-                    return (
-                      <td key={idx} className="text-right py-3 px-4">
-                        {formatCurrency(monthTotal)}
-                      </td>
-                    );
-                  })}
-                  <td className="text-right py-3 px-4 bg-stone-200">
-                    {formatCurrency(grandTotal)}
-                  </td>
-                </tr>
+                  <td className="py-3 px-4 sticky left-0 bg-stone-100 z-10">{showRevenue ? 'Total Revenue & Spending' : 'Total Spending'}</td>
+                   {monthlyData.map((data, idx) => {
+                     const monthTotal = allCategories.reduce((sum, cat) => {
+                       const value = getCategoryValue(data, cat);
+                       return sum + value;
+                     }, 0);
+                     return (
+                       <td key={idx} className="text-right py-3 px-4">
+                         {formatCurrency(monthTotal)}
+                       </td>
+                     );
+                   })}
+                   <td className="text-right py-3 px-4 bg-stone-200">
+                     {formatCurrency(grandTotal)}
+                   </td>
+                 </tr>
               </tbody>
             </table>
           </div>
