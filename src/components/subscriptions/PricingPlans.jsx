@@ -12,8 +12,7 @@ const PLANS = [
     features: [
       'Import 1 Etsy statement/month',
       'Dashboard preview',
-      'Read-only access',
-      'Community support'
+      'Read-only access'
     ],
     cta: 'Current Plan',
     popular: false
