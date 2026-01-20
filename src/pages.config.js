@@ -1,3 +1,4 @@
+import CustomSales from './pages/CustomSales';
 import Customers from './pages/Customers';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
@@ -8,11 +9,12 @@ import Products from './pages/Products';
 import Quotes from './pages/Quotes';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
-import CustomSales from './pages/CustomSales';
+import PaymentSettings from './pages/PaymentSettings';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "CustomSales": CustomSales,
     "Customers": Customers,
     "Dashboard": Dashboard,
     "Expenses": Expenses,
@@ -23,7 +25,7 @@ export const PAGES = {
     "Quotes": Quotes,
     "Tools": Tools,
     "Welcome": Welcome,
-    "CustomSales": CustomSales,
+    "PaymentSettings": PaymentSettings,
 }
 
 export const pagesConfig = {
