@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,20 +12,23 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import { format } from "date-fns";
 
 export default function QuotesPage() {
+  const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [selectedQuotes, setSelectedQuotes] = useState([]);
   const queryClient = useQueryClient();
 
   const { data: quotes = [] } = useQuery({
-    queryKey: ["quotes"],
-    queryFn: () => base44.entities.Quote.list("-created_date"),
+    queryKey: ["quotes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
   const { data: settings } = useQuery({
-    queryKey: ["settings"],
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const list = await base44.entities.Settings.list();
+      const list = await base44.entities.Settings.filter({ owner_user_id: user.id });
       return list.find(s => s.setting_key === "default") || null;
     },
   });
@@ -33,6 +37,7 @@ export default function QuotesPage() {
     mutationFn: async (quote) => {
       // Create order from quote
       const order = await base44.entities.Order.create({
+        owner_user_id: user.id,
         channel: "custom",
         order_id: `QUOTE-${quote.quote_number}`,
         sale_date: new Date().toISOString().split("T")[0],
@@ -219,6 +224,14 @@ export default function QuotesPage() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,26 +11,30 @@ import DataTable from "@/components/ui/DataTable";
 import { format } from "date-fns";
 
 export default function ReconciliationReview() {
+  const { user, loading } = useAuth();
   const [selectedIds, setSelectedIds] = useState([]);
   const [showBreakdown, setShowBreakdown] = useState(true);
   const queryClient = useQueryClient();
   const { data: imports = [] } = useQuery({
-    queryKey: ["etsy-statement-imports"],
-    queryFn: () => base44.entities.EtsyStatementImport.list("-imported_at"),
+    queryKey: ["etsy-statement-imports", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }, "-imported_at"),
   });
 
   const { data: unmatchedStatementLines = [] } = useQuery({
-    queryKey: ["unmatched-statement-lines"],
+    queryKey: ["unmatched-statement-lines", user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const all = await base44.entities.EtsyStatementLine.list("-transaction_date", 1000);
+      const all = await base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }, "-transaction_date", 1000);
       return all.filter(line => !line.matched);
     },
   });
 
   const { data: unmatchedLedgerEntries = [] } = useQuery({
-    queryKey: ["unmatched-ledger-entries"],
+    queryKey: ["unmatched-ledger-entries", user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const all = await base44.entities.EtsyLedgerEntry.list("-entry_date", 5000);
+      const all = await base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000);
       return all.filter(e => e.status === "Unmatched" || !e.matched_category);
     },
   });
@@ -231,6 +236,14 @@ export default function ReconciliationReview() {
     });
     return breakdown;
   }, [allUnmatchedRows]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="space-y-6">

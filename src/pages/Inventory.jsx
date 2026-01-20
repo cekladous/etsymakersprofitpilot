@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +16,7 @@ import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmen
 import BulkInventoryImportTool from "@/components/inventory/BulkInventoryImportTool";
 
 export default function Inventory() {
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("inventory");
   const [typeFormOpen, setTypeFormOpen] = useState(false);
   const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
@@ -29,18 +31,21 @@ export default function Inventory() {
   const queryClient = useQueryClient();
 
   const { data: materialTypes = [], isLoading: typesLoading } = useQuery({
-    queryKey: ["materialTypes"],
-    queryFn: () => base44.entities.MaterialType.list("-created_date"),
+    queryKey: ["materialTypes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
   const { data: inventoryItems = [], isLoading: inventoryLoading } = useQuery({
-    queryKey: ["inventory-items"],
-    queryFn: () => base44.entities.InventoryItem.list("-last_updated", 500),
+    queryKey: ["inventory-items", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }, "-last_updated", 500),
   });
 
   const { data: materialPurchases = [] } = useQuery({
-    queryKey: ["material-purchases"],
-    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 100),
+    queryKey: ["material-purchases", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 100),
   });
 
   const deleteTypeMutation = useMutation({
@@ -228,6 +233,14 @@ export default function Inventory() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
+  }
 
   return (
     <div className="space-y-6">
