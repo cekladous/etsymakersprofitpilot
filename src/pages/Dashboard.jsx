@@ -499,15 +499,42 @@ export default function Dashboard() {
 
         <TabsContent value="overview" className="space-y-8 mt-6">
 
+      {/* Revenue Breakdown Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Link to={createPageUrl("Orders")} className="block">
+          <div className="bg-white rounded-xl border border-stone-200 p-4 hover:shadow-md transition-shadow">
+            <p className="text-xs font-semibold text-stone-600 uppercase">Etsy Revenue</p>
+            <p className="text-2xl font-bold text-emerald-600 mt-1">${financialData.revenue.netEtsySales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-xs text-stone-500 mt-2">{metrics.orderCount} orders</p>
+            {financialData.revenue.etsyRefunds > 0 && (
+              <p className="text-xs text-rose-600 mt-1">−${financialData.revenue.etsyRefunds.toFixed(2)} refunds</p>
+            )}
+          </div>
+        </Link>
+        <div className="bg-white rounded-xl border border-stone-200 p-4">
+          <p className="text-xs font-semibold text-stone-600 uppercase">Custom Revenue</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">${financialData.revenue.customRevenueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-xs text-stone-500 mt-2">Direct sales & quotes</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl border border-emerald-200 p-4">
+          <p className="text-xs font-semibold text-stone-600 uppercase">Total Revenue</p>
+          <p className="text-2xl font-bold text-stone-900 mt-1">${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="flex justify-between text-xs text-stone-600 mt-2 pt-2 border-t border-stone-200">
+            <span>Etsy: ${financialData.revenue.netEtsySales.toFixed(0)}</span>
+            <span>Custom: ${financialData.revenue.customRevenueTotal.toFixed(0)}</span>
+          </div>
+        </div>
+      </div>
+
       {/* KPI Cards - ALL CLICKABLE */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
           <KPICard
-                title="Revenue (after refunds)"
-                value={`$${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                subtitle={`${metrics.orderCount} orders • ${financialData.revenue.etsyRefunds > 0 ? `$${financialData.revenue.etsyRefunds.toFixed(2)} refunded` : 'No refunds'}`}
-                icon={DollarSign}
-                accentColor="emerald" />
+                title="Total Fees"
+                value={`$${metrics.periodFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle="Etsy + processing • View details"
+                icon={Receipt}
+                accentColor="rose" />
 
         </Link>
         <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
@@ -519,15 +546,6 @@ export default function Dashboard() {
                 accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"} />
 
         </div>
-        <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
-          <KPICard
-                title="Total Fees"
-                value={`$${metrics.periodFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                subtitle="Etsy + processing • View details"
-                icon={Receipt}
-                accentColor="rose" />
-
-        </Link>
         <Link
               to={createPageUrl("Expenses") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}&source=dashboard`}
               className="block transition-transform hover:scale-105">
