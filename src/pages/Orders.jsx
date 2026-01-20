@@ -1023,60 +1023,56 @@ export default function Orders() {
         </TabsContent>
 
         <TabsContent value="deposits" className="space-y-6">
-          {/* Summary Card */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-100 rounded-lg">
-                  <DollarSign className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-stone-500">Total Deposits</p>
-                  <p className="text-2xl font-bold text-stone-900">
-                    {formatCurrency(totalDeposits)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+           {/* Summary Card */}
+           <Card>
+             <CardContent className="p-6">
+               <div className="flex items-center gap-3">
+                 <div className="p-3 bg-emerald-100 rounded-lg">
+                   <DollarSign className="w-6 h-6 text-emerald-600" />
+                 </div>
+                 <div>
+                   <p className="text-sm text-stone-500">Total Deposits</p>
+                   <p className="text-2xl font-bold text-stone-900">
+                     {formatCurrency(totalDeposits)}
+                   </p>
+                 </div>
+               </div>
+             </CardContent>
+           </Card>
 
-          {/* Bulk Actions */}
-          {selectedDepositIds.length > 0 && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
-              <p className="text-sm font-medium text-emerald-900">
-                {selectedDepositIds.length} deposit{selectedDepositIds.length !== 1 ? "s" : ""} selected
-              </p>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDeleteDeposits}
-                disabled={bulkDeleteDepositsMutation.isPending}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected
-              </Button>
-            </div>
-          )}
+           {/* Bulk Actions */}
+           {selectedDepositIds.length > 0 && (
+             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+               <p className="text-sm font-medium text-emerald-900">
+                 {selectedDepositIds.length} deposit{selectedDepositIds.length !== 1 ? "s" : ""} selected
+               </p>
+               <Button
+                 variant="destructive"
+                 size="sm"
+                 onClick={handleBulkDeleteDeposits}
+                 disabled={bulkDeleteDepositsMutation.isPending}
+               >
+                 <Trash2 className="w-4 h-4 mr-2" />
+                 Delete Selected
+               </Button>
+             </div>
+           )}
 
-          {/* Table */}
-          {etsyDeposits.length === 0 ? (
-            <EmptyState
-              icon={DollarSign}
-              title="No deposits recorded"
-              description="Deposits are tracked separately as cashflow, not revenue."
-            />
-          ) : (
-            <DataTable
-              columns={depositColumns}
-              data={etsyDeposits}
-              emptyMessage="No deposits for selected period"
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="reconciliation" className="space-y-6">
-          <ReconciliationTab user={user} />
-        </TabsContent>
+           {/* Table */}
+           {etsyDeposits.length === 0 ? (
+             <EmptyState
+               icon={DollarSign}
+               title="No deposits recorded"
+               description="Deposits are tracked separately as cashflow, not revenue."
+             />
+           ) : (
+             <DataTable
+               columns={depositColumns}
+               data={etsyDeposits}
+               emptyMessage="No deposits for selected period"
+             />
+           )}
+         </TabsContent>
       </Tabs>
 
       <UnifiedEtsyImportHub
