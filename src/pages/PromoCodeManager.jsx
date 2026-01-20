@@ -70,10 +70,11 @@ export default function PromoCodeManager() {
   }
 
   const handleCreate = () => {
+    const { duration_type, ...submitData } = formData;
     createMutation.mutate({
-      ...formData,
+      ...submitData,
       code: formData.code.toUpperCase(),
-      duration_months: formData.duration_type === 'permanent' ? 999 : formData.duration_months,
+      duration_months: duration_type === 'permanent' ? 999 : formData.duration_months,
       current_uses: 0
     });
   };
