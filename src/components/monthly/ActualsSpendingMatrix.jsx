@@ -178,8 +178,8 @@ export default function ActualsSpendingMatrix({
                            </td>
                          );
                        })}
-                      <td className="text-right py-2 px-4 font-semibold bg-stone-50">
-                        {formatCurrency(categoryTotal)}
+                      <td className={`text-right py-2 px-4 font-semibold ${category.isCredit ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-50'}`}>
+                        {category.isCredit ? `-${formatCurrency(Math.abs(categoryTotal))}` : formatCurrency(categoryTotal)}
                       </td>
                     </tr>
                   );
