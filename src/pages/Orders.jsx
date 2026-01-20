@@ -40,9 +40,8 @@ export default function Orders() {
   const { user, loading } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
   const customerFilter = urlParams.get("customer");
-  
-  const urlParams = new URLSearchParams(window.location.search);
   const initialTab = urlParams.get("tab") || "orders";
+  
   const [activeTab, setActiveTab] = useState(initialTab);
   const [search, setSearch] = useState("");
   const [feeSearch, setFeeSearch] = useState("");
