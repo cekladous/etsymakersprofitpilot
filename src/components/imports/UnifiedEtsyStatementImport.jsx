@@ -431,13 +431,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         const fileHash = generateFileHash(jsonData);
         
         // Check for duplicate file (only for current user)
-        const existingImports = await base44.entities.EtsyStatementImport.filter({ 
+        const existingImportsByHash = await base44.entities.EtsyStatementImport.filter({ 
           file_hash: fileHash,
           owner_user_id: user.id
         });
-        if (existingImports.length > 0) {
-          const existing = existingImports[0];
+        if (existingImportsByHash.length > 0) {
+          const existing = existingImportsByHash[0];
           setDuplicateWarning({
+            type: 'duplicate_file',
             existingImport: existing,
             newData: {
               statementMonth: parsed.statementMonth,
@@ -456,6 +457,43 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               unmatched: parsed.unmatchedLines.length,
               statementMonth: parsed.statementMonth,
               dateRange: `${parsed.dateRangeStart} to ${parsed.dateRangeEnd}`
+            }
+          });
+          setImporting(false);
+          return;
+        }
+        
+        // Check for existing import of the same month (regardless of file hash)
+        const existingImportsByMonth = await base44.entities.EtsyStatementImport.filter({
+          statement_month: parsed.statementMonth,
+          owner_user_id: user.id,
+          status: { $ne: 'replaced' } // Exclude already-replaced imports
+        });
+        if (existingImportsByMonth.length > 0) {
+          const existing = existingImportsByMonth[0];
+          const newRecordCount = parsed.orders.length + parsed.fees.length + parsed.deposits.length;
+          setDuplicateWarning({
+            type: 'duplicate_month',
+            existingImport: existing,
+            newData: {
+              statementMonth: parsed.statementMonth,
+              dateRangeStart: parsed.dateRangeStart,
+              dateRangeEnd: parsed.dateRangeEnd,
+              fileName: file.name,
+              fileHash,
+              parsedData: parsed
+            },
+            preview: {
+              orders: parsed.orders.length,
+              fees: parsed.fees.length,
+              deposits: parsed.deposits.length,
+              refunds: parsed.refunds.length,
+              taxes: parsed.taxes.length,
+              unmatched: parsed.unmatchedLines.length,
+              statementMonth: parsed.statementMonth,
+              dateRange: `${parsed.dateRangeStart} to ${parsed.dateRangeEnd}`,
+              newRecordCount,
+              previousImportDate: existing.imported_at
             }
           });
           setImporting(false);
@@ -725,9 +763,22 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     }
   };
 
-  const confirmDuplicateImport = () => {
+  const confirmDuplicateImport = async () => {
     if (duplicateWarning?.newData) {
       setImporting(true);
+      
+      // If replacing an existing month, mark old import as 'replaced'
+      if (duplicateWarning.type === 'duplicate_month') {
+        try {
+          await base44.entities.EtsyStatementImport.update(duplicateWarning.existingImport.id, {
+            status: 'replaced',
+            reconciliation_notes: `Replaced by new import on ${format(new Date(), 'MMM d, yyyy HH:mm')}`
+          });
+        } catch (err) {
+          console.warn('Failed to mark old import as replaced:', err);
+        }
+      }
+      
       setDuplicateWarning(null);
       importMutation.mutate(duplicateWarning.newData);
     }
@@ -770,10 +821,20 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               <div className="flex items-start gap-3 mb-4">
                 <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-amber-900">Duplicate File Detected</p>
-                  <p className="text-sm text-amber-800 mt-1">
-                    This file was previously imported on {format(new Date(duplicateWarning.existingImport.imported_at), 'MMM d, yyyy')}
+                  <p className="font-semibold text-amber-900">
+                    {duplicateWarning.type === 'duplicate_month' ? 'Replace Existing Statement?' : 'Duplicate File Detected'}
                   </p>
+                  {duplicateWarning.type === 'duplicate_month' && (
+                    <div className="text-sm text-amber-800 mt-2 space-y-1">
+                      <p>Statement for <strong>{duplicateWarning.preview.statementMonth}</strong> was previously imported on {format(new Date(duplicateWarning.preview.previousImportDate), 'MMM d, yyyy')}</p>
+                      <p className="mt-2"><strong>{duplicateWarning.preview.newRecordCount}</strong> new records will be imported from this file</p>
+                    </div>
+                  )}
+                  {duplicateWarning.type === 'duplicate_file' && (
+                    <p className="text-sm text-amber-800 mt-1">
+                      This file was previously imported on {format(new Date(duplicateWarning.existingImport.imported_at), 'MMM d, yyyy')}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex gap-3">
@@ -781,7 +842,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                   Cancel
                 </Button>
                 <Button onClick={confirmDuplicateImport} className="bg-amber-600 hover:bg-amber-700 flex-1">
-                  Re-import Anyway
+                  {duplicateWarning.type === 'duplicate_month' ? 'Replace & Import' : 'Re-import Anyway'}
                 </Button>
               </div>
             </div>
