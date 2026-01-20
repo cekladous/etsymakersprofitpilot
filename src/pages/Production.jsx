@@ -70,6 +70,38 @@ export default function ProductionPage() {
     return product?.name || "-";
   };
 
+  const getOrdersForJob = (job) => {
+    return orders.filter(o => job.order_ids?.includes(o.id));
+  };
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const matchesSearch = !search ||
+        job.job_number?.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === "all" || job.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [jobs, search, statusFilter]);
+
+  const markComplete = async (job) => {
+    await updateJobMutation.mutateAsync({
+      id: job.id,
+      data: {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      },
+    });
+    
+    const jobOrders = getOrdersForJob(job);
+    for (const order of jobOrders) {
+      await base44.entities.Order.update(order.id, { status: "completed" });
+    }
+    
+    queryClient.invalidateQueries({ queryKey: ["orders"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
+  };
+
   // KPI calculations
   const totalJobs = jobs.length;
   const inProgressJobs = jobs.filter(j => j.status === "in_progress").length;
