@@ -10,6 +10,7 @@ import Quotes from './pages/Quotes';
 import Settings from './pages/Settings';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
+import Checkout from './pages/Checkout';
 import __Layout from './Layout.jsx';
 
 
@@ -26,6 +27,7 @@ export const PAGES = {
     "Settings": Settings,
     "Tools": Tools,
     "Welcome": Welcome,
+    "Checkout": Checkout,
 }
 
 export const pagesConfig = {
