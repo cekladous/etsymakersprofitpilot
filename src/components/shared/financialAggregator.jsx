@@ -438,10 +438,17 @@ export function aggregateFinancials(data, dateRange) {
 
   // ==================== F) UNMATCHED ====================
   
-  // CRITICAL: In normal views, we DON'T show raw unmatched rows - only count them for alerts
+  // CRITICAL: Unmatched entries are EXCLUDED from profit calculations
+  // They represent unknown fees/credits that could significantly impact actual profit
+  // Force user to reconcile before finalizing monthly numbers
+  
   const unmatchedLedgerEntries = periodLedgerEntries.filter(e => 
     e.status === "Unmatched" || !e.matched_category
   );
+  
+  // Calculate NET IMPACT of unmatched ledger entries (expenses reduce profit, credits increase it)
+  const unmatchedLedgerNetImpact = unmatchedLedgerEntries.reduce((sum, e) => 
+    sum + toNumber(e.net), 0);
   
   // Also check for unmatched statement lines (from new imports)
   const unmatchedStatementLines = filterByDate(Array.isArray(data.etsyStatementLines) ? data.etsyStatementLines : [], "transaction_date")
@@ -453,8 +460,11 @@ export function aggregateFinancials(data, dateRange) {
       return !line.matched || line.category === 'unmatched';
     });
   
-  const unmatchedNetImpact = unmatchedLedgerEntries.reduce((sum, e) => 
-    sum + toNumber(e.net), 0) + unmatchedStatementLines.reduce((sum, l) => sum + toNumber(l.amount), 0);
+  const unmatchedStatementNetImpact = unmatchedStatementLines.reduce((sum, l) => 
+    sum + toNumber(l.amount), 0);
+  
+  // TOTAL unmatched net impact (if positive/negative, it affects actual profit)
+  const unmatchedNetImpact = unmatchedLedgerNetImpact + unmatchedStatementNetImpact;
 
   return {
     // Revenue breakdown
