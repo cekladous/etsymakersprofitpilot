@@ -69,7 +69,15 @@ export default function UnmatchedLineCard({
     setNotes('');
   };
 
-  const inferredCategory = line.category || 'unmatched';
+  // Auto-classify using shared logic
+  const autoClassification = classifyEtsyLedgerEntry({
+    type: line.type,
+    title: line.description || '',
+    info: line.description || ''
+  });
+  const suggestedCategory = autoClassification.category || 'unmatched';
+  
+  const inferredCategory = line.category || suggestedCategory;
   const isNegative = line.amount < 0;
 
   return (
