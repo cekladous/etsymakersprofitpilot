@@ -54,7 +54,7 @@ export default function Layout({ children, currentPageName }) {
           <Menu className="w-6 h-6 text-stone-700" />
         </button>
         <Link to={createPageUrl("Welcome")} className="ml-4 font-semibold text-stone-900 text-lg hover:text-emerald-600 transition-colors">
-          MakerLedger
+          Etsy Maker's Profit Pilot
         </Link>
       </header>
 
@@ -74,7 +74,7 @@ export default function Layout({ children, currentPageName }) {
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100">
           <Link to={createPageUrl("Welcome")} className="font-bold text-xl text-stone-900 tracking-tight hover:text-emerald-600 transition-colors">
-            MakerLedger
+            Etsy Maker's Profit Pilot
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
