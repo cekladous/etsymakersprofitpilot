@@ -280,7 +280,7 @@ export default function Dashboard() {
 
   const lowStockSheets = Array.isArray(sheets) ? sheets.filter((sheet) => {
     const type = Array.isArray(materialTypes) ? materialTypes.find((t) => t.id === sheet.material_type_id) : null;
-    return type && sheet.remaining_percentage <= 20 && sheet.status !== "depleted";
+    return sheet.owner_user_id === user.id && type && sheet.remaining_percentage <= 20 && sheet.status !== "depleted";
   }) : [];
 
   // Chart data
@@ -596,7 +596,7 @@ export default function Dashboard() {
                   type="warning" />
 
             </Link>
-            <Link to={createPageUrl("Inventory")} className="block">
+            <Link to={createPageUrl("Inventory") + "?tab=sheets"} className="block">
               <AlertCard
                   title="Low Stock Materials"
                   count={lowStockSheets.length}
