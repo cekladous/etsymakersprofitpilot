@@ -165,17 +165,19 @@ export default function ActualsSpendingMatrix({
                         {category.label}
                       </td>
                       {monthlyData.map((data, monthIdx) => {
-                        const value = getCategoryValue(data, category);
-                        return (
-                          <td 
-                            key={monthIdx} 
-                            className={`text-right py-2 px-4 ${value > 0 ? 'cursor-pointer hover:bg-emerald-50' : 'text-stone-400'}`}
-                            onClick={() => value > 0 && handleCellClick(category, monthIdx)}
-                          >
-                            {formatCurrency(value)}
-                          </td>
-                        );
-                      })}
+                         const value = getCategoryValue(data, category);
+                         const absValue = Math.abs(value);
+                         const isCredit = category.isCredit;
+                         return (
+                           <td 
+                             key={monthIdx} 
+                             className={`text-right py-2 px-4 ${absValue > 0 ? 'cursor-pointer' : 'text-stone-400'} ${isCredit ? 'bg-emerald-50 text-emerald-700 font-medium' : 'hover:bg-stone-100'}`}
+                             onClick={() => absValue > 0 && handleCellClick(category, monthIdx)}
+                           >
+                             {isCredit ? `-${formatCurrency(absValue)}` : formatCurrency(value)}
+                           </td>
+                         );
+                       })}
                       <td className="text-right py-2 px-4 font-semibold bg-stone-50">
                         {formatCurrency(categoryTotal)}
                       </td>
