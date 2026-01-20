@@ -60,7 +60,7 @@ export default function Welcome() {
   const activeJobs = jobs.filter((j) => j.status !== "completed").length;
   const pendingQuotes = quotes.filter((q) => q.status === "Draft" || q.status === "Sent").length;
 
-  const userName = user?.full_name || settings?.user_name || "Maker";
+  const userName = settings?.user_name || user?.full_name?.split(" ")[0] || "Maker";
 
   const quickActions = [
     {
@@ -98,88 +98,122 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-6xl mx-auto px-6 py-16 md:py-24">
-        {/* Hero Section */}
-        <div className="mb-20">
-          <div className="flex items-baseline gap-3 mb-8">
-            <h1 className="text-7xl md:text-8xl font-light text-black">
-              {greeting.split(" ")[0]}
-            </h1>
-            <div className="h-2 w-2 rounded-full bg-emerald-500 mt-8" />
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100">
+      {/* Header */}
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="text-center mb-8">
+          <div className="inline-block px-4 py-1.5 bg-white rounded-full shadow-sm border border-stone-200 mb-4">
+            <span className="text-xs font-medium text-stone-600 uppercase tracking-wide">
+              Welcome Home
+            </span>
           </div>
-          <p className="text-2xl md:text-3xl text-stone-400 font-light max-w-2xl">
-            Your workshop at a glance
+          <h1 className="text-4xl md:text-5xl font-bold text-stone-900 mb-3">
+            {greeting}, {userName}!
+          </h1>
+          <p className="text-stone-600 text-lg">
+            Ready to bring your next vision to life? Here's a look at your workshop today.
           </p>
         </div>
 
-        {/* Stats Grid - Minimal */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-24">
-          <div className="group cursor-default">
-            <div className="text-5xl font-light text-black mb-2 group-hover:text-emerald-600 transition-colors">
-              {products.length}
-            </div>
-            <div className="text-sm text-stone-400 uppercase tracking-widest">Products</div>
-          </div>
-          
-          <div className="group cursor-default">
-            <div className="text-5xl font-light text-black mb-2 group-hover:text-emerald-600 transition-colors">
-              {customers.length}
-            </div>
-            <div className="text-sm text-stone-400 uppercase tracking-widest">Customers</div>
-          </div>
-          
-          <div className="group cursor-default">
-            <div className="text-5xl font-light text-black mb-2 group-hover:text-emerald-600 transition-colors">
-              {pendingQuotes}
-            </div>
-            <div className="text-sm text-stone-400 uppercase tracking-widest">Quotes</div>
-          </div>
-          
-          <div className="group cursor-default">
-            <div className="text-5xl font-light text-black mb-2 group-hover:text-emerald-600 transition-colors">
-              {activeJobs}
-            </div>
-            <div className="text-sm text-stone-400 uppercase tracking-widest">Active</div>
-          </div>
-        </div>
-
-        {/* Quick Actions - Minimal Links */}
-        <div className="space-y-1 mb-24">
-          <div className="text-xs text-stone-400 uppercase tracking-widest mb-6">Quick Start</div>
-          {quickActions.map((action, idx) => (
-            <Link 
-              key={action.label} 
-              to={createPageUrl(action.page)}
-              className="block group"
-            >
-              <div className="flex items-center justify-between py-5 border-b border-stone-100 hover:border-emerald-500 transition-colors">
-                <div className="flex items-center gap-6">
-                  <span className="text-sm text-stone-300 font-mono w-6">0{idx + 1}</span>
-                  <span className="text-xl font-light text-black group-hover:text-emerald-600 transition-colors">
-                    {action.label}
-                  </span>
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-orange-50 rounded-lg">
+                  <Package className="w-5 h-5 text-orange-600" />
                 </div>
-                <div className="text-stone-300 group-hover:text-emerald-600 group-hover:translate-x-2 transition-all">
-                  →
+                <div>
+                  <div className="text-2xl font-bold text-stone-900">{products.length}</div>
+                  <div className="text-xs text-stone-500 uppercase tracking-wide">Products</div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-50 rounded-lg">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-stone-900">{customers.length}</div>
+                  <div className="text-xs text-stone-500 uppercase tracking-wide">Customers</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-50 rounded-lg">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-stone-900">{pendingQuotes}</div>
+                  <div className="text-xs text-stone-500 uppercase tracking-wide">Pending Quotes</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-50 rounded-lg">
+                  <ShoppingBag className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-stone-900">{activeJobs}</div>
+                  <div className="text-xs text-stone-500 uppercase tracking-wide">Active Jobs</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {quickActions.map((action) => (
+            <Link key={action.label} to={createPageUrl(action.page)}>
+              <Card className="bg-white/80 backdrop-blur border-stone-200 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer group">
+                <CardContent className="p-6 text-center">
+                  <div className={`w-14 h-14 ${action.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
+                    <action.icon className={`w-7 h-7 ${action.iconColor}`} />
+                  </div>
+                  <h3 className="font-semibold text-stone-900 mb-1">{action.label}</h3>
+                  <p className="text-sm text-stone-500">{action.description}</p>
+                </CardContent>
+              </Card>
             </Link>
           ))}
         </div>
 
-        {/* Bottom CTA */}
-        <div className="flex items-center justify-between py-12 border-t border-stone-100">
-          <div>
-            <div className="text-sm text-stone-400 mb-1">Ready to dive in?</div>
-            <div className="text-lg font-light text-black">View your complete dashboard</div>
-          </div>
+        {/* Maker Mantra */}
+        <Card className="bg-gradient-to-br from-stone-800 to-stone-900 border-none shadow-xl">
+          <CardContent className="p-8 text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              <span className="text-sm font-medium text-amber-400 uppercase tracking-wide">
+                Maker Mantra
+              </span>
+            </div>
+            <blockquote className="text-2xl md:text-3xl text-stone-100 font-light italic mb-4">
+              "Measure twice, cut once, profit always."
+            </blockquote>
+            <p className="text-xs text-stone-400 uppercase tracking-widest">
+              The MakerLedger Way
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Footer Navigation */}
+        <div className="mt-8 flex justify-center">
           <Link to={createPageUrl("Dashboard")}>
-            <Button 
-              variant="outline" 
-              className="rounded-full px-8 border-black text-black hover:bg-black hover:text-white transition-all"
-            >
-              Dashboard →
+            <Button variant="outline" className="gap-2">
+              Go to Dashboard
             </Button>
           </Link>
         </div>
