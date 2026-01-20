@@ -200,6 +200,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
       const newFees = fees.filter(f => !existingLineUIDs.has(f._rawLine.line_uid));
       const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
+      const newRefunds = refunds.filter(r => !existingLineUIDs.has(r._rawLine.line_uid));
       
       // Check if this statement month was already imported (only for current user)
       const existingImports = await base44.entities.EtsyStatementImport.filter({ 
@@ -300,15 +301,35 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         result.deposits.created++;
       });
 
-      result.refunds.created = refunds.length;
+      // Apply refunds to orders
+      const refundsByOrderId = {};
+      newRefunds.forEach(refund => {
+        if (refund.orderId) {
+          refundsByOrderId[refund.orderId] = (refundsByOrderId[refund.orderId] || 0) + refund.amount;
+        }
+      });
+
+      // Update orders with refund amounts
+      for (const [orderId, refundAmount] of Object.entries(refundsByOrderId)) {
+        const order = await base44.entities.EtsyOrder.filter({ order_id: orderId, owner_user_id: currentUser.id });
+        if (order.length > 0) {
+          const currentRefund = order[0].refund_amount || 0;
+          await base44.entities.EtsyOrder.update(order[0].id, {
+            refund_amount: currentRefund + refundAmount
+          });
+        }
+      }
+
+      result.refunds.created = newRefunds.length;
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save only new statement lines
+      // Save only new statement lines (including refunds)
       const newLines = [
         ...newOrders.map(o => o._rawLine), 
         ...newFees.map(f => f._rawLine), 
-        ...newDeposits.map(d => d._rawLine)
+        ...newDeposits.map(d => d._rawLine),
+        ...newRefunds.map(r => r._rawLine)
       ];
       await batchProcess(newLines, 10, async (line) => {
         await base44.entities.EtsyStatementLine.create({
@@ -636,13 +657,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           _rawLine: rawLine
         });
       }
-      // C) REFUNDS
+      // C) REFUNDS - Track refunds to apply to orders
       else if (classification.category === 'refund') {
         refunds.push({
           transactionDate,
           orderId: classification.order_id,
-          amount: amount,
-          description: title
+          amount: Math.abs(amount), // Always positive amount
+          description: title,
+          _rawLine: rawLine
         });
       }
       // D) FEES (listing, transaction, processing, etc)
