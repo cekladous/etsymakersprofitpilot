@@ -9,6 +9,7 @@ import Quotes from './pages/Quotes';
 import Tools from './pages/Tools';
 import Welcome from './pages/Welcome';
 import CustomSales from './pages/CustomSales';
+import TermsOfService from './pages/TermsOfService';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +25,7 @@ export const PAGES = {
     "Tools": Tools,
     "Welcome": Welcome,
     "CustomSales": CustomSales,
+    "TermsOfService": TermsOfService,
 }
 
 export const pagesConfig = {
