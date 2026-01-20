@@ -1087,13 +1087,22 @@ export default function SettingsTool() {
 
       {/* Action Buttons */}
       <div className="flex justify-between items-center">
-        <Button
-          variant="destructive"
-          onClick={() => setResetDialogOpen(true)}
-        >
-          <AlertTriangle className="w-4 h-4 mr-2" />
-          Reset App
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="destructive"
+            onClick={() => setResetDialogOpen(true)}
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Reset App
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => base44.auth.logout()}
+          >
+            Sign Out
+          </Button>
+        </div>
         
         <Button
           onClick={handleSaveSettings}
