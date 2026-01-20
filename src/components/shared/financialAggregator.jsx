@@ -66,8 +66,8 @@ export function aggregateFinancials(data, dateRange) {
 
   // ==================== DEDUPLICATION LOGIC ====================
   // CRITICAL: Prevent double-counting Etsy transactions
-  // Rule: EtsyOrder with statement_line_uid = linked to statement import (use it)
-  //       EtsyStatementLine without matching order = new transaction
+  // Rule: EtsyStatementLine is CANONICAL source (from Monthly Statement CSV)
+  //       If EtsyStatementLine has source_etsy_order_id, EXCLUDE that EtsyOrder from calculations
   const periodStatementLines = filterByDate(Array.isArray(data.etsyStatementLines) ? data.etsyStatementLines : [], "transaction_date")
     .filter(line => {
       if (!line.import_id) return false;
@@ -75,33 +75,37 @@ export function aggregateFinancials(data, dateRange) {
       return lineImport && lineImport.status !== 'replaced';
     });
 
-  // Orders that are NOT linked to statement (orphaned from old imports) should not be counted
-  // Only count orders that either: (1) have no statement_line_uid (pre-dedup), or (2) are most recent source
-  const deduplicationWarnings = [];
-  const ordersWithDuplicateStatementLinks = periodEtsyOrders.filter(o => {
-    if (!o.statement_line_uid) return false;
-    const matchingStatements = periodStatementLines.filter(s => s.line_uid === o.statement_line_uid);
-    return matchingStatements.length > 1;
+  // Build set of EtsyOrder IDs that are linked to statement lines (should be excluded from revenue calc)
+  const linkedOrderIds = new Set();
+  periodStatementLines.forEach(line => {
+    if (line.source_etsy_order_id) {
+      linkedOrderIds.add(line.source_etsy_order_id);
+    }
   });
-  if (ordersWithDuplicateStatementLinks.length > 0) {
-    deduplicationWarnings.push(`${ordersWithDuplicateStatementLinks.length} Etsy orders matched to multiple statement lines (dedup required)`);
+
+  // Filter orders: exclude those linked to statement lines (to avoid double-counting)
+  const deduplicationWarnings = [];
+  const dedupedEtsyOrders = periodEtsyOrders.filter(o => !linkedOrderIds.has(o.id));
+  if (linkedOrderIds.size > 0) {
+    deduplicationWarnings.push(`${linkedOrderIds.size} EtsyOrder records excluded (using EtsyStatementLine as canonical source)`);
   }
 
   // ==================== A) REVENUE ====================
   
   // 1) Etsy Sales - item price + shipping charged (buyer-paid revenue)
-  const etsySales = periodEtsyOrders.reduce((sum, o) => 
+  // Use dedupedEtsyOrders to exclude orders that came from statement import
+  const etsySales = dedupedEtsyOrders.reduce((sum, o) => 
     sum + toNumber(o.order_value) + toNumber(o.shipping_charged), 0);
   
   // 2) Tax Collected by Etsy (excluded from profit)
-  const taxCollectedByEtsy = periodEtsyOrders.reduce((sum, o) => 
+  const taxCollectedByEtsy = dedupedEtsyOrders.reduce((sum, o) => 
     sum + toNumber(o.sales_tax), 0);
   
   // 3) Total Etsy Sales (includes tax for reporting)
   const totalEtsySales = etsySales + taxCollectedByEtsy;
   
   // 4) Etsy Refunds - from orders (primary) + ledger (secondary for edge cases)
-  const refundsFromOrders = periodEtsyOrders.reduce((sum, o) => 
+  const refundsFromOrders = dedupedEtsyOrders.reduce((sum, o) => 
     sum + toNumber(o.refund_amount || 0), 0);
   
   const etsyRefundsFromLedger = periodLedgerEntries
@@ -513,7 +517,7 @@ export function aggregateFinancials(data, dateRange) {
     
     // Raw filtered data for drill-downs
     _rawData: {
-      etsyOrders: periodEtsyOrders,
+      etsyOrders: dedupedEtsyOrders,
       customSales: periodCustomSales,
       businessExpenses: periodBusinessExpenses,
       transfers: periodTransfers,
