@@ -307,6 +307,7 @@ export default function Orders() {
     offsite_ads: "Offsite Ads",
     shipping_label: "Shipping Label",
     other_postage: "Other Postage",
+    etsy_plus_subscription: "Etsy Plus Subscription",
   };
 
   const getPeriodLabel = () => {

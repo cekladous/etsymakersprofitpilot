@@ -140,7 +140,11 @@ const classifyStatementLine = (row) => {
   if (titleL.includes('share') && titleL.includes('save')) {
     return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
   }
-  
+
+  if (titleL.includes('etsy plus subscription')) {
+    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_subscription', order_id: null };
+  }
+
   if (titleL.includes('regulatory operating fee')) {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
