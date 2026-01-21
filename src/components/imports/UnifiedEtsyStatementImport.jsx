@@ -888,38 +888,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             </div>
           )}
 
-          {duplicateWarning && (
-            <div className="border border-amber-300 bg-amber-50 rounded-lg p-4 mb-4">
-              <div className="flex items-start gap-3 mb-4">
-                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-amber-900">
-                    {duplicateWarning.type === 'duplicate_month' ? 'Replace Existing Statement?' : 'Duplicate File Detected'}
-                  </p>
-                  {duplicateWarning.type === 'duplicate_month' && (
-                    <div className="text-sm text-amber-800 mt-2 space-y-1">
-                      <p>Statement for <strong>{duplicateWarning.preview.statementMonth}</strong> was previously imported on {format(new Date(duplicateWarning.preview.previousImportDate), 'MMM d, yyyy')}</p>
-                      <p className="mt-2"><strong>{duplicateWarning.preview.newRecordCount}</strong> new records will be imported from this file</p>
-                    </div>
-                  )}
-                  {duplicateWarning.type === 'duplicate_file' && (
-                    <p className="text-sm text-amber-800 mt-1">
-                      This file was previously imported on {format(new Date(duplicateWarning.existingImport.imported_at), 'MMM d, yyyy')}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={cancelDuplicate} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={confirmDuplicateImport} className="bg-amber-600 hover:bg-amber-700 flex-1">
-                  {duplicateWarning.type === 'duplicate_month' ? 'Replace & Import' : 'Re-import Anyway'}
-                </Button>
-              </div>
-            </div>
-          )}
-
           {!importing && !preview && !importResult && !duplicateWarning && (
             <Button
               onClick={() => fileInputRef.current?.click()}
