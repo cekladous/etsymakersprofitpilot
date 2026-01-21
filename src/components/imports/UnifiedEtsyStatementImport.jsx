@@ -149,11 +149,16 @@ const classifyStatementLine = (row) => {
     return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_subscription', order_id: null };
   }
   
-  if (titleL.includes('etsy plus') && titleL.includes('listing') && (titleL.includes('credit') || amount < 0)) {
+  if ((titleL.includes('credits') && titleL.includes('plus')) || (titleL.includes('etsy plus') && titleL.includes('credit'))) {
+    // Check if it's ads credit or listing credit
+    if (titleL.includes('ads') || infoL.includes('ads')) {
+      return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_ads_credit', order_id: null };
+    }
+    // Default to listing credit for general "Credits (Plus)"
     return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_listing_credit', order_id: null };
   }
   
-  if ((titleL.includes('credit for etsy ads') || (titleL.includes('etsy plus') && titleL.includes('ads') && titleL.includes('credit'))) && amount < 0) {
+  if (titleL.includes('credit for etsy ads') && amount < 0) {
     return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_ads_credit', order_id: null };
   }
   
