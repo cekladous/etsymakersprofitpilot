@@ -203,11 +203,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       
       // Filter out rows that already exist
       const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
-      // For fees, only check if the Fee entity exists (not statement lines, which are audit trail)
-      const newFees = fees.filter(f => {
-        const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
-        return !existingFeeKeys.has(feeKey);
-      });
+      // For fees, check if the Fee entity exists based on unique attributes
+      // Use line_uid to prevent duplicates but allow legitimate re-imports
+      const newFees = fees.filter(f => !existingLineUIDs.has(f.line_uid));
       const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
       const newRefunds = refunds.filter(r => !existingLineUIDs.has(r._rawLine.line_uid));
       
