@@ -388,7 +388,9 @@ export default function ReconciliationTab({ user }) {
             </CardContent>
           </Card>
         </>
-      )}
-    </div>
-  );
-}
+        )}
+        </TabsContent>
+        </Tabs>
+        </div>
+        );
+        }
