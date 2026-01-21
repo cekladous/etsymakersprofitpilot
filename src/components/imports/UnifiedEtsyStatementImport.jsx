@@ -229,7 +229,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // Import only new orders (upsert by order_id)
       // Build a map of order_id -> EtsyOrder entity ID for later linking
       const orderIdToEntityId = {};
-      await batchProcess(newOrders, 5, async (order) => {
+      for (const order of newOrders) {
         const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id, owner_user_id: currentUser.id });
         if (existing.length > 0) {
           await base44.entities.EtsyOrder.update(existing[0].id, order);
@@ -240,13 +240,18 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           orderIdToEntityId[order.order_id] = created.id;
           result.orders.created++;
         }
-      });
+      }
 
-      // Import only new fees
-      await batchProcess(newFees, 10, async (fee) => {
-        await base44.entities.Fee.create({ ...fee, owner_user_id: currentUser.id, import_id: importRecord.id });
-        result.fees.created++;
-      });
+      // Import only new fees (bulk create)
+      if (newFees.length > 0) {
+        const feesToCreate = newFees.map(fee => ({ 
+          ...fee, 
+          owner_user_id: currentUser.id, 
+          import_id: importRecord.id 
+        }));
+        await batchProcess(feesToCreate, 50, 'Fee');
+        result.fees.created = newFees.length;
+      }
 
       // Aggregate fees into OrderFee records for each order (only new fees)
       const orderFeeMap = {};
@@ -285,20 +290,24 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
       // Create/update OrderFee records
       const orderFeeRecords = Object.values(orderFeeMap);
-      await batchProcess(orderFeeRecords, 5, async (orderFee) => {
+      for (const orderFee of orderFeeRecords) {
         const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id, owner_user_id: currentUser.id });
         if (existing.length > 0) {
           await base44.entities.OrderFee.update(existing[0].id, orderFee);
         } else {
           await base44.entities.OrderFee.create({ ...orderFee, owner_user_id: currentUser.id });
         }
-      });
+      }
 
-      // Import only new deposits as transfers
-      await batchProcess(newDeposits, 5, async (deposit) => {
-        await base44.entities.Transfer.create({ ...deposit, owner_user_id: currentUser.id });
-        result.deposits.created++;
-      });
+      // Import only new deposits as transfers (bulk create)
+      if (newDeposits.length > 0) {
+        const depositsToCreate = newDeposits.map(deposit => ({ 
+          ...deposit, 
+          owner_user_id: currentUser.id 
+        }));
+        await batchProcess(depositsToCreate, 50, 'Transfer');
+        result.deposits.created = newDeposits.length;
+      }
 
       // Apply refunds to orders
       const refundsByOrderId = {};
@@ -323,20 +332,21 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       result.taxes.created = taxes.length;
       result.unmatched.count = unmatchedLines.length;
 
-      // Save only new statement lines (including refunds) with source_etsy_order_id links
+      // Save only new statement lines (including refunds) with source_etsy_order_id links (bulk create)
       const newLines = [
         ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })), 
         ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })), 
         ...newDeposits.map(d => d._rawLine),
         ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
       ];
-      await batchProcess(newLines, 10, async (line) => {
-        await base44.entities.EtsyStatementLine.create({
+      if (newLines.length > 0) {
+        const linesToCreate = newLines.map(line => ({
           owner_user_id: currentUser.id,
           import_id: importRecord.id,
           ...line
-        });
-      });
+        }));
+        await batchProcess(linesToCreate, 50, 'EtsyStatementLine');
+      }
 
       // Update import counts
       await base44.entities.EtsyStatementImport.update(importRecord.id, {
