@@ -191,9 +191,19 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
       const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
       
+      // Get all existing fees to prevent duplicates across imports
+      const allExistingFees = await base44.entities.Fee.filter({ owner_user_id: currentUser.id });
+      const existingFeeKeys = new Set(
+        allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
+      );
+      
       // Filter out rows that already exist
       const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
-      const newFees = fees.filter(f => !existingLineUIDs.has(f._rawLine.line_uid));
+      const newFees = fees.filter(f => {
+        if (existingLineUIDs.has(f._rawLine.line_uid)) return false;
+        const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
+        return !existingFeeKeys.has(feeKey);
+      });
       const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
       const newRefunds = refunds.filter(r => !existingLineUIDs.has(r._rawLine.line_uid));
       
@@ -217,14 +227,21 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         status: 'success',
       });
 
+      const skippedFees = fees.length - newFees.length;
+      
       const result = {
         orders: { created: 0, updated: 0, skipped: orders.length - newOrders.length },
-        fees: { created: 0, skipped: fees.length - newFees.length },
+        fees: { created: 0, skipped: skippedFees },
         deposits: { created: 0, skipped: deposits.length - newDeposits.length },
         refunds: { created: 0 },
         taxes: { created: 0 },
         unmatched: { count: 0 }
       };
+      
+      // Show error if fees are being duplicated
+      if (skippedFees > 0) {
+        console.warn(`⚠️ Skipped ${skippedFees} duplicate fee(s)`);
+      }
 
       // Import only new orders (upsert by order_id)
       // Build a map of order_id -> EtsyOrder entity ID for later linking
