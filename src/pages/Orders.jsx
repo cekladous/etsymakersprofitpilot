@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2 } from "lucide-react";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2, Pencil } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
@@ -59,6 +59,8 @@ export default function Orders() {
   const [selectedDepositIds, setSelectedDepositIds] = useState([]);
   const [selectedFeeOrderId, setSelectedFeeOrderId] = useState(null);
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
+  const [editingFee, setEditingFee] = useState(null);
+  const [editFeeType, setEditFeeType] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -172,6 +174,17 @@ export default function Orders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
       setSelectedDepositIds([]);
+    },
+  });
+
+  const updateFeeMutation = useMutation({
+    mutationFn: async ({ id, fee_type }) => {
+      await base44.entities.Fee.update(id, { fee_type });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      setEditingFee(null);
+      setEditFeeType("");
     },
   });
 
@@ -470,9 +483,61 @@ export default function Orders() {
     {
       header: "Fee Type",
       render: (row) => (
-        <span className="text-sm">
-          {feeTypeLabels[row.fee_type] || row.fee_type}
-        </span>
+        <div className="flex items-center gap-2">
+          {editingFee === row.id ? (
+            <Select value={editFeeType} onValueChange={setEditFeeType}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.keys(feeTypeLabels).map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {feeTypeLabels[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-sm">
+              {feeTypeLabels[row.fee_type] || row.fee_type}
+            </span>
+          )}
+          {editingFee === row.id ? (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2"
+                onClick={() => {
+                  updateFeeMutation.mutate({ id: row.id, fee_type: editFeeType });
+                }}
+              >
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2"
+                onClick={() => {
+                  setEditingFee(null);
+                  setEditFeeType("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setEditingFee(row.id);
+                setEditFeeType(row.fee_type);
+              }}
+              className="text-stone-400 hover:text-stone-600"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       ),
     },
     {
