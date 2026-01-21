@@ -1023,8 +1023,16 @@ export default function Orders() {
         </TabsContent>
 
         <TabsContent value="fees" className="space-y-6">
+           {/* About Section */}
+           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+             <h3 className="font-semibold text-blue-900 mb-2">About Fees & Charges</h3>
+             <p className="text-sm text-blue-800">
+               This tab shows all individual fee line items from your Etsy statement imports, including order-specific fees (transaction, processing, ads) and general shop charges not tied to specific orders. The "Orders" tab shows only fees directly associated with each sale.
+             </p>
+           </div>
+
            {/* Charts */}
-           <FeeBreakdownChart orderFees={orderFees} formatCurrency={formatCurrency} />
+           <FeeBreakdownChart fees={filteredFees} formatCurrency={formatCurrency} />
 
            {/* Summary Card */}
            <Card>

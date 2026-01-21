@@ -2,19 +2,30 @@ import React from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function FeeBreakdownChart({ orderFees, formatCurrency }) {
-  // Aggregate fees by type
-  const feeData = [
-    { name: "Listing Fees", value: orderFees.reduce((sum, f) => sum + (f.listing_fees || 0), 0) },
-    { name: "Transaction Fees", value: orderFees.reduce((sum, f) => sum + (f.transaction_fees || 0), 0) },
-    { name: "Processing Fees", value: orderFees.reduce((sum, f) => sum + (f.processing_fees || 0), 0) },
-    { name: "Etsy Ads", value: orderFees.reduce((sum, f) => sum + (f.etsy_ads || 0), 0) },
-    { name: "Offsite Ads", value: orderFees.reduce((sum, f) => sum + (f.offsite_ads_fees || 0), 0) },
-    { name: "Shipping Labels", value: orderFees.reduce((sum, f) => sum + (f.etsy_shipping || 0), 0) },
-    { name: "Other Postage", value: orderFees.reduce((sum, f) => sum + (f.other_postage_costs || 0), 0) },
-    { name: "Share & Save Credit", value: Math.abs(orderFees.reduce((sum, f) => sum + (f.share_save_refunds_credits || 0), 0)) },
-    { name: "Other Fees", value: orderFees.reduce((sum, f) => sum + (f.other_fees || 0), 0) },
-  ].filter(item => item.value > 0);
+export default function FeeBreakdownChart({ fees, formatCurrency }) {
+  // Aggregate fees by type from individual fee records
+  const feeTypeMapping = {
+    listing: "Listing Fees",
+    transaction: "Transaction Fees",
+    processing: "Processing Fees",
+    etsy_ads: "Etsy Ads",
+    offsite_ads: "Offsite Ads",
+    shipping_label: "Shipping Labels",
+    other_postage: "Other Postage",
+    share_save_credit: "Share & Save Credit",
+    other_fee: "Other Fees",
+  };
+
+  const aggregatedFees = {};
+  fees.forEach(fee => {
+    const feeType = fee.fee_type;
+    const label = feeTypeMapping[feeType] || "Other Fees";
+    aggregatedFees[label] = (aggregatedFees[label] || 0) + Math.abs(fee.amount || 0);
+  });
+
+  const feeData = Object.entries(aggregatedFees)
+    .map(([name, value]) => ({ name, value }))
+    .filter(item => item.value > 0);
 
   const COLORS = [
     "#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e",
