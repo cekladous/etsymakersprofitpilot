@@ -112,16 +112,26 @@ export default function Orders() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids) => {
+      // Get the order_id strings for the selected entity IDs
+      const ordersToDelete = etsyOrders.filter(o => ids.includes(o.id));
+      const orderIdStrings = ordersToDelete.map(o => o.order_id);
+      
       // Delete associated fees first
-      const feesToDelete = fees.filter(f => ids.includes(f.order_id));
-      await Promise.all(feesToDelete.map(f => base44.entities.Fee.delete(f.id)));
+      const feesToDelete = fees.filter(f => orderIdStrings.includes(f.order_id));
+      for (const fee of feesToDelete) {
+        await base44.entities.Fee.delete(fee.id);
+      }
       
       // Delete order fees
-      const orderFeesToDelete = orderFees.filter(f => ids.includes(f.order_id));
-      await Promise.all(orderFeesToDelete.map(f => base44.entities.OrderFee.delete(f.id)));
+      const orderFeesToDelete = orderFees.filter(f => orderIdStrings.includes(f.order_id));
+      for (const orderFee of orderFeesToDelete) {
+        await base44.entities.OrderFee.delete(orderFee.id);
+      }
       
       // Then delete orders
-      await Promise.all(ids.map(id => base44.entities.EtsyOrder.delete(id)));
+      for (const id of ids) {
+        await base44.entities.EtsyOrder.delete(id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
