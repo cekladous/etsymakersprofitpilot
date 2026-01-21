@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2, Download, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DataTable from "@/components/ui/DataTable";
+import DepositMatcher from "@/components/reconciliation/DepositMatcher";
 import { format } from "date-fns";
 
 export default function ReconciliationTab({ user }) {
@@ -235,6 +237,17 @@ export default function ReconciliationTab({ user }) {
 
   return (
     <div className="space-y-6">
+      <Tabs defaultValue="deposits" className="w-full">
+        <TabsList>
+          <TabsTrigger value="deposits">Deposit Matching</TabsTrigger>
+          <TabsTrigger value="statement">Statement Review</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="deposits" className="space-y-6">
+          <DepositMatcher user={user} />
+        </TabsContent>
+
+        <TabsContent value="statement" className="space-y-6">
       {totalUnmatched > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-6">
