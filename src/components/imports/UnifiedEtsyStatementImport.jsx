@@ -202,7 +202,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // Filter out rows that already exist
       const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
       // For fees, check by line_uid to preserve manual edits on reimport
-      const newFees = fees.filter(f => !existingFeeLineUIDs.has(f.line_uid));
+      const newFees = fees.filter(f => !existingFeeLineUIDs.has(f._rawLine.line_uid));
       const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
       const newRefunds = refunds.filter(r => !existingLineUIDs.has(r._rawLine.line_uid));
       
