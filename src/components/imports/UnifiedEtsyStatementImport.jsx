@@ -769,15 +769,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // E) ADS (etsy_ads, offsite_ads)
       // F) SHIPPING (shipping_label, other_postage)
       else if (classification.category === 'fee') {
-        // Always use Fees & Taxes column for fee amounts (it contains the actual fee value)
-        const feeAmount = feesTaxes || amount;
-        
         fees.push({
           line_uid: lineUID,
           order_id: classification.order_id,
           transaction_date: transactionDate,
           fee_type: classification.fee_type,
-          amount: feeAmount,
+          amount: Math.abs(feesTaxes || amount),
           description: title || info,
           _rawLine: rawLine
         });
