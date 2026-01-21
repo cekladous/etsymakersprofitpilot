@@ -1145,7 +1145,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               </div>
               <div className="text-sm text-emerald-800 space-y-1">
                 <p>✓ Orders: {importResult.orders.created} created, {importResult.orders.updated} updated</p>
-                <p>✓ Fees: {importResult.fees.created} imported</p>
+                <p>✓ Fees: {importResult.fees.created} imported{importResult.fees.skipped > 0 && `, ${importResult.fees.skipped} duplicates skipped`}</p>
                 <p>✓ Deposits: {importResult.deposits.created} tracked</p>
                 {importResult.unmatched.count > 0 && (
                   <p className="text-amber-700">⚠ {importResult.unmatched.count} unmatched rows (review needed)</p>
