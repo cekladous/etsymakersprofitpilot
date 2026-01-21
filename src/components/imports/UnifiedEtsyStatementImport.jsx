@@ -824,15 +824,30 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     if (duplicateWarning?.newData) {
       setImporting(true);
       
-      // If replacing an existing month, mark old import as 'replaced'
+      // If replacing an existing month, delete old data and mark import as 'replaced'
       if (duplicateWarning.type === 'duplicate_month') {
         try {
-          await base44.entities.EtsyStatementImport.update(duplicateWarning.existingImport.id, {
+          const oldImportId = duplicateWarning.existingImport.id;
+          
+          // Delete old fees from this import
+          const oldFees = await base44.entities.Fee.filter({ import_id: oldImportId });
+          for (const fee of oldFees) {
+            await base44.entities.Fee.delete(fee.id);
+          }
+          
+          // Delete old statement lines from this import
+          const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImportId });
+          for (const line of oldLines) {
+            await base44.entities.EtsyStatementLine.delete(line.id);
+          }
+          
+          // Mark old import as replaced
+          await base44.entities.EtsyStatementImport.update(oldImportId, {
             status: 'replaced',
             reconciliation_notes: `Replaced by new import on ${format(new Date(), 'MMM d, yyyy HH:mm')}`
           });
         } catch (err) {
-          console.warn('Failed to mark old import as replaced:', err);
+          console.warn('Failed to clean up old import data:', err);
         }
       }
       
