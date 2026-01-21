@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info } from "lucide-react";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/ui/PageHeader";
@@ -840,8 +840,17 @@ export default function Orders() {
                 onClick={handleBulkDelete}
                 disabled={bulkDeleteMutation.isPending}
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected
+                {bulkDeleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </>
+                )}
               </Button>
             </div>
           )}
