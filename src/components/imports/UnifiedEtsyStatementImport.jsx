@@ -1028,8 +1028,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         return (
         <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
+        <DialogContent className="max-w-2xl sm:max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
           <DialogDescription>
             Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Payment Account → Download CSV.
@@ -1037,7 +1037,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
           <input
             ref={fileInputRef}
             type="file"
@@ -1148,7 +1148,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           {duplicateWarning && (
             <>
               <Button variant="outline" onClick={cancelDuplicate}>
