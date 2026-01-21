@@ -145,6 +145,18 @@ const classifyStatementLine = (row) => {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
   
+  if (titleL.includes('etsy plus') && titleL.includes('subscription')) {
+    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_subscription', order_id: null };
+  }
+  
+  if (titleL.includes('etsy plus') && titleL.includes('listing') && (titleL.includes('credit') || amount < 0)) {
+    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_listing_credit', order_id: null };
+  }
+  
+  if ((titleL.includes('credit for etsy ads') || (titleL.includes('etsy plus') && titleL.includes('ads') && titleL.includes('credit'))) && amount < 0) {
+    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_ads_credit', order_id: null };
+  }
+  
   if (typeL.includes('sale') && amount > 0) {
     return { category: 'sale', section: 'orders', fee_type: null, order_id: orderId };
   }
