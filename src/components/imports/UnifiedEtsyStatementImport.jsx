@@ -174,18 +174,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     mutationFn: async ({ statementMonth, dateRangeStart, dateRangeEnd, fileName, fileHash, parsedData }) => {
       const { orders, fees, deposits, refunds, taxes, unmatchedLines } = parsedData;
       
-      // Helper to batch operations with better rate limiting
-       const batchProcess = async (items, batchSize, processFn) => {
+      // Helper to batch operations using bulk creates for speed
+       const batchProcess = async (items, batchSize, entityName) => {
          for (let i = 0; i < items.length; i += batchSize) {
            const batch = items.slice(i, i + batchSize);
-           // Process sequentially instead of parallel to avoid rate limits
-           for (const item of batch) {
-             await processFn(item);
-             // Larger delay between each item to avoid rate limits
-             await new Promise(resolve => setTimeout(resolve, 300));
-           }
-           // Longer wait between batches
-           await new Promise(resolve => setTimeout(resolve, 1000));
+           await base44.entities[entityName].bulkCreate(batch);
+           // Small delay between batches only
+           await new Promise(resolve => setTimeout(resolve, 200));
          }
        };
       
