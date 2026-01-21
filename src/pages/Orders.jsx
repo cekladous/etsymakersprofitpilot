@@ -338,11 +338,17 @@ export default function Orders() {
   };
 
   const toggleSelectAll = () => {
-    setSelectedIds([]);
+    if (selectedIds.length === filteredOrders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredOrders.map(o => o.id));
+    }
   };
 
   const toggleSelect = (id) => {
-    setSelectedIds([id]);
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   const handleBulkDelete = () => {
@@ -515,6 +521,25 @@ export default function Orders() {
   ];
 
   const columns = [
+    {
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedIds.length === filteredOrders.length && filteredOrders.length > 0}
+          onChange={toggleSelectAll}
+          className="w-4 h-4 rounded border-stone-300"
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(row.id)}
+          onChange={() => toggleSelect(row.id)}
+          className="w-4 h-4 rounded border-stone-300"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+    },
     {
       header: "Order ID",
       render: (row) => (
@@ -779,6 +804,24 @@ export default function Orders() {
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
+          {/* Bulk Actions */}
+          {selectedIds.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-900">
+                {selectedIds.length} order{selectedIds.length !== 1 ? "s" : ""} selected
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
