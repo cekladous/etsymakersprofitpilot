@@ -769,12 +769,16 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // E) ADS (etsy_ads, offsite_ads)
       // F) SHIPPING (shipping_label, other_postage)
       else if (classification.category === 'fee') {
+        // For non-order-specific fees (like Etsy Plus), use Amount column
+        // For order-specific fees, use Fees & Taxes column
+        const feeAmount = classification.order_id ? (feesTaxes || amount) : amount;
+        
         fees.push({
           line_uid: lineUID,
           order_id: classification.order_id,
           transaction_date: transactionDate,
           fee_type: classification.fee_type,
-          amount: feesTaxes || amount,
+          amount: feeAmount,
           description: title || info,
           _rawLine: rawLine
         });
