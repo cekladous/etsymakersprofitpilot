@@ -307,9 +307,6 @@ export default function Orders() {
     offsite_ads: "Offsite Ads",
     shipping_label: "Shipping Label",
     other_postage: "Other Postage",
-    etsy_plus_subscription: "Etsy Plus Subscription",
-    etsy_plus_listing_credit: "Etsy Plus Listing Credit",
-    etsy_plus_ads_credit: "Etsy Plus Ads Credit",
   };
 
   const getPeriodLabel = () => {
@@ -1045,20 +1042,6 @@ export default function Orders() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Explanation Note */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-2">
-              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">About Fees & Charges</p>
-                <p>
-                  This tab shows <strong>all individual fee line items</strong> from your Etsy statement imports, including order-specific fees (transaction, processing, ads) and general shop charges not tied to specific orders. 
-                  The "Orders" tab shows only fees directly associated with each sale.
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Bulk Actions */}
           {selectedFeeIds.length > 0 && (

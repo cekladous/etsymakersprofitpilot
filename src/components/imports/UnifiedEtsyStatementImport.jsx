@@ -145,23 +145,6 @@ const classifyStatementLine = (row) => {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
   
-  if (titleL.includes('etsy plus') && titleL.includes('subscription')) {
-    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_subscription', order_id: null };
-  }
-  
-  if ((titleL.includes('credits') && titleL.includes('plus')) || (titleL.includes('etsy plus') && titleL.includes('credit'))) {
-    // Check if it's ads credit or listing credit
-    if (titleL.includes('ads') || infoL.includes('ads')) {
-      return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_ads_credit', order_id: null };
-    }
-    // Default to listing credit for general "Credits (Plus)"
-    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_listing_credit', order_id: null };
-  }
-  
-  if (titleL.includes('credit for etsy ads') && amount < 0) {
-    return { category: 'fee', section: 'fees', fee_type: 'etsy_plus_ads_credit', order_id: null };
-  }
-  
   if (typeL.includes('sale') && amount > 0) {
     return { category: 'sale', section: 'orders', fee_type: null, order_id: orderId };
   }
@@ -769,16 +752,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // E) ADS (etsy_ads, offsite_ads)
       // F) SHIPPING (shipping_label, other_postage)
       else if (classification.category === 'fee') {
-        // For non-order-specific fees (like Etsy Plus), use Amount column
-        // For order-specific fees, use Fees & Taxes column
-        const feeAmount = classification.order_id ? (feesTaxes || amount) : amount;
-        
         fees.push({
           line_uid: lineUID,
           order_id: classification.order_id,
           transaction_date: transactionDate,
           fee_type: classification.fee_type,
-          amount: Math.abs(feeAmount),
+          amount: feesTaxes || amount,
           description: title || info,
           _rawLine: rawLine
         });
@@ -828,30 +807,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     if (duplicateWarning?.newData) {
       setImporting(true);
       
-      // If replacing an existing month, delete old data and mark import as 'replaced'
+      // If replacing an existing month, mark old import as 'replaced'
       if (duplicateWarning.type === 'duplicate_month') {
         try {
-          const oldImportId = duplicateWarning.existingImport.id;
-          
-          // Delete old fees from this import
-          const oldFees = await base44.entities.Fee.filter({ import_id: oldImportId });
-          for (const fee of oldFees) {
-            await base44.entities.Fee.delete(fee.id);
-          }
-          
-          // Delete old statement lines from this import
-          const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImportId });
-          for (const line of oldLines) {
-            await base44.entities.EtsyStatementLine.delete(line.id);
-          }
-          
-          // Mark old import as replaced
-          await base44.entities.EtsyStatementImport.update(oldImportId, {
+          await base44.entities.EtsyStatementImport.update(duplicateWarning.existingImport.id, {
             status: 'replaced',
             reconciliation_notes: `Replaced by new import on ${format(new Date(), 'MMM d, yyyy HH:mm')}`
           });
         } catch (err) {
-          console.warn('Failed to clean up old import data:', err);
+          console.warn('Failed to mark old import as replaced:', err);
         }
       }
       
