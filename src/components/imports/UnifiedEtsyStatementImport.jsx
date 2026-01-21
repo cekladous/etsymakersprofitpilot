@@ -195,14 +195,19 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
       const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
       
-      // Get all existing fees to prevent duplicates across imports (using line_uid for stable deduplication)
+      // Get all existing fees to prevent duplicates across imports
       const allExistingFees = await base44.entities.Fee.filter({ owner_user_id: currentUser.id });
-      const existingFeeLineUIDs = new Set(allExistingFees.map(f => f.line_uid));
-
+      const existingFeeKeys = new Set(
+        allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
+      );
+      
       // Filter out rows that already exist
       const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
-      // For fees, check by line_uid to preserve manual edits on reimport
-      const newFees = fees.filter(f => !existingFeeLineUIDs.has(f._rawLine.line_uid));
+      // For fees, only check if the Fee entity exists (not statement lines, which are audit trail)
+      const newFees = fees.filter(f => {
+        const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
+        return !existingFeeKeys.has(feeKey);
+      });
       const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
       const newRefunds = refunds.filter(r => !existingLineUIDs.has(r._rawLine.line_uid));
       
