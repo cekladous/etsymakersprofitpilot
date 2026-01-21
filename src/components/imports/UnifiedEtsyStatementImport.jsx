@@ -187,19 +187,20 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // Get owner_user_id from authenticated user
       const currentUser = await base44.auth.me();
       
-      // Get all existing statement lines to check for duplicates (only for current user)
-      const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
-      const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
-      
       // Get all existing fees to prevent duplicates across imports
       const allExistingFees = await base44.entities.Fee.filter({ owner_user_id: currentUser.id });
       const existingFeeKeys = new Set(
         allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
       );
       
+      // Get all existing statement lines to check for duplicates (only for current user)
+      const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
+      const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
+      
       // Filter out rows that already exist
       const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
-      // For fees, only check if the Fee entity exists (not statement lines, which are audit trail)
+      // For fees, check if the Fee entity exists (not statement lines)
+      // If fees were deleted but statement lines remain, allow re-import
       const newFees = fees.filter(f => {
         const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
         return !existingFeeKeys.has(feeKey);
