@@ -157,10 +157,21 @@ export default function Orders() {
 
   const bulkDeleteFeesMutation = useMutation({
     mutationFn: async (ids) => {
+      const feesToDelete = fees.filter(f => ids.includes(f.id));
+      for (const fee of feesToDelete) {
+        const lines = await base44.entities.EtsyStatementLine.filter({
+          line_uid: fee.line_uid,
+          owner_user_id: user.id
+        });
+        for (const line of lines) {
+          await base44.entities.EtsyStatementLine.delete(line.id);
+        }
+      }
       await Promise.all(ids.map(id => base44.entities.Fee.delete(id)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-lines"] });
       setSelectedFeeIds([]);
     },
   });
