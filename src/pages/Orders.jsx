@@ -112,32 +112,46 @@ export default function Orders() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids) => {
+      console.log('Starting bulk delete for', ids.length, 'orders');
+      
       // Get the order_id strings for the selected entity IDs
       const ordersToDelete = etsyOrders.filter(o => ids.includes(o.id));
       const orderIdStrings = ordersToDelete.map(o => o.order_id);
       
+      console.log('Order IDs to delete:', orderIdStrings);
+      
       // Delete associated fees first
       const feesToDelete = fees.filter(f => orderIdStrings.includes(f.order_id));
+      console.log('Deleting', feesToDelete.length, 'fees');
       for (const fee of feesToDelete) {
         await base44.entities.Fee.delete(fee.id);
       }
       
       // Delete order fees
       const orderFeesToDelete = orderFees.filter(f => orderIdStrings.includes(f.order_id));
+      console.log('Deleting', orderFeesToDelete.length, 'order fees');
       for (const orderFee of orderFeesToDelete) {
         await base44.entities.OrderFee.delete(orderFee.id);
       }
       
       // Then delete orders
+      console.log('Deleting', ids.length, 'orders');
       for (const id of ids) {
         await base44.entities.EtsyOrder.delete(id);
       }
+      
+      console.log('Bulk delete complete');
     },
     onSuccess: () => {
+      console.log('Bulk delete succeeded, refreshing data');
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
       queryClient.invalidateQueries({ queryKey: ["order-fees"] });
       queryClient.invalidateQueries({ queryKey: ["fees"] });
       setSelectedIds([]);
+    },
+    onError: (error) => {
+      console.error('Bulk delete failed:', error);
+      alert('Failed to delete orders: ' + error.message);
     },
   });
 
