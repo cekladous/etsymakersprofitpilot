@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,9 @@ import {
 import { Loader2 } from "lucide-react";
 
 export default function CustomSaleDialog({ open, onOpenChange }) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [errorMessage, setErrorMessage] = useState("");
   
   const { data: settings = [] } = useQuery({
     queryKey: ["settings"],
@@ -48,6 +51,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
       const gross_sale = parseFloat(data.pre_tax_amount || 0) + parseFloat(data.sales_tax_collected || 0);
       return base44.entities.CustomSale.create({
         ...data,
+        owner_user_id: user.id,
         pre_tax_amount: parseFloat(data.pre_tax_amount || 0),
         sales_tax_collected: parseFloat(data.sales_tax_collected || 0),
         gross_sale,
@@ -58,6 +62,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
       onOpenChange(false);
+      setErrorMessage("");
       setFormData({
         date: new Date().toISOString().split("T")[0],
         pre_tax_amount: "",
@@ -69,10 +74,14 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         notes: "",
       });
     },
+    onError: (error) => {
+      setErrorMessage(error?.message || "Failed to save sale. Please try again.");
+    },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setErrorMessage("");
     createMutation.mutate(formData);
   };
 
@@ -176,6 +185,12 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
               placeholder="Additional details"
             />
           </div>
+
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

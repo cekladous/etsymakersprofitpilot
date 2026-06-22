@@ -978,7 +978,7 @@ export default function Expenses() {
       </div>
 
       {/* Tabs */}
-      {expenses.length === 0 && !isLoading ? (
+      {filteredExpenses.length === 0 && !isLoading ? (
         <EmptyState
           icon={Receipt}
           title="No expenses tracked"
