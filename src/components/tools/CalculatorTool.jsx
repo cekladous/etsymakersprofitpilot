@@ -29,6 +29,8 @@ const defaultInputs = {
   sales_tax: 0,
   cost_of_goods: 8.00,
   shipping_cost: 0,
+  overhead_cost: 0,
+  labor_cost: 0,
   advertising_type: "none",
   advertising_value: 0,
   advertising_value_type: "percent",
@@ -122,7 +124,7 @@ export default function CalculatorTool() {
   };
 
   // Chart data
-  const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0);
+  const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0) + (inputs.overhead_cost || 0) + (inputs.labor_cost || 0);
   const chartData = [
     { name: "Net Profit", value: Math.max(0, results.profit), color: "#10b981" },
     { name: "Fees", value: results.total_fees, color: "#ef4444" },
@@ -287,6 +289,30 @@ export default function CalculatorTool() {
                   onChange={(e) => handleInputChange("shipping_cost", e.target.value)}
                   className="h-11"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Overhead Cost</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.overhead_cost}
+                  onChange={(e) => handleInputChange("overhead_cost", e.target.value)}
+                  className="h-11"
+                />
+                <p className="text-xs text-stone-500">Allocated overhead per item (utilities, rent, equipment depreciation, etc.)</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Labor Cost</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={inputs.labor_cost}
+                  onChange={(e) => handleInputChange("labor_cost", e.target.value)}
+                  className="h-11"
+                />
+                <p className="text-xs text-stone-500">Labor cost for this item (hours × hourly rate)</p>
               </div>
             </CardContent>
           </Card>
@@ -509,7 +535,7 @@ export default function CalculatorTool() {
               color="text-rose-600"
             />
             <KPICard
-              label="CoGS + Shipping"
+              label="Total Costs"
               value={formatCurrency(totalCosts)}
               color="text-amber-600"
             />
@@ -613,8 +639,10 @@ export default function CalculatorTool() {
               <CardContent className="space-y-0">
                 <BreakdownRow label="Cost of Goods Sold" amount={results.cost_of_goods} indent />
                 <BreakdownRow label="Shipping Cost" amount={inputs.shipping_cost} indent />
+                <BreakdownRow label="Overhead" amount={inputs.overhead_cost} indent />
+                <BreakdownRow label="Labor" amount={inputs.labor_cost} indent />
                 <div className="border-t border-stone-200 mt-2 pt-2">
-                  <BreakdownRow label="Total CoGS + Shipping" amount={totalCosts} bold />
+                  <BreakdownRow label="Total Costs" amount={totalCosts} bold />
                 </div>
               </CardContent>
             </Card>

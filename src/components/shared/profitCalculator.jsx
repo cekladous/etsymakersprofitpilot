@@ -53,6 +53,8 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     sales_tax = 0,
     cost_of_goods = 0,
     shipping_cost = 0,
+    overhead_cost = 0,
+    labor_cost = 0,
     advertising_type = "none",
     advertising_value = 0,
     advertising_value_type = "percent",
@@ -144,7 +146,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   const net_revenue = gross_revenue - total_fees;
   
   // Total costs
-  const total_costs = cost_of_goods + shipping_cost;
+  const total_costs = cost_of_goods + shipping_cost + overhead_cost + labor_cost;
   
   // Profit
   const profit = net_revenue - total_costs;
@@ -175,6 +177,8 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     net_revenue,
     cost_of_goods,
     shipping_cost,
+    overhead_cost,
+    labor_cost,
     total_costs,
     profit,
     profit_margin,
