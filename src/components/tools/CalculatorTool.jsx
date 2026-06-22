@@ -31,7 +31,6 @@ const defaultInputs = {
   shipping_cost: 0,
   overhead_cost: 0,
   labor_hours: 0,
-  labor_minutes: 0,
   labor_rate: 50,
   advertising_type: "none",
   advertising_value: 0,
@@ -55,7 +54,7 @@ export default function CalculatorTool() {
   });
 
   const feeConfig = settings[0] || {};
-  const laborCost = ((parseFloat(inputs.labor_hours) || 0) + (parseFloat(inputs.labor_minutes) || 0) / 60) * (parseFloat(inputs.labor_rate) || 0);
+  const laborCost = (parseFloat(inputs.labor_hours) || 0) * (parseFloat(inputs.labor_rate) || 0);
   const results = calculateProfit({ ...inputs, labor_cost: laborCost }, feeConfig);
 
   const handleInputChange = (field, value) => {
@@ -114,7 +113,6 @@ export default function CalculatorTool() {
       }],
       machines: [],
       labor_hours: inputs.labor_hours,
-      labor_minutes: inputs.labor_minutes,
       labor_rate: inputs.labor_rate,
       notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
     });
@@ -307,31 +305,18 @@ export default function CalculatorTool() {
                   <Label className="text-sm font-medium">Labor</Label>
                   <span className="text-sm font-semibold text-stone-700">{formatCurrency(laborCost)}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Input
                       type="number"
-                      step="1"
+                      step="0.01"
                       min="0"
                       value={inputs.labor_hours}
                       onChange={(e) => handleInputChange("labor_hours", e.target.value)}
                       className="h-11"
                       placeholder="0"
                     />
-                    <p className="text-xs text-stone-400 mt-1 text-center">hours</p>
-                  </div>
-                  <div>
-                    <Input
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="59"
-                      value={inputs.labor_minutes}
-                      onChange={(e) => handleInputChange("labor_minutes", e.target.value)}
-                      className="h-11"
-                      placeholder="0"
-                    />
-                    <p className="text-xs text-stone-400 mt-1 text-center">minutes</p>
+                    <p className="text-xs text-stone-400 mt-1 text-center">hours (e.g. 2.5)</p>
                   </div>
                   <div>
                     <Input
@@ -346,7 +331,7 @@ export default function CalculatorTool() {
                     <p className="text-xs text-stone-400 mt-1 text-center">$/hr</p>
                   </div>
                 </div>
-                <p className="text-xs text-stone-500">Labor cost = (hours + minutes/60) × rate</p>
+                <p className="text-xs text-stone-500">Labor cost = hours × rate</p>
               </div>
             </CardContent>
           </Card>
