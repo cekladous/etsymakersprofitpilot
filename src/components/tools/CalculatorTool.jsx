@@ -109,19 +109,15 @@ export default function CalculatorTool() {
       customer_name: "",
       status: "Draft",
       materials: [{
-        name: "Materials",
-        cost: inputs.cost_of_goods
-      }],
-      machines: [],
-      labor_hours: inputs.labor_hours,
-      labor_rate: inputs.labor_rate,
-      materials: [{
         name: "Materials & Supplies",
         cost: inputs.cost_of_goods
       }, {
         name: "Labor",
         cost: laborCost
       }],
+      machines: [],
+      labor_hours: inputs.labor_hours,
+      labor_rate: inputs.labor_rate,
       notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
     });
     
