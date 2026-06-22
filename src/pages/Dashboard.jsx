@@ -569,7 +569,7 @@ export default function Dashboard() {
         </Link>
         <Link to={createPageUrl("CustomSales")} className="block transition-transform hover:scale-105">
           <div className="bg-white rounded-xl border border-stone-200 p-4 hover:shadow-md transition-shadow">
-            <p className="text-xs font-semibold text-stone-600 uppercase">Custom Revenue</p>
+            <p className="text-xs font-semibold text-stone-600 uppercase">Other / Direct Revenue</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">${financialData.revenue.customRevenueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             <p className="text-xs text-stone-500 mt-2">Manage custom sales</p>
           </div>
