@@ -114,7 +114,7 @@ export default function CalculatorTool() {
       manual_labor_hours: 0,
       manual_labor_minutes: 0,
       manual_labor_rate: 0,
-      notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin.toFixed(1)}%)\n\nPayment Method: ${inputs.payment_method}`,
+      notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
     });
     
     queryClient.invalidateQueries({ queryKey: ["quotes"] });
@@ -646,7 +646,7 @@ export default function CalculatorTool() {
               <strong>⚠️ Warning:</strong> You're losing money on this item. Consider raising your price or reducing costs.
             </div>
           )}
-          {results.profit >= 0 && results.profit_margin < 20 && (
+          {results.profit >= 0 && results.profit_margin != null && results.profit_margin < 20 && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
               <strong>⚠️ Low Margin:</strong> Your profit margin is below 20%. Consider optimizing your pricing or costs.
             </div>

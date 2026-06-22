@@ -149,8 +149,8 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   // Profit
   const profit = net_revenue - total_costs;
   
-  // Margin
-  const profit_margin = gross_revenue > 0 ? (profit / gross_revenue) * 100 : 0;
+  // Margin (null when no revenue — avoids misleading 0.0% display)
+  const profit_margin = gross_revenue > 0 ? (profit / gross_revenue) * 100 : null;
   
   return {
     // Revenue
@@ -181,7 +181,7 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     
     // Additional metrics
     revenue_after_cogs: net_revenue - cost_of_goods,
-    effective_fee_rate: gross_revenue > 0 ? (total_fees / gross_revenue) * 100 : 0,
+    effective_fee_rate: gross_revenue > 0 ? (total_fees / gross_revenue) * 100 : null,
   };
 }
 
@@ -221,6 +221,7 @@ export function formatCurrency(amount, showSign = false) {
  * Format percentage for display
  */
 export function formatPercent(value, decimals = 1) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   return `${value.toFixed(decimals)}%`;
 }
 

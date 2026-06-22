@@ -599,7 +599,7 @@ export default function Dashboard() {
           <KPICard
                 title="Net Profit"
                 value={`$${metrics.periodProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                subtitle={`${metrics.periodMargin.toFixed(1)}% margin • View breakdown`}
+                subtitle={`${metrics.periodMargin != null ? `${metrics.periodMargin.toFixed(1)}% margin` : 'N/A margin'} • View breakdown`}
                 icon={TrendingUp}
                 accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"} />
 

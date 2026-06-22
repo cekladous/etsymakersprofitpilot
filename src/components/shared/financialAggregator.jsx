@@ -575,7 +575,7 @@ export function aggregateFinancials(data, dateRange) {
     totalRevenue,
     totalExpenses,
     netProfit,
-    profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
+    profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : null,
     
     // Cashflow (not revenue)
     cashflow: {

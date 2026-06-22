@@ -220,7 +220,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           </span>
           {showPercentage && (
             <span className={`text-xs ${percentage < 0 ? 'text-rose-600' : 'text-stone-500'} min-w-[50px] text-right ${bold ? "font-semibold" : ""}`}>
-              {percentage !== 0 ? `${percentage.toFixed(1)}%` : ''}
+              {isProfitMargin && totalRevenue === 0 ? 'N/A' : percentage !== 0 ? `${percentage.toFixed(1)}%` : ''}
             </span>
           )}
         </div>

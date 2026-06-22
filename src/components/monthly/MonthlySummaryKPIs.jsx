@@ -57,9 +57,9 @@ export default function MonthlySummaryKPIs({ financialData }) {
       />
       <KPICard
         label="Profit Margin"
-        value={`${profitMargin.toFixed(1)}%`}
+        value={profitMargin != null ? `${profitMargin.toFixed(1)}%` : "N/A"}
         icon={Target}
-        color={profitMargin >= 0 ? "text-emerald-600" : "text-rose-600"}
+        color={profitMargin != null && profitMargin >= 0 ? "text-emerald-600" : "text-rose-600"}
       />
       <KPICard
         label="Etsy Fees"
