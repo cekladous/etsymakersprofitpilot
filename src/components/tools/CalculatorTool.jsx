@@ -294,7 +294,7 @@ export default function CalculatorTool() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Overhead Cost</Label>
+                <Label className="text-sm font-medium">Overhead per Item ($)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -302,6 +302,7 @@ export default function CalculatorTool() {
                   value={inputs.overhead_cost}
                   onChange={(e) => handleInputChange("overhead_cost", e.target.value)}
                   className="h-11"
+                  placeholder="0.00"
                 />
                 <p className="text-xs text-stone-500">Allocated overhead per item (utilities, rent, equipment depreciation, etc.)</p>
               </div>
