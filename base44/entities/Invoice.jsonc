@@ -1,0 +1,147 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "invoice_number": {
+      "type": "string",
+      "description": "Auto-generated invoice number (e.g. INV-001)"
+    },
+    "quote_id": {
+      "type": "string",
+      "description": "Reference to the source Quote entity"
+    },
+    "quote_number": {
+      "type": "string",
+      "description": "Original quote number for reference"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Reference to Customer entity"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name"
+    },
+    "customer_email": {
+      "type": "string",
+      "description": "Customer email"
+    },
+    "customer_phone": {
+      "type": "string",
+      "description": "Customer phone number"
+    },
+    "customer_state": {
+      "type": "string",
+      "description": "Customer state for tax calculation"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Line item description"
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1
+          },
+          "unit_price": {
+            "type": "number",
+            "default": 0
+          },
+          "total": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      },
+      "description": "Invoice line items (materials, labor, overhead)"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0,
+      "description": "Subtotal before tax"
+    },
+    "tax_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Tax rate as percentage"
+    },
+    "tax_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Calculated tax amount"
+    },
+    "total": {
+      "type": "number",
+      "default": 0,
+      "description": "Total amount (subtotal + tax)"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date invoice was issued"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "Unpaid",
+        "Partial",
+        "Paid"
+      ],
+      "default": "Unpaid",
+      "description": "Payment status"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount paid so far"
+    },
+    "balance_due": {
+      "type": "number",
+      "default": 0,
+      "description": "Remaining balance (total - amount_paid)"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date payment was completed"
+    },
+    "payment_method": {
+      "type": "string",
+      "description": "Payment method (cash, check, card, paypal, venmo, square, other)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Invoice notes or payment terms"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Paid",
+        "Overdue",
+        "Void"
+      ],
+      "default": "Draft",
+      "description": "Invoice lifecycle status"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "invoice_number",
+    "customer_name"
+  ]
+}
