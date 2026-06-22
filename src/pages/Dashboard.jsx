@@ -662,7 +662,7 @@ export default function Dashboard() {
           <div className="flex-1">
             <p className="font-semibold text-blue-900">Sales Tax Tracking</p>
             <p className="text-sm text-blue-700 mt-1">
-              Sales tax collected from Etsy orders is shown for reference only. MakerLedger does not automatically file or remit sales tax. 
+              Sales tax collected from Etsy orders is shown for reference only. Etsy Maker's Profit Pilot does not automatically file or remit sales tax. 
               <strong> You are responsible for tracking, filing, and paying sales tax to your state.</strong> The app displays collected tax amounts to help with your records, but you must manage tax obligations separately.
             </p>
           </div>
