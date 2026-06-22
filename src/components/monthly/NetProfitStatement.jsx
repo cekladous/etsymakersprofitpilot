@@ -215,7 +215,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors" />
             </div>
           )}
-          <span className={`text-sm ${bold ? "font-bold" : ""} ${displayAmount < 0 ? "text-emerald-600" : ""} min-w-[100px] text-right`}>
+          <span className={`text-sm ${bold ? "font-bold" : ""} ${displayAmount < 0 ? "text-rose-600" : ""} min-w-[100px] text-right`}>
             {formatCurrency(displayAmount)}
           </span>
           {showPercentage && (
