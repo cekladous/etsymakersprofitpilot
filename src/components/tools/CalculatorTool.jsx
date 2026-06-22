@@ -30,7 +30,9 @@ const defaultInputs = {
   cost_of_goods: 8.00,
   shipping_cost: 0,
   overhead_cost: 0,
-  labor_cost: 0,
+  labor_hours: 0,
+  labor_minutes: 0,
+  labor_rate: 50,
   advertising_type: "none",
   advertising_value: 0,
   advertising_value_type: "percent",
@@ -53,7 +55,8 @@ export default function CalculatorTool() {
   });
 
   const feeConfig = settings[0] || {};
-  const results = calculateProfit(inputs, feeConfig);
+  const laborCost = ((parseFloat(inputs.labor_hours) || 0) + (parseFloat(inputs.labor_minutes) || 0) / 60) * (parseFloat(inputs.labor_rate) || 0);
+  const results = calculateProfit({ ...inputs, labor_cost: laborCost }, feeConfig);
 
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
@@ -110,12 +113,9 @@ export default function CalculatorTool() {
         cost: inputs.cost_of_goods
       }],
       machines: [],
-      design_hours: 0,
-      design_minutes: 0,
-      design_rate: 0,
-      manual_labor_hours: 0,
-      manual_labor_minutes: 0,
-      manual_labor_rate: 0,
+      labor_hours: inputs.labor_hours,
+      labor_minutes: inputs.labor_minutes,
+      labor_rate: inputs.labor_rate,
       notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
     });
     
@@ -124,7 +124,7 @@ export default function CalculatorTool() {
   };
 
   // Chart data
-  const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0) + (inputs.overhead_cost || 0) + (inputs.labor_cost || 0);
+  const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0) + (inputs.overhead_cost || 0) + laborCost;
   const chartData = [
     { name: "Net Profit", value: Math.max(0, results.profit), color: "#10b981" },
     { name: "Fees", value: results.total_fees, color: "#ef4444" },
@@ -303,16 +303,50 @@ export default function CalculatorTool() {
                 <p className="text-xs text-stone-500">Allocated overhead per item (utilities, rent, equipment depreciation, etc.)</p>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Labor Cost</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={inputs.labor_cost}
-                  onChange={(e) => handleInputChange("labor_cost", e.target.value)}
-                  className="h-11"
-                />
-                <p className="text-xs text-stone-500">Labor cost for this item (hours × hourly rate)</p>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Labor</Label>
+                  <span className="text-sm font-semibold text-stone-700">{formatCurrency(laborCost)}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={inputs.labor_hours}
+                      onChange={(e) => handleInputChange("labor_hours", e.target.value)}
+                      className="h-11"
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-stone-400 mt-1 text-center">hours</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="59"
+                      value={inputs.labor_minutes}
+                      onChange={(e) => handleInputChange("labor_minutes", e.target.value)}
+                      className="h-11"
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-stone-400 mt-1 text-center">minutes</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={inputs.labor_rate}
+                      onChange={(e) => handleInputChange("labor_rate", e.target.value)}
+                      className="h-11"
+                      placeholder="50.00"
+                    />
+                    <p className="text-xs text-stone-400 mt-1 text-center">$/hr</p>
+                  </div>
+                </div>
+                <p className="text-xs text-stone-500">Labor cost = (hours + minutes/60) × rate</p>
               </div>
             </CardContent>
           </Card>
@@ -640,7 +674,7 @@ export default function CalculatorTool() {
                 <BreakdownRow label="Cost of Goods Sold" amount={results.cost_of_goods} indent />
                 <BreakdownRow label="Shipping Cost" amount={inputs.shipping_cost} indent />
                 <BreakdownRow label="Overhead" amount={inputs.overhead_cost} indent />
-                <BreakdownRow label="Labor" amount={inputs.labor_cost} indent />
+                <BreakdownRow label="Labor" amount={laborCost} indent />
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Costs" amount={totalCosts} bold />
                 </div>
