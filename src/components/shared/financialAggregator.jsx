@@ -148,6 +148,19 @@ export function aggregateFinancials(data, dateRange) {
   // 6) Total Revenue (tax excluded from profit logic)
   const totalRevenue = (totalEtsySales - etsyRefunds) + customSaleA + customSaleB;
 
+  // 7) Revenue by Source breakdown (Etsy + each Custom Sales source)
+  const SOURCE_KEYS = ["Squarespace", "Square", "In-Person/Cash", "Website", "Instagram", "Other"];
+  const customRevenueBySource = {};
+  SOURCE_KEYS.forEach(key => { customRevenueBySource[key] = 0; });
+  periodCustomSales.forEach(s => {
+    const source = SOURCE_KEYS.includes(s.sales_source) ? s.sales_source : "Other";
+    customRevenueBySource[source] += toNumber(s.pre_tax_amount || s.gross_sale);
+  });
+  const revenueBySource = {
+    Etsy: totalEtsySales - etsyRefunds,
+    ...customRevenueBySource,
+  };
+
   // ==================== B) SELLING EXPENSES ====================
 
   /**
@@ -535,6 +548,7 @@ export function aggregateFinancials(data, dateRange) {
       customSalesTaxCollected,
       customRevenueTotal: customSaleA + customSaleB, // NEW: Total custom revenue (non-Etsy)
       total: totalRevenue,
+      bySource: revenueBySource, // NEW: Revenue broken down by sales source
     },
     
     // Selling expenses breakdown

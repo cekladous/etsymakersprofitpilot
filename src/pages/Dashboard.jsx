@@ -56,6 +56,7 @@ import GracePeriodWarning from "@/components/subscriptions/GracePeriodWarning";
 import ExpiredSubscriptionWarning from "@/components/subscriptions/ExpiredSubscriptionWarning";
 
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
+import RevenueBySourceCard from "@/components/dashboard/RevenueBySourceCard";
 
 // xlsx imported dynamically in handleExport
 
@@ -583,6 +584,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Revenue by Source */}
+      <RevenueBySourceCard financialData={financialData} />
 
       {/* KPI Cards - ALL CLICKABLE */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
