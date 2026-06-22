@@ -8,19 +8,19 @@
     },
     "invoice_number": {
       "type": "string",
-      "description": "Auto-generated invoice number (e.g. INV-001)"
+      "description": "Unique invoice number"
     },
     "quote_id": {
       "type": "string",
-      "description": "Reference to the source Quote entity"
+      "description": "Reference to source Quote entity"
     },
-    "quote_number": {
+    "project_name": {
       "type": "string",
-      "description": "Original quote number for reference"
+      "description": "Project or invoice name"
     },
     "customer_id": {
       "type": "string",
-      "description": "Reference to Customer entity"
+      "description": "Reference to selected Customer entity"
     },
     "customer_name": {
       "type": "string",
@@ -38,35 +38,122 @@
       "type": "string",
       "description": "Customer state for tax calculation"
     },
+    "invoice_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Invoice issue date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Sent",
+        "Paid",
+        "Partial",
+        "Overdue",
+        "Cancelled"
+      ],
+      "default": "Sent",
+      "description": "Invoice status"
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Materials list for the invoice"
+    },
+    "machines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "number"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "rate": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Machines used for the invoice"
+    },
+    "labor_hours": {
+      "type": "number",
+      "default": 0,
+      "description": "Labor hours"
+    },
+    "labor_minutes": {
+      "type": "number",
+      "default": 0,
+      "description": "Labor minutes"
+    },
+    "labor_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Labor rate per hour"
+    },
+    "shipping_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping cost"
+    },
+    "payment_method": {
+      "type": "string",
+      "description": "Payment method (etsy, paypal, square, venmo, cash, other)"
+    },
     "line_items": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
+          "product_id": {
+            "type": "string"
+          },
           "description": {
-            "type": "string",
-            "description": "Line item description"
+            "type": "string"
           },
           "quantity": {
-            "type": "number",
-            "default": 1
+            "type": "number"
           },
           "unit_price": {
-            "type": "number",
-            "default": 0
+            "type": "number"
           },
           "total": {
-            "type": "number",
-            "default": 0
+            "type": "number"
           }
         }
       },
-      "description": "Invoice line items (materials, labor, overhead)"
+      "description": "Line items for the invoice"
     },
     "subtotal": {
       "type": "number",
       "default": 0,
-      "description": "Subtotal before tax"
+      "description": "Subtotal before taxes"
     },
     "tax_rate": {
       "type": "number",
@@ -81,27 +168,7 @@
     "total": {
       "type": "number",
       "default": 0,
-      "description": "Total amount (subtotal + tax)"
-    },
-    "issue_date": {
-      "type": "string",
-      "format": "date",
-      "description": "Date invoice was issued"
-    },
-    "due_date": {
-      "type": "string",
-      "format": "date",
-      "description": "Payment due date"
-    },
-    "payment_status": {
-      "type": "string",
-      "enum": [
-        "Unpaid",
-        "Partial",
-        "Paid"
-      ],
-      "default": "Unpaid",
-      "description": "Payment status"
+      "description": "Total amount (grand total)"
     },
     "amount_paid": {
       "type": "number",
@@ -113,35 +180,15 @@
       "default": 0,
       "description": "Remaining balance (total - amount_paid)"
     },
-    "payment_date": {
-      "type": "string",
-      "format": "date",
-      "description": "Date payment was completed"
-    },
-    "payment_method": {
-      "type": "string",
-      "description": "Payment method (cash, check, card, paypal, venmo, square, other)"
-    },
     "notes": {
       "type": "string",
-      "description": "Invoice notes or payment terms"
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "Draft",
-        "Sent",
-        "Paid",
-        "Overdue",
-        "Void"
-      ],
-      "default": "Draft",
-      "description": "Invoice lifecycle status"
+      "description": "Payment terms, delivery details, or personalized message"
     }
   },
   "required": [
     "owner_user_id",
     "invoice_number",
+    "project_name",
     "customer_name"
   ]
 }

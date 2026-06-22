@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Download } from "lucide-react";
+import { Plus, FileText, Download, FileCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
@@ -86,6 +86,26 @@ export default function QuotesPage() {
     exportQuoteToPDF(quote, settings?.business_name || "Your Business");
   };
 
+  const convertToInvoiceMutation = useMutation({
+    mutationFn: (quoteId) => base44.functions.invoke('convertQuoteToInvoice', { quoteId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+  });
+
+  const handleConvertToInvoice = (quote) => {
+    if (quote.status === "Invoiced" || quote.status === "Paid") {
+      alert("This quote has already been invoiced.");
+      return;
+    }
+    if (confirm(`Convert quote ${quote.quote_number} to an invoice?`)) {
+      convertToInvoiceMutation.mutate(quote.id, {
+        onError: (error) => alert(`Failed to create invoice: ${error.message}`),
+      });
+    }
+  };
+
   const columns = [
     {
       key: "select",
@@ -152,6 +172,16 @@ export default function QuotesPage() {
           >
             <Download className="w-3 h-3 mr-1" />
             PDF
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleConvertToInvoice(quote)}
+            disabled={convertToInvoiceMutation.isPending || quote.status === "Invoiced" || quote.status === "Paid"}
+            className="text-emerald-600 hover:text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+          >
+            <FileCheck className="w-3 h-3 mr-1" />
+            Invoice
           </Button>
           <Button
             size="sm"

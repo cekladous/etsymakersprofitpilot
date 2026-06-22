@@ -15,13 +15,15 @@ import {
   ChevronRight,
   FileText,
   Users,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  FileCheck2
 } from "lucide-react";
 
 const navItems = [
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
         { name: "Customers", icon: Users, page: "Customers" },
         { name: "Quotes", icon: FileText, page: "Quotes" },
+        { name: "Invoices", icon: FileCheck2, page: "Invoices" },
         { name: "Production", icon: Wrench, page: "Production" },
         { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
         { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
