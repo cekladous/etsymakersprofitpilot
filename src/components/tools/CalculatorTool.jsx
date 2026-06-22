@@ -55,7 +55,8 @@ export default function CalculatorTool() {
 
   const feeConfig = settings[0] || {};
   const laborCost = (parseFloat(inputs.labor_hours) || 0) * (parseFloat(inputs.labor_rate) || 0);
-  const results = calculateProfit({ ...inputs, labor_cost: laborCost }, feeConfig);
+  const totalCogs = (parseFloat(inputs.cost_of_goods) || 0) + laborCost;
+  const results = calculateProfit({ ...inputs, cost_of_goods: totalCogs, labor_cost: 0 }, feeConfig);
 
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
@@ -114,6 +115,13 @@ export default function CalculatorTool() {
       machines: [],
       labor_hours: inputs.labor_hours,
       labor_rate: inputs.labor_rate,
+      materials: [{
+        name: "Materials & Supplies",
+        cost: inputs.cost_of_goods
+      }, {
+        name: "Labor",
+        cost: laborCost
+      }],
       notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
     });
     
@@ -122,7 +130,7 @@ export default function CalculatorTool() {
   };
 
   // Chart data
-  const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0) + (inputs.overhead_cost || 0) + laborCost;
+  const totalCosts = results.cost_of_goods + (inputs.shipping_cost || 0) + (inputs.overhead_cost || 0);
   const chartData = [
     { name: "Net Profit", value: Math.max(0, results.profit), color: "#10b981" },
     { name: "Fees", value: results.total_fees, color: "#ef4444" },
@@ -267,7 +275,7 @@ export default function CalculatorTool() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Cost of Goods Sold</Label>
+                <Label className="text-sm font-medium">Materials & Supplies</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -276,6 +284,7 @@ export default function CalculatorTool() {
                   onChange={(e) => handleInputChange("cost_of_goods", e.target.value)}
                   className="h-11"
                 />
+                <p className="text-xs text-stone-500">Materials and packaging cost per item</p>
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Shipping Cost</Label>
@@ -331,10 +340,7 @@ export default function CalculatorTool() {
                     <p className="text-xs text-stone-400 mt-1 text-center">$/hr (e.g. 15.00)</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between bg-stone-100 rounded-md px-3 py-2">
-                  <span className="text-sm text-stone-600">Labor Cost</span>
-                  <span className="text-sm font-semibold text-stone-900">{formatCurrency(laborCost)}</span>
-                </div>
+                <p className="text-xs text-stone-500">Labor cost = hours × rate</p>
               </div>
             </CardContent>
           </Card>
@@ -659,10 +665,13 @@ export default function CalculatorTool() {
                 <CardTitle className="text-base">Costs</CardTitle>
               </CardHeader>
               <CardContent className="space-y-0">
-                <BreakdownRow label="Cost of Goods Sold" amount={results.cost_of_goods} indent />
+                <BreakdownRow label="Materials & Supplies" amount={inputs.cost_of_goods} indent />
+                <BreakdownRow label="Total Labor Cost" amount={laborCost} indent />
+                <div className="border-t border-stone-200 mt-1 pt-1">
+                  <BreakdownRow label="Cost of Goods Sold" amount={totalCogs} bold />
+                </div>
                 <BreakdownRow label="Shipping Cost" amount={inputs.shipping_cost} indent />
                 <BreakdownRow label="Overhead" amount={inputs.overhead_cost} indent />
-                <BreakdownRow label="Labor" amount={laborCost} indent />
                 <div className="border-t border-stone-200 mt-2 pt-2">
                   <BreakdownRow label="Total Costs" amount={totalCosts} bold />
                 </div>
