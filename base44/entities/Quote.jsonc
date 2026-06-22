@@ -45,8 +45,9 @@
         "Draft",
         "Sent",
         "Accepted",
+        "Invoiced",
         "Paid",
-        "Rejected"
+        "Declined"
       ],
       "default": "Draft",
       "description": "Quote status"

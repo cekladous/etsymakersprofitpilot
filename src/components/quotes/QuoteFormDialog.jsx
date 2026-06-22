@@ -558,8 +558,9 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     <SelectItem value="Draft">Draft</SelectItem>
                     <SelectItem value="Sent">Sent</SelectItem>
                     <SelectItem value="Accepted">Accepted</SelectItem>
-                    <SelectItem value="Rejected">Rejected</SelectItem>
+                    <SelectItem value="Invoiced">Invoiced</SelectItem>
                     <SelectItem value="Paid">Paid</SelectItem>
+                    <SelectItem value="Declined">Declined</SelectItem>
                   </SelectContent>
                 </Select>
                 {quote?.converted_to_order_id && (
