@@ -5,7 +5,7 @@ import { Eye, Edit, Trash2, Mail, Phone, Building2 } from "lucide-react";
 
 export default function CustomerCard({ customer, onView, onEdit, onDelete }) {
   return (
-    <Card className="hover:shadow-lg transition-all duration-200 hover:border-emerald-200">
+    <Card className="hover:shadow-lg transition-all duration-200 hover:border-emerald-200 overflow-hidden">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -42,33 +42,33 @@ export default function CustomerCard({ customer, onView, onEdit, onDelete }) {
           Added {new Date(customer.created_date).toLocaleDateString()}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onView(customer)}
-            className="flex-1"
+            className="flex-1 min-w-0 px-2"
           >
-            <Eye className="w-4 h-4 mr-1" />
-            View
+            <Eye className="w-4 h-4" />
+            <span className="truncate">View</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => onEdit(customer)}
-            className="flex-1"
+            className="flex-1 min-w-0 px-2"
           >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
+            <Edit className="w-4 h-4" />
+            <span className="truncate">Edit</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => onDelete(customer)}
-            className="flex-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+            className="flex-1 min-w-0 px-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
           >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete
+            <Trash2 className="w-4 h-4" />
+            <span className="truncate">Delete</span>
           </Button>
         </div>
       </CardContent>
