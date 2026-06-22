@@ -31,7 +31,7 @@ const defaultInputs = {
   shipping_cost: 0,
   overhead_cost: 0,
   labor_hours: 0,
-  labor_rate: 50,
+  labor_rate: 0,
   advertising_type: "none",
   advertising_value: 0,
   advertising_value_type: "percent",
@@ -328,7 +328,7 @@ export default function CalculatorTool() {
                       className="h-11"
                       placeholder="50.00"
                     />
-                    <p className="text-xs text-stone-400 mt-1 text-center">$/hr</p>
+                    <p className="text-xs text-stone-400 mt-1 text-center">$/hr (e.g. 15.00)</p>
                   </div>
                 </div>
                 <p className="text-xs text-stone-500">Labor cost = hours × rate</p>
