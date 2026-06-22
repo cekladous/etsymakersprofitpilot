@@ -183,6 +183,10 @@
     "notes": {
       "type": "string",
       "description": "Payment terms, delivery details, or personalized message"
+    },
+    "custom_sale_id": {
+      "type": "string",
+      "description": "Reference to CustomSale created when invoice was marked Paid"
     }
   },
   "required": [

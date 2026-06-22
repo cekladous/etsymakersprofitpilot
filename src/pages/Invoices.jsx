@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { FileText, Plus } from "lucide-react";
+import { FileText, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import { format } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
 const paymentStatusConfig = {
   Unpaid: { className: "bg-amber-100 text-amber-700 border-amber-200" },
@@ -26,12 +27,33 @@ const lifecycleStatusConfig = {
 
 export default function InvoicesPage() {
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [markingId, setMarkingId] = useState(null);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices", user?.id],
     enabled: !!user,
     queryFn: () => base44.entities.Invoice.filter({ owner_user_id: user.id }, "-created_date"),
   });
+
+  const handleMarkAsPaid = async (invoice) => {
+    setMarkingId(invoice.id);
+    try {
+      await base44.entities.Invoice.update(invoice.id, {
+        status: "Paid",
+        amount_paid: invoice.total || 0,
+        balance_due: 0,
+      });
+      toast({ title: "Invoice marked as Paid", description: "A custom sale record will be created automatically." });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["customSales"] });
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setMarkingId(null);
+    }
+  };
 
   const columns = [
     {
@@ -102,6 +124,25 @@ export default function InvoicesPage() {
           </Badge>
         );
       },
+    },
+    {
+      key: "actions",
+      label: "",
+      render: (inv) => (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={inv.status === "Paid" || markingId === inv.id}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleMarkAsPaid(inv);
+          }}
+          className="gap-1.5"
+        >
+          <CheckCircle2 className="w-4 h-4" />
+          {markingId === inv.id ? "Marking..." : "Mark Paid"}
+        </Button>
+      ),
     },
   ];
 
