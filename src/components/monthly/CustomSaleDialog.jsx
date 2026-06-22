@@ -42,6 +42,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
     vendor: "",
     description: "",
     payment_source: "",
+    sales_source: "Other",
     notes: "",
     budget_amount: "",
   });
@@ -71,6 +72,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         vendor: "",
         description: "",
         payment_source: "",
+        sales_source: "Other",
         notes: "",
       });
     },
@@ -123,6 +125,26 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
                 onChange={(e) => setFormData({ ...formData, sales_tax_collected: e.target.value })}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sales Source</Label>
+            <Select
+              value={formData.sales_source}
+              onValueChange={(v) => setFormData({ ...formData, sales_source: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Squarespace">Squarespace</SelectItem>
+                <SelectItem value="Square">Square</SelectItem>
+                <SelectItem value="In-Person/Cash">In-Person/Cash</SelectItem>
+                <SelectItem value="Website">Website</SelectItem>
+                <SelectItem value="Instagram">Instagram</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
