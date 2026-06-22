@@ -178,7 +178,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                                 machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
 
            if (defaultMachine && formData.machines.length === 0) {
-             const hourlyDepreciation = (defaultMachine.monthly_depreciation || 0) / 160;
+             const hourlyDepreciation = Math.round(((defaultMachine.monthly_depreciation || 0) / 160) * 100) / 100;
              setFormData({ 
                ...formData, 
                materials: newMaterials,
@@ -189,7 +189,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
          } else if (materialName.includes("metal")) {
            const cncMachine = machines.find(m => m.name && m.name.toLowerCase().includes("cnc"));
            if (cncMachine && formData.machines.length === 0) {
-             const hourlyDepreciation = (cncMachine.monthly_depreciation || 0) / 160;
+             const hourlyDepreciation = Math.round(((cncMachine.monthly_depreciation || 0) / 160) * 100) / 100;
              setFormData({ 
                ...formData, 
                materials: newMaterials,
@@ -230,8 +230,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
       const machine = machines.find(m => m.id === value);
       if (machine) {
         newMachines[index].name = machine.name;
-        // Convert monthly depreciation to hourly rate (assuming 160 business hours/month)
-        const hourlyDepreciation = (machine.monthly_depreciation || 0) / 160;
+        // Convert monthly depreciation to hourly rate (assuming 160 business hours/month), rounded to 2 decimals
+        const hourlyDepreciation = Math.round(((machine.monthly_depreciation || 0) / 160) * 100) / 100;
         newMachines[index].rate = hourlyDepreciation || 0;
       }
     }
@@ -355,7 +355,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    saveMutation.mutate(formData);
+    saveMutation.mutate({ ...formData, total: getGrandTotal() });
   };
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || "$";

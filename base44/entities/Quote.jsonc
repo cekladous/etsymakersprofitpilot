@@ -14,6 +14,10 @@
       "type": "string",
       "description": "Project or quote name"
     },
+    "customer_id": {
+      "type": "string",
+      "description": "Reference to selected Customer entity"
+    },
     "customer_name": {
       "type": "string",
       "description": "Customer name"
@@ -46,6 +50,107 @@
       ],
       "default": "Draft",
       "description": "Quote status"
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Materials list for the quote"
+    },
+    "machines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "number"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "rate": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Machines used for the quote"
+    },
+    "labor_hours": {
+      "type": "number",
+      "default": 0,
+      "description": "Labor hours"
+    },
+    "labor_minutes": {
+      "type": "number",
+      "default": 0,
+      "description": "Labor minutes"
+    },
+    "labor_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Labor rate per hour"
+    },
+    "shipping_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping cost"
+    },
+    "payment_method": {
+      "type": "string",
+      "description": "Payment method (etsy, paypal, square, venmo, cash, other)"
+    },
+    "advertising_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "etsy_ads",
+        "offsite_ads"
+      ],
+      "default": "none",
+      "description": "Advertising type"
+    },
+    "advertising_value": {
+      "type": "number",
+      "default": 0,
+      "description": "Advertising value"
+    },
+    "share_save_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Share & Save discount enabled"
+    },
+    "share_save_discount": {
+      "type": "number",
+      "default": 10,
+      "description": "Share & Save discount value"
+    },
+    "share_save_discount_type": {
+      "type": "string",
+      "default": "percent",
+      "description": "Share & Save discount type (percent or fixed)"
+    },
+    "share_save_fee_rate": {
+      "type": "number",
+      "default": 4,
+      "description": "Share & Save fee rate percentage"
     },
     "line_items": {
       "type": "array",
@@ -89,7 +194,7 @@
     "total": {
       "type": "number",
       "default": 0,
-      "description": "Total amount"
+      "description": "Total amount (grand total)"
     },
     "notes": {
       "type": "string",
