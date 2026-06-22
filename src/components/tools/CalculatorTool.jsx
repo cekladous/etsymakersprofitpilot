@@ -331,7 +331,10 @@ export default function CalculatorTool() {
                     <p className="text-xs text-stone-400 mt-1 text-center">$/hr (e.g. 15.00)</p>
                   </div>
                 </div>
-                <p className="text-xs text-stone-500">Labor cost = hours × rate</p>
+                <div className="flex items-center justify-between bg-stone-100 rounded-md px-3 py-2">
+                  <span className="text-sm text-stone-600">Labor Cost</span>
+                  <span className="text-sm font-semibold text-stone-900">{formatCurrency(laborCost)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
