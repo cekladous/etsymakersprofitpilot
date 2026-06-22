@@ -629,9 +629,9 @@ export default function CalculatorTool() {
                 <BreakdownRow label="Total Fees + Cost" amount={results.total_fees + totalCosts} indent />
                 <div className="border-t border-stone-300 mt-2 pt-2">
                   <BreakdownRow label="Net Profit" amount={results.profit} bold />
-                  <BreakdownRow label="Net Profit Margin" amount={0} bold />
-                  <div className="flex justify-end">
-                    <span className={`text-lg font-bold ${results.profit_margin >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  <div className="flex justify-between items-center py-2 font-semibold">
+                    <span className="text-sm text-stone-900">Net Profit Margin</span>
+                    <span className={`text-sm font-bold ${results.profit_margin >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
                       {formatPercent(results.profit_margin)}
                     </span>
                   </div>

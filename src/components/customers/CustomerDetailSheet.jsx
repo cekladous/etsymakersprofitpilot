@@ -8,7 +8,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Phone, Building, MapPin, FileText, ShoppingBag } from "lucide-react";
+import { AtSign, Phone, Building, MapPin, FileText, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -60,7 +60,7 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
             <CardContent className="space-y-3">
               {customer.email && (
                 <div className="flex items-center gap-3 text-sm">
-                  <Mail className="w-4 h-4 text-stone-400" />
+                  <AtSign className="w-4 h-4 text-stone-400" />
                   <span>{customer.email}</span>
                 </div>
               )}
