@@ -1,0 +1,65 @@
+{
+  "name": "PromoCode",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Unique promo code"
+    },
+    "plan_id": {
+      "type": "string",
+      "enum": [
+        "maker_pro",
+        "maker_plus"
+      ],
+      "description": "Plan that the code grants access to"
+    },
+    "discount_type": {
+      "type": "string",
+      "enum": [
+        "free",
+        "percentage",
+        "fixed"
+      ],
+      "default": "free",
+      "description": "Type of discount"
+    },
+    "discount_value": {
+      "type": "number",
+      "default": 0,
+      "description": "Discount amount (percentage or fixed dollar)"
+    },
+    "duration_months": {
+      "type": "number",
+      "default": 1,
+      "description": "How many months the discount applies"
+    },
+    "max_uses": {
+      "type": "number",
+      "description": "Max number of times code can be used (-1 for unlimited)"
+    },
+    "current_uses": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times code has been used"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Code expiration date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether code is currently active"
+    },
+    "description": {
+      "type": "string",
+      "description": "Internal note about the code (e.g., 'Early maker discount')"
+    }
+  },
+  "required": [
+    "code",
+    "plan_id"
+  ]
+}

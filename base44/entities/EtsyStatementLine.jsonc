@@ -1,0 +1,137 @@
+{
+  "name": "EtsyStatementLine",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "import_id": {
+      "type": "string",
+      "description": "Reference to EtsyStatementImport"
+    },
+    "line_uid": {
+      "type": "string",
+      "description": "Unique stable key: hash of date+type+amount+desc+order_id"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Transaction date"
+    },
+    "type": {
+      "type": "string",
+      "description": "Transaction type from statement"
+    },
+    "description": {
+      "type": "string",
+      "description": "Transaction description"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transaction amount"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "Etsy order ID if applicable"
+    },
+    "source_etsy_order_id": {
+      "type": "string",
+      "description": "ID of EtsyOrder entity this statement line matches (for deduplication)"
+    },
+    "fee_type": {
+      "type": "string",
+      "enum": [
+        "listing",
+        "transaction",
+        "processing",
+        "share_save_credit",
+        "other_fee",
+        "etsy_ads",
+        "offsite_ads",
+        "shipping_label",
+        "other_postage"
+      ],
+      "description": "Mapped fee type"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "sale",
+        "refund",
+        "fee",
+        "deposit",
+        "tax",
+        "shipping",
+        "unmatched"
+      ],
+      "default": "unmatched",
+      "description": "High-level category"
+    },
+    "section": {
+      "type": "string",
+      "description": "Section from statement (Sales/Fees/Deposits/etc)"
+    },
+    "raw_json": {
+      "type": "string",
+      "description": "Original row data as JSON"
+    },
+    "matched": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether successfully matched/normalized"
+    },
+    "match_error": {
+      "type": "string",
+      "description": "Error if matching failed"
+    },
+    "resolution_status": {
+      "type": "string",
+      "enum": [
+        "unresolved",
+        "auto_matched",
+        "manually_resolved",
+        "approved_for_exclusion"
+      ],
+      "default": "unresolved",
+      "description": "Resolution workflow status"
+    },
+    "matched_entity_id": {
+      "type": "string",
+      "description": "ID of matched EtsyOrder, OrderFee, Transfer, or other entity"
+    },
+    "matched_entity_type": {
+      "type": "string",
+      "enum": [
+        "EtsyOrder",
+        "OrderFee",
+        "Transfer",
+        "CustomSale",
+        "BusinessExpense",
+        "manual_override"
+      ],
+      "description": "Type of entity this line was matched to"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Notes from user explaining the resolution"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this line was resolved"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "User email who resolved this line"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "import_id",
+    "line_uid",
+    "transaction_date",
+    "type",
+    "amount"
+  ]
+}

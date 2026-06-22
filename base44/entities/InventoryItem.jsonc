@@ -1,0 +1,33 @@
+{
+  "name": "InventoryItem",
+  "type": "object",
+  "properties": {
+    "material_name": {
+      "type": "string",
+      "description": "Material or supply name"
+    },
+    "quantity_on_hand": {
+      "type": "number",
+      "default": 0,
+      "description": "Current quantity in stock"
+    },
+    "average_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Weighted average cost per unit"
+    },
+    "total_value": {
+      "type": "number",
+      "default": 0,
+      "description": "Total inventory value (qty * avg cost)"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last transaction date"
+    }
+  },
+  "required": [
+    "material_name"
+  ]
+}

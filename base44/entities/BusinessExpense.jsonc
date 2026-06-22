@@ -1,0 +1,77 @@
+{
+  "name": "BusinessExpense",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "category_group": {
+      "type": "string",
+      "enum": [
+        "selling_expenses",
+        "product_expenses",
+        "business_expenses"
+      ],
+      "description": "Main category group"
+    },
+    "category_name": {
+      "type": "string",
+      "enum": [
+        "etsy_listing_fees",
+        "etsy_transaction_fees",
+        "etsy_processing_fees",
+        "share_save_refunds_credits",
+        "other_fees",
+        "etsy_ads",
+        "etsy_offsite_ads_fees",
+        "materials_supplies",
+        "packaging_materials",
+        "tools_equipment",
+        "advertising_marketing",
+        "office_general_expenses",
+        "gas_mileage",
+        "utilities_cell_phone",
+        "software_subscriptions",
+        "professional_services",
+        "other",
+        "miscellaneous_expenses"
+      ],
+      "description": "Specific expense category"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Expense amount"
+    },
+    "vendor": {
+      "type": "string",
+      "description": "Vendor name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Expense description"
+    },
+    "payment_source": {
+      "type": "string",
+      "description": "Payment method (Cash, Check, Zelle, Venmo, Square, PayPal, Etsy, Other)"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "inventory_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mark as inventory (for Materials & Supplies only)"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "date",
+    "category_name",
+    "amount"
+  ]
+}

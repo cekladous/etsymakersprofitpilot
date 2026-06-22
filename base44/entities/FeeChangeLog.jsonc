@@ -1,0 +1,46 @@
+{
+  "name": "FeeChangeLog",
+  "type": "object",
+  "properties": {
+    "fee_type": {
+      "type": "string",
+      "enum": [
+        "listing_fee",
+        "transaction_fee",
+        "processing_fee_percent",
+        "processing_fee_fixed"
+      ],
+      "description": "Type of fee that changed"
+    },
+    "old_value": {
+      "type": "number",
+      "description": "Previous fee value"
+    },
+    "new_value": {
+      "type": "number",
+      "description": "New fee value"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country code (e.g., US, UK)"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Etsy help page URL documenting this change"
+    },
+    "change_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when the change was recorded"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the change"
+    }
+  },
+  "required": [
+    "fee_type",
+    "new_value",
+    "change_date"
+  ]
+}

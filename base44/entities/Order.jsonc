@@ -1,0 +1,108 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "etsy",
+        "shopify",
+        "other"
+      ],
+      "default": "etsy",
+      "description": "Sales channel"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "External order ID"
+    },
+    "sale_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of sale"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Product SKU"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1,
+      "description": "Quantity ordered"
+    },
+    "gross_total": {
+      "type": "number",
+      "description": "Gross order total"
+    },
+    "shipping_charged": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping charged to customer"
+    },
+    "shipping_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual shipping cost incurred (for non-Etsy orders)"
+    },
+    "discounts": {
+      "type": "number",
+      "default": 0,
+      "description": "Discounts applied"
+    },
+    "refunds": {
+      "type": "number",
+      "default": 0,
+      "description": "Refunds issued"
+    },
+    "sales_tax": {
+      "type": "number",
+      "default": 0,
+      "description": "Sales tax collected (excluded from revenue)"
+    },
+    "etsy_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy platform fees"
+    },
+    "processing_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Card processing fees"
+    },
+    "net_payout": {
+      "type": "number",
+      "description": "Net payout received"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Linked production job ID"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_production",
+        "completed",
+        "shipped"
+      ],
+      "default": "pending"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Order notes"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "order_id",
+    "channel"
+  ]
+}

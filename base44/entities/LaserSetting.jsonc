@@ -1,0 +1,115 @@
+{
+  "name": "LaserSetting",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Laser brand (e.g., xTool, Glowforge, Generic)"
+    },
+    "model": {
+      "type": "string",
+      "description": "Specific model (e.g., D1 Pro, P3, All Models)"
+    },
+    "laser_type": {
+      "type": "string",
+      "enum": [
+        "co2",
+        "diode",
+        "fiber",
+        "CO2",
+        "Diode",
+        "Fiber"
+      ],
+      "description": "Type of laser"
+    },
+    "material_category": {
+      "type": "string",
+      "description": "Material category (e.g., Wood, Acrylic, Metal)"
+    },
+    "material_name": {
+      "type": "string",
+      "description": "Specific material name (e.g., Plywood, Clear Acrylic)"
+    },
+    "thickness_mm": {
+      "type": "number",
+      "description": "Material thickness in mm"
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "cut",
+        "engrave",
+        "score",
+        "Cut",
+        "Engrave",
+        "Score"
+      ],
+      "description": "Type of operation"
+    },
+    "speed_mm_s": {
+      "type": "number",
+      "description": "Speed in mm/s"
+    },
+    "power_min_pct": {
+      "type": "number",
+      "description": "Minimum power percentage"
+    },
+    "power_max_pct": {
+      "type": "number",
+      "description": "Maximum power percentage"
+    },
+    "passes": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of passes"
+    },
+    "dpi_lpi": {
+      "type": "number",
+      "description": "DPI/LPI for engraving"
+    },
+    "frequency_hz": {
+      "type": "number",
+      "description": "Frequency in Hz"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "Manufacturer",
+        "Community",
+        "Generic",
+        "User"
+      ],
+      "description": "Type of source (Manufacturer, Community, Generic, or User)"
+    },
+    "source_reference": {
+      "type": "string",
+      "description": "URL or reference to manufacturer documentation"
+    },
+    "copied_from_id": {
+      "type": "string",
+      "description": "ID of the original setting this was copied from"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes or tips"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this setting is currently active"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "brand",
+    "model",
+    "laser_type",
+    "material_category",
+    "operation",
+    "source_type"
+  ]
+}

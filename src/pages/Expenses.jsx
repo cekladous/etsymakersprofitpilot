@@ -445,7 +445,19 @@ export default function Expenses() {
         category,
       })).sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
-  
+
+  // Top expenses by amount
+  const topExpenses = useMemo(() => {
+    return [...filteredExpenses]
+      .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+      .slice(0, 10)
+      .map(exp => ({
+        name: exp.description?.substring(0, 30) || "Unnamed",
+        amount: exp.amount || 0,
+        category: exp.category,
+      }));
+  }, [filteredExpenses]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -498,18 +510,6 @@ export default function Expenses() {
     
     return parts.length > 0 ? parts.join(" → ") : null;
   };
-
-  // Top expenses by amount
-  const topExpenses = useMemo(() => {
-    return [...filteredExpenses]
-      .sort((a, b) => (b.amount || 0) - (a.amount || 0))
-      .slice(0, 10)
-      .map(exp => ({
-        name: exp.description?.substring(0, 30) || "Unnamed",
-        amount: exp.amount || 0,
-        category: exp.category,
-      }));
-  }, [filteredExpenses]);
 
   const CHART_COLORS = [
     "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899",

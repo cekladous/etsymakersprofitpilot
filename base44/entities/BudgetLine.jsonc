@@ -1,0 +1,43 @@
+{
+  "name": "BudgetLine",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Reference to BudgetPlan"
+    },
+    "category_group": {
+      "type": "string",
+      "enum": [
+        "selling_expenses",
+        "product_expenses",
+        "business_expenses"
+      ],
+      "description": "Category group"
+    },
+    "category_name": {
+      "type": "string",
+      "description": "Specific category name"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "First day of month/quarter/year"
+    },
+    "budget_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Budgeted amount for this period"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "plan_id",
+    "category_name",
+    "period_start"
+  ]
+}

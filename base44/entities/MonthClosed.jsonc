@@ -1,0 +1,74 @@
+{
+  "name": "MonthClosed",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "month": {
+      "type": "string",
+      "description": "YYYY-MM format of closed month"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "First day of period"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Last day of period"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "provisional",
+        "final"
+      ],
+      "default": "provisional",
+      "description": "Provisional (can still edit), Final (locked for tax prep)"
+    },
+    "checklist": {
+      "type": "object",
+      "properties": {
+        "reconciliation_checked": {
+          "type": "boolean",
+          "default": false
+        },
+        "unmatched_reviewed": {
+          "type": "boolean",
+          "default": false
+        },
+        "refunds_verified": {
+          "type": "boolean",
+          "default": false
+        },
+        "deposits_verified": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "description": "Closure checklist confirmations"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When month was closed"
+    },
+    "closed_by": {
+      "type": "string",
+      "description": "Email of user who closed"
+    },
+    "notes": {
+      "type": "string",
+      "description": "User notes from closure"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "month",
+    "period_start",
+    "period_end"
+  ]
+}

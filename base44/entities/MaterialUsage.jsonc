@@ -1,0 +1,57 @@
+{
+  "name": "MaterialUsage",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "sheet_id": {
+      "type": "string",
+      "description": "Reference to material sheet"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Reference to production job"
+    },
+    "usage_type": {
+      "type": "string",
+      "enum": [
+        "dimensions",
+        "percentage"
+      ],
+      "default": "dimensions"
+    },
+    "width_used": {
+      "type": "number",
+      "description": "Width used in inches"
+    },
+    "height_used": {
+      "type": "number",
+      "description": "Height used in inches"
+    },
+    "area_used": {
+      "type": "number",
+      "description": "Area used in square inches"
+    },
+    "percentage_used": {
+      "type": "number",
+      "description": "Percentage of sheet used"
+    },
+    "cost_allocated": {
+      "type": "number",
+      "description": "Cost allocated to this usage"
+    },
+    "usage_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "sheet_id"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "name": "MaterialType",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "name": {
+      "type": "string",
+      "description": "Material name (e.g., Baltic Birch 1/8)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "wood",
+        "acrylic",
+        "leather",
+        "paper",
+        "fabric",
+        "other"
+      ],
+      "default": "wood"
+    },
+    "thickness": {
+      "type": "string",
+      "description": "Material thickness"
+    },
+    "default_width": {
+      "type": "number",
+      "description": "Default sheet width in inches"
+    },
+    "default_height": {
+      "type": "number",
+      "description": "Default sheet height in inches"
+    },
+    "cost_per_sheet": {
+      "type": "number",
+      "description": "Cost per full sheet"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "low_stock_threshold": {
+      "type": "number",
+      "default": 5,
+      "description": "Alert when sheets fall below this"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "name"
+  ]
+}

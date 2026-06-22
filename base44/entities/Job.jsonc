@@ -1,0 +1,129 @@
+{
+  "name": "Job",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "job_number": {
+      "type": "string",
+      "description": "Job reference number"
+    },
+    "order_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Linked order IDs"
+    },
+    "product_id": {
+      "type": "string",
+      "description": "Product being produced"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "cut",
+              "engrave",
+              "score"
+            ]
+          },
+          "machine_id": {
+            "type": "string"
+          },
+          "duration_minutes": {
+            "type": "number"
+          },
+          "power_watts": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Operations performed"
+    },
+    "material_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Total material cost"
+    },
+    "machine_time_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Machine time cost"
+    },
+    "electricity_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Electricity cost"
+    },
+    "overhead_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Allocated overhead"
+    },
+    "quoted_total_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Quoted total cost from accepted quote"
+    },
+    "actual_material_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual materials used in production"
+    },
+    "actual_machine_hours": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual machine hours logged"
+    },
+    "actual_labor_hours": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual labor hours (optional)"
+    },
+    "actual_labor_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Hourly labor rate"
+    },
+    "total_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Total actual cost (materials + machine + labor)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed"
+      ],
+      "default": "pending"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "job_number"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "Fee",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "import_id": {
+      "type": "string",
+      "description": "Reference to EtsyStatementImport"
+    },
+    "line_uid": {
+      "type": "string",
+      "description": "Reference to EtsyStatementLine"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "Etsy order ID if order-specific fee"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fee transaction date"
+    },
+    "fee_type": {
+      "type": "string",
+      "enum": [
+        "listing",
+        "transaction",
+        "processing",
+        "share_save_credit",
+        "other_fee",
+        "etsy_ads",
+        "offsite_ads",
+        "shipping_label",
+        "other_postage"
+      ],
+      "description": "Fee type"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Fee amount (positive = expense, negative = credit)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Fee description"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "import_id",
+    "line_uid",
+    "transaction_date",
+    "fee_type",
+    "amount"
+  ]
+}

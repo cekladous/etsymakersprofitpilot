@@ -1,0 +1,153 @@
+{
+  "name": "EtsyOrder",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "sale_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sale date"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "Etsy order ID"
+    },
+    "buyer_username": {
+      "type": "string",
+      "description": "Buyer username"
+    },
+    "buyer_full_name": {
+      "type": "string",
+      "description": "Buyer full name"
+    },
+    "first_name": {
+      "type": "string",
+      "description": "Buyer first name"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Buyer last name"
+    },
+    "number_of_items": {
+      "type": "number",
+      "description": "Number of items in order"
+    },
+    "payment_method": {
+      "type": "string",
+      "description": "Payment method"
+    },
+    "date_shipped": {
+      "type": "string",
+      "format": "date",
+      "description": "Date order was shipped"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Product SKU"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "order_value": {
+      "type": "number",
+      "description": "Item total before shipping/tax"
+    },
+    "coupon_code": {
+      "type": "string",
+      "description": "Coupon code used"
+    },
+    "discount_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Discount amount"
+    },
+    "shipping_discount": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping discount"
+    },
+    "shipping_charged": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping charged"
+    },
+    "sales_tax": {
+      "type": "number",
+      "default": 0,
+      "description": "Sales tax collected by Etsy"
+    },
+    "refund_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Total refund issued (subtracts from revenue)"
+    },
+    "order_total": {
+      "type": "number",
+      "description": "Total charged to customer"
+    },
+    "adjusted_order_total": {
+      "type": "number",
+      "description": "Adjusted order total"
+    },
+    "card_processing_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Card processing fees"
+    },
+    "adjusted_card_processing_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Adjusted card processing fees"
+    },
+    "order_net": {
+      "type": "number",
+      "description": "Net after processing fees"
+    },
+    "adjusted_net_order_amount": {
+      "type": "number",
+      "description": "Adjusted net order amount"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Currency code"
+    },
+    "order_type": {
+      "type": "string",
+      "description": "Order type"
+    },
+    "payment_type": {
+      "type": "string",
+      "description": "Payment type"
+    },
+    "inperson_discount": {
+      "type": "number",
+      "default": 0,
+      "description": "In-person discount"
+    },
+    "inperson_location": {
+      "type": "string",
+      "description": "In-person location"
+    },
+    "status": {
+      "type": "string",
+      "description": "Order status"
+    },
+    "import_batch_id": {
+      "type": "string",
+      "description": "Reference to import batch"
+    },
+    "statement_line_uid": {
+      "type": "string",
+      "description": "Link to EtsyStatementLine.line_uid to prevent duplication"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "sale_date",
+    "order_id"
+  ]
+}

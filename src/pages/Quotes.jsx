@@ -153,18 +153,6 @@ export default function QuotesPage() {
             <Download className="w-3 h-3 mr-1" />
             PDF
           </Button>
-          {quote.status === "Accepted" && quote.converted_to_order_id && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const job = jobs.find(j => j.order_ids?.includes(quote.converted_to_order_id));
-                if (job) setSelectedJob(job);
-              }}
-            >
-              View Job
-            </Button>
-          )}
           <Button
             size="sm"
             variant="outline"

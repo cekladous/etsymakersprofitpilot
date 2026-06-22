@@ -1,0 +1,75 @@
+{
+  "name": "EtsyLedgerEntry",
+  "type": "object",
+  "properties": {
+    "source_batch_id": {
+      "type": "string",
+      "description": "Reference to OrderImportBatch"
+    },
+    "entry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of ledger entry"
+    },
+    "type": {
+      "type": "string",
+      "description": "Ledger entry type"
+    },
+    "title": {
+      "type": "string",
+      "description": "Entry title"
+    },
+    "info": {
+      "type": "string",
+      "description": "Additional info"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Currency code"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Gross amount"
+    },
+    "fees_taxes": {
+      "type": "number",
+      "description": "Fees and taxes"
+    },
+    "net": {
+      "type": "number",
+      "description": "Net amount"
+    },
+    "tax_details": {
+      "type": "string",
+      "description": "Tax details"
+    },
+    "etsy_order_id": {
+      "type": "string",
+      "description": "Parsed Etsy order ID if found"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Matched",
+        "Unmatched"
+      ],
+      "default": "Unmatched",
+      "description": "Whether this entry was matched to a category"
+    },
+    "matched_category": {
+      "type": "string",
+      "description": "Category this entry was matched to"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "source_batch_id",
+    "entry_date",
+    "type",
+    "amount",
+    "net"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "name": {
+      "type": "string",
+      "description": "Customer name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Customer email"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Customer phone"
+    },
+    "company": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Customer address"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "etsy_buyer_name": {
+      "type": "string",
+      "description": "Etsy buyer name for linking orders"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "name"
+  ]
+}

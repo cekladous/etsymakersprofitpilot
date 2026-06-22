@@ -1,0 +1,68 @@
+{
+  "name": "Machine",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "name": {
+      "type": "string",
+      "description": "Machine name"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Machine brand (e.g., xTool, Glowforge)"
+    },
+    "model": {
+      "type": "string",
+      "description": "Machine model (e.g., D1 Pro, Plus)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "laser",
+        "cnc",
+        "printer",
+        "other"
+      ],
+      "default": "laser"
+    },
+    "wattage": {
+      "type": "number",
+      "description": "Power consumption in watts"
+    },
+    "hourly_rate": {
+      "type": "number",
+      "description": "Hourly operating cost"
+    },
+    "purchase_price": {
+      "type": "number",
+      "description": "Original purchase price"
+    },
+    "purchase_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "depreciation_years": {
+      "type": "number",
+      "default": 5,
+      "description": "Years for depreciation"
+    },
+    "monthly_depreciation": {
+      "type": "number",
+      "description": "Monthly depreciation amount"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "name"
+  ]
+}

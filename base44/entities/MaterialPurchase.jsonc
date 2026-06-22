@@ -1,0 +1,49 @@
+{
+  "name": "MaterialPurchase",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "purchase_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of purchase"
+    },
+    "material_name": {
+      "type": "string",
+      "description": "Material name or description"
+    },
+    "vendor": {
+      "type": "string",
+      "description": "Vendor/supplier name"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Quantity purchased"
+    },
+    "unit_cost": {
+      "type": "number",
+      "description": "Cost per unit"
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Total purchase cost"
+    },
+    "payment_method": {
+      "type": "string",
+      "description": "Payment method used"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "purchase_date",
+    "material_name",
+    "total_cost"
+  ]
+}

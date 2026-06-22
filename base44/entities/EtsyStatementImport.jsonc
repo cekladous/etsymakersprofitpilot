@@ -1,0 +1,107 @@
+{
+  "name": "EtsyStatementImport",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "import_id": {
+      "type": "string",
+      "description": "Unique import identifier"
+    },
+    "statement_month": {
+      "type": "string",
+      "description": "YYYY-MM format of statement period"
+    },
+    "date_range_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Statement period start"
+    },
+    "date_range_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Statement period end"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Uploaded file name"
+    },
+    "file_hash": {
+      "type": "string",
+      "description": "File content hash for duplicate detection"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Import timestamp"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed",
+        "replaced"
+      ],
+      "default": "success",
+      "description": "Import status - replaced imports are excluded from all calculations"
+    },
+    "orders_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Orders imported"
+    },
+    "fees_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Fee lines imported"
+    },
+    "deposits_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Deposits imported"
+    },
+    "refunds_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Refunds imported"
+    },
+    "taxes_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Tax lines imported"
+    },
+    "unmatched_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Unmatched lines needing review"
+    },
+    "reconciliation_status": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PENDING"
+      ],
+      "default": "PENDING",
+      "description": "Reconciliation check result"
+    },
+    "reconciliation_delta": {
+      "type": "number",
+      "default": 0,
+      "description": "Difference if reconciliation fails"
+    },
+    "reconciliation_notes": {
+      "type": "string",
+      "description": "Details about reconciliation issues or replacement info"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "import_id",
+    "statement_month",
+    "file_name"
+  ]
+}

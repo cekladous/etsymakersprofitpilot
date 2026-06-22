@@ -1,0 +1,78 @@
+{
+  "name": "Subscription",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this subscription"
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Current plan (free, maker_pro, maker_plus)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "trial",
+        "expired",
+        "canceled",
+        "payment_failed"
+      ],
+      "default": "active",
+      "description": "Subscription status"
+    },
+    "square_subscription_id": {
+      "type": "string",
+      "description": "Square subscription ID"
+    },
+    "square_customer_id": {
+      "type": "string",
+      "description": "Square customer ID for future billing"
+    },
+    "current_period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Current billing period start"
+    },
+    "current_period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Current billing period end (renewal date)"
+    },
+    "canceled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When subscription was canceled"
+    },
+    "grace_period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "7-day grace period after payment failure"
+    },
+    "imports_used_this_month": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy imports used in current month (Free tier tracking)"
+    },
+    "active_users": {
+      "type": "number",
+      "default": 1,
+      "description": "Current number of active team members"
+    },
+    "founders_pricing": {
+      "type": "boolean",
+      "default": true,
+      "description": "Locked founders pricing rate"
+    },
+    "billing_notes": {
+      "type": "string",
+      "description": "Internal notes about billing status"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "plan_id",
+    "status"
+  ]
+}

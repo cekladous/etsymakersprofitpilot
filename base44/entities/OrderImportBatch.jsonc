@@ -1,0 +1,47 @@
+{
+  "name": "OrderImportBatch",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "source_file_name": {
+      "type": "string",
+      "description": "Name of imported file"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Import timestamp"
+    },
+    "row_count": {
+      "type": "number",
+      "description": "Number of orders imported"
+    },
+    "channel": {
+      "type": "string",
+      "default": "etsy",
+      "description": "Sales channel"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ],
+      "default": "success",
+      "description": "Import status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Import notes or errors"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "source_file_name",
+    "row_count"
+  ]
+}

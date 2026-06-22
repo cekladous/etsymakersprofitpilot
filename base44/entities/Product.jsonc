@@ -1,0 +1,47 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Unique SKU"
+    },
+    "name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "default_material_id": {
+      "type": "string",
+      "description": "Default material type ID"
+    },
+    "area_per_unit": {
+      "type": "number",
+      "description": "Material area per unit in square inches"
+    },
+    "laser_minutes_per_unit": {
+      "type": "number",
+      "description": "Estimated laser time per unit"
+    },
+    "packaging_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Packaging or variable cost per unit"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "sku",
+    "name"
+  ]
+}

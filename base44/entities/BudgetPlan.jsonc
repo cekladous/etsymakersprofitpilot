@@ -1,0 +1,24 @@
+{
+  "name": "BudgetPlan",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "name": {
+      "type": "string",
+      "default": "Default Budget",
+      "description": "Budget plan name"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this plan is active"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "name"
+  ]
+}

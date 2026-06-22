@@ -1,0 +1,53 @@
+{
+  "name": "CustomSale",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sale date"
+    },
+    "vendor": {
+      "type": "string",
+      "description": "Vendor/customer name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Sale description"
+    },
+    "payment_source": {
+      "type": "string",
+      "description": "Payment method (Cash, Check, Zelle, Venmo, Square, PayPal, Etsy, Other)"
+    },
+    "pre_tax_amount": {
+      "type": "number",
+      "description": "Pre-sales tax amount"
+    },
+    "sales_tax_collected": {
+      "type": "number",
+      "default": 0,
+      "description": "Sales tax collected"
+    },
+    "gross_sale": {
+      "type": "number",
+      "description": "Total sale amount (pre_tax + sales_tax)"
+    },
+    "shipping_or_postage_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping or postage cost for this sale"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "date",
+    "gross_sale"
+  ]
+}

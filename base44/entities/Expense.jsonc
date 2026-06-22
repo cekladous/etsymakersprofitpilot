@@ -1,0 +1,71 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "transaction_id": {
+      "type": "string",
+      "description": "Unique transaction ID for deduplication"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "description": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "sale",
+        "return"
+      ],
+      "default": "sale",
+      "description": "Transaction type - sale (debit) or return (credit)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "materials",
+        "shipping",
+        "tools",
+        "software",
+        "advertising",
+        "utilities",
+        "etsy_fees",
+        "packaging",
+        "equipment",
+        "maintenance",
+        "other"
+      ],
+      "default": "other"
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "is_categorized": {
+      "type": "boolean",
+      "default": false
+    },
+    "receipt_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "amount",
+    "date"
+  ]
+}

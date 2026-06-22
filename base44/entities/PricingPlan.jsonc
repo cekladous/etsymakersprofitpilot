@@ -1,0 +1,69 @@
+{
+  "name": "PricingPlan",
+  "type": "object",
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "Unique plan identifier (free, maker_pro, maker_plus)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name (Free, Maker Pro, Maker Plus)"
+    },
+    "price_monthly": {
+      "type": "number",
+      "description": "Monthly price in dollars"
+    },
+    "square_plan_id": {
+      "type": "string",
+      "description": "Square subscription plan ID"
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "monthly_imports": {
+          "type": "number",
+          "description": "Max Etsy statement imports per month (-1 for unlimited)"
+        },
+        "reconciliation": {
+          "type": "boolean",
+          "description": "Full reconciliation access"
+        },
+        "month_close": {
+          "type": "boolean",
+          "description": "Month close & audit trail"
+        },
+        "csv_exports": {
+          "type": "boolean",
+          "description": "CSV export functionality"
+        },
+        "locked_months": {
+          "type": "boolean",
+          "description": "Ability to lock months after close"
+        },
+        "max_users": {
+          "type": "number",
+          "description": "Maximum team members allowed"
+        },
+        "priority_support": {
+          "type": "boolean",
+          "description": "Priority import processing"
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "description": "Plan description for display"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether plan is available"
+    }
+  },
+  "required": [
+    "plan_id",
+    "name",
+    "price_monthly"
+  ]
+}

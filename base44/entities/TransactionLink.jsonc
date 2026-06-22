@@ -1,0 +1,54 @@
+{
+  "name": "TransactionLink",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "etsy_deposit_id": {
+      "type": "string",
+      "description": "Reference to Etsy deposit (Transfer entity)"
+    },
+    "bank_transfer_id": {
+      "type": "string",
+      "description": "Reference to bank transfer (Transfer entity)"
+    },
+    "etsy_amount": {
+      "type": "number",
+      "description": "Etsy deposit amount"
+    },
+    "bank_amount": {
+      "type": "number",
+      "description": "Bank transfer amount"
+    },
+    "discrepancy": {
+      "type": "number",
+      "description": "Difference between amounts (bank - etsy)"
+    },
+    "link_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when link was created"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "disputed"
+      ],
+      "default": "pending",
+      "description": "Link status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the link"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "etsy_deposit_id",
+    "bank_transfer_id"
+  ]
+}

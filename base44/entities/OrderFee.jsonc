@@ -1,0 +1,68 @@
+{
+  "name": "OrderFee",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "Reference to EtsyOrder"
+    },
+    "listing_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy listing fees"
+    },
+    "transaction_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy transaction fees"
+    },
+    "processing_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Payment processing fees"
+    },
+    "share_save_credit": {
+      "type": "number",
+      "default": 0,
+      "description": "Share & Save credit (negative cost, subtracts from fees)"
+    },
+    "other_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Other Etsy fees"
+    },
+    "etsy_ads": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy Ads fees"
+    },
+    "offsite_ads_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy Offsite Ads fees"
+    },
+    "etsy_shipping": {
+      "type": "number",
+      "default": 0,
+      "description": "Etsy shipping labels"
+    },
+    "other_postage_costs": {
+      "type": "number",
+      "default": 0,
+      "description": "Other postage costs"
+    },
+    "total_fees": {
+      "type": "number",
+      "default": 0,
+      "description": "Total of all fees"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "order_id"
+  ]
+}

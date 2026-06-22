@@ -1,0 +1,62 @@
+{
+  "name": "MaterialSheet",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "material_type_id": {
+      "type": "string",
+      "description": "Reference to material type"
+    },
+    "width": {
+      "type": "number",
+      "description": "Sheet width in inches"
+    },
+    "height": {
+      "type": "number",
+      "description": "Sheet height in inches"
+    },
+    "total_area": {
+      "type": "number",
+      "description": "Total area in square inches"
+    },
+    "remaining_area": {
+      "type": "number",
+      "description": "Remaining usable area in square inches"
+    },
+    "remaining_percentage": {
+      "type": "number",
+      "description": "Percentage remaining"
+    },
+    "cost": {
+      "type": "number",
+      "description": "Cost of this sheet"
+    },
+    "remaining_value": {
+      "type": "number",
+      "description": "Remaining value based on usage"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "in_use",
+        "depleted"
+      ],
+      "default": "available"
+    },
+    "purchase_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "material_type_id"
+  ]
+}

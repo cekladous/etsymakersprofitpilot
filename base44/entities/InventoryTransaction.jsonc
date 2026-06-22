@@ -1,0 +1,47 @@
+{
+  "name": "InventoryTransaction",
+  "type": "object",
+  "properties": {
+    "inventory_item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of transaction"
+    },
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "purchase",
+        "usage",
+        "adjustment"
+      ],
+      "description": "Type of inventory transaction"
+    },
+    "quantity_change": {
+      "type": "number",
+      "description": "Change in quantity (+ for add, - for deduct)"
+    },
+    "unit_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Cost per unit for this transaction"
+    },
+    "reference_id": {
+      "type": "string",
+      "description": "Reference to MaterialPurchase or BusinessExpense ID"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Transaction notes"
+    }
+  },
+  "required": [
+    "inventory_item_id",
+    "transaction_date",
+    "transaction_type",
+    "quantity_change"
+  ]
+}

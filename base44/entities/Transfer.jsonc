@@ -1,0 +1,37 @@
+{
+  "name": "Transfer",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Transfer date"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "owner_transfer",
+        "etsy_deposit"
+      ],
+      "description": "Transfer type"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transfer amount"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Transfer notes"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "date",
+    "type",
+    "amount"
+  ]
+}
