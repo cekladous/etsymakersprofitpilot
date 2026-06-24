@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Repeat } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 // Map legacy categories to BusinessExpense schema
@@ -109,7 +109,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         vendor: data.vendor,
         payment_source: data.payment_method,
         notes: data.notes,
-        is_recurring: data.is_recurring,
+        is_recurring: data.is_recurring || false,
         recurring_frequency: data.is_recurring ? data.recurring_frequency : null,
       };
       
@@ -221,14 +221,24 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
             />
           </div>
 
-          <div className="space-y-3 rounded-lg border border-stone-200 p-4">
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-3 p-3 bg-stone-50 rounded-lg border border-stone-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Repeat className="w-4 h-4 text-violet-600" />
-                <Label className="cursor-pointer">Is this a recurring expense?</Label>
+                <RefreshCw className="w-4 h-4 text-stone-500" />
+                <Label htmlFor="recurring-toggle">Is Recurring?</Label>
               </div>
               <Switch
-                checked={formData.is_recurring}
+                id="recurring-toggle"
+                checked={formData.is_recurring || false}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
               />
             </div>
@@ -249,20 +259,8 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
                     <SelectItem value="Annually">Annually</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-stone-500">
-                  This expense will automatically appear in each {formData.recurring_frequency.toLowerCase()} period's P&amp;L.
-                </p>
               </div>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={2}
-            />
           </div>
 
           <DialogFooter>

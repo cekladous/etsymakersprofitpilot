@@ -41,10 +41,58 @@ export function aggregateFinancials(data, dateRange) {
     });
   };
 
+  // Advance a date by the recurring frequency
+  const advanceByFrequency = (date, freq) => {
+    const d = new Date(date);
+    switch (freq) {
+      case "Weekly": d.setDate(d.getDate() + 7); break;
+      case "Monthly": d.setMonth(d.getMonth() + 1); break;
+      case "Quarterly": d.setMonth(d.getMonth() + 3); break;
+      case "Annually": d.setFullYear(d.getFullYear() + 1); break;
+    }
+    return d;
+  };
+
+  // Generate occurrence dates for a recurring expense within the period
+  const getRecurringOccurrences = (expense, periodStart, periodEnd) => {
+    const occurrences = [];
+    const expenseDate = new Date(expense.date);
+    if (expenseDate > periodEnd) return occurrences;
+
+    let current = new Date(expenseDate);
+    let iterations = 0;
+    while (current <= periodEnd && iterations < 1000) {
+      if (current >= periodStart) {
+        occurrences.push(current.toISOString().split("T")[0]);
+      }
+      current = advanceByFrequency(current, expense.recurring_frequency);
+      iterations++;
+    }
+    return occurrences;
+  };
+
   // Filter all data by date range
   const periodEtsyOrders = filterByDate(Array.isArray(data.etsyOrders) ? data.etsyOrders : [], "sale_date");
   const periodCustomSales = filterByDate(Array.isArray(data.customSales) ? data.customSales : [], "date");
-  const periodBusinessExpenses = filterByDate(Array.isArray(data.businessExpenses) ? data.businessExpenses : [], "date");
+  // Business expenses: include date-filtered entries PLUS expanded recurring expenses
+  // Recurring expenses are auto-included in every period they apply to (no re-entry needed)
+  const periodBusinessExpenses = (() => {
+    const result = [];
+    (Array.isArray(data.businessExpenses) ? data.businessExpenses : []).forEach(e => {
+      if (e.is_recurring && e.recurring_frequency) {
+        const occurrences = getRecurringOccurrences(e, start, end);
+        occurrences.forEach(occDate => {
+          result.push({ ...e, date: occDate });
+        });
+      } else {
+        const d = new Date(e.date);
+        if (d >= start && d <= end) {
+          result.push(e);
+        }
+      }
+    });
+    return result;
+  })();
   const periodTransfers = filterByDate(Array.isArray(data.transfers) ? data.transfers : [], "date");
   const periodMaterialPurchases = filterByDate(Array.isArray(data.materialPurchases) ? data.materialPurchases : [], "purchase_date");
   

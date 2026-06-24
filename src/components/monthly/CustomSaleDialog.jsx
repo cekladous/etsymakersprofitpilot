@@ -72,7 +72,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         sales_tax_collected: "",
         shipping_or_postage_cost: "",
         vendor: "",
-        customer_id: "",
+    customer_id: "",
         description: "",
         payment_source: "",
         sales_source: "Other",
@@ -154,10 +154,12 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
             <Label>Customer</Label>
             <CustomerSearchSelect
               value={formData.customer_id}
-              onCustomerSelect={(customer) => {
-                setFormData({ ...formData, customer_id: customer.id, vendor: customer.name });
+              onChange={(customer) => {
+                if (customer) {
+                  setFormData({ ...formData, customer_id: customer.id, vendor: customer.name });
+                }
               }}
-              placeholder="Search customer..."
+              placeholder="Search customers..."
             />
           </div>
 

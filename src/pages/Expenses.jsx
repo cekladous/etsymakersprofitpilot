@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, Repeat } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -331,8 +331,8 @@ export default function Expenses() {
       is_categorized: true,
       source: "business",
       material_name: e.vendor,
-      is_recurring: e.is_recurring,
-      recurring_frequency: e.recurring_frequency,
+      is_recurring: e.is_recurring || false,
+      recurring_frequency: e.recurring_frequency || null,
     })));
     
     // MaterialPurchase (treated as materials_supplies category)
@@ -593,18 +593,20 @@ export default function Expenses() {
       header: "Description",
       render: (row) => (
         <div className="max-w-xs">
-          <p className="font-medium text-stone-900 truncate">{row.description || "-"}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-medium text-stone-900 truncate">{row.description || "-"}</p>
+            {row.is_recurring && (
+              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 text-xs flex-shrink-0">
+                <RefreshCw className="w-3 h-3 mr-1" />
+                {row.recurring_frequency || "Recurring"}
+              </Badge>
+            )}
+          </div>
           {row.vendor && (
             <p className="text-sm text-stone-500 truncate">{row.vendor}</p>
           )}
           {row.material_name && row.category === "materials_supplies" && (
             <p className="text-xs text-blue-600 truncate">🧱 {row.material_name}</p>
-          )}
-          {row.is_recurring && (
-            <span className="inline-flex items-center gap-1 text-xs text-violet-600 font-medium">
-              <Repeat className="w-3 h-3" />
-              {row.recurring_frequency || "Recurring"}
-            </span>
           )}
         </div>
       ),

@@ -501,10 +501,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
               <div>
                 <Label className="text-xs text-stone-600">Select Customer (Optional)</Label>
-                <div className="mt-1">
-                  <CustomerSearchSelect
-                    value={formData.customer_id}
-                    onCustomerSelect={(customer) => {
+                <CustomerSearchSelect
+                  value={formData.customer_id}
+                  onChange={(customer) => {
+                    if (customer) {
                       setFormData({
                         ...formData,
                         customer_id: customer.id,
@@ -512,9 +512,10 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                         customer_email: customer.email || "",
                         customer_phone: customer.phone || "",
                       });
-                    }}
-                  />
-                </div>
+                    }
+                  }}
+                  placeholder="Search existing customers..."
+                />
               </div>
 
               <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
