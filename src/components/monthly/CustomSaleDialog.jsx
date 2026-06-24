@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import CustomerSearchSelect from "@/components/customers/CustomerSearchSelect";
 
 export default function CustomSaleDialog({ open, onOpenChange }) {
   const { user } = useAuth();
@@ -40,6 +41,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
     sales_tax_collected: "",
     shipping_or_postage_cost: "",
     vendor: "",
+    customer_id: "",
     description: "",
     payment_source: "",
     sales_source: "Other",
@@ -70,6 +72,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         sales_tax_collected: "",
         shipping_or_postage_cost: "",
         vendor: "",
+        customer_id: "",
         description: "",
         payment_source: "",
         sales_source: "Other",
@@ -148,11 +151,13 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Vendor/Customer</Label>
-            <Input
-              value={formData.vendor}
-              onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-              placeholder="Customer name"
+            <Label>Customer</Label>
+            <CustomerSearchSelect
+              value={formData.customer_id}
+              onCustomerSelect={(customer) => {
+                setFormData({ ...formData, customer_id: customer.id, vendor: customer.name });
+              }}
+              placeholder="Search customer..."
             />
           </div>
 

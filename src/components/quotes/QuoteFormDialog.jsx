@@ -22,6 +22,7 @@ import ConvertQuoteDialog from "./ConvertQuoteDialog";
 import AIPriceSuggester from "./AIPriceSuggester";
 import AILaborEstimator from "./AILaborEstimator";
 import CostBreakdownPanel from "./CostBreakdownPanel";
+import CustomerSearchSelect from "@/components/customers/CustomerSearchSelect";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
@@ -500,97 +501,21 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
               <div>
                 <Label className="text-xs text-stone-600">Select Customer (Optional)</Label>
-                <Select
-                  value={formData.customer_id || ""}
-                  onValueChange={(value) => {
-                    if (value) {
-                      const customer = customers.find(c => c.id === value);
-                      if (customer) {
-                        setFormData({
-                          ...formData,
-                          customer_id: customer.id,
-                          customer_name: customer.name,
-                          customer_email: customer.email || "",
-                          customer_phone: customer.phone || "",
-                        });
-                      }
-                    }
-                  }}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select existing customer..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers && customers.length > 0 && customers.map(customer => (
-                      <SelectItem key={customer.id} value={customer.id || ""}>
-                        {customer.name} {customer.company ? `(${customer.company})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setShowQuickAdd(!showQuickAdd)}
-                  className="w-full mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  {showQuickAdd ? "Cancel" : "Create New Customer"}
-                </Button>
-
-                {showQuickAdd && (
-                  <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
-                    <Input
-                      placeholder="Customer name *"
-                      value={newCustomerData.name}
-                      onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                    <Input
-                      type="email"
-                      placeholder="Email"
-                      value={newCustomerData.email}
-                      onChange={(e) => setNewCustomerData({ ...newCustomerData, email: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                    <Input
-                      placeholder="Phone"
-                      value={newCustomerData.phone}
-                      onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                    <Input
-                      placeholder="Company (optional)"
-                      value={newCustomerData.company}
-                      onChange={(e) => setNewCustomerData({ ...newCustomerData, company: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={!newCustomerData.name || isCreatingCustomer}
-                      onClick={async () => {
-                        setIsCreatingCustomer(true);
-                        const customer = await base44.entities.Customer.create({ ...newCustomerData, owner_user_id: user.id });
-                        queryClient.invalidateQueries({ queryKey: ["customers"] });
-                        setFormData({
-                          ...formData,
-                          customer_id: customer.id,
-                          customer_name: customer.name,
-                          customer_email: customer.email || "",
-                          customer_phone: customer.phone || "",
-                        });
-                        setNewCustomerData({ name: "", email: "", phone: "", company: "" });
-                        setShowQuickAdd(false);
-                        setIsCreatingCustomer(false);
-                      }}
-                      className="w-full h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                      {isCreatingCustomer ? "Adding..." : "Add Customer"}
-                    </Button>
-                  </div>
-                )}
+                <div className="mt-1">
+                  <CustomerSearchSelect
+                    value={formData.customer_id}
+                    onCustomerSelect={(customer) => {
+                      setFormData({
+                        ...formData,
+                        customer_id: customer.id,
+                        customer_name: customer.name,
+                        customer_email: customer.email || "",
+                        customer_phone: customer.phone || "",
+                      });
+                    }}
+                  />
                 </div>
+              </div>
 
               <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
                 <CollapsibleTrigger className="w-full">

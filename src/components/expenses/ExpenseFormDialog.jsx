@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Repeat } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 // Map legacy categories to BusinessExpense schema
 const CATEGORY_MAP = {
@@ -62,6 +63,8 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
     vendor: "",
     payment_method: "",
     notes: "",
+    is_recurring: false,
+    recurring_frequency: "Monthly",
   });
 
   const queryClient = useQueryClient();
@@ -78,6 +81,8 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         vendor: expense.vendor || "",
         payment_method: expense.payment_source || expense.payment_method || "",
         notes: expense.notes || "",
+        is_recurring: expense.is_recurring || false,
+        recurring_frequency: expense.recurring_frequency || "Monthly",
       });
     } else {
       setFormData({
@@ -88,6 +93,8 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         vendor: "",
         payment_method: "",
         notes: "",
+        is_recurring: false,
+        recurring_frequency: "Monthly",
       });
     }
   }, [expense]);
@@ -102,6 +109,8 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         vendor: data.vendor,
         payment_source: data.payment_method,
         notes: data.notes,
+        is_recurring: data.is_recurring,
+        recurring_frequency: data.is_recurring ? data.recurring_frequency : null,
       };
       
       if (expense && expense.source === "business") {
@@ -210,6 +219,41 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
               onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
               placeholder="Credit card, PayPal..."
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-stone-200 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-violet-600" />
+                <Label className="cursor-pointer">Is this a recurring expense?</Label>
+              </div>
+              <Switch
+                checked={formData.is_recurring}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
+              />
+            </div>
+            {formData.is_recurring && (
+              <div className="space-y-2">
+                <Label>Frequency</Label>
+                <Select
+                  value={formData.recurring_frequency}
+                  onValueChange={(v) => setFormData({ ...formData, recurring_frequency: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                    <SelectItem value="Annually">Annually</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-stone-500">
+                  This expense will automatically appear in each {formData.recurring_frequency.toLowerCase()} period's P&amp;L.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

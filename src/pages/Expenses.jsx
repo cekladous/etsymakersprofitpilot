@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, Repeat } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -331,6 +331,8 @@ export default function Expenses() {
       is_categorized: true,
       source: "business",
       material_name: e.vendor,
+      is_recurring: e.is_recurring,
+      recurring_frequency: e.recurring_frequency,
     })));
     
     // MaterialPurchase (treated as materials_supplies category)
@@ -597,6 +599,12 @@ export default function Expenses() {
           )}
           {row.material_name && row.category === "materials_supplies" && (
             <p className="text-xs text-blue-600 truncate">🧱 {row.material_name}</p>
+          )}
+          {row.is_recurring && (
+            <span className="inline-flex items-center gap-1 text-xs text-violet-600 font-medium">
+              <Repeat className="w-3 h-3" />
+              {row.recurring_frequency || "Recurring"}
+            </span>
           )}
         </div>
       ),
