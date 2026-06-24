@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import ConvertQuoteDialog from "./ConvertQuoteDialog";
 import AIPriceSuggester from "./AIPriceSuggester";
 import AILaborEstimator from "./AILaborEstimator";
+import CostBreakdownPanel from "./CostBreakdownPanel";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
@@ -66,6 +67,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     manual_labor_rate: 95,
     machines: [],
     shipping_cost: 0,
+    overhead_per_item: 0,
     payment_method: "etsy",
     advertising_type: "none",
     advertising_value: 0,
@@ -121,6 +123,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         labor_rate: quote.labor_rate || 50,
         machines: quote.machines || [],
         shipping_cost: quote.shipping_cost || 0,
+        overhead_per_item: quote.overhead_per_item || 0,
         payment_method: quote.payment_method || "etsy",
         advertising_type: quote.advertising_type || "none",
         advertising_value: quote.advertising_value || 0,
@@ -934,6 +937,18 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 });
               }
             }}
+          />
+
+          {/* Cost Breakdown Panel */}
+          <CostBreakdownPanel
+            materialsTotal={getMaterialsTotal()}
+            laborTotal={getLaborTotal()}
+            machineTotal={getMachinesTotal()}
+            overheadPerItem={formData.overhead_per_item}
+            onOverheadChange={(value) => setFormData({ ...formData, overhead_per_item: value })}
+            desiredMargin={desiredMargin}
+            onMarginChange={setDesiredMargin}
+            currencySymbol={currencySymbol}
           />
 
           {/* Grand Total */}
