@@ -46,6 +46,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   
   const [formData, setFormData] = useState({
     quote_number: generateQuoteNumber(),
+    product_template_id: "",
     project_name: "",
     customer_name: "",
     customer_email: "",
@@ -131,6 +132,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     } else {
       setFormData({
         quote_number: generateQuoteNumber(),
+        product_template_id: "",
         project_name: "",
         customer_name: "",
         customer_email: "",
@@ -264,6 +266,59 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     return getMaterialsTotal() + getLaborTotal() + getMachinesTotal();
   };
 
+  const handleProductTemplateSelect = (productId) => {
+    if (!productId) {
+      setFormData({ ...formData, product_template_id: "" });
+      return;
+    }
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const newMaterials = [];
+
+    // Pre-fill default material with cost derived from area and sheet cost
+    if (product.default_material_id) {
+      const materialType = materialTypes.find(mt => mt.id === product.default_material_id);
+      if (materialType) {
+        let cost = 0;
+        if (product.area_per_unit && materialType.default_width && materialType.default_height && materialType.cost_per_sheet) {
+          const sheetArea = materialType.default_width * materialType.default_height;
+          const costPerSqInch = materialType.cost_per_sheet / sheetArea;
+          cost = Math.round((product.area_per_unit * costPerSqInch) * 100) / 100;
+        }
+        newMaterials.push({ type: materialType.name, name: materialType.name, cost });
+      }
+    }
+
+    // Add packaging cost as a material line
+    if (product.packaging_cost && product.packaging_cost > 0) {
+      newMaterials.push({ type: "Custom (Manual)", name: "Packaging", cost: product.packaging_cost });
+    }
+
+    // Pre-fill machine time from laser_minutes_per_unit
+    let newMachines = [...formData.machines];
+    if (product.laser_minutes_per_unit && product.laser_minutes_per_unit > 0) {
+      const defaultMachine = machines.find(m => m.name && m.name.toLowerCase().includes("xtool p3")) ||
+                             machines.find(m => m.name && m.name.toLowerCase().includes("laser"));
+      if (defaultMachine) {
+        const hourlyDepreciation = Math.round(((defaultMachine.monthly_depreciation || 0) / 160) * 100) / 100;
+        if (newMachines.length > 0) {
+          newMachines[0] = { ...newMachines[0], machine_id: defaultMachine.id, name: defaultMachine.name, minutes: product.laser_minutes_per_unit, rate: hourlyDepreciation || 0 };
+        } else {
+          newMachines.push({ machine_id: defaultMachine.id, name: defaultMachine.name, hours: 0, minutes: product.laser_minutes_per_unit, rate: hourlyDepreciation || 0 });
+        }
+      }
+    }
+
+    setFormData({
+      ...formData,
+      product_template_id: product.id,
+      project_name: formData.project_name || product.name,
+      materials: newMaterials.length > 0 ? newMaterials : formData.materials,
+      machines: newMachines,
+    });
+  };
+
   const calculateGrandTotal = () => {
     return getMaterialsTotal() + getLaborTotal() + getMachinesTotal();
   };
@@ -393,6 +448,30 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-stone-600">Product Template (Optional)</Label>
+                <Select
+                  value={formData.product_template_id || ""}
+                  onValueChange={handleProductTemplateSelect}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a product to pre-fill..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products && products.length > 0 && products
+                      .filter(p => p.active !== false)
+                      .map(product => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} {product.sku ? `(${product.sku})` : ""}
+                        </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-stone-400 mt-1">
+                  Pre-fills title, materials, and machine time from your saved product.
+                </p>
               </div>
 
               <div>
