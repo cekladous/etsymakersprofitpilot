@@ -13,6 +13,7 @@
     "category_group": {
       "type": "string",
       "enum": [
+        "etsy_fees",
         "selling_expenses",
         "product_expenses",
         "business_expenses"
@@ -25,10 +26,11 @@
         "etsy_listing_fees",
         "etsy_transaction_fees",
         "etsy_processing_fees",
-        "share_save_refunds_credits",
-        "other_fees",
         "etsy_ads",
         "etsy_offsite_ads_fees",
+        "etsy_refund_return_fees",
+        "other_fees",
+        "share_save_refunds_credits",
         "materials_supplies",
         "packaging_materials",
         "tools_equipment",
@@ -66,6 +68,21 @@
       "type": "boolean",
       "default": false,
       "description": "Mark as inventory (for Materials & Supplies only)"
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this expense recurs on a schedule"
+    },
+    "recurring_frequency": {
+      "type": "string",
+      "enum": [
+        "Weekly",
+        "Monthly",
+        "Quarterly",
+        "Annually"
+      ],
+      "description": "How often the recurring expense occurs"
     }
   },
   "required": [

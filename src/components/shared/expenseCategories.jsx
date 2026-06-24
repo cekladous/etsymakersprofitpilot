@@ -16,20 +16,25 @@ export const BUSINESS_EXPENSE_CATEGORIES = [
   { value: "miscellaneous_expenses", label: "Miscellaneous", group: "business" },
 ];
 
+export const ETSY_FEE_CATEGORIES = [
+  { value: "etsy_listing_fees", label: "Listing Fees", group: "etsy_fees" },
+  { value: "etsy_transaction_fees", label: "Transaction Fees", group: "etsy_fees" },
+  { value: "etsy_processing_fees", label: "Processing Fees", group: "etsy_fees" },
+  { value: "etsy_ads", label: "Advertising Fees", group: "etsy_fees" },
+  { value: "etsy_offsite_ads_fees", label: "Offsite Ads", group: "etsy_fees" },
+  { value: "etsy_refund_return_fees", label: "Refund/Return Fees", group: "etsy_fees" },
+  { value: "other_fees", label: "Other Fees", group: "etsy_fees" },
+];
+
 export const FEE_CATEGORIES = [
-  { value: "etsy_listing_fees", label: "Listing Fees", group: "fees" },
-  { value: "etsy_transaction_fees", label: "Transaction Fees", group: "fees" },
-  { value: "etsy_processing_fees", label: "Processing Fees", group: "fees" },
   { value: "share_save_refunds_credits", label: "Share & Save Credits", group: "fees", isCredit: true },
-  { value: "other_fees", label: "Other Fees", group: "fees" },
-  { value: "etsy_ads", label: "Etsy Ads", group: "ads" },
-  { value: "etsy_offsite_ads_fees", label: "Offsite Ads", group: "ads" },
   { value: "etsy_shipping", label: "Shipping Labels (Etsy)", group: "shipping" },
   { value: "other_postage_costs", label: "Other Postage", group: "shipping" },
 ];
 
 export const ALL_EXPENSE_CATEGORIES = [
   ...BUSINESS_EXPENSE_CATEGORIES,
+  ...ETSY_FEE_CATEGORIES,
   ...FEE_CATEGORIES,
 ];
 
@@ -61,8 +66,9 @@ export const CATEGORY_COLORS = {
   etsy_processing_fees: "bg-orange-100 text-orange-700",
   share_save_refunds_credits: "bg-emerald-100 text-emerald-700",
   other_fees: "bg-orange-200 text-orange-800",
-  etsy_ads: "bg-purple-100 text-purple-700",
-  etsy_offsite_ads_fees: "bg-purple-200 text-purple-800",
+  etsy_ads: "bg-orange-100 text-orange-700",
+  etsy_offsite_ads_fees: "bg-orange-200 text-orange-800",
+  etsy_refund_return_fees: "bg-rose-100 text-rose-700",
   etsy_shipping: "bg-yellow-100 text-yellow-700",
   other_postage_costs: "bg-yellow-200 text-yellow-800",
 };

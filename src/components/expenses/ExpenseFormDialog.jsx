@@ -16,12 +16,16 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES } from "@/components/shared/expenseCategories";
 
 // Map legacy categories to BusinessExpense schema
 const CATEGORY_MAP = {
@@ -37,21 +41,6 @@ const CATEGORY_MAP = {
   maintenance: "miscellaneous_expenses",
   other: "other"
 };
-
-const CATEGORIES = [
-  { value: "materials_supplies", label: "Materials & Supplies" },
-  { value: "packaging_materials", label: "Packaging" },
-  { value: "tools_equipment", label: "Tools & Equipment" },
-  { value: "software_subscriptions", label: "Software" },
-  { value: "advertising_marketing", label: "Advertising" },
-  { value: "office_general_expenses", label: "Office Expenses" },
-  { value: "gas_mileage", label: "Gas & Mileage" },
-  { value: "utilities_cell_phone", label: "Utilities" },
-  { value: "professional_services", label: "Professional Services" },
-  { value: "etsy_transaction_fees", label: "Etsy Fees" },
-  { value: "shipping_costs", label: "Shipping" },
-  { value: "miscellaneous_expenses", label: "Other" },
-];
 
 export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose }) {
   const { user } = useAuth();
@@ -193,12 +182,24 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                      {cat.value === "materials_supplies" && " (material purchases go here)"}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel className="text-stone-500 font-semibold">Etsy Fees</SelectLabel>
+                    {ETSY_FEE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel className="text-stone-500 font-semibold">Business Expenses</SelectLabel>
+                    {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                        {cat.value === "materials_supplies" && " (material purchases go here)"}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>

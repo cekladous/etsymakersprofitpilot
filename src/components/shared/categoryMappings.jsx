@@ -29,6 +29,7 @@ const CATEGORY_MAPPINGS = {
   other_fees: { label: "Other Fees", key: "otherFees", section: "fees", isCredit: false },
   etsy_ads: { label: "Etsy Ads", key: "etsyAds", section: "fees", isCredit: false },
   etsy_offsite_ads_fees: { label: "Offsite Ads", key: "etsyOffsiteAds", section: "fees", isCredit: false },
+  etsy_refund_return_fees: { label: "Refund/Return Fees", key: "etsyRefundReturnFees", section: "fees", isCredit: false },
   etsy_shipping: { label: "Shipping Labels", key: "etsyShipping", section: "fees", isCredit: false },
   other_postage_costs: { label: "Other Postage", key: "otherPostage", section: "fees", isCredit: false },
 };

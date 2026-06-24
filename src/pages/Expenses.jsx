@@ -35,7 +35,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 
-import { BUSINESS_EXPENSE_CATEGORIES as CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
+import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
+
+const CATEGORIES = [...BUSINESS_EXPENSE_CATEGORIES, ...ETSY_FEE_CATEGORIES];
 
 export default function Expenses() {
   const { user, loading } = useAuth();
