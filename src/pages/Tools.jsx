@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, Zap, Database, Tag, FileImage } from "lucide-react";
+import { Calculator, Zap, Database, Tag, FileImage, Target } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
 // Import tool components
@@ -12,6 +12,7 @@ import RasterAssistantTool from "@/components/tools/RasterAssistantTool";
 import MaterialsLibraryTool from "@/components/tools/MaterialsLibraryTool";
 import NameTagGenerator from "@/components/tools/NameTagGenerator";
 import SVGConverterTool from "@/components/tools/SVGConverterTool";
+import BreakevenCalculatorTool from "@/components/tools/BreakevenCalculatorTool";
 
 export default function Tools() {
   const { user } = useAuth();
@@ -47,6 +48,10 @@ export default function Tools() {
             <Calculator className="w-4 h-4" />
             <span className="hidden sm:inline">Calculator</span>
           </TabsTrigger>
+          <TabsTrigger value="breakeven" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            <span className="hidden sm:inline">Breakeven</span>
+          </TabsTrigger>
           {nameTagsEnabled && (
             <TabsTrigger value="nametag" className="flex items-center gap-2">
               <Tag className="w-4 h-4" />
@@ -73,6 +78,10 @@ export default function Tools() {
 
         <TabsContent value="calculator" className="mt-6">
           <CalculatorTool />
+        </TabsContent>
+
+        <TabsContent value="breakeven" className="mt-6">
+          <BreakevenCalculatorTool />
         </TabsContent>
 
         {nameTagsEnabled && (

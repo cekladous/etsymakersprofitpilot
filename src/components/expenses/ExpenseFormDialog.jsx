@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Package } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES } from "@/components/shared/expenseCategories";
 
@@ -54,6 +54,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
     notes: "",
     is_recurring: false,
     recurring_frequency: "Monthly",
+    inventory_flag: false,
   });
 
   const queryClient = useQueryClient();
@@ -72,6 +73,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         notes: expense.notes || "",
         is_recurring: expense.is_recurring || false,
         recurring_frequency: expense.recurring_frequency || "Monthly",
+        inventory_flag: expense.inventory_flag || false,
       });
     } else {
       setFormData({
@@ -84,6 +86,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         notes: "",
         is_recurring: false,
         recurring_frequency: "Monthly",
+        inventory_flag: false,
       });
     }
   }, [expense]);
@@ -100,6 +103,7 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         notes: data.notes,
         is_recurring: data.is_recurring || false,
         recurring_frequency: data.is_recurring ? data.recurring_frequency : null,
+        inventory_flag: data.category === "materials_supplies" ? (data.inventory_flag || false) : false,
       };
       
       if (expense && expense.source === "business") {
@@ -204,11 +208,15 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Vendor</Label>
+              <Label>
+                Vendor
+                {(formData.category === "materials_supplies" || formData.category === "tools_equipment") && " *"}
+              </Label>
               <Input
                 value={formData.vendor}
                 onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
                 placeholder="Amazon, Home Depot..."
+                required={formData.category === "materials_supplies" || formData.category === "tools_equipment"}
               />
             </div>
           </div>
@@ -221,6 +229,23 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
               placeholder="Credit card, PayPal..."
             />
           </div>
+
+          {formData.category === "materials_supplies" && (
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-blue-600" />
+                <div>
+                  <Label htmlFor="inventory-toggle">Goes to Inventory?</Label>
+                  <p className="text-xs text-stone-500 mt-1">Track this purchase as inventory replenishment</p>
+                </div>
+              </div>
+              <Switch
+                id="inventory-toggle"
+                checked={formData.inventory_flag || false}
+                onCheckedChange={(checked) => setFormData({ ...formData, inventory_flag: checked })}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Notes</Label>

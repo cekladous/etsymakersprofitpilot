@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -46,6 +46,12 @@ export default function Inventory() {
     queryKey: ["material-purchases", user?.id],
     enabled: !!user,
     queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 100),
+  });
+
+  const { data: materialExpenses = [] } = useQuery({
+    queryKey: ["material-expenses", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.BusinessExpense.filter({ owner_user_id: user.id, category_name: "materials_supplies" }, "-date", 200),
   });
 
   const deleteTypeMutation = useMutation({
@@ -114,6 +120,33 @@ export default function Inventory() {
   const outOfStockItems = mergedInventory.filter(
     (item) => item.quantity_on_hand === 0
   );
+
+  const totalInvestedInInventory = materialExpenses
+    .filter((e) => e.inventory_flag)
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  const combinedPurchaseHistory = [
+    ...materialPurchases.map((p) => ({
+      id: p.id,
+      source: "purchase",
+      date: p.purchase_date,
+      material_name: p.material_name,
+      vendor: p.vendor || "Unknown vendor",
+      amount: p.total_cost,
+      quantity: p.quantity,
+      goes_to_inventory: true,
+    })),
+    ...materialExpenses.map((e) => ({
+      id: e.id,
+      source: "expense",
+      date: e.date,
+      material_name: e.description,
+      vendor: e.vendor || "Unknown vendor",
+      amount: e.amount,
+      quantity: null,
+      goes_to_inventory: e.inventory_flag || false,
+    })),
+  ].sort((a, b) => new Date(b.date || "") - new Date(a.date || ""));
 
   const inventoryColumns = [
     {
@@ -274,7 +307,23 @@ export default function Inventory() {
       {showImport && <BulkInventoryImportTool />}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-2 border-blue-200 bg-blue-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <DollarSign className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Total Invested in Inventory</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {formatCurrency(totalInvestedInInventory)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card 
           className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => {
@@ -415,7 +464,7 @@ export default function Inventory() {
         <TabsContent value="history" className="mt-6">
           <Card>
             <CardContent className="p-6">
-              {materialPurchases.length === 0 ? (
+              {combinedPurchaseHistory.length === 0 ? (
                 <EmptyState
                   icon={Package}
                   title="No purchase history"
@@ -423,36 +472,47 @@ export default function Inventory() {
                 />
               ) : (
                 <div className="space-y-3">
-                  {materialPurchases.slice(0, 20).map((purchase) => (
+                  {combinedPurchaseHistory.slice(0, 50).map((purchase) => (
                     <div
-                      key={purchase.id}
+                      key={`${purchase.source}-${purchase.id}`}
                       className="flex items-center justify-between p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
                     >
                       <div>
-                        <p className="font-medium text-stone-900">{purchase.material_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-stone-900">{purchase.material_name}</p>
+                          {purchase.goes_to_inventory && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                              Inventory
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-stone-500">
-                          {purchase.purchase_date} • {purchase.vendor || "Unknown vendor"}
+                          {purchase.date} • {purchase.vendor}
                         </p>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="font-semibold text-stone-900">
-                            {formatCurrency(purchase.total_cost)}
+                            {formatCurrency(purchase.amount)}
                           </p>
-                          <p className="text-sm text-stone-500">
-                            Qty: {purchase.quantity}
-                          </p>
+                          {purchase.quantity != null && (
+                            <p className="text-sm text-stone-500">
+                              Qty: {purchase.quantity}
+                            </p>
+                          )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingPurchase(purchase);
-                            setPurchaseFormOpen(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
+                        {purchase.source === "purchase" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingPurchase(materialPurchases.find(p => p.id === purchase.id));
+                              setPurchaseFormOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
