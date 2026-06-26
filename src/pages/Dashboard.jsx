@@ -75,6 +75,7 @@ export default function Dashboard() {
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [monthCloseOpen, setMonthCloseOpen] = useState(false);
+  const _yearFixVersion = 2; // Cache-bust
 
   const { data: settings = [] } = useQuery({
     queryKey: ["settings", user?.id],
@@ -198,8 +199,10 @@ export default function Dashboard() {
       start = startOfQuarter(selectedDate);
       end = endOfQuarter(selectedDate);
     } else if (timeRange === "year") {
-      start = startOfYear(selectedDate);
-      end = endOfYear(selectedDate);
+      // CRITICAL FIX: Use current calendar year (Jan 1 - Dec 31), not based on selectedDate
+      const currentYear = new Date().getFullYear();
+      start = new Date(currentYear, 0, 1); // Jan 1 of current year
+      end = new Date(currentYear, 11, 31, 23, 59, 59); // Dec 31 of current year
     }
     return { start, end };
   }, [timeRange, selectedDate, customStartDate, customEndDate]);

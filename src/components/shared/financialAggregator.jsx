@@ -143,8 +143,16 @@ export function aggregateFinancials(data, dateRange) {
   // 1) Etsy Sales - item price + shipping charged (buyer-paid revenue)
   // Use dedupedEtsyOrders to exclude orders that came from statement import
   // Fallback to order_total (which maps from the Amount column) if order_value is missing
-  const etsySales = dedupedEtsyOrders.reduce((sum, o) => 
+  // ALSO include sales from statement lines (canonical source) for excluded orders
+  const etsySalesFromOrders = dedupedEtsyOrders.reduce((sum, o) => 
     sum + (toNumber(o.order_value) || toNumber(o.order_total)) + toNumber(o.shipping_charged), 0);
+  
+  // Add sales from statement lines (for orders that were excluded due to deduplication)
+  const etsySalesFromStatementLines = periodStatementLines
+    .filter(line => line.category === 'sale')
+    .reduce((sum, line) => sum + toNumber(line.amount), 0);
+  
+  const etsySales = etsySalesFromOrders + etsySalesFromStatementLines;
   
   // 2) Tax Collected by Etsy (excluded from profit)
   const taxCollectedByEtsy = dedupedEtsyOrders.reduce((sum, o) => 
