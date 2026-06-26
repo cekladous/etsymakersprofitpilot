@@ -7,14 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ShoppingBag, Square, Upload, Link2, Clock, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Square, Upload, Link2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import PlatformSalesImport from '@/components/imports/PlatformSalesImport';
 
 export default function IntegrationsTool() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [squareLocationId, setSquareLocationId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [importPlatform, setImportPlatform] = useState(null);
 
   const { data: settings = [] } = useQuery({
     queryKey: ['settings', user?.id],
@@ -136,47 +138,83 @@ export default function IntegrationsTool() {
         </Card>
 
         {/* Shopify */}
-        <Card className="border-stone-200 opacity-75">
+        <Card className="border-stone-200">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <ShoppingBag className="w-6 h-6 text-green-600" />
                 <CardTitle className="text-lg">Shopify</CardTitle>
               </div>
-              <Badge className="bg-stone-100 text-stone-600">
-                <Clock className="w-3 h-3 mr-1" />
-                Coming Soon
+              <Badge className="bg-emerald-100 text-emerald-800">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Available
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-stone-500">
-              Shopify integration is coming soon. You'll be able to import Shopify sales data via CSV or API.
+          <CardContent className="space-y-4">
+            <p className="text-sm text-stone-600">
+              Import your Shopify orders via CSV export. Each order becomes a custom sale record for profit tracking.
             </p>
+            <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
+              <p className="font-semibold text-stone-700">How to import:</p>
+              <ol className="list-decimal list-inside space-y-1 text-stone-600 text-xs">
+                <li>Go to Shopify → <strong>Orders → Export → Export all orders (CSV)</strong></li>
+                <li>Save the CSV file to your computer</li>
+                <li>Click "Import Shopify Sales" below and upload the file</li>
+              </ol>
+            </div>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setImportPlatform('shopify')}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import Shopify Sales
+            </Button>
           </CardContent>
         </Card>
 
         {/* Squarespace */}
-        <Card className="border-stone-200 opacity-75">
+        <Card className="border-stone-200">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Link2 className="w-6 h-6 text-stone-600" />
                 <CardTitle className="text-lg">Squarespace</CardTitle>
               </div>
-              <Badge className="bg-stone-100 text-stone-600">
-                <Clock className="w-3 h-3 mr-1" />
-                Coming Soon
+              <Badge className="bg-emerald-100 text-emerald-800">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Available
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-stone-500">
-              Squarespace integration is coming soon. You'll be able to import Squarespace sales data via CSV.
+          <CardContent className="space-y-4">
+            <p className="text-sm text-stone-600">
+              Import your Squarespace orders via CSV export. Each order becomes a custom sale record for profit tracking.
             </p>
+            <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
+              <p className="font-semibold text-stone-700">How to import:</p>
+              <ol className="list-decimal list-inside space-y-1 text-stone-600 text-xs">
+                <li>Go to Squarespace → <strong>Commerce → Orders → Export</strong></li>
+                <li>Save the CSV file to your computer</li>
+                <li>Click "Import Squarespace Sales" below and upload the file</li>
+              </ol>
+            </div>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setImportPlatform('squarespace')}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import Squarespace Sales
+            </Button>
           </CardContent>
         </Card>
       </div>
+
+      <PlatformSalesImport
+        open={!!importPlatform}
+        onOpenChange={(open) => { if (!open) setImportPlatform(null); }}
+        platform={importPlatform}
+      />
     </div>
   );
 }
