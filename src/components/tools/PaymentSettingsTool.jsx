@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle2, Square, ShoppingBag, Upload, FileText } from 'lucide-react';
+import { Square, ShoppingBag, Upload, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function PaymentSettingsTool() {
@@ -142,20 +142,6 @@ export default function PaymentSettingsTool() {
         </Card>
       </div>
 
-      {/* Info Box */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-1">Both Methods Available</h3>
-              <p className="text-sm text-blue-800">
-                Customers can choose their preferred payment method during checkout. You can accept Etsy orders and Square card payments simultaneously.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
