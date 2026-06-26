@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -204,38 +204,39 @@ export default function Dashboard() {
     return { start, end };
   }, [timeRange, selectedDate, customStartDate, customEndDate]);
 
-  // Fallback: if selected period has no Etsy orders, use most recent month with data
-  const mostRecentOrderDate = useMemo(() => {
-    if (!etsyOrders || etsyOrders.length === 0) return null;
-    const sorted = [...etsyOrders].sort((a, b) => new Date(b.sale_date) - new Date(a.sale_date));
-    return new Date(sorted[0].sale_date);
-  }, [etsyOrders]);
-
-  const isFallbackPeriod = useMemo(() => {
-    if (!dateRange?.start || !dateRange?.end || !mostRecentOrderDate) return false;
-    const hasOrders = etsyOrders.some(o => {
-      const d = new Date(o.sale_date);
-      return d >= dateRange.start && d <= dateRange.end;
-    });
-    return !hasOrders;
-  }, [dateRange, etsyOrders, mostRecentOrderDate]);
-
-  const effectiveDateRange = useMemo(() => {
-    if (isFallbackPeriod && mostRecentOrderDate) {
-      return {
-        start: startOfMonth(mostRecentOrderDate),
-        end: endOfMonth(mostRecentOrderDate),
-      };
+  // Auto-navigate to most recent month with data on initial load
+  const hasAutoNavigated = useRef(false);
+  useEffect(() => {
+    if (hasAutoNavigated.current || !user) return;
+    const hasAnyData = etsyOrders.length > 0 || customSales.length > 0 || businessExpenses.length > 0 || expenses.length > 0;
+    if (!hasAnyData) return;
+    hasAutoNavigated.current = true;
+    const currentStart = startOfMonth(selectedDate);
+    const currentEnd = endOfMonth(selectedDate);
+    const hasDataInCurrentMonth =
+      etsyOrders.some(o => { const d = new Date(o.sale_date); return d >= currentStart && d <= currentEnd; }) ||
+      customSales.some(s => { const d = new Date(s.date); return d >= currentStart && d <= currentEnd; }) ||
+      businessExpenses.some(e => { const d = new Date(e.date); return d >= currentStart && d <= currentEnd; }) ||
+      expenses.some(e => { const d = new Date(e.date); return d >= currentStart && d <= currentEnd; });
+    if (!hasDataInCurrentMonth) {
+      const allDates = [
+        ...etsyOrders.map(o => new Date(o.sale_date)),
+        ...customSales.map(s => new Date(s.date)),
+        ...businessExpenses.map(e => new Date(e.date)),
+        ...expenses.map(e => new Date(e.date))
+      ].filter(d => !isNaN(d.getTime()));
+      if (allDates.length > 0) {
+        setSelectedDate(new Date(Math.max(...allDates)));
+      }
     }
-    return dateRange;
-  }, [dateRange, isFallbackPeriod, mostRecentOrderDate]);
+  }, [user, etsyOrders, customSales, businessExpenses, expenses]);
 
-  const { start: periodStart, end: periodEnd } = effectiveDateRange;
+  const { start: periodStart, end: periodEnd } = dateRange;
   const yearStart = startOfYear(now);
 
   // SINGLE SOURCE OF TRUTH - Use shared financial aggregator
   const financialData = useMemo(() => {
-    if (!effectiveDateRange?.start || !effectiveDateRange?.end) {
+    if (!dateRange?.start || !dateRange?.end) {
       return {
         totalRevenue: 0,
         netProfit: 0,
@@ -259,8 +260,8 @@ export default function Dashboard() {
       fees,
       etsyStatementLines,
       etsyStatementImports
-    }, effectiveDateRange);
-  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, effectiveDateRange]);
+    }, dateRange);
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, dateRange]);
 
   // For backward compatibility with existing components
   const filteredSummaryData = financialData._rawData;
@@ -568,19 +569,6 @@ export default function Dashboard() {
           </div>
           </div>
           </PageHeader>
-
-      {isFallbackPeriod && mostRecentOrderDate && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-amber-900">No data for {getPeriodLabel()}</p>
-            <p className="text-sm text-amber-700 mt-1">
-              Showing the most recent month with data: <strong>{format(mostRecentOrderDate, "MMMM yyyy")}</strong>. 
-              Use the date navigation arrows to select a different period.
-            </p>
-          </div>
-        </div>
-      )}
 
       {etsyOrders.length === 0 && customSales.length === 0 && businessExpenses.length === 0 && expenses.length === 0 && (
         <div className="bg-gradient-to-br from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-6">
