@@ -707,24 +707,16 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                return sum + Math.abs(taxAmount || 0);
              }, 0);
 
-            // Parse values from CSV - use safe getter for all fields
-            let orderValue = parseMoney(getRowValue(row, "Order Value", "Item(s) price", "Item Total"));
+            // Monthly Statement CSV: Amount = gross sale revenue, Net = net payout
+            // Some statement formats may have explicit "Order Value" — use if present, else Amount
+            let orderValue = parseMoney(getRowValue(row, "Order Value", "Item(s) price", "Item Total")) || amount;
             let shippingCharged = parseMoney(getRowValue(row, "Shipping", "Shipping price", "Shipping Charged", "Shipping Amount", "Shipping Cost"));
             let salesTax = parseMoney(getRowValue(row, "Sales Tax", "Tax paid by buyer"));
             const orderTotal = parseMoney(getRowValue(row, "Order Total", "Total")) || amount;
 
-        // Monthly Statement CSV has no "Order Value" column — fall back to the
-        // order total (which itself falls back to the Amount column) so Revenue
-        // reflects the actual sale amount. Without this, Revenue shows $0.00
-        // even though Net Earnings are captured correctly.
-        if (!orderValue) {
-          orderValue = orderTotal;
-        }
-
-        // Use the "Net" column directly from the Monthly Statement (it IS the net payout).
-        // Fall back to calculated value only if Net is missing or zero.
-        const calculatedNetPayout = orderTotal - totalOrderFees - totalTaxes;
-        const orderNet = net || calculatedNetPayout;
+            // Net column from the Monthly Statement IS the net payout.
+            // Fall back to calculated value only if Net is missing or zero.
+            const orderNet = net || (orderTotal - totalOrderFees - totalTaxes);
 
         orders.push({
           sale_date: transactionDate,
