@@ -1004,6 +1004,26 @@ export default function Orders() {
 
 
 
+          {/* Missing buyer info note */}
+          {etsyOrders.length > 0 && etsyOrders.some(o => !o.buyer_username && !o.buyer_full_name) && (
+            <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-1">Buyer & item details not available</p>
+                <p>
+                  The Etsy Monthly Statement doesn't include buyer names or item counts. Upload the optional{" "}
+                  <button
+                    onClick={() => setImportDialogOpen(true)}
+                    className="font-semibold text-blue-700 underline hover:text-blue-900"
+                  >
+                    Sold Orders Report
+                  </button>{" "}
+                  to populate buyer names and item counts for these orders.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
