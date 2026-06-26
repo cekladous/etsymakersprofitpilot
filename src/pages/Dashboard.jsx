@@ -317,7 +317,7 @@ export default function Dashboard() {
       });
 
       const revenue = periodEtsyOrders.reduce((sum, o) =>
-      sum + (o.order_value || 0), 0);
+      sum + (o.order_value || o.order_total || 0), 0);
 
       const fees = orderFees.
       filter((f) => periodEtsyOrders.some((o) => o.id === f.order_id)).

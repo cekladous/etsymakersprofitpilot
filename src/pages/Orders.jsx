@@ -237,7 +237,8 @@ export default function Orders() {
   }, [etsyOrders, search, dateRange, customerFilter]);
 
   // Revenue from orders (tax collected by Etsy separately)
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
+  // Fallback to order_total (which maps from the Amount column) if order_value is missing
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || o.order_total || 0), 0);
 
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
@@ -602,7 +603,7 @@ export default function Orders() {
       header: "Order Value",
       render: (row) => (
         <span className="font-medium text-stone-900">
-          {formatCurrency(row.order_value || 0)}
+          {formatCurrency(row.order_value || row.order_total || 0)}
         </span>
       ),
     },
