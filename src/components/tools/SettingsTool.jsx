@@ -66,6 +66,10 @@ export default function SettingsTool() {
     square_fee_fixed: 0.30,
     venmo_business_fee_percent: 1.9,
     venmo_business_fee_fixed: 0.10,
+    squarespace_fee_percent: 2.9,
+    squarespace_fee_fixed: 0.30,
+    shopify_fee_percent: 2.9,
+    shopify_fee_fixed: 0.30,
     fee_country: "US",
     fee_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
     fees_last_verified_date: "",
@@ -75,6 +79,10 @@ export default function SettingsTool() {
     square_last_verified_date: "",
     venmo_source_url: "https://help.venmo.com/hc/en-us/articles/360016096533",
     venmo_last_verified_date: "",
+    squarespace_source_url: "https://www.squarespace.com/payment-processing",
+    squarespace_last_verified_date: "",
+    shopify_source_url: "https://help.shopify.com/en/manual/payments/shopify-payments",
+    shopify_last_verified_date: "",
     share_save_rate_pct: 4.0,
     share_save_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
     advertising_type: "none",
@@ -181,6 +189,10 @@ export default function SettingsTool() {
         square_fee_fixed: s.square_fee_fixed ?? 0.30,
         venmo_business_fee_percent: s.venmo_business_fee_percent ?? 1.9,
         venmo_business_fee_fixed: s.venmo_business_fee_fixed ?? 0.10,
+        squarespace_fee_percent: s.squarespace_fee_percent ?? 2.9,
+        squarespace_fee_fixed: s.squarespace_fee_fixed ?? 0.30,
+        shopify_fee_percent: s.shopify_fee_percent ?? 2.9,
+        shopify_fee_fixed: s.shopify_fee_fixed ?? 0.30,
         fee_country: s.fee_country || "US",
         fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
         fees_last_verified_date: s.fees_last_verified_date || "",
@@ -190,6 +202,10 @@ export default function SettingsTool() {
         square_last_verified_date: s.square_last_verified_date || "",
         venmo_source_url: s.venmo_source_url || "https://help.venmo.com/hc/en-us/articles/360016096533",
         venmo_last_verified_date: s.venmo_last_verified_date || "",
+        squarespace_source_url: s.squarespace_source_url || "https://www.squarespace.com/payment-processing",
+        squarespace_last_verified_date: s.squarespace_last_verified_date || "",
+        shopify_source_url: s.shopify_source_url || "https://help.shopify.com/en/manual/payments/shopify-payments",
+        shopify_last_verified_date: s.shopify_last_verified_date || "",
         share_save_rate_pct: s.share_save_rate_pct ?? 4.0,
         share_save_source_url: s.share_save_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
         advertising_type: s.advertising_type || "none",
@@ -520,11 +536,13 @@ export default function SettingsTool() {
             </div>
 
             <Tabs defaultValue="etsy" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
                 <TabsTrigger value="etsy">Etsy</TabsTrigger>
                 <TabsTrigger value="paypal">PayPal</TabsTrigger>
                 <TabsTrigger value="square">Square</TabsTrigger>
                 <TabsTrigger value="venmo">Venmo</TabsTrigger>
+                <TabsTrigger value="squarespace">Squarespace</TabsTrigger>
+                <TabsTrigger value="shopify">Shopify</TabsTrigger>
                 <TabsTrigger value="free" className="hidden lg:flex">Free</TabsTrigger>
               </TabsList>
 
@@ -866,6 +884,154 @@ export default function SettingsTool() {
                   </div>
 
                   <p className="text-xs text-stone-500 mt-3 italic">Note: Venmo Personal, Zelle, and Cash have no processing fees</p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="squarespace" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-teal-50 to-white p-4 rounded-lg border border-teal-100">
+                  <h4 className="font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                    <span className="text-teal-600">⬛</span> Squarespace Payments
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Squarespace Fee (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.squarespace_fee_percent ?? 2.9}
+                        onChange={(e) => setSettingsData({ ...settingsData, squarespace_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: 2.9% (all plans)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Squarespace Fixed Fee ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.squarespace_fee_fixed ?? 0.30}
+                        onChange={(e) => setSettingsData({ ...settingsData, squarespace_fee_fixed: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: $0.30 per transaction</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-teal-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Fee Source</Label>
+                      {settingsData.squarespace_source_url && (
+                        <a
+                          href={settingsData.squarespace_source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Official Page
+                        </a>
+                      )}
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="https://www.squarespace.com/..."
+                      value={settingsData.squarespace_source_url}
+                      onChange={(e) => setSettingsData({ ...settingsData, squarespace_source_url: e.target.value })}
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Last Verified</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={settingsData.squarespace_last_verified_date}
+                          onChange={(e) => setSettingsData({ ...settingsData, squarespace_last_verified_date: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSettingsData({ ...settingsData, squarespace_last_verified_date: new Date().toISOString().split('T')[0] })}
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-stone-500 mt-3 italic">Note: Same rate (2.9% + $0.30) for Basic, Core, Plus, and Advanced plans</p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="shopify" className="space-y-4 mt-4">
+                <div className="bg-gradient-to-br from-green-50 to-white p-4 rounded-lg border border-green-100">
+                  <h4 className="font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                    <span className="text-green-600">🛒</span> Shopify Payments
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Shopify Fee (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.shopify_fee_percent ?? 2.9}
+                        onChange={(e) => setSettingsData({ ...settingsData, shopify_fee_percent: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Basic: 2.9%, Shopify: 2.6%, Advanced: 2.4%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Shopify Fixed Fee ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.shopify_fee_fixed ?? 0.30}
+                        onChange={(e) => setSettingsData({ ...settingsData, shopify_fee_fixed: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Current rate: $0.30 per transaction</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-green-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Fee Source</Label>
+                      {settingsData.shopify_source_url && (
+                        <a
+                          href={settingsData.shopify_source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Official Page
+                        </a>
+                      )}
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="https://help.shopify.com/..."
+                      value={settingsData.shopify_source_url}
+                      onChange={(e) => setSettingsData({ ...settingsData, shopify_source_url: e.target.value })}
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Last Verified</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={settingsData.shopify_last_verified_date}
+                          onChange={(e) => setSettingsData({ ...settingsData, shopify_last_verified_date: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSettingsData({ ...settingsData, shopify_last_verified_date: new Date().toISOString().split('T')[0] })}
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-stone-500 mt-3 italic">Note: Rates vary by plan - Basic (2.9%), Shopify (2.6%), Advanced (2.4%) + $0.30</p>
                 </div>
               </TabsContent>
 
