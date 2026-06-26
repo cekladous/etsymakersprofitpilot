@@ -721,9 +721,10 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           orderValue = orderTotal;
         }
 
-        // Calculate net payout correctly: order_total - total_fees - taxes
-        // This equals Etsy's "Order earnings" = what buyer paid - (all fees & credits & tax)
+        // Use the "Net" column directly from the Monthly Statement (it IS the net payout).
+        // Fall back to calculated value only if Net is missing or zero.
         const calculatedNetPayout = orderTotal - totalOrderFees - totalTaxes;
+        const orderNet = net || calculatedNetPayout;
 
         orders.push({
           sale_date: transactionDate,
@@ -738,7 +739,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           sales_tax: 0, // Sales tax is collected by Etsy and included in total fees deductions
           order_total: orderTotal,
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
-          order_net: calculatedNetPayout,
+          order_net: orderNet,
+          currency: row["Currency"] || "",
           status: row["Status"] || "completed",
           total_fees: totalOrderFees + totalTaxes,
           _rawLine: rawLine
