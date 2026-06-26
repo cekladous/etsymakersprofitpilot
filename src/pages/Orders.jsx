@@ -26,9 +26,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2 } from "lucide-react";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2, Plus } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -59,6 +67,8 @@ export default function Orders() {
   const [selectedDepositIds, setSelectedDepositIds] = useState([]);
   const [selectedFeeOrderId, setSelectedFeeOrderId] = useState(null);
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [depositForm, setDepositForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
 
   const queryClient = useQueryClient();
 
@@ -183,6 +193,23 @@ export default function Orders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
       setSelectedDepositIds([]);
+    },
+  });
+
+  const addDepositMutation = useMutation({
+    mutationFn: async (data) => {
+      return base44.entities.Transfer.create({
+        owner_user_id: user.id,
+        type: "etsy_deposit",
+        date: data.date,
+        amount: parseFloat(data.amount) || 0,
+        notes: data.notes || "Etsy Deposit",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      setDepositDialogOpen(false);
+      setDepositForm({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
     },
   });
 
@@ -1158,6 +1185,18 @@ export default function Orders() {
         </TabsContent>
 
         <TabsContent value="deposits" className="space-y-6">
+           {/* Add Deposit Button */}
+           <div className="flex justify-end">
+             <Button
+               size="sm"
+               className="bg-emerald-600 hover:bg-emerald-700"
+               onClick={() => setDepositDialogOpen(true)}
+             >
+               <Plus className="w-4 h-4 mr-2" />
+               Add Deposit
+             </Button>
+           </div>
+
            {/* Summary Card */}
            <Card>
              <CardContent className="p-6">
@@ -1232,6 +1271,54 @@ export default function Orders() {
           onClose={() => setShowExportUpgrade(false)}
         />
       )}
+
+      {/* Add Deposit Dialog */}
+      <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Etsy Deposit / Payout</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Deposit Date *</Label>
+              <Input
+                type="date"
+                value={depositForm.date}
+                onChange={(e) => setDepositForm({ ...depositForm, date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Amount ($) *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={depositForm.amount}
+                onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description / Notes</Label>
+              <Input
+                value={depositForm.notes}
+                onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
+                placeholder="Etsy Deposit"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDepositDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={!depositForm.amount || addDepositMutation.isPending}
+              onClick={() => addDepositMutation.mutate(depositForm)}
+            >
+              {addDepositMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add Deposit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
