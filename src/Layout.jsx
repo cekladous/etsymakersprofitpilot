@@ -13,23 +13,18 @@ import {
   Menu,
   X,
   ChevronRight,
-  FileText,
-  Users,
-  Settings as SettingsIcon,
-  FileCheck2
+  BarChart3,
+  Settings as SettingsIcon
 } from "lucide-react";
 
 const navItems = [
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-        { name: "Customers", icon: Users, page: "Customers" },
-        { name: "Quotes", icon: FileText, page: "Quotes" },
-        { name: "Invoices", icon: FileCheck2, page: "Invoices" },
-        { name: "Production", icon: Wrench, page: "Production" },
         { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
         { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
         { name: "Products", icon: Package, page: "Products" },
         { name: "Inventory", icon: Layers, page: "Inventory" },
         { name: "Expenses", icon: Receipt, page: "Expenses" },
+        { name: "Reports", icon: BarChart3, page: "Reports" },
         { name: "Tools", icon: Wrench, page: "Tools" },
         { name: "Settings", icon: SettingsIcon, page: "Settings" },
       ];
