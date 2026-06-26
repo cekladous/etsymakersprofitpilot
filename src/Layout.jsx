@@ -21,11 +21,11 @@ const navItems = [
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
         { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
         { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
+        { name: "Expenses", icon: Receipt, page: "Expenses" },
         { name: "Products", icon: Package, page: "Products" },
         { name: "Inventory", icon: Layers, page: "Inventory" },
-        { name: "Expenses", icon: Receipt, page: "Expenses" },
-        { name: "Reports", icon: BarChart3, page: "Reports" },
         { name: "Tools", icon: Wrench, page: "Tools" },
+        { name: "Reports", icon: BarChart3, page: "Reports" },
         { name: "Settings", icon: SettingsIcon, page: "Settings" },
       ];
 
