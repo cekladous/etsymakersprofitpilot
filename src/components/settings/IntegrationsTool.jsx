@@ -200,7 +200,7 @@ export default function IntegrationsTool() {
             <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
               <p className="font-semibold text-stone-700">How to import:</p>
               <ol className="list-decimal list-inside space-y-1 text-stone-600 text-xs">
-                <li>Go to Squarespace → <strong>Commerce → Orders → Export</strong></li>
+                <li>In Squarespace → <strong>Analytics → Orders → Export CSV</strong></li>
                 <li>Save the CSV file to your computer</li>
                 <li>Click "Import Squarespace Sales" below and upload the file</li>
               </ol>

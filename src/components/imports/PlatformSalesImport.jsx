@@ -99,6 +99,7 @@ const PLATFORM_CONFIGS = {
     parseRow: (row) => {
       const orderId = getVal(
         row,
+        "Order #",
         "Order ID",
         "order_id",
         "Order Number",
@@ -123,13 +124,22 @@ const PLATFORM_CONFIGS = {
       );
       const customerName = getVal(
         row,
+        "Customer",
         "Customer Name",
         "customer_name",
         "Name",
         "name"
       );
+      const items = getVal(row, "Item(s)", "Items", "items", "Item");
+      const status = getVal(row, "Status", "status");
 
+      // Skip cancelled orders — they have no real revenue impact
+      if (status.toLowerCase() === "cancelled") return null;
       if (!total && !subtotal) return null;
+
+      const noteParts = [`Imported from Squarespace. Order: ${orderId}`];
+      if (status) noteParts.push(`Status: ${status}`);
+      if (items) noteParts.push(`Items: ${items}`);
 
       return {
         date,
@@ -140,11 +150,18 @@ const PLATFORM_CONFIGS = {
         sales_tax_collected: tax,
         gross_sale: total || subtotal,
         shipping_or_postage_cost: shipping,
-        notes: `Imported from Squarespace. Order: ${orderId}`,
+        notes: noteParts.join(" | "),
       };
     },
     getUniqueKey: (row) =>
-      getVal(row, "Order ID", "order_id", "Order Number", "order_number"),
+      getVal(
+        row,
+        "Order #",
+        "Order ID",
+        "order_id",
+        "Order Number",
+        "order_number"
+      ),
   },
 };
 
