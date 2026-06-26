@@ -470,7 +470,7 @@ export default function SettingsTool() {
               <Input
                 value={settingsData.user_name}
                 onChange={(e) => setSettingsData({ ...settingsData, user_name: e.target.value })}
-                placeholder="Enter your name for the dashboard greeting"
+                placeholder="Your Name"
               />
             </div>
             <div className="space-y-2 pt-4">
