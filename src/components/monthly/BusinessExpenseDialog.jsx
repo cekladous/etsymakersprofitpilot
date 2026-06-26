@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -37,11 +38,13 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function BusinessExpenseDialog({ open, onOpenChange, preselectedCategory = null }) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
   });
   
   const appSettings = settings[0] || {};

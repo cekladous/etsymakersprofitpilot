@@ -2,6 +2,10 @@
   "name": "InventoryItem",
   "type": "object",
   "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
     "material_name": {
       "type": "string",
       "description": "Material or supply name"
@@ -28,6 +32,7 @@
     }
   },
   "required": [
+    "owner_user_id",
     "material_name"
   ]
 }

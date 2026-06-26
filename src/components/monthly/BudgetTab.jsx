@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { EXPENSE_CATEGORY_GROUPS } from "@/components/shared/expenseCategories";
 import LineItemDrillDown from "./LineItemDrillDown";
 
 export default function BudgetTab({ viewMode, dateRange, financialData }) {
+  const { user } = useAuth();
   // Extract raw filtered data for compatibility
   const filteredData = financialData._rawData;
   const [drillDownOpen, setDrillDownOpen] = useState(false);
@@ -18,25 +20,28 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
   const queryClient = useQueryClient();
 
   const { data: budgetPlans = [] } = useQuery({
-    queryKey: ["budget-plans"],
-    queryFn: () => base44.entities.BudgetPlan.list(),
+    queryKey: ["budget-plans", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.BudgetPlan.filter({ owner_user_id: user.id }),
   });
 
   const { data: budgetLines = [] } = useQuery({
-    queryKey: ["budget-lines"],
-    queryFn: () => base44.entities.BudgetLine.list(),
+    queryKey: ["budget-lines", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.BudgetLine.filter({ owner_user_id: user.id }),
   });
 
   const { data: materialPurchases = [] } = useQuery({
-    queryKey: ["material-purchases"],
-    queryFn: () => base44.entities.MaterialPurchase.list("-purchase_date", 1000),
+    queryKey: ["material-purchases", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 1000),
   });
 
   // Get or create active plan
   const activePlan = budgetPlans.find(p => p.is_active) || budgetPlans[0];
 
   const createPlanMutation = useMutation({
-    mutationFn: () => base44.entities.BudgetPlan.create({ name: "Default Budget", is_active: true }),
+    mutationFn: () => base44.entities.BudgetPlan.create({ owner_user_id: user.id, name: "Default Budget", is_active: true }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budget-plans"] }),
   });
 

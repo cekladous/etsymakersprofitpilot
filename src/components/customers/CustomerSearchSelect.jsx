@@ -17,8 +17,9 @@ export default function CustomerSearchSelect({ value, onChange, placeholder = "S
   const containerRef = useRef(null);
 
   const { data: customers = [] } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list(),
+    queryKey: ["customers", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Customer.filter({ owner_user_id: user.id }),
   });
 
   const selectedCustomer = customers.find(c => c.id === value);

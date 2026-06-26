@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import {
 import { Loader2 } from "lucide-react";
 
 export default function TransferDialog({ open, onOpenChange }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     type: "owner_transfer",
     date: new Date().toISOString().split("T")[0],
@@ -35,6 +37,7 @@ export default function TransferDialog({ open, onOpenChange }) {
     mutationFn: async (data) => {
       return base44.entities.Transfer.create({
         ...data,
+        owner_user_id: user.id,
         amount: parseFloat(data.amount || 0),
       });
     },

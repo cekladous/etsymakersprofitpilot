@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Input } from "@/components/ui/input";
@@ -43,14 +44,16 @@ const defaultInputs = {
 };
 
 export default function CalculatorTool() {
+  const { user } = useAuth();
   const [inputs, setInputs] = useState(defaultInputs);
   const [shareSaveExpanded, setShareSaveExpanded] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
   });
 
   const feeConfig = settings[0] || {};

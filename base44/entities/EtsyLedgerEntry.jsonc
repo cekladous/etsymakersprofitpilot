@@ -2,6 +2,10 @@
   "name": "EtsyLedgerEntry",
   "type": "object",
   "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
     "source_batch_id": {
       "type": "string",
       "description": "Reference to OrderImportBatch"
@@ -66,6 +70,7 @@
     }
   },
   "required": [
+    "owner_user_id",
     "source_batch_id",
     "entry_date",
     "type",

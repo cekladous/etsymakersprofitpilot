@@ -29,8 +29,9 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
   const [errorMessage, setErrorMessage] = useState("");
   
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
   });
   
   const appSettings = settings[0] || {};

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -177,6 +178,7 @@ const matchCategory = (type, title, info) => {
 };
 
 export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
+  const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
@@ -192,18 +194,20 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
       // Create batch
       const batch = await base44.entities.OrderImportBatch.create({
         ...batchData,
+        owner_user_id: user.id,
         row_count: entries.length,
       });
       
       // Create ledger entries
       if (entries.length > 0) {
-        const entriesWithBatch = entries.map(e => ({ ...e, source_batch_id: batch.id }));
+        const entriesWithBatch = entries.map(e => ({ ...e, owner_user_id: user.id, source_batch_id: batch.id }));
         await base44.entities.EtsyLedgerEntry.bulkCreate(entriesWithBatch);
       }
       
       // Create transfers
       if (transfers.length > 0) {
-        await base44.entities.Transfer.bulkCreate(transfers);
+        const transfersWithOwner = transfers.map(t => ({ ...t, owner_user_id: user.id }));
+        await base44.entities.Transfer.bulkCreate(transfersWithOwner);
       }
       
       return { batch, entries };

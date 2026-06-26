@@ -10,15 +10,15 @@ import { base44 } from "@/api/base44Client";
  * Creates or updates inventory item with average cost calculation
  */
 export async function processInventoryPurchase(materialPurchase) {
-  const { material_name, quantity, unit_cost, total_cost, purchase_date, id } = materialPurchase;
+  const { material_name, quantity, unit_cost, total_cost, purchase_date, id, owner_user_id } = materialPurchase;
 
   if (!material_name || !quantity || quantity <= 0) {
     return null;
   }
 
-  // Find existing inventory item
+  // Find existing inventory item (scoped to this user)
   const existingItems = await base44.entities.InventoryItem.filter(
-    { material_name },
+    { material_name, owner_user_id },
     "-last_updated",
     1
   );
@@ -51,6 +51,7 @@ export async function processInventoryPurchase(materialPurchase) {
   } else {
     // Create new inventory item
     inventoryItem = await base44.entities.InventoryItem.create({
+      owner_user_id,
       material_name,
       quantity_on_hand: quantity,
       average_cost: cost,
@@ -61,6 +62,7 @@ export async function processInventoryPurchase(materialPurchase) {
 
   // Create transaction record
   await base44.entities.InventoryTransaction.create({
+    owner_user_id,
     inventory_item_id: inventoryItem.id,
     transaction_date: purchase_date,
     transaction_type: "purchase",
@@ -78,13 +80,13 @@ export async function processInventoryPurchase(materialPurchase) {
  * Deducts quantity from inventory using average cost
  */
 export async function processInventoryUsage(businessExpense) {
-  const { description, amount, date, id } = businessExpense;
+  const { description, amount, date, id, owner_user_id } = businessExpense;
 
-  // Try to find matching inventory item by description
+  // Try to find matching inventory item by description (scoped to this user)
   const materialName = description || "Unknown Material";
   
   const existingItems = await base44.entities.InventoryItem.filter(
-    { material_name: materialName },
+    { material_name: materialName, owner_user_id },
     "-last_updated",
     1
   );
@@ -117,6 +119,7 @@ export async function processInventoryUsage(businessExpense) {
 
   // Create transaction record
   await base44.entities.InventoryTransaction.create({
+    owner_user_id,
     inventory_item_id: inventoryItem.id,
     transaction_date: date,
     transaction_type: "usage",

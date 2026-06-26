@@ -2,6 +2,10 @@
   "name": "InventoryTransaction",
   "type": "object",
   "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
     "inventory_item_id": {
       "type": "string",
       "description": "Reference to InventoryItem"
@@ -39,6 +43,7 @@
     }
   },
   "required": [
+    "owner_user_id",
     "inventory_item_id",
     "transaction_date",
     "transaction_type",

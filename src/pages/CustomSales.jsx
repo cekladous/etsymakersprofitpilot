@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import { format, parseISO } from "date-fns";
 
 export default function CustomSalesPage() {
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,13 +21,15 @@ export default function CustomSalesPage() {
   const queryClient = useQueryClient();
 
   const { data: customSales = [], isLoading } = useQuery({
-    queryKey: ["custom-sales"],
-    queryFn: () => base44.entities.CustomSale.list("-date", 500),
+    queryKey: ["custom-sales", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.CustomSale.filter({ owner_user_id: user.id }, "-date", 500),
   });
 
   const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list(),
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
   });
 
   const deleteCustomSaleMutation = useMutation({

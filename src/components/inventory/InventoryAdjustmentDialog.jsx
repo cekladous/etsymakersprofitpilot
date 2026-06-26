@@ -36,8 +36,9 @@ export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) 
   const queryClient = useQueryClient();
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ["inventory-items"],
-    queryFn: () => base44.entities.InventoryItem.list(),
+    queryKey: ["inventory-items", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }),
   });
 
   useEffect(() => {

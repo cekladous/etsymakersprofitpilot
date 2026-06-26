@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, AlertCircle, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/components/auth/AuthProvider";
 import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
 import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 
@@ -29,12 +30,14 @@ export default function MonthCloseWorkflow({
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showLockUpgrade, setShowLockUpgrade] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { canCloseMonth, canLockMonths, planConfig } = useFeatureAccess();
 
   const closeMonthMutation = useMutation({
     mutationFn: async () => {
       const month = periodStart.toISOString().substring(0, 7);
       return base44.entities.MonthClosed.create({
+        owner_user_id: user.id,
         month,
         period_start: periodStart.toISOString().split("T")[0],
         period_end: periodEnd.toISOString().split("T")[0],
