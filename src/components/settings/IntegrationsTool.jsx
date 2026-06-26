@@ -100,15 +100,21 @@ export default function IntegrationsTool() {
                 <Square className="w-6 h-6 text-blue-600" />
                 <CardTitle className="text-lg">Square</CardTitle>
               </div>
-              <Badge className="bg-emerald-100 text-emerald-800">
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Available
-              </Badge>
+              {settings[0]?.square_location_id ? (
+                <Badge className="bg-emerald-100 text-emerald-800">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Connected
+                </Badge>
+              ) : (
+                <Badge className="bg-stone-100 text-stone-500">
+                  Not Connected
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-stone-600">
-              Configure your Square Location ID to track Square sales alongside your Etsy data.
+              Enter your Square Location ID to track Square sales. Import Square CSV exports alongside your Etsy data for complete profit tracking.
             </p>
             <div className="space-y-3">
               <div>
@@ -122,7 +128,7 @@ export default function IntegrationsTool() {
                   className="bg-stone-50"
                 />
                 <p className="text-xs text-stone-500 mt-2">
-                  Find this in your Square Dashboard → Locations
+                  Go to Square Dashboard → Locations → copy your Location ID
                 </p>
               </div>
             </div>
@@ -130,7 +136,7 @@ export default function IntegrationsTool() {
               variant="outline"
               className="w-full"
               onClick={saveSquareSettings}
-              disabled={saving}
+              disabled={saving || !squareLocationId}
             >
               {saving ? 'Saving...' : 'Save Square Settings'}
             </Button>
