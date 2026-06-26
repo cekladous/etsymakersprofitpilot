@@ -208,28 +208,24 @@ export default function Dashboard() {
   const hasAutoNavigated = useRef(false);
   useEffect(() => {
     if (hasAutoNavigated.current || !user) return;
-    const hasAnyData = etsyOrders.length > 0 || customSales.length > 0 || businessExpenses.length > 0 || expenses.length > 0;
+    const hasAnyData = etsyOrders.length > 0 || customSales.length > 0;
     if (!hasAnyData) return;
     hasAutoNavigated.current = true;
     const currentStart = startOfMonth(selectedDate);
     const currentEnd = endOfMonth(selectedDate);
     const hasDataInCurrentMonth =
       etsyOrders.some(o => { const d = new Date(o.sale_date); return d >= currentStart && d <= currentEnd; }) ||
-      customSales.some(s => { const d = new Date(s.date); return d >= currentStart && d <= currentEnd; }) ||
-      businessExpenses.some(e => { const d = new Date(e.date); return d >= currentStart && d <= currentEnd; }) ||
-      expenses.some(e => { const d = new Date(e.date); return d >= currentStart && d <= currentEnd; });
+      customSales.some(s => { const d = new Date(s.date); return d >= currentStart && d <= currentEnd; });
     if (!hasDataInCurrentMonth) {
       const allDates = [
         ...etsyOrders.map(o => new Date(o.sale_date)),
-        ...customSales.map(s => new Date(s.date)),
-        ...businessExpenses.map(e => new Date(e.date)),
-        ...expenses.map(e => new Date(e.date))
+        ...customSales.map(s => new Date(s.date))
       ].filter(d => !isNaN(d.getTime()));
       if (allDates.length > 0) {
         setSelectedDate(new Date(Math.max(...allDates)));
       }
     }
-  }, [user, etsyOrders, customSales, businessExpenses, expenses]);
+  }, [user, etsyOrders, customSales]);
 
   const { start: periodStart, end: periodEnd } = dateRange;
   const yearStart = startOfYear(now);
