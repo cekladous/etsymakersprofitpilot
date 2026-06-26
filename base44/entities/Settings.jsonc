@@ -27,7 +27,8 @@
     },
     "user_name": {
       "type": "string",
-      "description": "User's name for dashboard greeting"
+      "description": "User's name for dashboard greeting",
+      "default": ""
     },
     "square_location_id": {
       "type": "string",
@@ -120,6 +121,44 @@
       "type": "number",
       "default": 0.1,
       "description": "Venmo Business fixed fee (2026: $0.10)"
+    },
+    "squarespace_fee_percent": {
+      "type": "number",
+      "default": 2.9,
+      "description": "Squarespace Payments fee percentage (Core/Plus/Advanced: 2.9%)"
+    },
+    "squarespace_fee_fixed": {
+      "type": "number",
+      "default": 0.3,
+      "description": "Squarespace Payments fixed fee (Core/Plus/Advanced: $0.30)"
+    },
+    "squarespace_source_url": {
+      "type": "string",
+      "description": "Squarespace Payments fees page URL"
+    },
+    "squarespace_last_verified_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when Squarespace fees were last verified"
+    },
+    "shopify_fee_percent": {
+      "type": "number",
+      "default": 2.9,
+      "description": "Shopify Payments fee percentage (Basic plan: 2.9%)"
+    },
+    "shopify_fee_fixed": {
+      "type": "number",
+      "default": 0.3,
+      "description": "Shopify Payments fixed fee (Basic plan: $0.30)"
+    },
+    "shopify_source_url": {
+      "type": "string",
+      "description": "Shopify Payments fees page URL"
+    },
+    "shopify_last_verified_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when Shopify fees were last verified"
     },
     "fee_country": {
       "type": "string",
