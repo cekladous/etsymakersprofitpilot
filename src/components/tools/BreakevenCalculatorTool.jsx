@@ -26,14 +26,14 @@ const FREQUENCY_TO_MONTHLY = {
 export default function BreakevenCalculatorTool() {
   const { user } = useAuth();
   const [inputs, setInputs] = useState({
-    retail_price: 25,
-    material_cost: 8,
-    shipping_cost: 3,
+    retail_price: 0,
+    material_cost: 0,
+    shipping_cost: 0,
     platform_fee_pct: 6.5,
     processing_fee_pct: 3,
     flat_fee: 0.25,
     fixed_monthly_expenses: 0,
-    target_profit: 1000,
+    target_profit: 0,
   });
   const [useAutoExpenses, setUseAutoExpenses] = useState(true);
 
@@ -58,14 +58,14 @@ export default function BreakevenCalculatorTool() {
 
   const handleReset = () => {
     setInputs({
-      retail_price: 25,
-      material_cost: 8,
-      shipping_cost: 3,
+      retail_price: 0,
+      material_cost: 0,
+      shipping_cost: 0,
       platform_fee_pct: 6.5,
       processing_fee_pct: 3,
       flat_fee: 0.25,
       fixed_monthly_expenses: 0,
-      target_profit: 1000,
+      target_profit: 0,
     });
     setUseAutoExpenses(true);
   };

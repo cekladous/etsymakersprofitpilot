@@ -22,13 +22,13 @@ import { format } from "date-fns";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const defaultInputs = {
-  sales_price: 25.00,
-  shipping_charged: 5.00,
+  sales_price: 0,
+  shipping_charged: 0,
   discounts: 0,
   discounts_type: "fixed",
   refunds: 0,
   sales_tax: 0,
-  cost_of_goods: 8.00,
+  cost_of_goods: 0,
   shipping_cost: 0,
   overhead_cost: 0,
   labor_hours: 0,

@@ -10,8 +10,8 @@ import { Calculator, ArrowRight } from "lucide-react";
 import { calculateProfit, formatCurrency, formatPercent } from "@/components/shared/profitCalculator";
 
 export default function ProfitCalculatorWidget() {
-  const [price, setPrice] = useState(25);
-  const [cogs, setCogs] = useState(8);
+  const [price, setPrice] = useState(0);
+  const [cogs, setCogs] = useState(0);
 
   const { data: settings = [] } = useQuery({
     queryKey: ["settings"],

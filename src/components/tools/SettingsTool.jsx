@@ -50,7 +50,7 @@ export default function SettingsTool() {
   const [resetting, setResetting] = useState(false);
   
   const [settingsData, setSettingsData] = useState({
-    electricity_rate: 0.12,
+    electricity_rate: 0,
     monthly_overhead: 0,
     default_markup: 0,
     business_name: "",
@@ -165,7 +165,7 @@ export default function SettingsTool() {
     if (settings.length > 0) {
       const s = settings[0];
       setSettingsData({
-        electricity_rate: s.electricity_rate || 0.12,
+        electricity_rate: s.electricity_rate ?? 0,
         monthly_overhead: s.monthly_overhead || 0,
         default_markup: s.default_markup || 0,
         business_name: s.business_name || "",
@@ -386,7 +386,7 @@ export default function SettingsTool() {
       if (settings.length > 0) {
         await base44.entities.Settings.update(settings[0].id, {
           owner_user_id: user.id,
-          electricity_rate: 0.12,
+          electricity_rate: 0,
           monthly_overhead: 0,
           default_markup: 0,
           business_name: "",
@@ -461,7 +461,7 @@ export default function SettingsTool() {
                 <Input
                   value={settingsData.business_name}
                   onChange={(e) => setSettingsData({ ...settingsData, business_name: e.target.value })}
-                  placeholder="My Maker Shop"
+                  placeholder="Your Shop Name"
                 />
               </div>
             </div>
