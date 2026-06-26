@@ -34,12 +34,31 @@ const PLATFORM_CONFIGS = {
       "Upload your Shopify orders CSV export. Each order will be imported as a custom sale.",
     parseRow: (row) => {
       const orderId = getVal(row, "Name", "Order", "Order Number", "name");
+      const email = getVal(row, "Email", "email");
+      const financialStatus = getVal(
+        row,
+        "Financial Status",
+        "financial_status"
+      );
+      const fulfillmentStatus = getVal(
+        row,
+        "Fulfillment Status",
+        "fulfillment_status"
+      );
       const total = parseMoney(getVal(row, "Total", "total"));
       const subtotal = parseMoney(getVal(row, "Subtotal", "subtotal"));
       const shipping = parseMoney(getVal(row, "Shipping", "shipping"));
       const tax = parseMoney(getVal(row, "Taxes", "tax", "Tax"));
       const date = parseDate(
-        getVal(row, "Created at", "created_at", "Date", "date")
+        getVal(
+          row,
+          "Paid at",
+          "paid_at",
+          "Created at",
+          "created_at",
+          "Date",
+          "date"
+        )
       );
       const customerName = getVal(
         row,
@@ -49,7 +68,14 @@ const PLATFORM_CONFIGS = {
         "customer_name"
       );
 
+      // Skip voided orders — they have no real revenue impact
+      if (financialStatus.toLowerCase() === "voided") return null;
       if (!total && !subtotal) return null;
+
+      const noteParts = [`Imported from Shopify. Order: ${orderId}`];
+      if (financialStatus) noteParts.push(`Financial: ${financialStatus}`);
+      if (fulfillmentStatus) noteParts.push(`Fulfillment: ${fulfillmentStatus}`);
+      if (email) noteParts.push(`Email: ${email}`);
 
       return {
         date,
@@ -60,7 +86,7 @@ const PLATFORM_CONFIGS = {
         sales_tax_collected: tax,
         gross_sale: total || subtotal,
         shipping_or_postage_cost: shipping,
-        notes: `Imported from Shopify. Order: ${orderId}`,
+        notes: noteParts.join(" | "),
       };
     },
     getUniqueKey: (row) =>
