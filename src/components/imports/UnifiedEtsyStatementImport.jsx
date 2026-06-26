@@ -713,8 +713,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             let salesTax = parseMoney(getRowValue(row, "Sales Tax", "Tax paid by buyer"));
             const orderTotal = parseMoney(getRowValue(row, "Order Total", "Total")) || amount;
 
-        // `orderValue` = Item(s) price from CSV. Only use if explicitly provided.
-        // Do not derive from other fields to avoid double-counting deductions.
+        // Monthly Statement CSV has no "Order Value" column — fall back to the
+        // order total (which itself falls back to the Amount column) so Revenue
+        // reflects the actual sale amount. Without this, Revenue shows $0.00
+        // even though Net Earnings are captured correctly.
+        if (!orderValue) {
+          orderValue = orderTotal;
+        }
 
         // Calculate net payout correctly: order_total - total_fees - taxes
         // This equals Etsy's "Order earnings" = what buyer paid - (all fees & credits & tax)
