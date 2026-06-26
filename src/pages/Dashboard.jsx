@@ -15,7 +15,8 @@ import {
   Plus,
   Calendar,
   BarChart3,
-  Table as TableIcon } from
+  Table as TableIcon,
+  AlertCircle } from
 "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, subMonths, startOfQuarter, endOfQuarter, endOfYear, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -201,12 +202,38 @@ export default function Dashboard() {
     return { start, end };
   }, [timeRange, selectedDate, customStartDate, customEndDate]);
 
-  const { start: periodStart, end: periodEnd } = dateRange;
+  // Fallback: if selected period has no Etsy orders, use most recent month with data
+  const mostRecentOrderDate = useMemo(() => {
+    if (!etsyOrders || etsyOrders.length === 0) return null;
+    const sorted = [...etsyOrders].sort((a, b) => new Date(b.sale_date) - new Date(a.sale_date));
+    return new Date(sorted[0].sale_date);
+  }, [etsyOrders]);
+
+  const isFallbackPeriod = useMemo(() => {
+    if (!dateRange?.start || !dateRange?.end || !mostRecentOrderDate) return false;
+    const hasOrders = etsyOrders.some(o => {
+      const d = new Date(o.sale_date);
+      return d >= dateRange.start && d <= dateRange.end;
+    });
+    return !hasOrders;
+  }, [dateRange, etsyOrders, mostRecentOrderDate]);
+
+  const effectiveDateRange = useMemo(() => {
+    if (isFallbackPeriod && mostRecentOrderDate) {
+      return {
+        start: startOfMonth(mostRecentOrderDate),
+        end: endOfMonth(mostRecentOrderDate),
+      };
+    }
+    return dateRange;
+  }, [dateRange, isFallbackPeriod, mostRecentOrderDate]);
+
+  const { start: periodStart, end: periodEnd } = effectiveDateRange;
   const yearStart = startOfYear(now);
 
   // SINGLE SOURCE OF TRUTH - Use shared financial aggregator
   const financialData = useMemo(() => {
-    if (!dateRange?.start || !dateRange?.end) {
+    if (!effectiveDateRange?.start || !effectiveDateRange?.end) {
       return {
         totalRevenue: 0,
         netProfit: 0,
@@ -230,8 +257,8 @@ export default function Dashboard() {
       fees,
       etsyStatementLines,
       etsyStatementImports
-    }, dateRange);
-  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, dateRange]);
+    }, effectiveDateRange);
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, effectiveDateRange]);
 
   // For backward compatibility with existing components
   const filteredSummaryData = financialData._rawData;
@@ -540,6 +567,19 @@ export default function Dashboard() {
           </div>
           </PageHeader>
 
+      {isFallbackPeriod && mostRecentOrderDate && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-900">No data for {getPeriodLabel()}</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Showing the most recent month with data: <strong>{format(mostRecentOrderDate, "MMMM yyyy")}</strong>. 
+              Use the date navigation arrows to select a different period.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-stone-100">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -675,7 +715,7 @@ export default function Dashboard() {
 
       {/* Unmatched Rows Banner - CRITICAL */}
       {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0 || (financialData.deduplicationWarnings || []).length > 0) &&
-         <Link to={createPageUrl("ReconciliationReview")} className="block">
+         <Link to={createPageUrl("Orders") + "?tab=reconciliation"} className="block">
          <div className={`rounded-xl p-4 hover:shadow-md transition-all border-l-4 ${
            financialData.unmatchedNetImpact !== 0 
              ? 'bg-red-50 border-red-300 border' 
@@ -714,7 +754,7 @@ export default function Dashboard() {
           <div className="space-y-3">
           <h2 className="text-lg font-semibold text-stone-900">Needs Attention</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Link to={createPageUrl("Jobs")} className="block">
+            <Link to={createPageUrl("Production")} className="block">
               <AlertCard
                   title="Orders Missing Jobs"
                   count={ordersWithoutJobs.length}
