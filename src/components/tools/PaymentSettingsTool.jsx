@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle2, Square, ShoppingBag } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Square, ShoppingBag, Upload, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function PaymentSettingsTool() {
   const { user } = useAuth();
@@ -57,31 +58,35 @@ export default function PaymentSettingsTool() {
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <ShoppingBag className="w-6 h-6 text-orange-600" />
-              <CardTitle className="text-lg">Etsy Integration</CardTitle>
+              <CardTitle className="text-lg">Etsy Data Import</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Enable Etsy Payments</Label>
-              {etsy_enabled ? (
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              ) : (
-                <Badge variant="outline">Not Connected</Badge>
-              )}
+            <div className="flex items-center gap-2">
+              <Badge className="bg-blue-100 text-blue-800">
+                <FileText className="w-3 h-3 mr-1" />
+                CSV Import
+              </Badge>
             </div>
             <p className="text-sm text-stone-600">
-              Connect your Etsy shop to sync orders and payments directly.
+              Import your Etsy data by downloading CSV files from Etsy and uploading them here. No API connection needed.
             </p>
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={etsy_enabled}
-            >
-              {etsy_enabled ? 'Already Connected' : 'Connect Etsy'}
-            </Button>
+            <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
+              <p className="font-semibold text-stone-700">How to import:</p>
+              <ol className="list-decimal list-inside space-y-1 text-stone-600 text-xs">
+                <li>Go to Etsy → <strong>Finances → Payment Account → Download CSV</strong></li>
+                <li>Save the Monthly Statement CSV file</li>
+                <li>Click "Import Etsy Data" below and upload the file</li>
+              </ol>
+            </div>
+            <Link to="/Orders">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import Etsy Data
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
