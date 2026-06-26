@@ -6,6 +6,7 @@ export const BUSINESS_EXPENSE_CATEGORIES = [
   { value: "materials_supplies", label: "Materials & Supplies", group: "product" },
   { value: "packaging_materials", label: "Packaging Materials", group: "product" },
   { value: "tools_equipment", label: "Tools & Equipment", group: "product" },
+  { value: "shipping_postage", label: "Shipping & Postage", group: "business" },
   { value: "advertising_marketing", label: "Advertising & Marketing (non-Etsy)", group: "business" },
   { value: "office_general_expenses", label: "Office / General Expenses", group: "business" },
   { value: "gas_mileage", label: "Gas / Mileage", group: "business" },
@@ -52,6 +53,7 @@ export const CATEGORY_COLORS = {
   materials_supplies: "bg-blue-100 text-blue-700",
   packaging_materials: "bg-teal-100 text-teal-700",
   tools_equipment: "bg-amber-100 text-amber-700",
+  shipping_postage: "bg-yellow-100 text-yellow-700",
   advertising_marketing: "bg-pink-100 text-pink-700",
   office_general_expenses: "bg-emerald-100 text-emerald-700",
   office_expenses: "bg-emerald-100 text-emerald-700",
@@ -105,6 +107,7 @@ export const EXPENSE_CATEGORY_GROUPS = {
     label: "Business Expenses",
     color: "bg-purple-50",
     categories: [
+      { name: "shipping_postage", label: "Shipping & Postage" },
       { name: "advertising_marketing", label: "Advertising & Marketing" },
       { name: "office_expenses", label: "Office Expenses" },
       { name: "professional_services", label: "Professional Services" },

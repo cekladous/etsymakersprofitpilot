@@ -16,7 +16,9 @@ import {
   Calendar,
   BarChart3,
   Table as TableIcon,
-  AlertCircle } from
+  AlertCircle,
+  Sparkles,
+  Upload } from
 "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, subMonths, startOfQuarter, endOfQuarter, endOfYear, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -576,6 +578,36 @@ export default function Dashboard() {
               Showing the most recent month with data: <strong>{format(mostRecentOrderDate, "MMMM yyyy")}</strong>. 
               Use the date navigation arrows to select a different period.
             </p>
+          </div>
+        </div>
+      )}
+
+      {etsyOrders.length === 0 && customSales.length === 0 && businessExpenses.length === 0 && expenses.length === 0 && (
+        <div className="bg-gradient-to-br from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-emerald-100 rounded-lg flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-stone-900">Welcome to Profit Pilot! 🎉</h2>
+              <p className="text-sm text-stone-600 mt-1">
+                Your dashboard is ready. Import your first Etsy statement to start tracking your sales, fees, and profit.
+              </p>
+              <div className="flex gap-2 mt-4 flex-wrap">
+                <Link to={createPageUrl("Orders")}>
+                  <Button className="bg-emerald-600 hover:bg-emerald-700">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import Your First Etsy Statement
+                  </Button>
+                </Link>
+                <Link to={createPageUrl("Expenses")}>
+                  <Button variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add an Expense
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       )}

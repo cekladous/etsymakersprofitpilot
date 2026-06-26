@@ -30,7 +30,7 @@ import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES } from "@/components/s
 // Map legacy categories to BusinessExpense schema
 const CATEGORY_MAP = {
   materials: "materials_supplies",
-  shipping: "shipping_costs",
+  shipping: "shipping_postage",
   tools: "tools_equipment",
   software: "software_subscriptions",
   advertising: "advertising_marketing",

@@ -136,7 +136,7 @@ export default function IntegrationsTool() {
               variant="outline"
               className="w-full"
               onClick={saveSquareSettings}
-              disabled={saving || !squareLocationId}
+              disabled={saving}
             >
               {saving ? 'Saving...' : 'Save Square Settings'}
             </Button>

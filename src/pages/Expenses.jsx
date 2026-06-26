@@ -993,10 +993,13 @@ export default function Expenses() {
       {filteredExpenses.length === 0 && !isLoading ? (
         <EmptyState
           icon={Receipt}
-          title="No expenses tracked"
-          description="Import your bank or credit card statements or add expenses manually."
-          actionLabel="Import CSV"
-          onAction={() => setImportOpen(true)}
+          title="No expenses tracked yet"
+          description="Add your first expense to start tracking your business costs."
+          actionLabel="Add Your First Expense"
+          onAction={() => {
+            setEditingExpense(null);
+            setFormOpen(true);
+          }}
         />
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -194,8 +194,8 @@ export default function Products() {
         <EmptyState
           icon={Package}
           title="No products yet"
-          description="Add your products to store default materials and specs."
-          actionLabel="Add Product"
+          description="Add your first product to store default materials, specs, and costs for faster job creation."
+          actionLabel="Add Your First Product"
           onAction={() => setFormOpen(true)}
         />
       ) : (

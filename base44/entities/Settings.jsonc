@@ -29,6 +29,10 @@
       "type": "string",
       "description": "User's name for dashboard greeting"
     },
+    "square_location_id": {
+      "type": "string",
+      "description": "Square Location ID for tracking Square sales"
+    },
     "etsy_listing_fee": {
       "type": "number",
       "default": 0.2,

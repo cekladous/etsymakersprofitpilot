@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PageHeader from "@/components/ui/PageHeader";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Download, Info } from "lucide-react";
 
 export default function Reports() {
   const { user, loading } = useAuth();
@@ -250,6 +250,22 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Empty state instructions for new users */}
+      {yearlyTotals.totalRevenue === 0 && yearlyTotals.totalExpenses === 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-blue-900">No data for {selectedYear}</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Your monthly P&L summary will appear here once you import your Etsy statements and add expenses.
+                Use the year selector to view different years, and the Export CSV button to download your report.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Monthly Table */}
       <Card>
