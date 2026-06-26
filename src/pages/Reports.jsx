@@ -150,17 +150,15 @@ export default function Reports() {
   const exportReport = () => {
     const rows = monthlyData.filter(m => m.hasData);
     const csv = [
-      ["Month", "Etsy Sales", "Custom Sales", "Total Revenue", "Selling Fees", "Product Costs", "Business Expenses", "Total Expenses", "Net Profit", "Profit Margin %"],
+      ["Month", "Etsy Sales", "Custom Sales", "Total Revenue", "Total Expenses", "Net Profit", "Profit Margin %"],
       ...rows.map(m => [
         m.monthFull, m.etsySales.toFixed(2), m.customSales.toFixed(2),
-        m.totalRevenue.toFixed(2), m.sellingFees.toFixed(2), m.productCosts.toFixed(2),
-        m.businessExpenses.toFixed(2), m.totalExpenses.toFixed(2), m.netProfit.toFixed(2),
+        m.totalRevenue.toFixed(2), m.totalExpenses.toFixed(2), m.netProfit.toFixed(2),
         m.profitMargin ? m.profitMargin.toFixed(1) : "0",
       ]),
       ["TOTAL", yearlyTotals.etsySales.toFixed(2), yearlyTotals.customSales.toFixed(2),
-        yearlyTotals.totalRevenue.toFixed(2), yearlyTotals.sellingFees.toFixed(2),
-        yearlyTotals.productCosts.toFixed(2), yearlyTotals.businessExpenses.toFixed(2),
-        yearlyTotals.totalExpenses.toFixed(2), yearlyTotals.netProfit.toFixed(2),
+        yearlyTotals.totalRevenue.toFixed(2), yearlyTotals.totalExpenses.toFixed(2),
+        yearlyTotals.netProfit.toFixed(2),
         yearlyTotals.profitMargin ? yearlyTotals.profitMargin.toFixed(1) : "0"],
     ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
@@ -267,9 +265,6 @@ export default function Reports() {
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Etsy Sales</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Custom Sales</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Total Revenue</th>
-                  <th className="text-right py-3 px-2 font-semibold text-stone-700">Selling Fees</th>
-                  <th className="text-right py-3 px-2 font-semibold text-stone-700">Product Costs</th>
-                  <th className="text-right py-3 px-2 font-semibold text-stone-700">Business Expenses</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Total Expenses</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Net Profit</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Margin</th>
@@ -282,9 +277,6 @@ export default function Reports() {
                     <td className="text-right py-3 px-2 text-emerald-600">{m.hasData ? formatCurrency(m.etsySales) : "—"}</td>
                     <td className="text-right py-3 px-2 text-blue-600">{m.hasData ? formatCurrency(m.customSales) : "—"}</td>
                     <td className="text-right py-3 px-2 font-semibold text-stone-900">{m.hasData ? formatCurrency(m.totalRevenue) : "—"}</td>
-                    <td className="text-right py-3 px-2 text-rose-600">{m.hasData ? formatCurrency(m.sellingFees) : "—"}</td>
-                    <td className="text-right py-3 px-2 text-amber-600">{m.hasData ? formatCurrency(m.productCosts) : "—"}</td>
-                    <td className="text-right py-3 px-2 text-purple-600">{m.hasData ? formatCurrency(m.businessExpenses) : "—"}</td>
                     <td className="text-right py-3 px-2 font-medium text-stone-900">{m.hasData ? formatCurrency(m.totalExpenses) : "—"}</td>
                     <td className={`text-right py-3 px-2 font-semibold ${m.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{m.hasData ? formatCurrency(m.netProfit) : "—"}</td>
                     <td className="text-right py-3 px-2 text-stone-500">{m.hasData && m.profitMargin ? `${m.profitMargin.toFixed(1)}%` : "—"}</td>
@@ -295,9 +287,6 @@ export default function Reports() {
                   <td className="text-right py-3 px-2 text-emerald-600">{formatCurrency(yearlyTotals.etsySales)}</td>
                   <td className="text-right py-3 px-2 text-blue-600">{formatCurrency(yearlyTotals.customSales)}</td>
                   <td className="text-right py-3 px-2 text-stone-900">{formatCurrency(yearlyTotals.totalRevenue)}</td>
-                  <td className="text-right py-3 px-2 text-rose-600">{formatCurrency(yearlyTotals.sellingFees)}</td>
-                  <td className="text-right py-3 px-2 text-amber-600">{formatCurrency(yearlyTotals.productCosts)}</td>
-                  <td className="text-right py-3 px-2 text-purple-600">{formatCurrency(yearlyTotals.businessExpenses)}</td>
                   <td className="text-right py-3 px-2 text-stone-900">{formatCurrency(yearlyTotals.totalExpenses)}</td>
                   <td className={`text-right py-3 px-2 ${yearlyTotals.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(yearlyTotals.netProfit)}</td>
                   <td className="text-right py-3 px-2 text-stone-700">{yearlyTotals.profitMargin ? yearlyTotals.profitMargin.toFixed(1) : "0"}%</td>
