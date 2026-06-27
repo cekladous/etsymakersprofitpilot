@@ -19,7 +19,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     }).format(amount);
   };
 
-  // Net Earnings = Revenue (excl. tax) - Transaction Fee - Processing Fee + Share & Save Credit
+  // Net Earnings = Total before tax - Transaction fee - Processing fee + Share & Save Refund - Tax paid by buyer
   const revenueExclTax =
     (order.order_value || 0) +
     (order.shipping_charged || 0) -
@@ -29,12 +29,18 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
 
   const shareSaveCredit = orderFees?.share_save_credit || 0;
 
+  // Total Fees = Transaction fee + Processing fee - Share & Save Refund (excludes tax)
+  const totalFeesPaid = orderFees
+    ? (orderFees.transaction_fees || 0) + (orderFees.processing_fees || 0) - shareSaveCredit
+    : 0;
+
   const calculatedNetEarnings = orderFees
     ? revenueExclTax -
       (orderFees.transaction_fees || 0) -
       (orderFees.processing_fees || 0) +
-      shareSaveCredit
-    : revenueExclTax;
+      shareSaveCredit -
+      (order.sales_tax || 0)
+    : revenueExclTax - (order.sales_tax || 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -247,7 +253,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                 <div className="border-t pt-2 flex justify-between items-center">
                   <span className="font-semibold text-stone-900">Total Fees</span>
                   <span className="font-semibold text-rose-600">
-                    {formatCurrency(orderFees.total_fees)}
+                    {formatCurrency(totalFeesPaid)}
                   </span>
                 </div>
               </CardContent>
