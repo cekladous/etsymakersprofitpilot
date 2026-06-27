@@ -854,7 +854,7 @@ export default function Orders() {
         <p className="text-sm text-blue-900 mb-2">
           <strong>📊 Import Your Etsy Data:</strong>
         </p>
-        <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-900">
+        <div className="grid md:grid-cols-3 gap-4 text-sm text-blue-900">
           <div>
             <p className="font-semibold mb-1">Monthly Statement (Required)</p>
             <p className="text-xs">Finances → Payment Account → Download CSV</p>
@@ -866,8 +866,8 @@ export default function Orders() {
             <p className="text-xs opacity-75">Adds product details, SKUs, buyer info</p>
           </div>
           <div>
-            <p className="font-semibold mb-1">Etsy Payment Deposits (Optional)</p>
-            <p className="text-xs">Settings (account icon) → Options → Download Data → Etsy Payment Deposits</p>
+            <p className="font-semibold mb-1">Payment Deposits (Optional)</p>
+            <p className="text-xs">Etsy → account icon → Options → Download Data → Under 'Orders' → 'Etsy Payment Deposits'</p>
             <p className="text-xs opacity-75">For reconciliation with bank deposits</p>
           </div>
         </div>

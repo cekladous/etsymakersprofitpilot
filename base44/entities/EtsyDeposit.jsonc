@@ -1,0 +1,50 @@
+{
+  "name": "EtsyDeposit",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this record"
+    },
+    "deposit_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of deposit"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Deposit amount"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD",
+      "description": "Currency code"
+    },
+    "type": {
+      "type": "string",
+      "description": "Deposit type from CSV"
+    },
+    "description": {
+      "type": "string",
+      "description": "Deposit description"
+    },
+    "import_batch_id": {
+      "type": "string",
+      "description": "Reference to import batch"
+    },
+    "source_file": {
+      "type": "string",
+      "description": "Source CSV filename"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Import timestamp"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "deposit_date",
+    "amount"
+  ]
+}

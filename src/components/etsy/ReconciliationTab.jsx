@@ -21,6 +21,12 @@ export default function ReconciliationTab({ user }) {
     queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }, "-imported_at"),
   });
 
+  const { data: etsyDeposits = [] } = useQuery({
+    queryKey: ["etsy-deposits", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyDeposit.filter({ owner_user_id: user.id })
+  });
+
   const { data: unmatchedStatementLines = [] } = useQuery({
     queryKey: ["unmatched-statement-lines", user?.id],
     enabled: !!user,
@@ -59,6 +65,10 @@ export default function ReconciliationTab({ user }) {
   });
 
   const totalUnmatched = unmatchedStatementLines.length + unmatchedLedgerEntries.length;
+
+  const statementTotal = etsyDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+  const ordersTotal = imports.filter(imp => imp.status === 'success').reduce((sum, imp) => sum + (imp.orders_count || 0), 0);
+  const difference = ordersTotal - statementTotal;
 
   const allUnmatchedRows = [
     ...unmatchedStatementLines.map(line => ({
@@ -242,6 +252,26 @@ export default function ReconciliationTab({ user }) {
           <TabsTrigger value="deposits">Deposit Matching</TabsTrigger>
           <TabsTrigger value="statement">Statement Review</TabsTrigger>
         </TabsList>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Reconciliation Check</CardTitle>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-4">
+            <div className="bg-stone-100 p-4 rounded-lg">
+              <p className="text-sm text-stone-500">Statement Total</p>
+              <p className="text-2xl font-bold">${statementTotal.toFixed(2)}</p>
+            </div>
+            <div className="bg-stone-100 p-4 rounded-lg">
+              <p className="text-sm text-stone-500">Orders Total</p>
+              <p className="text-2xl font-bold">${ordersTotal.toFixed(2)}</p>
+            </div>
+            <div className={`p-4 rounded-lg ${difference === 0 ? 'bg-emerald-100' : 'bg-rose-100'}`}>
+              <p className={`text-sm ${difference === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>Difference</p>
+              <p className={`text-2xl font-bold ${difference === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>${difference.toFixed(2)}</p>
+            </div>
+          </CardContent>
+        </Card>
 
         <TabsContent value="deposits" className="space-y-6">
           <DepositMatcher user={user} />
