@@ -21,10 +21,14 @@ const DEFAULT_KEYWORD_RULES = [
   { keyword: "google ads", category: "advertising_marketing" },
   { keyword: "google adwords", category: "advertising_marketing" },
   { keyword: "facebook", category: "advertising_marketing" },
+  { keyword: "facebk", category: "advertising_marketing" },
   { keyword: "meta platforms", category: "advertising_marketing" },
+  { keyword: "meta", category: "advertising_marketing" },
   { keyword: "instagram", category: "advertising_marketing" },
   { keyword: "pinterest", category: "advertising_marketing" },
+  { keyword: "pinterest ads", category: "advertising_marketing" },
   { keyword: "tiktok", category: "advertising_marketing" },
+  { keyword: "tiktok ads", category: "advertising_marketing" },
 
   // Software & Subscriptions
   { keyword: "adobe", category: "software_subscriptions" },
