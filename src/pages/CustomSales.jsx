@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Zap } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import { format, parseISO } from "date-fns";
@@ -13,6 +13,7 @@ import { format, parseISO } from "date-fns";
 export default function CustomSalesPage() {
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [dateRange, setDateRange] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -30,6 +31,12 @@ export default function CustomSalesPage() {
     queryKey: ["settings", user?.id],
     enabled: !!user,
     queryFn: () => base44.entities.Settings.filter({ owner_user_id: user.id }),
+  });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["products", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Product.filter({ owner_user_id: user.id }),
   });
 
   const deleteCustomSaleMutation = useMutation({
@@ -91,12 +98,55 @@ export default function CustomSalesPage() {
   const totalTax = filteredSales.reduce((sum, sale) => sum + (sale.sales_tax_collected || 0), 0);
   const totalShipping = filteredSales.reduce((sum, sale) => sum + (sale.shipping_or_postage_cost || 0), 0);
 
+  // Running totals for Quick Add
+  const today = new Date().toISOString().split('T')[0];
+  const thisMonth = today.substring(0, 7);
+  const todaySales = customSales.filter(s => s.date === today).reduce((sum, s) => sum + (s.gross_sale || 0), 0);
+  const monthSales = customSales.filter(s => s.date.startsWith(thisMonth)).reduce((sum, s) => sum + (s.gross_sale || 0), 0);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Custom Sales"
         description="Track direct sales, quotes, and non-Etsy revenue"
-      />
+      >
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setQuickAddOpen(true)} 
+            className="bg-emerald-600 hover:bg-emerald-700"
+            size="sm"
+          >
+            <Zap className="w-4 h-4 mr-2" />
+            Quick Add
+          </Button>
+          <Button onClick={() => setDialogOpen(true)} className="bg-stone-800 hover:bg-stone-900" size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Sale
+          </Button>
+        </div>
+      </PageHeader>
+
+      {/* Running Total Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-stone-500">Today's Sales</p>
+            <p className="text-xl font-bold text-emerald-600">${todaySales.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-stone-500">This Month</p>
+            <p className="text-xl font-bold text-emerald-600">${monthSales.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-stone-500">Total Revenue</p>
+            <p className="text-xl font-bold text-stone-900">${totalGross.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -186,10 +236,6 @@ export default function CustomSalesPage() {
           </button>
         </div>
 
-        <Button onClick={() => setDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Sale
-        </Button>
       </div>
 
       {/* Table */}
@@ -254,6 +300,7 @@ export default function CustomSalesPage() {
       </Card>
 
       <CustomSaleDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      {/* Quick Add Dialog would go here - minimal version */}
     </div>
   );
 }

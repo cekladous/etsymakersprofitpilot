@@ -15,7 +15,8 @@ import {
   ChevronRight,
   BarChart3,
   Settings as SettingsIcon,
-  FileText
+  FileText,
+  FileCheck
 } from "lucide-react";
 
 const navItems = [
@@ -23,7 +24,7 @@ const navItems = [
         { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
         { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
         { name: "Quotes", icon: FileText, page: "Quotes" },
-        { name: "Invoices", icon: FileText, page: "Invoices" },
+        { name: "Invoices", icon: Receipt, page: "Invoices" },
         { name: "Expenses", icon: Receipt, page: "Expenses" },
         { name: "Products", icon: Package, page: "Products" },
         { name: "Inventory", icon: Layers, page: "Inventory" },

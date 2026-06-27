@@ -265,7 +265,13 @@ export default function Orders() {
 
   // Revenue from orders (tax collected by Etsy separately)
   // Fallback to order_total (which maps from the Amount column) if order_value is missing
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || o.order_total || 0), 0);
+  // Revenue (excl. tax) = order_value (item price + shipping - discounts), NOT including sales_tax
+  const totalRevenue = filteredOrders.reduce((sum, o) => {
+    // Use order_value if available, otherwise calculate from components
+    if (o.order_value) return sum + o.order_value;
+    // Fallback: item price + shipping - discounts (before tax, before fees)
+    return sum + ((o.order_total || 0) - (o.sales_tax || 0));
+  }, 0);
 
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
@@ -851,8 +857,13 @@ export default function Orders() {
           </div>
           <div>
             <p className="font-semibold mb-1">Sold Orders Report (Optional)</p>
-            <p className="text-xs">Shop Manager → Orders → Download CSV</p>
+            <p className="text-xs">Settings (account icon) → Options → Download Data → Orders CSV</p>
             <p className="text-xs opacity-75">Adds product details, SKUs, buyer info</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1">Etsy Payment Deposits (Optional)</p>
+            <p className="text-xs">Settings (account icon) → Options → Download Data → Etsy Payment Deposits</p>
+            <p className="text-xs opacity-75">For reconciliation with bank deposits</p>
           </div>
         </div>
       </div>
