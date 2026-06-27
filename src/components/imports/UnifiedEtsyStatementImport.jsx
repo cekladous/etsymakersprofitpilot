@@ -344,23 +344,62 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         if (skippedFees > 0) console.log(`⚠️ Skipped ${skippedFees} duplicate fee(s)`);
         if (skippedDeposits > 0) console.log(`⚠️ Skipped ${skippedDeposits} duplicate deposit(s)`);
 
-        // ATOMIC IMPORT: Import only new orders (upsert by order_id)
+        // ATOMIC IMPORT: Import only new orders (bulk upsert by order_id)
         const orderIdToEntityId = {};
+        // Fetch all existing orders ONCE to avoid N+1 queries
+        const allExistingOrders = await base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id });
+        const existingOrderMap = {};
+        allExistingOrders.forEach(o => { existingOrderMap[o.order_id] = o; });
+
+        const ordersToCreate = [];
+        const ordersToUpdate = [];
         for (const order of newOrders) {
+          const existing = existingOrderMap[order.order_id];
+          if (existing) {
+            ordersToUpdate.push({ id: existing.id, ...order });
+            orderIdToEntityId[order.order_id] = existing.id;
+            result.orders.updated++;
+          } else {
+            ordersToCreate.push({ ...order, owner_user_id: currentUser.id });
+          }
+        }
+
+        // Bulk create new orders
+        if (ordersToCreate.length > 0) {
           try {
-            const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id, owner_user_id: currentUser.id });
-            if (existing.length > 0) {
-              await base44.entities.EtsyOrder.update(existing[0].id, order);
-              orderIdToEntityId[order.order_id] = existing[0].id;
-              result.orders.updated++;
-            } else {
-              const created = await base44.entities.EtsyOrder.create({ ...order, owner_user_id: currentUser.id });
-              orderIdToEntityId[order.order_id] = created.id;
-              result.orders.created++;
+            const created = await base44.entities.EtsyOrder.bulkCreate(ordersToCreate);
+            created.forEach((o, idx) => {
+              orderIdToEntityId[ordersToCreate[idx].order_id] = o.id;
+            });
+            result.orders.created = created.length;
+          } catch (bulkError) {
+            console.error('Bulk create orders failed, trying individually:', bulkError);
+            for (const order of ordersToCreate) {
+              try {
+                const created = await base44.entities.EtsyOrder.create(order);
+                orderIdToEntityId[order.order_id] = created.id;
+                result.orders.created++;
+              } catch (itemError) {
+                result.errors.push(`Order ${order.order_id}: ${itemError.message}`);
+              }
             }
-          } catch (orderError) {
-            console.error('Failed to import order:', order.order_id, orderError);
-            result.errors.push(`Order ${order.order_id}: ${orderError.message}`);
+          }
+        }
+
+        // Bulk update existing orders
+        if (ordersToUpdate.length > 0) {
+          try {
+            await base44.entities.EtsyOrder.bulkUpdate(ordersToUpdate);
+          } catch (bulkError) {
+            console.error('Bulk update orders failed:', bulkError);
+            for (const order of ordersToUpdate) {
+              try {
+                const { id, ...updateData } = order;
+                await base44.entities.EtsyOrder.update(id, updateData);
+              } catch (itemError) {
+                result.errors.push(`Order ${order.order_id}: ${itemError.message}`);
+              }
+            }
           }
         }
 
@@ -413,19 +452,54 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         });
 
-        // Create/update OrderFee records
+        // Create/update OrderFee records (bulk)
         const orderFeeRecords = Object.values(orderFeeMap);
-        for (const orderFee of orderFeeRecords) {
-          try {
-            const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id, owner_user_id: currentUser.id });
-            if (existing.length > 0) {
-              await base44.entities.OrderFee.update(existing[0].id, orderFee);
+        if (orderFeeRecords.length > 0) {
+          // Fetch all existing OrderFees ONCE to avoid N+1 queries
+          const allExistingOrderFees = await base44.entities.OrderFee.filter({ owner_user_id: currentUser.id });
+          const existingOrderFeeMap = {};
+          allExistingOrderFees.forEach(of => { existingOrderFeeMap[of.order_id] = of; });
+
+          const orderFeesToCreate = [];
+          const orderFeesToUpdate = [];
+          for (const orderFee of orderFeeRecords) {
+            const existing = existingOrderFeeMap[orderFee.order_id];
+            if (existing) {
+              orderFeesToUpdate.push({ id: existing.id, ...orderFee });
             } else {
-              await base44.entities.OrderFee.create({ ...orderFee, owner_user_id: currentUser.id });
+              orderFeesToCreate.push({ ...orderFee, owner_user_id: currentUser.id });
             }
-          } catch (orderFeeError) {
-            console.error('Failed to create OrderFee:', orderFee.order_id, orderFeeError);
-            result.errors.push(`OrderFee ${orderFee.order_id}: ${orderFeeError.message}`);
+          }
+
+          if (orderFeesToCreate.length > 0) {
+            try {
+              await base44.entities.OrderFee.bulkCreate(orderFeesToCreate);
+            } catch (bulkError) {
+              console.error('Bulk create OrderFees failed:', bulkError);
+              for (const of of orderFeesToCreate) {
+                try {
+                  await base44.entities.OrderFee.create(of);
+                } catch (itemError) {
+                  result.errors.push(`OrderFee ${of.order_id}: ${itemError.message}`);
+                }
+              }
+            }
+          }
+
+          if (orderFeesToUpdate.length > 0) {
+            try {
+              await base44.entities.OrderFee.bulkUpdate(orderFeesToUpdate);
+            } catch (bulkError) {
+              console.error('Bulk update OrderFees failed:', bulkError);
+              for (const of of orderFeesToUpdate) {
+                try {
+                  const { id, ...updateData } = of;
+                  await base44.entities.OrderFee.update(id, updateData);
+                } catch (itemError) {
+                  result.errors.push(`OrderFee ${of.order_id}: ${itemError.message}`);
+                }
+              }
+            }
           }
         }
 
@@ -450,19 +524,28 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         });
 
-        // Update orders with refund amounts
+        // Update orders with refund amounts (bulk, using pre-fetched orders map)
+        const refundUpdates = [];
         for (const [orderId, refundAmount] of Object.entries(refundsByOrderId)) {
+          const entityId = orderIdToEntityId[orderId];
+          if (entityId) {
+            const existing = existingOrderMap[orderId];
+            const currentRefund = existing?.refund_amount || 0;
+            refundUpdates.push({ id: entityId, refund_amount: currentRefund + refundAmount });
+          }
+        }
+        if (refundUpdates.length > 0) {
           try {
-            const order = await base44.entities.EtsyOrder.filter({ order_id: orderId, owner_user_id: currentUser.id });
-            if (order.length > 0) {
-              const currentRefund = order[0].refund_amount || 0;
-              await base44.entities.EtsyOrder.update(order[0].id, {
-                refund_amount: currentRefund + refundAmount
-              });
+            await base44.entities.EtsyOrder.bulkUpdate(refundUpdates);
+          } catch (bulkError) {
+            console.error('Bulk update refunds failed:', bulkError);
+            for (const update of refundUpdates) {
+              try {
+                await base44.entities.EtsyOrder.update(update.id, { refund_amount: update.refund_amount });
+              } catch (itemError) {
+                result.errors.push(`Refund update: ${itemError.message}`);
+              }
             }
-          } catch (refundError) {
-            console.error('Failed to apply refund to order:', orderId, refundError);
-            result.errors.push(`Refund for ${orderId}: ${refundError.message}`);
           }
         }
 
