@@ -117,6 +117,10 @@ const DEFAULT_KEYWORD_RULES = [
   { keyword: "cpa", category: "professional_services" },
   { keyword: "accountant", category: "professional_services" },
   { keyword: "bookkeeper", category: "professional_services" },
+
+  // Platform Fees (Etsy)
+  { keyword: "etsy.com", category: "other_fees" },
+  { keyword: "etsy", category: "other_fees" },
 ];
 
 /**
