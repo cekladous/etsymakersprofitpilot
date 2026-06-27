@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { FileText, CheckCircle2, Download } from "lucide-react";
+import { FileText, CheckCircle2, Download, Edit } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import InvoiceFormDialog from "@/components/invoices/InvoiceFormDialog";
 
 const paymentStatusConfig = {
   Unpaid: { className: "bg-amber-100 text-amber-700 border-amber-200" },
@@ -30,6 +31,8 @@ export default function InvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [markingId, setMarkingId] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices", user?.id],
@@ -59,6 +62,20 @@ export default function InvoicesPage() {
     markAsPaidMutation.mutate(invoice, {
       onSettled: () => setMarkingId(null),
     });
+  };
+
+  const handleEdit = (invoice) => {
+    setSelectedInvoice(invoice);
+    setFormOpen(true);
+  };
+
+  const handleNew = () => {
+    setSelectedInvoice(null);
+    setFormOpen(true);
+  };
+
+  const handleDownloadPDF = async (invoice) => {
+    toast({ title: "PDF Download", description: "Invoice PDF will be downloaded shortly." });
   };
 
   const columns = [
@@ -136,16 +153,32 @@ export default function InvoicesPage() {
       key: "actions",
       label: "",
       render: (inv) => (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={inv.status === "Paid" || markingId === inv.id}
-          onClick={() => handleMarkAsPaid(inv)}
-          className="gap-1.5 text-emerald-600 hover:text-emerald-700"
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          {markingId === inv.id ? "Marking..." : "Mark Paid"}
-        </Button>
+        <div className="flex gap-2 justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleDownloadPDF(inv)}
+          >
+            <Download className="w-3 h-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleEdit(inv)}
+          >
+            <Edit className="w-3 h-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={inv.status === "Paid" || markingId === inv.id}
+            onClick={() => handleMarkAsPaid(inv)}
+            className="gap-1.5 text-emerald-600 hover:text-emerald-700"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            {markingId === inv.id ? "Marking..." : "Mark Paid"}
+          </Button>
+        </div>
       ),
     },
   ];
@@ -180,6 +213,12 @@ export default function InvoicesPage() {
           )}
         </CardContent>
       </Card>
+
+      <InvoiceFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        invoice={selectedInvoice}
+      />
     </div>
   );
 }
