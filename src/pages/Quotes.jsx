@@ -3,20 +3,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Download, FileCheck } from "lucide-react";
+import { Plus, FileText, Download, FileCheck, Copy, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
-import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
-import BulkQuoteActions from "@/components/quotes/BulkQuoteActions";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { format } from "date-fns";
+import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
 
 export default function QuotesPage() {
   const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [selectedQuotes, setSelectedQuotes] = useState([]);
   const queryClient = useQueryClient();
 
   const { data: quotes = [] } = useQuery({
@@ -25,27 +23,34 @@ export default function QuotesPage() {
     queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
-  const { data: settings } = useQuery({
-    queryKey: ["settings", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const list = await base44.entities.Settings.filter({ owner_user_id: user.id });
-      return list.find(s => s.setting_key === "default") || null;
-    },
-  });
-
-  const { data: jobs = [] } = useQuery({
-    queryKey: ["jobs", user?.id],
-    enabled: !!user,
-    queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
-  });
-
-
-
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Quote.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (quote) => {
+      const newQuote = {
+        ...quote,
+        id: undefined,
+        quote_number: `Q-${Date.now()}`,
+        status: "Draft",
+        created_date: new Date().toISOString(),
+      };
+      return base44.entities.Quote.create(newQuote);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    },
+  });
+
+  const convertToInvoiceMutation = useMutation({
+    mutationFn: (quoteId) => base44.functions.invoke('convertQuoteToInvoice', { quoteId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
   });
 
@@ -65,34 +70,9 @@ export default function QuotesPage() {
     }
   };
 
-  const toggleQuoteSelection = (quoteId) => {
-    setSelectedQuotes(prev =>
-      prev.includes(quoteId)
-        ? prev.filter(id => id !== quoteId)
-        : [...prev, quoteId]
-    );
+  const handleDuplicate = (quote) => {
+    duplicateMutation.mutate(quote);
   };
-
-  const toggleSelectAll = () => {
-    if (selectedQuotes.length === quotes.length) {
-      setSelectedQuotes([]);
-    } else {
-      setSelectedQuotes(quotes.map(q => q.id));
-    }
-  };
-
-  const handleExportPDF = async (quote) => {
-    const { exportQuoteToPDF } = await import("@/components/quotes/exportQuoteToPDF");
-    exportQuoteToPDF(quote, settings?.business_name || "Your Business");
-  };
-
-  const convertToInvoiceMutation = useMutation({
-    mutationFn: (quoteId) => base44.functions.invoke('convertQuoteToInvoice', { quoteId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-    },
-  });
 
   const handleConvertToInvoice = (quote) => {
     if (quote.status === "Invoiced" || quote.status === "Paid") {
@@ -108,25 +88,6 @@ export default function QuotesPage() {
 
   const columns = [
     {
-      key: "select",
-      label: (
-        <input
-          type="checkbox"
-          checked={selectedQuotes.length === quotes.length && quotes.length > 0}
-          onChange={toggleSelectAll}
-          className="rounded border-stone-300"
-        />
-      ),
-      render: (quote) => (
-        <input
-          type="checkbox"
-          checked={selectedQuotes.includes(quote.id)}
-          onChange={() => toggleQuoteSelection(quote.id)}
-          className="rounded border-stone-300"
-        />
-      ),
-    },
-    {
       key: "quote_number",
       label: "Quote #",
       render: (quote) => (
@@ -134,12 +95,14 @@ export default function QuotesPage() {
       ),
     },
     {
-      key: "project_name",
-      label: "Project",
+      key: "customer_name",
+      label: "Client",
       render: (quote) => (
         <div>
-          <div className="font-medium">{quote.project_name}</div>
-          <div className="text-xs text-stone-500">{quote.customer_name}</div>
+          <div className="font-medium">{quote.customer_name}</div>
+          {quote.customer_email && (
+            <div className="text-xs text-stone-500">{quote.customer_email}</div>
+          )}
         </div>
       ),
     },
@@ -156,6 +119,11 @@ export default function QuotesPage() {
       ),
     },
     {
+      key: "due_date",
+      label: "Due Date",
+      render: (quote) => quote.due_date ? format(new Date(quote.due_date), "MMM dd, yyyy") : "—",
+    },
+    {
       key: "created_date",
       label: "Created",
       render: (quote) => format(new Date(quote.created_date), "MMM dd, yyyy"),
@@ -168,10 +136,10 @@ export default function QuotesPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleExportPDF(quote)}
+            onClick={() => handleDuplicate(quote)}
+            disabled={duplicateMutation.isPending}
           >
-            <Download className="w-3 h-3 mr-1" />
-            PDF
+            <Copy className="w-3 h-3" />
           </Button>
           <Button
             size="sm"
@@ -196,7 +164,7 @@ export default function QuotesPage() {
             onClick={() => handleDelete(quote.id)}
             className="text-rose-600 hover:text-rose-700"
           >
-            Delete
+            <Trash2 className="w-3 h-3" />
           </Button>
         </div>
       ),
@@ -211,27 +179,17 @@ export default function QuotesPage() {
     return <div className="flex items-center justify-center h-screen">Please log in to continue.</div>;
   }
 
-
-
   return (
     <div>
       <PageHeader
         title="Quotes"
-        description="Manage client quotes and estimates"
+        description="Create and manage price quotes for clients"
       >
-        <Button onClick={handleNew} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={handleNew} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="w-4 h-4 mr-2" />
           New Quote
         </Button>
       </PageHeader>
-
-      {selectedQuotes.length > 0 && (
-        <BulkQuoteActions 
-          selectedQuotes={selectedQuotes} 
-          quotes={quotes}
-          settings={settings}
-        />
-      )}
 
       <Card>
         <CardContent className="p-0">

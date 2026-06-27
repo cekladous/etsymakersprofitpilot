@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { FileText, CheckCircle2 } from "lucide-react";
+import { FileText, CheckCircle2, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +17,12 @@ const paymentStatusConfig = {
   Paid: { className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
 };
 
-const lifecycleStatusConfig = {
-  Draft: { className: "bg-stone-100 text-stone-600 border-stone-200" },
+const statusConfig = {
   Sent: { className: "bg-blue-100 text-blue-700 border-blue-200" },
   Paid: { className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  Partial: { className: "bg-blue-100 text-blue-700 border-blue-200" },
   Overdue: { className: "bg-rose-100 text-rose-700 border-rose-200" },
-  Void: { className: "bg-stone-100 text-stone-400 border-stone-200 line-through" },
+  Cancelled: { className: "bg-stone-100 text-stone-400 border-stone-200 line-through" },
 };
 
 export default function InvoicesPage() {
@@ -37,22 +37,28 @@ export default function InvoicesPage() {
     queryFn: () => base44.entities.Invoice.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
-  const handleMarkAsPaid = async (invoice) => {
-    setMarkingId(invoice.id);
-    try {
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (invoice) => {
       await base44.entities.Invoice.update(invoice.id, {
         status: "Paid",
         amount_paid: invoice.total || 0,
         balance_due: 0,
       });
-      toast({ title: "Invoice marked as Paid", description: "A custom sale record will be created automatically." });
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Invoice marked as Paid", 
+        description: "Invoice has been updated successfully." 
+      });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["customSales"] });
-    } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setMarkingId(null);
-    }
+    },
+  });
+
+  const handleMarkAsPaid = (invoice) => {
+    setMarkingId(invoice.id);
+    markAsPaidMutation.mutate(invoice, {
+      onSettled: () => setMarkingId(null),
+    });
   };
 
   const columns = [
@@ -65,7 +71,7 @@ export default function InvoicesPage() {
     },
     {
       key: "customer_name",
-      label: "Customer",
+      label: "Client",
       render: (inv) => (
         <div>
           <div className="font-medium">{inv.customer_name}</div>
@@ -74,6 +80,31 @@ export default function InvoicesPage() {
           )}
         </div>
       ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (inv) => {
+        const config = statusConfig[inv.status] || {};
+        return (
+          <Badge variant="outline" className={config.className}>
+            {inv.status || "Sent"}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "payment_status",
+      label: "Payment",
+      render: (inv) => {
+        const paymentStatus = inv.balance_due <= 0 ? "Paid" : inv.amount_paid > 0 ? "Partial" : "Unpaid";
+        const config = paymentStatusConfig[paymentStatus] || {};
+        return (
+          <Badge variant="outline" className={config.className}>
+            {paymentStatus}
+          </Badge>
+        );
+      },
     },
     {
       key: "total",
@@ -92,38 +123,14 @@ export default function InvoicesPage() {
       ),
     },
     {
-      key: "issue_date",
-      label: "Issued",
-      render: (inv) => inv.issue_date ? format(new Date(inv.issue_date), "MMM dd, yyyy") : "—",
+      key: "invoice_date",
+      label: "Date",
+      render: (inv) => inv.invoice_date ? format(new Date(inv.invoice_date), "MMM dd, yyyy") : "—",
     },
     {
       key: "due_date",
-      label: "Due",
+      label: "Due Date",
       render: (inv) => inv.due_date ? format(new Date(inv.due_date), "MMM dd, yyyy") : "—",
-    },
-    {
-      key: "payment_status",
-      label: "Payment",
-      render: (inv) => {
-        const config = paymentStatusConfig[inv.payment_status] || {};
-        return (
-          <Badge variant="outline" className={config.className}>
-            {inv.payment_status || "Unpaid"}
-          </Badge>
-        );
-      },
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (inv) => {
-        const config = lifecycleStatusConfig[inv.status] || {};
-        return (
-          <Badge variant="outline" className={config.className}>
-            {inv.status || "Draft"}
-          </Badge>
-        );
-      },
     },
     {
       key: "actions",
@@ -133,11 +140,8 @@ export default function InvoicesPage() {
           size="sm"
           variant="outline"
           disabled={inv.status === "Paid" || markingId === inv.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleMarkAsPaid(inv);
-          }}
-          className="gap-1.5"
+          onClick={() => handleMarkAsPaid(inv)}
+          className="gap-1.5 text-emerald-600 hover:text-emerald-700"
         >
           <CheckCircle2 className="w-4 h-4" />
           {markingId === inv.id ? "Marking..." : "Mark Paid"}
@@ -158,7 +162,7 @@ export default function InvoicesPage() {
     <div>
       <PageHeader
         title="Invoices"
-        description="Track invoices converted from quotes and monitor payment status"
+        description="Track invoices and monitor payment status"
       />
 
       <Card>

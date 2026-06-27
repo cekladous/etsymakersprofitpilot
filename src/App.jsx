@@ -5,6 +5,8 @@ import NavigationTracker from '@/lib/NavigationTracker'
 import ModalCleanup from '@/lib/ModalCleanup'
 import { pagesConfig } from './pages.config'
 import Reports from './pages/Reports'
+import Quotes from './pages/Quotes'
+import Invoices from './pages/Invoices'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -63,6 +65,16 @@ const AuthenticatedApp = () => {
       <Route path="/Reports" element={
         <LayoutWrapper currentPageName="Reports">
           <Reports />
+        </LayoutWrapper>
+      } />
+      <Route path="/Quotes" element={
+        <LayoutWrapper currentPageName="Quotes">
+          <Quotes />
+        </LayoutWrapper>
+      } />
+      <Route path="/Invoices" element={
+        <LayoutWrapper currentPageName="Invoices">
+          <Invoices />
         </LayoutWrapper>
       } />
       <Route path="*" element={<PageNotFound />} />

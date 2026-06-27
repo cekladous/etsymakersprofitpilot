@@ -14,13 +14,16 @@ import {
   X,
   ChevronRight,
   BarChart3,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  FileText
 } from "lucide-react";
 
 const navItems = [
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
         { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
         { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
+        { name: "Quotes", icon: FileText, page: "Quotes" },
+        { name: "Invoices", icon: FileText, page: "Invoices" },
         { name: "Expenses", icon: Receipt, page: "Expenses" },
         { name: "Products", icon: Package, page: "Products" },
         { name: "Inventory", icon: Layers, page: "Inventory" },
