@@ -29,18 +29,23 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
 
   const shareSaveCredit = orderFees?.share_save_credit || 0;
 
-  // Total Fees = Transaction fee + Processing fee - Share & Save Refund (excludes tax)
+  // Total Fees = -(Transaction fee + Processing fee + Tax paid by buyer - Share & Save Refund)
   const totalFeesPaid = orderFees
-    ? (orderFees.transaction_fees || 0) + (orderFees.processing_fees || 0) - shareSaveCredit
+    ? -(
+        (orderFees.transaction_fees || 0) +
+        (orderFees.processing_fees || 0) +
+        (order.sales_tax || 0) -
+        shareSaveCredit
+      )
     : 0;
 
+  // Net Earnings = Total before tax - Transaction fee - Processing fee + Share & Save Refund
   const calculatedNetEarnings = orderFees
     ? revenueExclTax -
       (orderFees.transaction_fees || 0) -
       (orderFees.processing_fees || 0) +
-      shareSaveCredit -
-      (order.sales_tax || 0)
-    : revenueExclTax - (order.sales_tax || 0);
+      shareSaveCredit
+    : revenueExclTax;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
