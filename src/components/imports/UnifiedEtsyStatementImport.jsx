@@ -283,11 +283,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
         const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
         
-        // Filter out duplicates using stable line_uid
-        const newOrders = orders.filter(o => {
-          if (!o._rawLine?.line_uid) return true;
-          return !existingLineUIDs.has(o._rawLine.line_uid);
-        });
+        // All orders are treated as fresh — the order_id-based upsert handles duplicates
+        const newOrders = orders;
         
         const newFees = fees.filter(f => {
           const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
@@ -571,8 +568,10 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           ...newDeposits.map(d => d._rawLine),
           ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
         ];
-        if (newLines.length > 0) {
-          const linesToCreate = newLines.map(line => ({
+        // Filter out statement lines that already exist (by line_uid) to avoid duplicates
+        const uniqueNewLines = newLines.filter(line => !line.line_uid || !existingLineUIDs.has(line.line_uid));
+        if (uniqueNewLines.length > 0) {
+          const linesToCreate = uniqueNewLines.map(line => ({
             owner_user_id: currentUser.id,
             import_id: importRecord.id,
             ...line

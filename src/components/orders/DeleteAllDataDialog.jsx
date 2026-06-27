@@ -19,12 +19,27 @@ export default function DeleteAllDataDialog({ open, onOpenChange }) {
   const deleteAllMutation = useMutation({
     mutationFn: async () => {
       const user = await base44.auth.me();
-      await base44.entities.EtsyOrder.deleteMany({ owner_user_id: user.id });
-      await base44.entities.OrderFee.deleteMany({ owner_user_id: user.id });
-      await base44.entities.Fee.deleteMany({ owner_user_id: user.id });
-      await base44.entities.EtsyStatementLine.deleteMany({ owner_user_id: user.id });
-      await base44.entities.EtsyStatementImport.deleteMany({ owner_user_id: user.id });
-      await base44.entities.Transfer.deleteMany({ owner_user_id: user.id, type: "etsy_deposit" });
+      const entitiesToDelete = [
+        { name: 'EtsyOrder', filter: { owner_user_id: user.id } },
+        { name: 'OrderFee', filter: { owner_user_id: user.id } },
+        { name: 'Fee', filter: { owner_user_id: user.id } },
+        { name: 'EtsyStatementLine', filter: { owner_user_id: user.id } },
+        { name: 'EtsyStatementImport', filter: { owner_user_id: user.id } },
+        { name: 'Transfer', filter: { owner_user_id: user.id, type: "etsy_deposit" } },
+      ];
+      const errors = [];
+      for (const { name, filter } of entitiesToDelete) {
+        try {
+          await base44.entities[name].deleteMany(filter);
+        } catch (e) {
+          console.error(`Failed to delete ${name}:`, e);
+          errors.push(`${name}: ${e.message}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      if (errors.length > 0) {
+        throw new Error(`Some deletions failed: ${errors.join('; ')}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
