@@ -75,6 +75,11 @@ const DEFAULT_KEYWORD_RULES = [
   { keyword: "northern tool", category: "tools_equipment" },
   { keyword: "mcmaster", category: "tools_equipment" },
   { keyword: "grainger", category: "tools_equipment" },
+  { keyword: "cricut", category: "tools_equipment" },
+  { keyword: "xtool", category: "tools_equipment" },
+  { keyword: "glowforge", category: "tools_equipment" },
+  { keyword: "laser", category: "tools_equipment" },
+  { keyword: "silhouette", category: "tools_equipment" },
 
   // Materials & Supplies
   { keyword: "amazon", category: "materials_supplies" },
