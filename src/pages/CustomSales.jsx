@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Plus, Pencil, Trash2, Calendar, Zap } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
+import QuickAddSaleDialog from "@/components/monthly/QuickAddSaleDialog";
 import { format, parseISO } from "date-fns";
 
 export default function CustomSalesPage() {
@@ -98,6 +99,8 @@ export default function CustomSalesPage() {
   const totalTax = filteredSales.reduce((sum, sale) => sum + (sale.sales_tax_collected || 0), 0);
   const totalShipping = filteredSales.reduce((sum, sale) => sum + (sale.shipping_or_postage_cost || 0), 0);
 
+  const allTimeSales = customSales.reduce((sum, sale) => sum + (sale.gross_sale || 0), 0);
+
   // Running totals for Quick Add
   const today = new Date().toISOString().split('T')[0];
   const thisMonth = today.substring(0, 7);
@@ -126,25 +129,18 @@ export default function CustomSalesPage() {
         </div>
       </PageHeader>
 
-      {/* Running Total Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-stone-500">Today's Sales</p>
-            <p className="text-xl font-bold text-emerald-600">${todaySales.toFixed(2)}</p>
-          </CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Today's Sales</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">${todaySales.toFixed(2)}</p></CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-stone-500">This Month</p>
-            <p className="text-xl font-bold text-emerald-600">${monthSales.toFixed(2)}</p>
-          </CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">This Month's Sales</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">${monthSales.toFixed(2)}</p></CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-stone-500">Total Revenue</p>
-            <p className="text-xl font-bold text-stone-900">${totalGross.toFixed(2)}</p>
-          </CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">All-Time Sales</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">${allTimeSales.toFixed(2)}</p></CardContent>
         </Card>
       </div>
 
@@ -300,7 +296,7 @@ export default function CustomSalesPage() {
       </Card>
 
       <CustomSaleDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-      {/* Quick Add Dialog would go here - minimal version */}
+      <QuickAddSaleDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} products={products} />
     </div>
   );
 }
