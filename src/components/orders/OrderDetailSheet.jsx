@@ -318,6 +318,12 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                       <span>-{formatCurrency(orderFees.processing_fees)}</span>
                     </div>
                   )}
+                  {shareSaveCredit > 0 && (
+                    <div className="flex justify-between items-center text-emerald-700 font-semibold">
+                      <span>+ Share &amp; Save Refund</span>
+                      <span>+{formatCurrency(shareSaveCredit)}</span>
+                    </div>
+                  )}
                   {orderFees.listing_fees > 0 && (
                     <div className="flex justify-between items-center text-red-600">
                       <span>- Listing fee</span>
@@ -358,12 +364,6 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     <div className="flex justify-between items-center text-red-600">
                       <span>- Tax paid by buyer</span>
                       <span>-{formatCurrency(order.sales_tax || 0)}</span>
-                    </div>
-                  )}
-                  {shareSaveCredit > 0 && (
-                    <div className="flex justify-between items-center text-emerald-700 font-semibold">
-                      <span>+ Share &amp; Save Refund</span>
-                      <span>+{formatCurrency(shareSaveCredit)}</span>
                     </div>
                   )}
                 </div>
