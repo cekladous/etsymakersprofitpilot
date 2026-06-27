@@ -354,13 +354,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         const ordersToCreate = [];
         const ordersToUpdate = [];
         for (const order of newOrders) {
+          const { _rawLine, ...orderData } = order;
           const existing = existingOrderMap[order.order_id];
           if (existing) {
-            ordersToUpdate.push({ id: existing.id, ...order });
+            ordersToUpdate.push({ id: existing.id, ...orderData });
             orderIdToEntityId[order.order_id] = existing.id;
             result.orders.updated++;
           } else {
-            ordersToCreate.push({ ...order, owner_user_id: currentUser.id });
+            ordersToCreate.push({ ...orderData, owner_user_id: currentUser.id });
           }
         }
 
@@ -368,10 +369,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         if (ordersToCreate.length > 0) {
           try {
             const created = await base44.entities.EtsyOrder.bulkCreate(ordersToCreate);
-            created.forEach((o, idx) => {
-              orderIdToEntityId[ordersToCreate[idx].order_id] = o.id;
-            });
-            result.orders.created = created.length;
+            if (Array.isArray(created)) {
+              created.forEach((o, idx) => {
+                if (o?.id) orderIdToEntityId[ordersToCreate[idx].order_id] = o.id;
+              });
+              result.orders.created = created.length;
+            } else {
+              result.orders.created = ordersToCreate.length;
+            }
           } catch (bulkError) {
             console.error('Bulk create orders failed, trying individually:', bulkError);
             for (const order of ordersToCreate) {
@@ -405,11 +410,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         // Import only new fees (bulk create with retry)
         if (newFees.length > 0) {
-          const feesToCreate = newFees.map(fee => ({ 
-            ...fee, 
-            owner_user_id: currentUser.id, 
-            import_id: importRecord.id 
-          }));
+          const feesToCreate = newFees.map(fee => {
+            const { _rawLine, ...feeData } = fee;
+            return { 
+              ...feeData, 
+              owner_user_id: currentUser.id, 
+              import_id: importRecord.id 
+            };
+          });
           const feeResults = await batchProcessWithRetry(feesToCreate, 50, 'Fee');
           result.fees.created = feeResults.created;
           if (feeResults.failed > 0) {
@@ -505,10 +513,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         // Import only new deposits as transfers (bulk create with retry)
         if (newDeposits.length > 0) {
-          const depositsToCreate = newDeposits.map(deposit => ({ 
-            ...deposit, 
-            owner_user_id: currentUser.id 
-          }));
+          const depositsToCreate = newDeposits.map(deposit => {
+            const { _rawLine, ...depositData } = deposit;
+            return { 
+              ...depositData, 
+              owner_user_id: currentUser.id 
+            };
+          });
           const depositResults = await batchProcessWithRetry(depositsToCreate, 50, 'Transfer');
           result.deposits.created = depositResults.created;
           if (depositResults.failed > 0) {
@@ -1034,11 +1045,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             });
           }
           // B) ORDERS/SALES
-           else if (classification.category === 'sale' && classification.order_id) {
+           else if (classification.category === 'sale') {
+             // Generate fallback order_id if none was extracted from the CSV
+             const saleOrderId = classification.order_id || `stmt_${lineUID}`;
+             rawLine.order_id = saleOrderId;
              // Calculate total fees AND taxes for this order from the fees we found
-             const orderFees = feesByOrderId[classification.order_id] || [];
+             const orderFees = feesByOrderId[saleOrderId] || [];
              const orderTaxes = classifiedRows.filter(({ row: r, classification: c }) => 
-               c.category === 'tax' && c.order_id === classification.order_id
+               c.category === 'tax' && c.order_id === saleOrderId
              );
 
              const totalOrderFees = orderFees.reduce((sum, f) => {
@@ -1064,7 +1078,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         orders.push({
           sale_date: transactionDate,
-          order_id: classification.order_id,
+          order_id: saleOrderId,
           buyer_username: row["Buyer User ID"] || row["Buyer"] || "",
           buyer_full_name: row["Full Name"] || "",
           number_of_items: parseIntSafe(row["Number of Items"] || row["Quantity"]),
