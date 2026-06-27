@@ -29,6 +29,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import CSVImporter from "@/components/shared/CSVImporter";
+import ChasePDFImport from "@/components/expenses/ChasePDFImport";
 import ExpenseFormDialog from "@/components/expenses/ExpenseFormDialog";
 import RefundConflictWarning from "@/components/reconciliation/RefundConflictWarning";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -58,6 +59,7 @@ export default function Expenses() {
   const [materialFilter, setMaterialFilter] = useState("all");
   const [navSource, setNavSource] = useState(null);
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
+  const [pdfImportOpen, setPdfImportOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -848,6 +850,10 @@ export default function Expenses() {
             <Upload className="w-4 h-4 mr-2" />
             Import CSV
           </Button>
+          <Button variant="outline" onClick={() => setPdfImportOpen(true)} size="sm">
+            <Upload className="w-4 h-4 mr-2" />
+            Import from PDF (Beta)
+          </Button>
           <Button
             onClick={() => {
               setEditingExpense(null);
@@ -1143,6 +1149,8 @@ export default function Expenses() {
           setEditingExpense(null);
         }}
       />
+
+      <ChasePDFImport open={pdfImportOpen} onOpenChange={setPdfImportOpen} />
 
       {showExportUpgrade && (
         <UpgradeCTA
