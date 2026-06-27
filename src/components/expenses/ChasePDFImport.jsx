@@ -117,8 +117,28 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             payment_source: 'Bank Account',
             category_group: 'business_expenses',
         }));
-        await base44.entities.BusinessExpense.bulkCreate(expensesToCreate);
-        return { importedCount: selectedTransactions.length, totalFound: transactions.length };
+        // Chunked bulk create with retry for reliability
+        const chunkSize = 10;
+        let importedCount = 0;
+        for (let i = 0; i < expensesToCreate.length; i += chunkSize) {
+            const chunk = expensesToCreate.slice(i, i + chunkSize);
+            let retries = 0;
+            while (retries <= 2) {
+                try {
+                    await base44.entities.BusinessExpense.bulkCreate(chunk);
+                    importedCount += chunk.length;
+                    break;
+                } catch (err) {
+                    retries++;
+                    if (retries > 2) throw err;
+                    await new Promise(r => setTimeout(r, 500 * retries));
+                }
+            }
+            if (i + chunkSize < expensesToCreate.length) {
+                await new Promise(r => setTimeout(r, 200));
+            }
+        }
+        return { importedCount, totalFound: transactions.length };
     },
     onSuccess: ({ importedCount, totalFound }) => {
       toast({

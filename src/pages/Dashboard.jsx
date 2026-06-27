@@ -599,6 +599,35 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl border border-stone-200 p-4">
+        <p className="text-sm font-semibold text-stone-700 mb-3">Quick Actions</p>
+        <div className="flex gap-3 flex-wrap">
+          <Link to={createPageUrl("Orders")} className="flex-1 min-w-[180px]">
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 justify-start">
+              <Upload className="w-4 h-4 mr-2" />
+              Import Etsy Statement
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            onClick={() => setExpenseDialogOpen(true)}
+            className="flex-1 min-w-[180px] justify-start"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Expense
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setCustomSaleDialogOpen(true)}
+            className="flex-1 min-w-[180px] justify-start"
+          >
+            <ShoppingBag className="w-4 h-4 mr-2" />
+            Add Custom Sale
+          </Button>
+        </div>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-stone-100">
           <TabsTrigger value="overview">Overview</TabsTrigger>

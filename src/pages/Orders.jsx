@@ -45,6 +45,7 @@ import DeleteAllDataDialog from "@/components/orders/DeleteAllDataDialog";
 import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 import ReconciliationTab from "@/components/etsy/ReconciliationTab";
+import { calculateNetEarnings, calculateTotalNetEarnings } from "@/components/shared/netEarnings";
 
 export default function Orders() {
   const { user, loading } = useAuth();
@@ -274,8 +275,8 @@ export default function Orders() {
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
 
-  // Order Net Total - sum of all order_net values
-  const totalOrderNet = filteredOrders.reduce((sum, o) => sum + (o.order_net || 0), 0);
+  // Total Net Earnings using the canonical formula (excl. tax)
+  const totalNetEarnings = calculateTotalNetEarnings(filteredOrders, orderFees);
 
   // Aggregate all fee categories for filtered orders
   const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
@@ -381,10 +382,7 @@ export default function Orders() {
       ["Order ID", "Date", "Buyer", "Items", "Order Value", "Shipping", "Sales Tax", "Total Fees", "Net"],
       ...filteredOrders.map(o => {
         const fees = orderFees.find(f => f.order_id === o.order_id);
-        const totalBuyerPaid = (o.order_value || 0) + (o.shipping_charged || 0) - (o.discount_amount || 0) + (o.sales_tax || 0);
-        const netEarnings = fees
-          ? totalBuyerPaid - (fees.transaction_fees || 0) - (fees.processing_fees || 0) - (o.sales_tax || 0) + (fees.share_save_credit || 0)
-          : totalBuyerPaid - (o.sales_tax || 0);
+        const netEarnings = calculateNetEarnings(o, fees);
         return [
           o.order_id,
           o.sale_date,
@@ -612,41 +610,38 @@ export default function Orders() {
       ),
     },
     {
-      header: "Order ID",
+      header: "Order #",
       render: (row) => (
-        <div>
-          <button
-            onClick={() => setSelectedIds([row.id])}
-            className="font-medium text-blue-600 hover:underline"
-          >
-            #{row.order_id}
-          </button>
-          <p className="text-sm text-stone-500">{row.sale_date}</p>
-        </div>
+        <button
+          onClick={() => setSelectedIds([row.id])}
+          className="font-medium text-blue-600 hover:underline"
+        >
+          #{row.order_id}
+        </button>
+      ),
+    },
+    {
+      header: "Date",
+      render: (row) => (
+        <span className="text-sm text-stone-600">
+          {row.sale_date ? format(new Date(row.sale_date), "MMM d, yyyy") : "—"}
+        </span>
       ),
     },
     {
       header: "Buyer",
       render: (row) => (
         <div className="max-w-48">
-          <p className="font-medium text-stone-900 truncate">{row.buyer_username || "-"}</p>
-          <p className="text-sm text-stone-500">{row.number_of_items} item(s)</p>
+          <p className="font-medium text-stone-900 truncate">{row.buyer_username || row.buyer_full_name || "-"}</p>
+          <p className="text-sm text-stone-500">{row.number_of_items || 0} item(s)</p>
         </div>
       ),
     },
     {
-      header: "Order Value",
+      header: "Item Total",
       render: (row) => (
         <span className="font-medium text-stone-900">
           {formatCurrency(row.order_value || 0)}
-        </span>
-      ),
-    },
-    {
-      header: "Shipping",
-      render: (row) => (
-        <span className="text-stone-600">
-          {formatCurrency(row.shipping_charged || 0)}
         </span>
       ),
     },
@@ -702,19 +697,29 @@ export default function Orders() {
       },
     },
     {
-      header: "Net",
+      header: "Net Earnings",
       render: (row) => {
         const fees = orderFees.find(f => f.order_id === row.order_id);
-        const totalBuyerPaid = (row.order_value || 0) + (row.shipping_charged || 0) - (row.discount_amount || 0) + (row.sales_tax || 0);
-        const netEarnings = fees
-          ? totalBuyerPaid - (fees.transaction_fees || 0) - (fees.processing_fees || 0) - (row.sales_tax || 0) + (fees.share_save_credit || 0)
-          : totalBuyerPaid - (row.sales_tax || 0);
+        const netEarnings = calculateNetEarnings(row, fees);
         return (
           <span className="font-semibold text-emerald-600">
             {formatCurrency(netEarnings)}
           </span>
         );
       },
+    },
+    {
+      header: "Status",
+      render: (row) => (
+        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+          row.status === "shipped" ? "bg-blue-100 text-blue-700" :
+          row.status === "completed" ? "bg-emerald-100 text-emerald-700" :
+          row.status === "in_production" ? "bg-amber-100 text-amber-700" :
+          "bg-stone-100 text-stone-600"
+        }`}>
+          {row.status || "completed"}
+        </span>
+      ),
     },
   ];
 
@@ -1050,20 +1055,20 @@ export default function Orders() {
         </Card>
 
         <Card>
-           <CardContent className="p-6">
-             <div className="flex items-center gap-3">
-               <div className="p-3 bg-emerald-100 rounded-lg">
-                 <DollarSign className="w-6 h-6 text-emerald-600" />
-               </div>
-               <div>
-                 <p className="text-sm text-stone-500">Order Net Total</p>
-                 <p className="text-2xl font-bold text-stone-900">
-                   {formatCurrency(totalOrderNet)}
-                 </p>
-               </div>
-             </div>
-           </CardContent>
-         </Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-100 rounded-lg">
+                <DollarSign className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Total Net Earnings</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {formatCurrency(totalNetEarnings)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
 
@@ -1140,22 +1145,43 @@ export default function Orders() {
            {/* Charts */}
            <FeeBreakdownChart fees={filteredFees} formatCurrency={formatCurrency} />
 
+           {/* Fee Breakdown by Category */}
+           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+             {[
+               { label: "Listing Fees", value: filteredFees.filter(f => f.fee_type === "listing").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
+               { label: "Transaction Fees", value: filteredFees.filter(f => f.fee_type === "transaction").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
+               { label: "Processing Fees", value: filteredFees.filter(f => f.fee_type === "processing").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
+               { label: "Etsy Ads", value: filteredFees.filter(f => f.fee_type === "etsy_ads").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
+               { label: "Share & Save Credits", value: filteredFees.filter(f => f.fee_type === "share_save_credit").reduce((s, f) => s + Math.abs(f.amount || 0), 0), isCredit: true },
+               { label: "Other Fees", value: filteredFees.filter(f => !["listing","transaction","processing","etsy_ads","offsite_ads","share_save_credit","shipping_label","other_postage"].includes(f.fee_type)).reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
+             ].map((item, idx) => (
+               <Card key={idx}>
+                 <CardContent className="p-4">
+                   <p className="text-xs text-stone-500">{item.label}</p>
+                   <p className={`text-lg font-bold ${item.isCredit ? "text-emerald-600" : "text-stone-900"}`}>
+                     {item.isCredit ? "+" : ""}{formatCurrency(item.value)}
+                   </p>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+
            {/* Summary Card */}
            <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-rose-100 rounded-lg">
-                  <CreditCard className="w-6 h-6 text-rose-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-stone-500">Total Fees & Charges</p>
-                  <p className="text-2xl font-bold text-stone-900">
-                    {formatCurrency(totalAllFees)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+             <CardContent className="p-6">
+               <div className="flex items-center gap-3">
+                 <div className="p-3 bg-rose-100 rounded-lg">
+                   <CreditCard className="w-6 h-6 text-rose-600" />
+                 </div>
+                 <div>
+                   <p className="text-sm text-stone-500">Total Fees & Charges</p>
+                   <p className="text-2xl font-bold text-stone-900">
+                     {formatCurrency(totalAllFees)}
+                   </p>
+                 </div>
+               </div>
+             </CardContent>
+           </Card>
 
           {/* Bulk Actions */}
           {selectedFeeIds.length > 0 && (

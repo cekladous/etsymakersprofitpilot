@@ -202,8 +202,8 @@ export function aggregateFinancials(data, dateRange) {
   const customSalesTaxCollected = periodCustomSales.reduce((sum, s) => 
     sum + toNumber(s.sales_tax_collected), 0);
   
-  // 6) Total Revenue (tax excluded from profit logic)
-  const totalRevenue = (totalEtsySales - etsyRefunds) + customSaleA + customSaleB;
+  // 6) Total Revenue (tax EXCLUDED — tax is collected for the buyer, not seller revenue)
+  const totalRevenue = (etsySales - etsyRefunds) + customSaleA + customSaleB;
 
   // 7) Revenue by Source breakdown (Etsy + each Custom Sales source)
   const SOURCE_KEYS = ["Squarespace", "Square", "In-Person/Cash", "Website", "Instagram", "Other"];
@@ -214,7 +214,7 @@ export function aggregateFinancials(data, dateRange) {
     customRevenueBySource[source] += toNumber(s.pre_tax_amount || s.gross_sale);
   });
   const revenueBySource = {
-    Etsy: totalEtsySales - etsyRefunds,
+    Etsy: etsySales - etsyRefunds,
     ...customRevenueBySource,
   };
 
@@ -599,7 +599,7 @@ export function aggregateFinancials(data, dateRange) {
       taxCollectedByEtsy,
       totalEtsySales,
       etsyRefunds,
-      netEtsySales: totalEtsySales - etsyRefunds, // CRITICAL: Show net after refunds
+      netEtsySales: etsySales - etsyRefunds, // CRITICAL: Net after refunds, tax excluded
       customSaleA,
       customSaleB,
       customSalesTaxCollected,

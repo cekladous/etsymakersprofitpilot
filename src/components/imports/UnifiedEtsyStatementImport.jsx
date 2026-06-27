@@ -313,27 +313,18 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
         );
         
-        // Get all existing statement lines (only for current user)
-        const allExistingLines = await withRetry(() => base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id }));
-        const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
-        
         // All orders are treated as fresh — the order_id-based upsert handles duplicates
         const newOrders = orders;
-        
+
+        // Fee dedup by composite key (date + order_id + fee_type + amount) — safe, no stale UIDs
         const newFees = fees.filter(f => {
           const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
           return !existingFeeKeys.has(feeKey);
         });
-        
-        const newDeposits = deposits.filter(d => {
-          if (!d._rawLine?.line_uid) return true;
-          return !existingLineUIDs.has(d._rawLine.line_uid);
-        });
-        
-        const newRefunds = refunds.filter(r => {
-          if (!r._rawLine?.line_uid) return true;
-          return !existingLineUIDs.has(r._rawLine.line_uid);
-        });
+
+        // Deposits and refunds: always import (no stale line_uid dedup)
+        const newDeposits = deposits;
+        const newRefunds = refunds;
         
         console.log(`[Import] Deduplication: ${orders.length - newOrders.length} orders, ${fees.length - newFees.length} fees, ${deposits.length - newDeposits.length} deposits skipped`);
         
@@ -549,17 +540,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         result.taxes.created = taxes.length;
         result.unmatched.count = unmatchedLines.length;
 
-        // Save only new statement lines (including refunds) with source_etsy_order_id links (bulk create with retry)
+        // Save all new statement lines (including refunds) with source_etsy_order_id links
         const newLines = [
-          ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })), 
-          ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })), 
+          ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })),
+          ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })),
           ...newDeposits.map(d => d._rawLine),
           ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
-        ];
-        // Filter out statement lines that already exist (by line_uid) to avoid duplicates
-        const uniqueNewLines = newLines.filter(line => !line.line_uid || !existingLineUIDs.has(line.line_uid));
-        if (uniqueNewLines.length > 0) {
-          const linesToCreate = uniqueNewLines.map(line => ({
+        ].filter(line => line && line.line_uid); // Only save lines with valid UIDs
+        if (newLines.length > 0) {
+          const linesToCreate = newLines.map(line => ({
             owner_user_id: currentUser.id,
             import_id: importRecord.id,
             ...line
@@ -1321,13 +1310,26 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                 <p className="font-semibold text-emerald-900">Import Successful</p>
               </div>
               <div className="text-sm text-emerald-800 space-y-1">
-                <p>✓ Orders: {importResult.orders.created} new, {importResult.orders.updated} updated, {importResult.orders.skipped} duplicates skipped</p>
-                <p>✓ Fees: {importResult.fees.created} new, {importResult.fees.skipped} duplicates skipped</p>
-                <p>✓ Deposits: {importResult.deposits.created} new, {importResult.deposits.skipped} duplicates skipped</p>
+                <p>✓ Orders: {importResult.orders.created} created, {importResult.orders.updated} updated{importResult.orders.skipped > 0 && `, ${importResult.orders.skipped} skipped`}</p>
+                <p>✓ Fees: {importResult.fees.created} created{importResult.fees.skipped > 0 && `, ${importResult.fees.skipped} skipped`}</p>
+                <p>✓ Deposits: {importResult.deposits.created} created{importResult.deposits.skipped > 0 && `, ${importResult.deposits.skipped} skipped`}</p>
+                {importResult.refunds.created > 0 && (
+                  <p>✓ Refunds: {importResult.refunds.created} processed</p>
+                )}
                 {importResult.unmatched.count > 0 && (
                   <p className="text-amber-700">⚠ {importResult.unmatched.count} unmatched rows (review needed)</p>
                 )}
               </div>
+              {importResult.errors && importResult.errors.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-emerald-200">
+                  <p className="text-xs font-semibold text-rose-700 mb-1">{importResult.errors.length} error(s):</p>
+                  <div className="max-h-32 overflow-y-auto bg-rose-50 border border-rose-200 rounded p-2 text-xs text-rose-700 space-y-1">
+                    {importResult.errors.map((err, idx) => (
+                      <p key={idx} className="break-words">{err}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1464,13 +1466,26 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                 <p className="font-semibold text-emerald-900">Import Successful</p>
               </div>
               <div className="text-sm text-emerald-800 space-y-1">
-                <p>✓ Orders: {importResult.orders.created} created, {importResult.orders.updated} updated</p>
-                <p>✓ Fees: {importResult.fees.created} imported{importResult.fees.skipped > 0 && `, ${importResult.fees.skipped} duplicates skipped`}</p>
-                <p>✓ Deposits: {importResult.deposits.created} tracked</p>
+                <p>✓ Orders: {importResult.orders.created} created, {importResult.orders.updated} updated{importResult.orders.skipped > 0 && `, ${importResult.orders.skipped} skipped`}</p>
+                <p>✓ Fees: {importResult.fees.created} created{importResult.fees.skipped > 0 && `, ${importResult.fees.skipped} skipped`}</p>
+                <p>✓ Deposits: {importResult.deposits.created} created{importResult.deposits.skipped > 0 && `, ${importResult.deposits.skipped} skipped`}</p>
+                {importResult.refunds.created > 0 && (
+                  <p>✓ Refunds: {importResult.refunds.created} processed</p>
+                )}
                 {importResult.unmatched.count > 0 && (
                   <p className="text-amber-700">⚠ {importResult.unmatched.count} unmatched rows (review needed)</p>
                 )}
               </div>
+              {importResult.errors && importResult.errors.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-emerald-200">
+                  <p className="text-xs font-semibold text-rose-700 mb-1">{importResult.errors.length} error(s):</p>
+                  <div className="max-h-32 overflow-y-auto bg-rose-50 border border-rose-200 rounded p-2 text-xs text-rose-700 space-y-1">
+                    {importResult.errors.map((err, idx) => (
+                      <p key={idx} className="break-words">{err}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

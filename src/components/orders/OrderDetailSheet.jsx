@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { calculateNetEarnings } from "@/components/shared/netEarnings";
 
 export default function OrderDetailSheet({ order, orderFees, open, onOpenChange }) {
   if (!order) return null;
@@ -19,7 +20,8 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     }).format(amount);
   };
 
-  // Net Earnings = Total before tax - Transaction fee - Processing fee + Share & Save Refund - Tax paid by buyer
+  // Net Earnings = (order_value + shipping_charged - discount_amount) - transaction_fees - processing_fees + share_save_credit
+  // Sales tax is NOT part of net earnings (collected for buyer, remitted by Etsy)
   const revenueExclTax =
     (order.order_value || 0) +
     (order.shipping_charged || 0) -
@@ -29,7 +31,6 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
 
   const shareSaveCredit = orderFees?.share_save_credit || 0;
 
-  // Total Fees = -(Transaction fee + Processing fee + Tax paid by buyer - Share & Save Refund)
   const totalFeesPaid = orderFees
     ? -(
         (orderFees.transaction_fees || 0) +
@@ -39,14 +40,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
       )
     : 0;
 
-  // Net Earnings = Total Buyer Paid - Transaction Fee - Processing Fee - Tax Paid by Buyer + Share & Save Credit
-  const calculatedNetEarnings = orderFees
-    ? totalBuyerPaid -
-      (orderFees.transaction_fees || 0) -
-      (orderFees.processing_fees || 0) -
-      (order.sales_tax || 0) +
-      shareSaveCredit
-    : totalBuyerPaid - (order.sales_tax || 0);
+  const calculatedNetEarnings = calculateNetEarnings(order, orderFees);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
