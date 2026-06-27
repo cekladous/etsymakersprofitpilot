@@ -19,6 +19,27 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     }).format(amount);
   };
 
+  // Calculate net earnings from the displayed breakdown components so it
+  // matches Etsy exactly, rather than relying on the stored order_net field
+  // which may have been computed differently during import.
+  const revenueExclTax =
+    (order.order_value || 0) +
+    (order.shipping_charged || 0) -
+    (order.discount_amount || 0);
+
+  const calculatedNetEarnings = orderFees
+    ? revenueExclTax -
+      (orderFees.transaction_fees || 0) -
+      (orderFees.processing_fees || 0) -
+      (orderFees.listing_fees || 0) -
+      (orderFees.etsy_ads || 0) -
+      (orderFees.offsite_ads_fees || 0) +
+      (orderFees.share_save_refunds_credits || 0) -
+      (orderFees.etsy_shipping || 0) -
+      (orderFees.other_postage_costs || 0) -
+      (orderFees.other_fees || 0)
+    : revenueExclTax;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto max-w-2xl">
@@ -323,7 +344,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                 <div className="border-t-2 pt-2 flex justify-between items-center font-semibold text-emerald-700">
                   <span>= Net Earnings</span>
                   <span className="text-2xl text-emerald-600">
-                    {formatCurrency(order.order_net || 0)}
+                    {formatCurrency(calculatedNetEarnings)}
                   </span>
                 </div>
               </div>
