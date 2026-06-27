@@ -40,9 +40,15 @@ const DEFAULT_KEYWORD_RULES = [
   { keyword: "squarespace", category: "software_subscriptions" },
   { keyword: "google storage", category: "software_subscriptions" },
   { keyword: "google workspace", category: "software_subscriptions" },
+  { keyword: "google gsuite", category: "software_subscriptions" },
+  { keyword: "gsuite", category: "software_subscriptions" },
   { keyword: "dropbox", category: "software_subscriptions" },
   { keyword: "netflix", category: "software_subscriptions" },
   { keyword: "spotify", category: "software_subscriptions" },
+  { keyword: "base44", category: "software_subscriptions" },
+  { keyword: "quickbooks", category: "software_subscriptions" },
+  { keyword: "zapier", category: "software_subscriptions" },
+  { keyword: "slack", category: "software_subscriptions" },
 
   // Utilities / Cell Phone
   { keyword: "at&t", category: "utilities_cell_phone" },
