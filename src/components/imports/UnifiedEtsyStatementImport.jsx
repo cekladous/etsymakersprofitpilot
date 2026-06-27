@@ -388,7 +388,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                 listing_fees: 0,
                 transaction_fees: 0,
                 processing_fees: 0,
-                share_save_refunds_credits: 0,
+                share_save_credit: 0,
                 other_fees: 0,
                 etsy_ads: 0,
                 offsite_ads_fees: 0,
@@ -402,7 +402,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             if (fee.fee_type === 'listing') orderFeeMap[fee.order_id].listing_fees += amount;
             else if (fee.fee_type === 'transaction') orderFeeMap[fee.order_id].transaction_fees += amount;
             else if (fee.fee_type === 'processing') orderFeeMap[fee.order_id].processing_fees += amount;
-            else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_refunds_credits += amount;
+            else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_credit += amount;
             else if (fee.fee_type === 'etsy_ads') orderFeeMap[fee.order_id].etsy_ads += amount;
             else if (fee.fee_type === 'offsite_ads') orderFeeMap[fee.order_id].offsite_ads_fees += amount;
             else if (fee.fee_type === 'shipping_label') orderFeeMap[fee.order_id].etsy_shipping += amount;
@@ -1070,15 +1070,20 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     if (duplicateWarning?.newData) {
       setImporting(true);
       
-      // If replacing an existing month, mark old import as 'replaced'
+      // If replacing an existing month, mark old import as 'replaced' and clean up old data
       if (duplicateWarning.type === 'duplicate_month') {
         try {
-          await base44.entities.EtsyStatementImport.update(duplicateWarning.existingImport.id, {
+          const oldImportId = duplicateWarning.existingImport.id;
+          await base44.entities.EtsyStatementImport.update(oldImportId, {
             status: 'replaced',
             reconciliation_notes: `Replaced by new import on ${format(new Date(), 'MMM d, yyyy HH:mm')}`
           });
+          // Delete old statement lines and fees so dedup doesn't block the new import
+          await base44.entities.EtsyStatementLine.deleteMany({ import_id: oldImportId, owner_user_id: user.id });
+          await base44.entities.Fee.deleteMany({ import_id: oldImportId, owner_user_id: user.id });
+          console.log(`[Import] Cleaned up old data for replaced import ${oldImportId}`);
         } catch (err) {
-          console.warn('Failed to mark old import as replaced:', err);
+          console.warn('Failed to clean up replaced import:', err);
         }
       }
       
