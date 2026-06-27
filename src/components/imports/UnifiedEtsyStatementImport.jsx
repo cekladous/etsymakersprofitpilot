@@ -226,47 +226,81 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       let importRecord;
       
       try {
-        // Helper to batch operations with retry logic for reliability
-        const batchProcessWithRetry = async (items, batchSize, entityName, maxRetries = 2) => {
-          const results = { created: 0, failed: 0, errors: [] };
-          
-          for (let i = 0; i < items.length; i += batchSize) {
-            const batch = items.slice(i, i + batchSize);
-            let retryCount = 0;
-            let success = false;
-            
-            while (retryCount <= maxRetries && !success) {
-              try {
-                if (retryCount > 0) {
-                  // Exponential backoff between retries
-                  await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 300));
-                }
-                await base44.entities[entityName].bulkCreate(batch);
-                results.created += batch.length;
-                success = true;
-                // Small delay between successful batches to prevent rate limiting
-                if (i + batchSize < items.length) {
-                  await new Promise(resolve => setTimeout(resolve, 150));
-                }
-              } catch (batchError) {
-                retryCount++;
-                if (retryCount > maxRetries) {
-                  // Final attempt: try individual items
-                  console.warn(`Batch ${entityName} failed, trying individual items...`);
-                  for (const item of batch) {
-                    try {
-                      await base44.entities[entityName].create(item);
-                      results.created++;
-                    } catch (itemError) {
-                      results.failed++;
-                      results.errors.push(`${entityName}: ${itemError.message}`);
-                    }
-                  }
-                }
+        // Retry helper with exponential backoff: 500ms, 1000ms, 2000ms (3 retries)
+        const withRetry = async (fn, maxRetries = 3) => {
+          let lastError;
+          for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+              return await fn();
+            } catch (error) {
+              lastError = error;
+              if (attempt < maxRetries) {
+                const delays = [500, 1000, 2000];
+                const delay = delays[attempt] || 2000;
+                console.warn(`[Retry] Attempt ${attempt + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
               }
             }
           }
-          
+          throw lastError;
+        };
+
+        // Chunked bulk create: max 10 records per call, 300ms delay between chunks
+        const chunkedBulkCreate = async (items, entityName, chunkSize = 10) => {
+          const results = { created: 0, failed: 0, errors: [], items: [] };
+          for (let i = 0; i < items.length; i += chunkSize) {
+            const chunk = items.slice(i, i + chunkSize);
+            try {
+              const created = await withRetry(() => base44.entities[entityName].bulkCreate(chunk));
+              if (Array.isArray(created)) {
+                results.items.push(...created);
+                results.created += created.length;
+              } else {
+                results.created += chunk.length;
+              }
+            } catch (error) {
+              for (const item of chunk) {
+                try {
+                  const created = await withRetry(() => base44.entities[entityName].create(item));
+                  if (created) results.items.push(created);
+                  results.created++;
+                } catch (itemError) {
+                  results.failed++;
+                  results.errors.push(`${entityName}: ${itemError.message}`);
+                }
+              }
+            }
+            if (i + chunkSize < items.length) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
+          return results;
+        };
+
+        // Chunked bulk update: max 10 records per call, 300ms delay between chunks
+        const chunkedBulkUpdate = async (items, entityName, chunkSize = 10) => {
+          const results = { updated: 0, failed: 0, errors: [] };
+          for (let i = 0; i < items.length; i += chunkSize) {
+            const chunk = items.slice(i, i + chunkSize);
+            try {
+              await withRetry(() => base44.entities[entityName].bulkUpdate(chunk));
+              results.updated += chunk.length;
+            } catch (error) {
+              for (const item of chunk) {
+                try {
+                  const { id, ...updateData } = item;
+                  await withRetry(() => base44.entities[entityName].update(id, updateData));
+                  results.updated++;
+                } catch (itemError) {
+                  results.failed++;
+                  results.errors.push(`${entityName}: ${itemError.message}`);
+                }
+              }
+            }
+            if (i + chunkSize < items.length) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
           return results;
         };
         
@@ -274,13 +308,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         console.log('[Import] Checking for duplicates...');
         
         // Get all existing fees to prevent duplicates
-        const allExistingFees = await base44.entities.Fee.filter({ owner_user_id: currentUser.id });
+        const allExistingFees = await withRetry(() => base44.entities.Fee.filter({ owner_user_id: currentUser.id }));
         const existingFeeKeys = new Set(
           allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
         );
         
         // Get all existing statement lines (only for current user)
-        const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
+        const allExistingLines = await withRetry(() => base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id }));
         const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
         
         // All orders are treated as fresh — the order_id-based upsert handles duplicates
@@ -344,7 +378,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         // ATOMIC IMPORT: Import only new orders (bulk upsert by order_id)
         const orderIdToEntityId = {};
         // Fetch all existing orders ONCE to avoid N+1 queries
-        const allExistingOrders = await base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id });
+        const allExistingOrders = await withRetry(() => base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }));
         const existingOrderMap = {};
         allExistingOrders.forEach(o => { existingOrderMap[o.order_id] = o; });
 
@@ -362,46 +396,25 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         }
 
-        // Bulk create new orders
+        // Bulk create new orders (chunked with retry)
         if (ordersToCreate.length > 0) {
-          try {
-            const created = await base44.entities.EtsyOrder.bulkCreate(ordersToCreate);
-            if (Array.isArray(created)) {
-              created.forEach((o, idx) => {
-                if (o?.id) orderIdToEntityId[ordersToCreate[idx].order_id] = o.id;
-              });
-              result.orders.created = created.length;
-            } else {
-              result.orders.created = ordersToCreate.length;
-            }
-          } catch (bulkError) {
-            console.error('Bulk create orders failed, trying individually:', bulkError);
-            for (const order of ordersToCreate) {
-              try {
-                const created = await base44.entities.EtsyOrder.create(order);
-                orderIdToEntityId[order.order_id] = created.id;
-                result.orders.created++;
-              } catch (itemError) {
-                result.errors.push(`Order ${order.order_id}: ${itemError.message}`);
-              }
-            }
+          const orderResults = await chunkedBulkCreate(ordersToCreate, 'EtsyOrder');
+          result.orders.created = orderResults.created;
+          if (orderResults.items.length === ordersToCreate.length) {
+            orderResults.items.forEach((o, idx) => {
+              if (o?.id) orderIdToEntityId[ordersToCreate[idx].order_id] = o.id;
+            });
+          }
+          if (orderResults.failed > 0) {
+            result.errors.push(...orderResults.errors);
           }
         }
 
-        // Bulk update existing orders
+        // Bulk update existing orders (chunked with retry)
         if (ordersToUpdate.length > 0) {
-          try {
-            await base44.entities.EtsyOrder.bulkUpdate(ordersToUpdate);
-          } catch (bulkError) {
-            console.error('Bulk update orders failed:', bulkError);
-            for (const order of ordersToUpdate) {
-              try {
-                const { id, ...updateData } = order;
-                await base44.entities.EtsyOrder.update(id, updateData);
-              } catch (itemError) {
-                result.errors.push(`Order ${order.order_id}: ${itemError.message}`);
-              }
-            }
+          const updateResults = await chunkedBulkUpdate(ordersToUpdate, 'EtsyOrder');
+          if (updateResults.failed > 0) {
+            result.errors.push(...updateResults.errors);
           }
         }
 
@@ -415,7 +428,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               import_id: importRecord.id 
             };
           });
-          const feeResults = await batchProcessWithRetry(feesToCreate, 50, 'Fee');
+          const feeResults = await chunkedBulkCreate(feesToCreate, 'Fee');
           result.fees.created = feeResults.created;
           if (feeResults.failed > 0) {
             result.errors.push(...feeResults.errors);
@@ -461,7 +474,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         const orderFeeRecords = Object.values(orderFeeMap);
         if (orderFeeRecords.length > 0) {
           // Fetch all existing OrderFees ONCE to avoid N+1 queries
-          const allExistingOrderFees = await base44.entities.OrderFee.filter({ owner_user_id: currentUser.id });
+          const allExistingOrderFees = await withRetry(() => base44.entities.OrderFee.filter({ owner_user_id: currentUser.id }));
           const existingOrderFeeMap = {};
           allExistingOrderFees.forEach(of => { existingOrderFeeMap[of.order_id] = of; });
 
@@ -477,33 +490,16 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
 
           if (orderFeesToCreate.length > 0) {
-            try {
-              await base44.entities.OrderFee.bulkCreate(orderFeesToCreate);
-            } catch (bulkError) {
-              console.error('Bulk create OrderFees failed:', bulkError);
-              for (const of of orderFeesToCreate) {
-                try {
-                  await base44.entities.OrderFee.create(of);
-                } catch (itemError) {
-                  result.errors.push(`OrderFee ${of.order_id}: ${itemError.message}`);
-                }
-              }
+            const ofCreateResults = await chunkedBulkCreate(orderFeesToCreate, 'OrderFee');
+            if (ofCreateResults.failed > 0) {
+              result.errors.push(...ofCreateResults.errors);
             }
           }
 
           if (orderFeesToUpdate.length > 0) {
-            try {
-              await base44.entities.OrderFee.bulkUpdate(orderFeesToUpdate);
-            } catch (bulkError) {
-              console.error('Bulk update OrderFees failed:', bulkError);
-              for (const of of orderFeesToUpdate) {
-                try {
-                  const { id, ...updateData } = of;
-                  await base44.entities.OrderFee.update(id, updateData);
-                } catch (itemError) {
-                  result.errors.push(`OrderFee ${of.order_id}: ${itemError.message}`);
-                }
-              }
+            const ofUpdateResults = await chunkedBulkUpdate(orderFeesToUpdate, 'OrderFee');
+            if (ofUpdateResults.failed > 0) {
+              result.errors.push(...ofUpdateResults.errors);
             }
           }
         }
@@ -517,7 +513,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               owner_user_id: currentUser.id 
             };
           });
-          const depositResults = await batchProcessWithRetry(depositsToCreate, 50, 'Transfer');
+          const depositResults = await chunkedBulkCreate(depositsToCreate, 'Transfer');
           result.deposits.created = depositResults.created;
           if (depositResults.failed > 0) {
             result.errors.push(...depositResults.errors);
@@ -543,17 +539,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         }
         if (refundUpdates.length > 0) {
-          try {
-            await base44.entities.EtsyOrder.bulkUpdate(refundUpdates);
-          } catch (bulkError) {
-            console.error('Bulk update refunds failed:', bulkError);
-            for (const update of refundUpdates) {
-              try {
-                await base44.entities.EtsyOrder.update(update.id, { refund_amount: update.refund_amount });
-              } catch (itemError) {
-                result.errors.push(`Refund update: ${itemError.message}`);
-              }
-            }
+          const refundUpdateResults = await chunkedBulkUpdate(refundUpdates, 'EtsyOrder');
+          if (refundUpdateResults.failed > 0) {
+            result.errors.push(...refundUpdateResults.errors);
           }
         }
 
@@ -576,7 +564,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             import_id: importRecord.id,
             ...line
           }));
-          const lineResults = await batchProcessWithRetry(linesToCreate, 50, 'EtsyStatementLine');
+          const lineResults = await chunkedBulkCreate(linesToCreate, 'EtsyStatementLine');
           if (lineResults.failed > 0) {
             result.errors.push(...lineResults.errors);
           }
@@ -1349,7 +1337,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                 <AlertCircle className="w-5 h-5 text-rose-600" />
                 <p className="font-semibold text-rose-900">Import Failed</p>
               </div>
-              <p className="text-sm text-rose-800">{importResult.error}</p>
+              <p className="text-sm text-rose-800 max-h-40 overflow-y-auto break-words">{importResult.error}</p>
             </div>
           )}
         </div>
@@ -1492,7 +1480,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                 <AlertCircle className="w-5 h-5 text-rose-600" />
                 <p className="font-semibold text-rose-900">Import Failed</p>
               </div>
-              <p className="text-sm text-rose-800">{importResult.error}</p>
+              <p className="text-sm text-rose-800 max-h-40 overflow-y-auto break-words">{importResult.error}</p>
             </div>
           )}
         </div>
