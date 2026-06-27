@@ -111,5 +111,19 @@
     "material_category",
     "operation",
     "source_type"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "owner_user_id": "{{user.id}}"
+    },
+    "read": {
+      "owner_user_id": "{{user.id}}"
+    },
+    "update": {
+      "owner_user_id": "{{user.id}}"
+    },
+    "delete": {
+      "owner_user_id": "{{user.id}}"
+    }
+  }
 }
