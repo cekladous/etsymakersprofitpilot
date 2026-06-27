@@ -104,7 +104,13 @@ const classifyStatementLine = (row) => {
   if (titleL.includes('deposit') || titleL.includes('payout') || titleL.includes('transfer')) {
     return { category: 'deposit', section: 'deposits', fee_type: null, order_id: null };
   }
-  
+
+  // Share & Save must be checked BEFORE refund — the title is "Share & Save refund"
+  // and would otherwise be misclassified as a refund instead of a fee credit
+  if (titleL.includes('share') && titleL.includes('save')) {
+    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
+  }
+
   if (titleL.includes('refund') || titleL.includes('chargeback')) {
     return { category: 'refund', section: 'refunds', fee_type: null, order_id: orderId };
   }
@@ -135,10 +141,6 @@ const classifyStatementLine = (row) => {
   
   if (titleL.includes('postage')) {
     return { category: 'fee', section: 'shipping', fee_type: 'other_postage', order_id: orderId };
-  }
-  
-  if (titleL.includes('share') && titleL.includes('save')) {
-    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
   }
   
   if (titleL.includes('regulatory operating fee')) {
@@ -457,7 +459,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             else if (fee.fee_type === 'other_postage') orderFeeMap[fee.order_id].other_postage_costs += amount;
             else orderFeeMap[fee.order_id].other_fees += amount;
             
-            orderFeeMap[fee.order_id].total_fees += amount;
+            // Share & Save is a credit — it reduces total fees, not increases them
+            orderFeeMap[fee.order_id].total_fees += (fee.fee_type === 'share_save_credit' ? -amount : amount);
           }
         });
 
