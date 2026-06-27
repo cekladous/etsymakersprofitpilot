@@ -223,6 +223,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const importStartTime = Date.now();
       console.log(`[Import ${fileName}] Starting atomic import for ${statementMonth}...`);
       
+      let importRecord;
+      
       try {
         // Helper to batch operations with retry logic for reliability
         const batchProcessWithRetry = async (items, batchSize, entityName, maxRetries = 2) => {
@@ -309,8 +311,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           statement_month: statementMonth,
           owner_user_id: currentUser.id
         });
-        
-        let importRecord;
         
         // Create new import record
         importRecord = await base44.entities.EtsyStatementImport.create({
@@ -586,7 +586,31 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       return;
     }
     
-    console.log("File selected:", file.name, file.type);
+    // Validate file type
+    const validTypes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.oasis.opendocument.spreadsheet'
+    ];
+    
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls|ods)$/i)) {
+      setImportResult({ 
+        error: `Invalid file type. Please upload a CSV or Excel file (.csv, .xlsx, .xls). Received: ${file.type || 'unknown'}` 
+      });
+      return;
+    }
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setImportResult({ 
+        error: `File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB` 
+      });
+      return;
+    }
+    
+    console.log("File selected:", file.name, file.type, file.size);
     setImporting(true);
     setImportResult(null);
     setDuplicateWarning(null);
@@ -594,7 +618,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     const reader = new FileReader();
     reader.onerror = (error) => {
       console.error("FileReader error:", error);
-      setImportResult({ error: "Failed to read file" });
+      setImportResult({ error: "Failed to read file. Please try again or use a different file." });
       setImporting(false);
     };
     reader.onload = async (e) => {
@@ -602,26 +626,74 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
          console.log("File loaded, parsing...");
          const XLSX = await import("xlsx");
          const data = new Uint8Array(e.target.result);
+         
+         // Validate file content
+         if (data.length === 0) {
+           setImportResult({ error: "File appears to be empty. Please check the file and try again." });
+           setImporting(false);
+           return;
+         }
+         
          const workbook = XLSX.read(data, { type: "array" });
+         
+         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+           setImportResult({ error: "No worksheets found in file. Please ensure the file contains data." });
+           setImporting(false);
+           return;
+         }
+         
          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false });
         console.log("Parsed rows:", jsonData.length);
 
         if (jsonData.length === 0) {
-          setImportResult({ error: "File is empty" });
+          setImportResult({ error: "File is empty or contains no data rows. Please check the file content." });
+          setImporting(false);
+          return;
+        }
+        
+        // Validate required columns exist
+        const firstRow = jsonData[0];
+        const requiredColumns = ['Date', 'Type', 'Amount'];
+        const missingColumns = requiredColumns.filter(col => !firstRow.hasOwnProperty(col));
+        
+        if (missingColumns.length > 0) {
+          setImportResult({ 
+            error: `Missing required columns: ${missingColumns.join(', ')}. Please ensure you're uploading an Etsy Monthly Statement CSV.` 
+          });
           setImporting(false);
           return;
         }
 
         // Parse statement
         console.log("Parsing statement data...");
-        const parsed = parseEtsyStatement(jsonData, file.name);
+        let parsed;
+        try {
+          parsed = parseEtsyStatement(jsonData, file.name);
+        } catch (parseError) {
+          console.error("Parse error:", parseError);
+          setImportResult({ 
+            error: `Failed to parse file: ${parseError.message || 'Unknown parsing error'}. Please ensure the file is a valid Etsy Monthly Statement CSV.` 
+          });
+          setImporting(false);
+          return;
+        }
+        
         console.log("Parsed:", {
           orders: parsed.orders.length,
           fees: parsed.fees.length,
           deposits: parsed.deposits.length,
           unmatched: parsed.unmatchedLines.length
         });
+        
+        // Validate parsed data
+        if (!parsed.orders || parsed.orders.length === 0) {
+          setImportResult({ 
+            error: "No orders found in file. Please ensure you're uploading the correct Etsy Monthly Statement CSV (not a custom report)." 
+          });
+          setImporting(false);
+          return;
+        }
         const fileHash = generateFileHash(jsonData);
         
         // Check for duplicate file (only for current user)
@@ -716,8 +788,20 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         
         setImporting(false);
       } catch (error) {
-        console.error("Parse error:", error);
-        setImportResult({ error: `Failed to parse file: ${error.message}` });
+        console.error("File processing error:", error);
+        let errorMessage = "Failed to process file. ";
+        
+        if (error.message?.includes('XLSX') || error.message?.includes('parse')) {
+          errorMessage += "File format not recognized. Please use CSV or Excel format.";
+        } else if (error.message?.includes('permission') || error.message?.includes('access')) {
+          errorMessage += "Cannot access file. Please check file permissions.";
+        } else if (error.message?.includes('memory') || error.message?.includes('heap')) {
+          errorMessage += "File too large to process. Please use a smaller file.";
+        } else {
+          errorMessage += error.message || "Unknown error occurred.";
+        }
+        
+        setImportResult({ error: errorMessage });
         setImporting(false);
       }
     };
