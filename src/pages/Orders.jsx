@@ -286,7 +286,7 @@ export default function Orders() {
     offsite_ads: relevantOrderFees.reduce((sum, f) => sum + (f.offsite_ads_fees || 0), 0),
     shipping: relevantOrderFees.reduce((sum, f) => sum + (f.etsy_shipping || 0), 0),
     other_postage: relevantOrderFees.reduce((sum, f) => sum + (f.other_postage_costs || 0), 0),
-    share_save: relevantOrderFees.reduce((sum, f) => sum + (f.share_save_refunds_credits || 0), 0),
+    share_save: relevantOrderFees.reduce((sum, f) => sum + (f.share_save_credit || 0), 0),
     other: relevantOrderFees.reduce((sum, f) => sum + (f.other_fees || 0), 0),
   };
   
@@ -379,6 +379,10 @@ export default function Orders() {
       ["Order ID", "Date", "Buyer", "Items", "Order Value", "Shipping", "Sales Tax", "Total Fees", "Net"],
       ...filteredOrders.map(o => {
         const fees = orderFees.find(f => f.order_id === o.order_id);
+        const totalBuyerPaid = (o.order_value || 0) + (o.shipping_charged || 0) - (o.discount_amount || 0) + (o.sales_tax || 0);
+        const netEarnings = fees
+          ? totalBuyerPaid - (fees.transaction_fees || 0) - (fees.processing_fees || 0) - (o.sales_tax || 0) + (fees.share_save_credit || 0)
+          : totalBuyerPaid - (o.sales_tax || 0);
         return [
           o.order_id,
           o.sale_date,
@@ -388,7 +392,7 @@ export default function Orders() {
           o.shipping_charged,
           o.sales_tax,
           fees?.total_fees || 0,
-          o.order_net
+          netEarnings
         ];
       })
     ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -660,7 +664,7 @@ export default function Orders() {
           { label: "Offsite Ads", value: fees.offsite_ads_fees },
           { label: "Shipping Label", value: fees.etsy_shipping },
           { label: "Other Postage", value: fees.other_postage_costs },
-          { label: "Share & Save Credit", value: fees.share_save_refunds_credits },
+          { label: "Share & Save Credit", value: fees.share_save_credit },
           { label: "Other", value: fees.other_fees },
         ].filter(item => item.value > 0);
 
@@ -697,11 +701,18 @@ export default function Orders() {
     },
     {
       header: "Net",
-      render: (row) => (
-        <span className="font-semibold text-emerald-600">
-          {formatCurrency(row.order_net || 0)}
-        </span>
-      ),
+      render: (row) => {
+        const fees = orderFees.find(f => f.order_id === row.order_id);
+        const totalBuyerPaid = (row.order_value || 0) + (row.shipping_charged || 0) - (row.discount_amount || 0) + (row.sales_tax || 0);
+        const netEarnings = fees
+          ? totalBuyerPaid - (fees.transaction_fees || 0) - (fees.processing_fees || 0) - (row.sales_tax || 0) + (fees.share_save_credit || 0)
+          : totalBuyerPaid - (row.sales_tax || 0);
+        return (
+          <span className="font-semibold text-emerald-600">
+            {formatCurrency(netEarnings)}
+          </span>
+        );
+      },
     },
   ];
 

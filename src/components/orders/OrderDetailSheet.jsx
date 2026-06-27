@@ -39,13 +39,14 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
       )
     : 0;
 
-  // Net Earnings = Total before tax - Transaction fee - Processing fee + Share & Save Refund
+  // Net Earnings = Total Buyer Paid - Transaction Fee - Processing Fee - Tax Paid by Buyer + Share & Save Credit
   const calculatedNetEarnings = orderFees
-    ? revenueExclTax -
+    ? totalBuyerPaid -
       (orderFees.transaction_fees || 0) -
-      (orderFees.processing_fees || 0) +
+      (orderFees.processing_fees || 0) -
+      (order.sales_tax || 0) +
       shareSaveCredit
-    : revenueExclTax;
+    : totalBuyerPaid - (order.sales_tax || 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
