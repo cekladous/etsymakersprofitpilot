@@ -40,6 +40,11 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
               Choose which type of data to import. Both sources will merge together automatically.
             </DialogDescription>
           </DialogHeader>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+            <p className="text-sm text-amber-900">
+              <strong>⚠️ Important:</strong> If you use Square through Etsy (Etsy Payments), your Etsy statement already includes Square sales. Do NOT also import a Square CSV for the same orders — this will cause duplicates.
+            </p>
+          </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
@@ -70,8 +75,7 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
                 <p className="text-sm text-emerald-900 font-semibold mb-2">📦 Sold Orders Report CSV</p>
                 <ul className="text-sm text-emerald-900 space-y-1 ml-4 list-disc">
-                  <li>Go to Etsy → Shop Manager → Orders</li>
-                  <li>Click "Download CSV" to export all sold orders</li>
+                  <li>Go to Etsy → click your account icon (top-right) → Options → Download Data → Under 'Orders', download 'Orders CSV'</li>
                   <li>Supplements with: Product details, SKUs, buyer info</li>
                 </ul>
               </div>

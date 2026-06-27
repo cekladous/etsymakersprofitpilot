@@ -540,8 +540,32 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             imports_used_this_month: (subscription.imports_used_this_month || 0) + 1
           });
         }
+        
+        // Flag potential duplicates: orders with same date + amount from different sources
+        const allOrders = await base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id });
+        const orderGroups = {};
+        allOrders.forEach(order => {
+          const key = `${order.sale_date}_${order.order_total}`;
+          if (!orderGroups[key]) orderGroups[key] = [];
+          orderGroups[key].push(order);
+        });
+        
+        const duplicateIds = [];
+        Object.values(orderGroups).forEach(group => {
+          if (group.length > 1) {
+            const sources = new Set(group.map(o => o.source || 'unknown'));
+            if (sources.size > 1) {
+              group.forEach(o => duplicateIds.push(o.id));
+            }
+          }
+        });
+        
+        if (duplicateIds.length > 0) {
+          await base44.entities.EtsyOrder.updateMany({ id: { $in: duplicateIds } }, { $set: { possible_duplicate: true } });
+          console.log(`[Import] Flagged ${duplicateIds.length} potential duplicates`);
+        }
       } catch (err) {
-        console.warn('Failed to track import usage:', err);
+        console.warn('Failed to flag duplicates:', err);
       }
 
       setImportResult(result);
@@ -972,6 +996,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           currency: row["Currency"] || "",
           status: row["Status"] || "completed",
           total_fees: totalOrderFees + totalTaxes,
+          source: 'etsy_statement',
+          possible_duplicate: false,
           _rawLine: rawLine
         });
       }
