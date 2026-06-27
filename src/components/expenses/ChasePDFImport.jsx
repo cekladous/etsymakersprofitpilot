@@ -7,10 +7,10 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import DataTable from '../ui/DataTable';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
-import { BUSINESS_EXPENSE_CATEGORIES } from '../shared/expenseCategories';
+import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES } from '../shared/expenseCategories';
 import { autoCategorize } from './autoCategorize';
 
 export default function ChasePDFImport({ open, onOpenChange }) {
@@ -179,9 +179,19 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             <Select value={row.category} onValueChange={(value) => handleTransactionChange(index, 'category', value)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                    {BUSINESS_EXPENSE_CATEGORIES.map(cat => (
-                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                    ))}
+                    <SelectGroup>
+                        <SelectLabel className="text-stone-500 font-semibold">Business Expenses</SelectLabel>
+                        {BUSINESS_EXPENSE_CATEGORIES.map(cat => (
+                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                        ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                        <SelectLabel className="text-stone-500 font-semibold">Etsy Fees</SelectLabel>
+                        {ETSY_FEE_CATEGORIES.map(cat => (
+                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                        ))}
+                    </SelectGroup>
                 </SelectContent>
             </Select>
         )

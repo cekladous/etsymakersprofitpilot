@@ -18,6 +18,9 @@ const CATEGORY_MAPPINGS = {
   utilities_cell_phone: { label: "Utilities & Cell Phone", key: "utilitiesCellPhone", section: "business" },
   software_subscriptions: { label: "Software Subscriptions", key: "softwareSubscriptions", section: "business" },
   professional_services: { label: "Professional Services", key: "professionalServices", section: "business" },
+  payment_processing_fees: { label: "Payment Processing Fees", key: "paymentProcessingFees", section: "business" },
+  insurance: { label: "Insurance", key: "insurance", section: "business" },
+  rent: { label: "Rent / Lease", key: "rent", section: "business" },
   other: { label: "Other", key: "other", section: "business" },
   miscellaneous_expenses: { label: "Miscellaneous", key: "miscellaneous", section: "business" },
   

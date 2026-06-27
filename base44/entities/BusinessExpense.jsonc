@@ -41,6 +41,9 @@
         "utilities_cell_phone",
         "software_subscriptions",
         "professional_services",
+        "payment_processing_fees",
+        "insurance",
+        "rent",
         "other",
         "miscellaneous_expenses"
       ],
