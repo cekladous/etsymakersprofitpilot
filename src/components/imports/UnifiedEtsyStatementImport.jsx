@@ -160,6 +160,47 @@ const classifyStatementLine = (row) => {
   return { category: 'unmatched', section: 'unknown', fee_type: null, order_id: orderId };
 };
 
+// Batch process with retry logic for reliability
+const batchProcessWithRetry = async (items, batchSize, entityName, maxRetries = 2) => {
+  const results = { created: 0, failed: 0, errors: [] };
+  
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    let retryCount = 0;
+    let success = false;
+    
+    while (retryCount <= maxRetries && !success) {
+      try {
+        await base44.entities[entityName].bulkCreate(batch);
+        results.created += batch.length;
+        success = true;
+        // Small delay between successful batches
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        retryCount++;
+        if (retryCount > maxRetries) {
+          // Final failure - try individual items
+          for (const item of batch) {
+            try {
+              await base44.entities[entityName].create(item);
+              results.created++;
+            } catch (itemError) {
+              results.failed++;
+              results.errors.push(`${entityName} batch ${i}-${i + batchSize}: ${itemError.message}`);
+              console.error(`Failed to create ${entityName}:`, itemError);
+            }
+          }
+        } else {
+          // Wait before retry with exponential backoff
+          await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+        }
+      }
+    }
+  }
+  
+  return results;
+};
+
 export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedded = false }) {
   const { user } = useAuth();
   const [importing, setImporting] = useState(false);
@@ -174,210 +215,318 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     mutationFn: async ({ statementMonth, dateRangeStart, dateRangeEnd, fileName, fileHash, parsedData }) => {
       const { orders, fees, deposits, refunds, taxes, unmatchedLines } = parsedData;
       
-      // Helper to batch operations using bulk creates for speed
-       const batchProcess = async (items, batchSize, entityName) => {
-         for (let i = 0; i < items.length; i += batchSize) {
-           const batch = items.slice(i, i + batchSize);
-           await base44.entities[entityName].bulkCreate(batch);
-           // Small delay between batches only
-           await new Promise(resolve => setTimeout(resolve, 200));
-         }
-       };
-      
       // Get owner_user_id from authenticated user
       const currentUser = await base44.auth.me();
       
-      // Get all existing fees to prevent duplicates across imports
-      const allExistingFees = await base44.entities.Fee.filter({ owner_user_id: currentUser.id });
-      const existingFeeKeys = new Set(
-        allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
-      );
+      // ATOMIC IMPORT: Wrap entire import in transaction-like error handling
+      // If any critical step fails, we want to know exactly what failed
+      const importStartTime = Date.now();
+      console.log(`[Import ${fileName}] Starting atomic import for ${statementMonth}...`);
       
-      // Get all existing statement lines to check for duplicates (only for current user)
-      const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
-      const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
+      try {
       
-      // Filter out rows that already exist
-      const newOrders = orders.filter(o => !existingLineUIDs.has(o._rawLine.line_uid));
-      // For fees, check if the Fee entity exists (not statement lines)
-      // If fees were deleted but statement lines remain, allow re-import
-      const newFees = fees.filter(f => {
-        const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
-        return !existingFeeKeys.has(feeKey);
-      });
-      const newDeposits = deposits.filter(d => !existingLineUIDs.has(d._rawLine.line_uid));
-      const newRefunds = refunds.filter(r => !existingLineUIDs.has(r._rawLine.line_uid));
-      
-      // Check if this statement month was already imported (only for current user)
-      const existingImports = await base44.entities.EtsyStatementImport.filter({ 
-        statement_month: statementMonth,
-        owner_user_id: currentUser.id
-      });
-      let importRecord;
-      
-      // Create new import record
-      importRecord = await base44.entities.EtsyStatementImport.create({
-        owner_user_id: currentUser.id,
-        import_id: `import_${Date.now()}`,
-        statement_month: statementMonth,
-        date_range_start: dateRangeStart,
-        date_range_end: dateRangeEnd,
-        file_name: fileName,
-        file_hash: fileHash,
-        imported_at: new Date().toISOString(),
-        status: 'success',
-      });
-
-      const skippedFees = fees.length - newFees.length;
-      
-      const result = {
-        orders: { created: 0, updated: 0, skipped: orders.length - newOrders.length },
-        fees: { created: 0, skipped: skippedFees },
-        deposits: { created: 0, skipped: deposits.length - newDeposits.length },
-        refunds: { created: 0 },
-        taxes: { created: 0 },
-        unmatched: { count: 0 }
-      };
-      
-      // Show error if fees are being duplicated
-      if (skippedFees > 0) {
-        console.warn(`⚠️ Skipped ${skippedFees} duplicate fee(s)`);
-      }
-
-      // Import only new orders (upsert by order_id)
-      // Build a map of order_id -> EtsyOrder entity ID for later linking
-      const orderIdToEntityId = {};
-      for (const order of newOrders) {
-        const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id, owner_user_id: currentUser.id });
-        if (existing.length > 0) {
-          await base44.entities.EtsyOrder.update(existing[0].id, order);
-          orderIdToEntityId[order.order_id] = existing[0].id;
-          result.orders.updated++;
-        } else {
-          const created = await base44.entities.EtsyOrder.create({ ...order, owner_user_id: currentUser.id });
-          orderIdToEntityId[order.order_id] = created.id;
-          result.orders.created++;
-        }
-      }
-
-      // Import only new fees (bulk create)
-      if (newFees.length > 0) {
-        const feesToCreate = newFees.map(fee => ({ 
-          ...fee, 
-          owner_user_id: currentUser.id, 
-          import_id: importRecord.id 
-        }));
-        await batchProcess(feesToCreate, 50, 'Fee');
-        result.fees.created = newFees.length;
-      }
-
-      // Aggregate fees into OrderFee records for each order (only new fees)
-      const orderFeeMap = {};
-      newFees.forEach(fee => {
-        if (fee.order_id) {
-          if (!orderFeeMap[fee.order_id]) {
-            orderFeeMap[fee.order_id] = {
-              order_id: fee.order_id,
-              listing_fees: 0,
-              transaction_fees: 0,
-              processing_fees: 0,
-              share_save_refunds_credits: 0,
-              other_fees: 0,
-              etsy_ads: 0,
-              offsite_ads_fees: 0,
-              etsy_shipping: 0,
-              other_postage_costs: 0,
-              total_fees: 0
-            };
+      try {
+        // Helper to batch operations with retry logic for reliability
+        const batchProcessWithRetry = async (items, batchSize, entityName, maxRetries = 2) => {
+          const results = { created: 0, failed: 0, errors: [] };
+          
+          for (let i = 0; i < items.length; i += batchSize) {
+            const batch = items.slice(i, i + batchSize);
+            let retryCount = 0;
+            let success = false;
+            
+            while (retryCount <= maxRetries && !success) {
+              try {
+                if (retryCount > 0) {
+                  // Exponential backoff between retries
+                  await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 300));
+                }
+                await base44.entities[entityName].bulkCreate(batch);
+                results.created += batch.length;
+                success = true;
+                // Small delay between successful batches to prevent rate limiting
+                if (i + batchSize < items.length) {
+                  await new Promise(resolve => setTimeout(resolve, 150));
+                }
+              } catch (batchError) {
+                retryCount++;
+                if (retryCount > maxRetries) {
+                  // Final attempt: try individual items
+                  console.warn(`Batch ${entityName} failed, trying individual items...`);
+                  for (const item of batch) {
+                    try {
+                      await base44.entities[entityName].create(item);
+                      results.created++;
+                    } catch (itemError) {
+                      results.failed++;
+                      results.errors.push(`${entityName}: ${itemError.message}`);
+                    }
+                  }
+                }
+              }
+            }
           }
           
-          const amount = Math.abs(fee.amount);
-          if (fee.fee_type === 'listing') orderFeeMap[fee.order_id].listing_fees += amount;
-          else if (fee.fee_type === 'transaction') orderFeeMap[fee.order_id].transaction_fees += amount;
-          else if (fee.fee_type === 'processing') orderFeeMap[fee.order_id].processing_fees += amount;
-          else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_refunds_credits += amount;
-          else if (fee.fee_type === 'etsy_ads') orderFeeMap[fee.order_id].etsy_ads += amount;
-          else if (fee.fee_type === 'offsite_ads') orderFeeMap[fee.order_id].offsite_ads_fees += amount;
-          else if (fee.fee_type === 'shipping_label') orderFeeMap[fee.order_id].etsy_shipping += amount;
-          else if (fee.fee_type === 'other_postage') orderFeeMap[fee.order_id].other_postage_costs += amount;
-          else orderFeeMap[fee.order_id].other_fees += amount;
-          
-          orderFeeMap[fee.order_id].total_fees += amount;
-        }
-      });
-
-      // Create/update OrderFee records
-      const orderFeeRecords = Object.values(orderFeeMap);
-      for (const orderFee of orderFeeRecords) {
-        const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id, owner_user_id: currentUser.id });
-        if (existing.length > 0) {
-          await base44.entities.OrderFee.update(existing[0].id, orderFee);
-        } else {
-          await base44.entities.OrderFee.create({ ...orderFee, owner_user_id: currentUser.id });
-        }
-      }
-
-      // Import only new deposits as transfers (bulk create)
-      if (newDeposits.length > 0) {
-        const depositsToCreate = newDeposits.map(deposit => ({ 
-          ...deposit, 
-          owner_user_id: currentUser.id 
-        }));
-        await batchProcess(depositsToCreate, 50, 'Transfer');
-        result.deposits.created = newDeposits.length;
-      }
-
-      // Apply refunds to orders
-      const refundsByOrderId = {};
-      newRefunds.forEach(refund => {
-        if (refund.orderId) {
-          refundsByOrderId[refund.orderId] = (refundsByOrderId[refund.orderId] || 0) + refund.amount;
-        }
-      });
-
-      // Update orders with refund amounts
-      for (const [orderId, refundAmount] of Object.entries(refundsByOrderId)) {
-        const order = await base44.entities.EtsyOrder.filter({ order_id: orderId, owner_user_id: currentUser.id });
-        if (order.length > 0) {
-          const currentRefund = order[0].refund_amount || 0;
-          await base44.entities.EtsyOrder.update(order[0].id, {
-            refund_amount: currentRefund + refundAmount
-          });
-        }
-      }
-
-      result.refunds.created = newRefunds.length;
-      result.taxes.created = taxes.length;
-      result.unmatched.count = unmatchedLines.length;
-
-      // Save only new statement lines (including refunds) with source_etsy_order_id links (bulk create)
-      const newLines = [
-        ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })), 
-        ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })), 
-        ...newDeposits.map(d => d._rawLine),
-        ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
-      ];
-      if (newLines.length > 0) {
-        const linesToCreate = newLines.map(line => ({
+          return results;
+        };
+        
+        // ATOMIC DEDUPLICATION: Prevent duplicate imports
+        console.log('[Import] Checking for duplicates...');
+        
+        // Get all existing fees to prevent duplicates
+        const allExistingFees = await base44.entities.Fee.filter({ owner_user_id: currentUser.id });
+        const existingFeeKeys = new Set(
+          allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
+        );
+        
+        // Get all existing statement lines (only for current user)
+        const allExistingLines = await base44.entities.EtsyStatementLine.filter({ owner_user_id: currentUser.id });
+        const existingLineUIDs = new Set(allExistingLines.map(line => line.line_uid));
+        
+        // Filter out duplicates using stable line_uid
+        const newOrders = orders.filter(o => {
+          if (!o._rawLine?.line_uid) return true;
+          return !existingLineUIDs.has(o._rawLine.line_uid);
+        });
+        
+        const newFees = fees.filter(f => {
+          const feeKey = `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`;
+          return !existingFeeKeys.has(feeKey);
+        });
+        
+        const newDeposits = deposits.filter(d => {
+          if (!d._rawLine?.line_uid) return true;
+          return !existingLineUIDs.has(d._rawLine.line_uid);
+        });
+        
+        const newRefunds = refunds.filter(r => {
+          if (!r._rawLine?.line_uid) return true;
+          return !existingLineUIDs.has(r._rawLine.line_uid);
+        });
+        
+        console.log(`[Import] Deduplication: ${orders.length - newOrders.length} orders, ${fees.length - newFees.length} fees, ${deposits.length - newDeposits.length} deposits skipped`);
+        
+        // Check if this statement month was already imported (only for current user)
+        const existingImports = await base44.entities.EtsyStatementImport.filter({ 
+          statement_month: statementMonth,
+          owner_user_id: currentUser.id
+        });
+        
+        let importRecord;
+        
+        // Create new import record
+        importRecord = await base44.entities.EtsyStatementImport.create({
           owner_user_id: currentUser.id,
-          import_id: importRecord.id,
-          ...line
-        }));
-        await batchProcess(linesToCreate, 50, 'EtsyStatementLine');
+          import_id: `import_${Date.now()}`,
+          statement_month: statementMonth,
+          date_range_start: dateRangeStart,
+          date_range_end: dateRangeEnd,
+          file_name: fileName,
+          file_hash: fileHash,
+          imported_at: new Date().toISOString(),
+          status: 'processing', // Start as processing, update on completion
+        });
+
+        const skippedFees = fees.length - newFees.length;
+        const skippedOrders = orders.length - newOrders.length;
+        const skippedDeposits = deposits.length - newDeposits.length;
+        
+        const result = {
+          orders: { created: 0, updated: 0, skipped: skippedOrders },
+          fees: { created: 0, skipped: skippedFees },
+          deposits: { created: 0, skipped: skippedDeposits },
+          refunds: { created: 0 },
+          taxes: { created: 0 },
+          unmatched: { count: 0 },
+          errors: []
+        };
+        
+        // Log deduplication stats
+        if (skippedOrders > 0) console.log(`⚠️ Skipped ${skippedOrders} duplicate order(s)`);
+        if (skippedFees > 0) console.log(`⚠️ Skipped ${skippedFees} duplicate fee(s)`);
+        if (skippedDeposits > 0) console.log(`⚠️ Skipped ${skippedDeposits} duplicate deposit(s)`);
+
+        // ATOMIC IMPORT: Import only new orders (upsert by order_id)
+        const orderIdToEntityId = {};
+        for (const order of newOrders) {
+          try {
+            const existing = await base44.entities.EtsyOrder.filter({ order_id: order.order_id, owner_user_id: currentUser.id });
+            if (existing.length > 0) {
+              await base44.entities.EtsyOrder.update(existing[0].id, order);
+              orderIdToEntityId[order.order_id] = existing[0].id;
+              result.orders.updated++;
+            } else {
+              const created = await base44.entities.EtsyOrder.create({ ...order, owner_user_id: currentUser.id });
+              orderIdToEntityId[order.order_id] = created.id;
+              result.orders.created++;
+            }
+          } catch (orderError) {
+            console.error('Failed to import order:', order.order_id, orderError);
+            result.errors.push(`Order ${order.order_id}: ${orderError.message}`);
+          }
+        }
+
+        // Import only new fees (bulk create with retry)
+        if (newFees.length > 0) {
+          const feesToCreate = newFees.map(fee => ({ 
+            ...fee, 
+            owner_user_id: currentUser.id, 
+            import_id: importRecord.id 
+          }));
+          const feeResults = await batchProcessWithRetry(feesToCreate, 50, 'Fee');
+          result.fees.created = feeResults.created;
+          if (feeResults.failed > 0) {
+            result.errors.push(...feeResults.errors);
+          }
+        }
+
+        // Aggregate fees into OrderFee records for each order (only new fees)
+        const orderFeeMap = {};
+        newFees.forEach(fee => {
+          if (fee.order_id) {
+            if (!orderFeeMap[fee.order_id]) {
+              orderFeeMap[fee.order_id] = {
+                order_id: fee.order_id,
+                listing_fees: 0,
+                transaction_fees: 0,
+                processing_fees: 0,
+                share_save_refunds_credits: 0,
+                other_fees: 0,
+                etsy_ads: 0,
+                offsite_ads_fees: 0,
+                etsy_shipping: 0,
+                other_postage_costs: 0,
+                total_fees: 0
+              };
+            }
+            
+            const amount = Math.abs(fee.amount);
+            if (fee.fee_type === 'listing') orderFeeMap[fee.order_id].listing_fees += amount;
+            else if (fee.fee_type === 'transaction') orderFeeMap[fee.order_id].transaction_fees += amount;
+            else if (fee.fee_type === 'processing') orderFeeMap[fee.order_id].processing_fees += amount;
+            else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_refunds_credits += amount;
+            else if (fee.fee_type === 'etsy_ads') orderFeeMap[fee.order_id].etsy_ads += amount;
+            else if (fee.fee_type === 'offsite_ads') orderFeeMap[fee.order_id].offsite_ads_fees += amount;
+            else if (fee.fee_type === 'shipping_label') orderFeeMap[fee.order_id].etsy_shipping += amount;
+            else if (fee.fee_type === 'other_postage') orderFeeMap[fee.order_id].other_postage_costs += amount;
+            else orderFeeMap[fee.order_id].other_fees += amount;
+            
+            orderFeeMap[fee.order_id].total_fees += amount;
+          }
+        });
+
+        // Create/update OrderFee records
+        const orderFeeRecords = Object.values(orderFeeMap);
+        for (const orderFee of orderFeeRecords) {
+          try {
+            const existing = await base44.entities.OrderFee.filter({ order_id: orderFee.order_id, owner_user_id: currentUser.id });
+            if (existing.length > 0) {
+              await base44.entities.OrderFee.update(existing[0].id, orderFee);
+            } else {
+              await base44.entities.OrderFee.create({ ...orderFee, owner_user_id: currentUser.id });
+            }
+          } catch (orderFeeError) {
+            console.error('Failed to create OrderFee:', orderFee.order_id, orderFeeError);
+            result.errors.push(`OrderFee ${orderFee.order_id}: ${orderFeeError.message}`);
+          }
+        }
+
+        // Import only new deposits as transfers (bulk create with retry)
+        if (newDeposits.length > 0) {
+          const depositsToCreate = newDeposits.map(deposit => ({ 
+            ...deposit, 
+            owner_user_id: currentUser.id 
+          }));
+          const depositResults = await batchProcessWithRetry(depositsToCreate, 50, 'Transfer');
+          result.deposits.created = depositResults.created;
+          if (depositResults.failed > 0) {
+            result.errors.push(...depositResults.errors);
+          }
+        }
+
+        // Apply refunds to orders
+        const refundsByOrderId = {};
+        newRefunds.forEach(refund => {
+          if (refund.orderId) {
+            refundsByOrderId[refund.orderId] = (refundsByOrderId[refund.orderId] || 0) + refund.amount;
+          }
+        });
+
+        // Update orders with refund amounts
+        for (const [orderId, refundAmount] of Object.entries(refundsByOrderId)) {
+          try {
+            const order = await base44.entities.EtsyOrder.filter({ order_id: orderId, owner_user_id: currentUser.id });
+            if (order.length > 0) {
+              const currentRefund = order[0].refund_amount || 0;
+              await base44.entities.EtsyOrder.update(order[0].id, {
+                refund_amount: currentRefund + refundAmount
+              });
+            }
+          } catch (refundError) {
+            console.error('Failed to apply refund to order:', orderId, refundError);
+            result.errors.push(`Refund for ${orderId}: ${refundError.message}`);
+          }
+        }
+
+        result.refunds.created = newRefunds.length;
+        result.taxes.created = taxes.length;
+        result.unmatched.count = unmatchedLines.length;
+
+        // Save only new statement lines (including refunds) with source_etsy_order_id links (bulk create with retry)
+        const newLines = [
+          ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })), 
+          ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })), 
+          ...newDeposits.map(d => d._rawLine),
+          ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
+        ];
+        if (newLines.length > 0) {
+          const linesToCreate = newLines.map(line => ({
+            owner_user_id: currentUser.id,
+            import_id: importRecord.id,
+            ...line
+          }));
+          const lineResults = await batchProcessWithRetry(linesToCreate, 50, 'EtsyStatementLine');
+          if (lineResults.failed > 0) {
+            result.errors.push(...lineResults.errors);
+          }
+        }
+
+        // Update import counts and status
+        const hasErrors = result.errors.length > 0;
+        await base44.entities.EtsyStatementImport.update(importRecord.id, {
+          orders_count: result.orders.created + result.orders.updated,
+          fees_count: result.fees.created,
+          deposits_count: result.deposits.created,
+          refunds_count: result.refunds.created,
+          taxes_count: result.taxes.created,
+          unmatched_count: result.unmatched.count,
+          reconciliation_status: hasErrors ? 'partial' : 'success',
+          reconciliation_notes: hasErrors ? `Import completed with ${result.errors.length} error(s)` : null
+        });
+
+        if (hasErrors) {
+          console.error('Import completed with errors:', result.errors);
+        }
+
+        return result;
+      } catch (importError) {
+        // CRITICAL: If import fails, mark the import record as failed
+        console.error('[Import] CRITICAL FAILURE:', importError);
+        
+        if (importRecord) {
+          try {
+            await base44.entities.EtsyStatementImport.update(importRecord.id, {
+              status: 'failed',
+              reconciliation_notes: `Import failed: ${importError.message || 'Unknown error'}`
+            });
+          } catch (updateError) {
+            console.error('Failed to update import status:', updateError);
+          }
+        }
+        
+        // Re-throw with context
+        throw new Error(`Import failed: ${importError.message || 'Unknown error'}`);
       }
-
-      // Update import counts
-      await base44.entities.EtsyStatementImport.update(importRecord.id, {
-        orders_count: result.orders.created + result.orders.updated,
-        fees_count: result.fees.created,
-        deposits_count: result.deposits.created,
-        refunds_count: result.refunds.created,
-        taxes_count: result.taxes.created,
-        unmatched_count: result.unmatched.count,
-        reconciliation_status: 'success'
-      });
-
-      return result;
     },
     onSuccess: async (result) => {
       // Track import usage for Free users
@@ -409,7 +558,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       setPendingData(null);
     },
     onError: (error) => {
-      setImportResult({ error: error.message });
+      console.error('[Import] Error:', error);
+      // Show user-friendly error message
+      const userMessage = error.message?.includes('Import failed') 
+        ? error.message 
+        : `Import failed: ${error.message}. Please try again.`;
+      
+      setImportResult({ error: userMessage });
       setImporting(false);
     },
   });
