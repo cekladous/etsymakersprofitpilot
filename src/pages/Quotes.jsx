@@ -10,12 +10,16 @@ import DataTable from "@/components/ui/DataTable";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { format } from "date-fns";
 import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
+import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export default function QuotesPage() {
   const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["quotes", user?.id],
@@ -47,10 +51,18 @@ export default function QuotesPage() {
   });
 
   const convertToInvoiceMutation = useMutation({
-    mutationFn: (quoteId) => base44.functions.invoke('convertQuoteToInvoice', { quoteId }),
-    onSuccess: () => {
+    mutationFn: async (quoteId) => {
+      const result = await base44.functions.invoke('convertQuoteToInvoice', { quoteId });
+      return result.data;
+    },
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast({
+        title: "Invoice Created",
+        description: `Invoice ${result.invoice.invoice_number} created successfully.`,
+      });
+      navigate(`/Invoices`);
     },
   });
 
@@ -76,14 +88,22 @@ export default function QuotesPage() {
 
   const handleConvertToInvoice = (quote) => {
     if (quote.status === "Invoiced" || quote.status === "Paid") {
-      alert("This quote has already been invoiced.");
+      toast({
+        title: "Already Invoiced",
+        description: "This quote has already been converted to an invoice.",
+        variant: "destructive",
+      });
       return;
     }
-    if (confirm(`Convert quote ${quote.quote_number} to an invoice?`)) {
-      convertToInvoiceMutation.mutate(quote.id, {
-        onError: (error) => alert(`Failed to create invoice: ${error.message}`),
+    if (quote.status !== "Accepted") {
+      toast({
+        title: "Quote Not Accepted",
+        description: "Please mark the quote as Accepted before converting to invoice.",
+        variant: "destructive",
       });
+      return;
     }
+    convertToInvoiceMutation.mutate(quote.id);
   };
 
   const columns = [
@@ -145,8 +165,9 @@ export default function QuotesPage() {
             size="sm"
             variant="outline"
             onClick={() => handleConvertToInvoice(quote)}
-            disabled={convertToInvoiceMutation.isPending || quote.status === "Invoiced" || quote.status === "Paid"}
-            className="text-emerald-600 hover:text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            disabled={convertToInvoiceMutation.isPending || quote.status === "Invoiced" || quote.status === "Paid" || quote.status !== "Accepted"}
+            className="text-emerald-600 hover:text-emerald-700 border-emerald-200 hover:bg-emerald-50 disabled:opacity-50"
+            title={quote.status !== "Accepted" ? "Quote must be Accepted first" : "Convert to Invoice"}
           >
             <FileCheck className="w-3 h-3 mr-1" />
             Invoice
