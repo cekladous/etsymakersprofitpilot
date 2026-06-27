@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
 import { BUSINESS_EXPENSE_CATEGORIES } from '../shared/expenseCategories';
+import { autoCategorize } from './autoCategorize';
 
 export default function ChasePDFImport({ open, onOpenChange }) {
   const { user } = useAuth();
@@ -21,7 +22,23 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [userRules, setUserRules] = useState([]);
   const fileInputRef = useRef(null);
+
+  // Fetch user's auto-categorization rules from Settings when dialog opens
+  useEffect(() => {
+    if (!open || !user) return;
+    const fetchRules = async () => {
+      try {
+        const settings = await base44.entities.Settings.filter({ owner_user_id: user.id });
+        const rules = settings?.[0]?.auto_categorization_rules;
+        if (Array.isArray(rules)) setUserRules(rules);
+      } catch (e) {
+        // Silently fall back to defaults
+      }
+    };
+    fetchRules();
+  }, [open, user]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -66,7 +83,11 @@ export default function ChasePDFImport({ open, onOpenChange }) {
       });
 
       if (result.status === 'success' && result.output?.transactions) {
-        setTransactions(result.output.transactions.map(t => ({ ...t, include: true, category: 'other' })));
+        setTransactions(result.output.transactions.map(t => ({
+          ...t,
+          include: true,
+          category: autoCategorize(t.description, userRules),
+        })));
       } else {
         throw new Error(result.details || 'Failed to extract transactions from PDF.');
       }
