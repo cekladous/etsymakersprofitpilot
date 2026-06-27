@@ -78,6 +78,7 @@ const DEFAULT_KEYWORD_RULES = [
 
   // Materials & Supplies
   { keyword: "amazon", category: "materials_supplies" },
+  { keyword: "amzn", category: "materials_supplies" },
   { keyword: "michaels", category: "materials_supplies" },
   { keyword: "joann", category: "materials_supplies" },
   { keyword: "hobby lobby", category: "materials_supplies" },
