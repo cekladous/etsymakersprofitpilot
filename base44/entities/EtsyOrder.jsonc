@@ -143,6 +143,15 @@
     "statement_line_uid": {
       "type": "string",
       "description": "Link to EtsyStatementLine.line_uid to prevent duplication"
+    },
+    "source": {
+      "type": "string",
+      "description": "Import source of the order (e.g., 'etsy_statement', 'square_csv')"
+    },
+    "possible_duplicate": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag for potential duplicate orders"
     }
   },
   "required": [

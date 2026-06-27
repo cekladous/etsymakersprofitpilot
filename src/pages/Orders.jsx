@@ -6,7 +6,7 @@ import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 import { Button } from "@/components/ui/button";
 import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -845,7 +845,12 @@ export default function Orders() {
       </PageHeader>
 
       {/* Helper Text */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <p className="text-sm text-amber-900">
+          <strong>Note:</strong> If you use Square as your payment processor through Etsy, your Etsy statement CSV already includes those sales — do not also import a Square CSV for the same orders, as this will cause duplicates.
+        </p>
+      </div>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
         <p className="text-sm text-blue-900 mb-2">
           <strong>📊 Import Your Etsy Data:</strong>
         </p>
@@ -857,7 +862,7 @@ export default function Orders() {
           </div>
           <div>
             <p className="font-semibold mb-1">Sold Orders Report (Optional)</p>
-            <p className="text-xs">Settings (account icon) → Options → Download Data → Orders CSV</p>
+            <p className="text-xs">Go to Etsy → click your account icon (top-right) → Options → Download Data → Under 'Orders', download 'Orders CSV'</p>
             <p className="text-xs opacity-75">Adds product details, SKUs, buyer info</p>
           </div>
           <div>
@@ -875,6 +880,7 @@ export default function Orders() {
           <TabsTrigger value="fees">Fees & Charges</TabsTrigger>
           <TabsTrigger value="deposits">Deposits</TabsTrigger>
           <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
+<TabsTrigger value="duplicates">Duplicates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
@@ -1262,6 +1268,24 @@ export default function Orders() {
          <TabsContent value="reconciliation" className="space-y-6">
            <ReconciliationTab user={user} />
          </TabsContent>
+         <TabsContent value="duplicates" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Possible Duplicate Orders</CardTitle>
+                <CardDescription>
+                  These orders have been flagged as possible duplicates based on matching date and total amount from different import sources (e.g. Etsy and Square). Review and delete any duplicates to ensure accurate reporting.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DataTable
+                  columns={columns}
+                  data={etsyOrders.filter(o => o.possible_duplicate)}
+                  isLoading={ordersLoading}
+                  emptyMessage="No duplicate orders found."
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
       </Tabs>
 
       <UnifiedEtsyImportHub
