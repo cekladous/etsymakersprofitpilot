@@ -19,30 +19,22 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     }).format(amount);
   };
 
-  // Calculate net earnings matching Etsy's exact formula:
-  // Net = Total Buyer Paid - All Fees - Tax (pass-through) + Share & Save Credit
-  // Where Total Buyer Paid = Item Price + Shipping - Discounts + Tax
-  const totalBuyerPaid =
+  // Net Earnings = Revenue (excl. tax) - Transaction Fee - Processing Fee + Share & Save Credit
+  const revenueExclTax =
     (order.order_value || 0) +
     (order.shipping_charged || 0) -
-    (order.discount_amount || 0) +
-    (order.sales_tax || 0);
+    (order.discount_amount || 0);
+
+  const totalBuyerPaid = revenueExclTax + (order.sales_tax || 0);
 
   const shareSaveCredit = orderFees?.share_save_credit || 0;
 
   const calculatedNetEarnings = orderFees
-    ? totalBuyerPaid -
+    ? revenueExclTax -
       (orderFees.transaction_fees || 0) -
-      (orderFees.processing_fees || 0) -
-      (orderFees.listing_fees || 0) -
-      (orderFees.etsy_ads || 0) -
-      (orderFees.offsite_ads_fees || 0) -
-      (orderFees.etsy_shipping || 0) -
-      (orderFees.other_postage_costs || 0) -
-      (orderFees.other_fees || 0) -
-      (order.sales_tax || 0) +
+      (orderFees.processing_fees || 0) +
       shareSaveCredit
-    : totalBuyerPaid - (order.sales_tax || 0);
+    : revenueExclTax;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
