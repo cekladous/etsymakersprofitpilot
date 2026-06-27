@@ -264,13 +264,9 @@ export default function Orders() {
   }, [etsyOrders, search, dateRange, customerFilter]);
 
   // Revenue from orders (tax collected by Etsy separately)
-  // Fallback to order_total (which maps from the Amount column) if order_value is missing
-  // Revenue (excl. tax) = order_value (item price + shipping - discounts), NOT including sales_tax
+  // Revenue (excl. tax) = order_value (item total before shipping/tax)
   const totalRevenue = filteredOrders.reduce((sum, o) => {
-    // Use order_value if available, otherwise calculate from components
-    if (o.order_value) return sum + o.order_value;
-    // Fallback: item price + shipping - discounts (before tax, before fees)
-    return sum + ((o.order_total || 0) - (o.sales_tax || 0));
+    return sum + (o.order_value || 0);
   }, 0);
 
   // Shipping revenue (kept by seller)
@@ -636,7 +632,7 @@ export default function Orders() {
       header: "Order Value",
       render: (row) => (
         <span className="font-medium text-stone-900">
-          {formatCurrency(row.order_value || row.order_total || 0)}
+          {formatCurrency(row.order_value || 0)}
         </span>
       ),
     },
