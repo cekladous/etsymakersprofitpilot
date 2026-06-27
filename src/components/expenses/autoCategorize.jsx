@@ -14,6 +14,8 @@ const DEFAULT_KEYWORD_RULES = [
   { keyword: "dhl", category: "shipping_postage" },
   { keyword: "pirateship", category: "shipping_postage" },
   { keyword: "shippo", category: "shipping_postage" },
+  { keyword: "goshippo", category: "shipping_postage" },
+  { keyword: "stamps.com", category: "shipping_postage" },
 
   // Advertising & Marketing
   { keyword: "google ads", category: "advertising_marketing" },
