@@ -34,7 +34,7 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Import Etsy Data</DialogTitle>
             <DialogDescription>
