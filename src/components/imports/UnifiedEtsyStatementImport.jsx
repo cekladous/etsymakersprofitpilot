@@ -223,7 +223,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const importStartTime = Date.now();
       console.log(`[Import ${fileName}] Starting atomic import for ${statementMonth}...`);
       
-      try {
+      let importRecord;
       
       try {
         // Helper to batch operations with retry logic for reliability
@@ -311,8 +311,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           statement_month: statementMonth,
           owner_user_id: currentUser.id
         });
-        
-        let importRecord;
         
         // Create new import record
         importRecord = await base44.entities.EtsyStatementImport.create({
