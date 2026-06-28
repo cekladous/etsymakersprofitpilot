@@ -63,11 +63,7 @@
     "plan_id"
   ],
   "rls": {
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
+    "create": null,
     "read": {
       "id": {
         "$exists": true
