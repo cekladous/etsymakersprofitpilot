@@ -40,7 +40,7 @@ import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDolla
 import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
 
-export default function SettingsTool() {
+export default function SettingsTool() { 
   const { user } = useAuth();
   const [machineFormOpen, setMachineFormOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState(null);
@@ -265,6 +265,7 @@ export default function SettingsTool() {
 
   const machineMutation = useMutation({
     mutationFn: async (data) => {
+      if (!user) throw new Error("Please sign in to save a machine.");
       const payload = {
         ...data,
         owner_user_id: user.id,
@@ -288,6 +289,8 @@ export default function SettingsTool() {
       setEditingMachine(null);
       setMachineData({
         name: "",
+        brand: "",
+        model: "",
         type: "laser",
         wattage: "",
         hourly_rate: "",
@@ -295,6 +298,9 @@ export default function SettingsTool() {
         purchase_date: "",
         depreciation_years: 5,
       });
+    },
+    onError: (err) => {
+      alert("Error saving machine: " + (err?.message || "Please sign in to the app first."));
     },
   });
 
@@ -1410,11 +1416,11 @@ export default function SettingsTool() {
                 </Select>
               </div>
               <div className="space-y-2 col-span-2">
-                <Label>Machine Name (auto-generated)</Label>
+                <Label>Machine Name *</Label>
                 <Input
                   value={machineData.name}
                   onChange={(e) => setMachineData({ ...machineData, name: e.target.value })}
-                  placeholder="Will auto-fill from brand + model"
+                  placeholder="Auto-fills from brand + model, or type a name"
                 />
               </div>
               <div className="space-y-2">
@@ -1495,7 +1501,7 @@ export default function SettingsTool() {
             </Button>
             <Button
               onClick={() => machineMutation.mutate(machineData)}
-              disabled={machineMutation.isPending || !machineData.brand || !machineData.model}
+              disabled={machineMutation.isPending || !machineData.name?.trim()}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {machineMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
