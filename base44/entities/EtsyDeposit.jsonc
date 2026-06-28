@@ -48,9 +48,7 @@
     "amount"
   ],
   "rls": {
-    "create": {
-      "owner_user_id": "{{user.id}}"
-    },
+    "create": null,
     "read": {
       "owner_user_id": "{{user.id}}"
     },
