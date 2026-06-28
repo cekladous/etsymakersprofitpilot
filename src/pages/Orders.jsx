@@ -869,34 +869,6 @@ export default function Orders() {
         </div>
       </PageHeader>
 
-      {/* Helper Text */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <p className="text-sm text-amber-900">
-          <strong>Note:</strong> If you use Square as your payment processor through Etsy, your Etsy statement CSV already includes those sales — do not also import a Square CSV for the same orders, as this will cause duplicates.
-        </p>
-      </div>
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-        <p className="text-sm text-blue-900 mb-2">
-          <strong>📊 Import Your Etsy Data:</strong>
-        </p>
-        <div className="grid md:grid-cols-3 gap-4 text-sm text-blue-900">
-          <div>
-            <p className="font-semibold mb-1">Monthly Statement (Required)</p>
-            <p className="text-xs">Finances → Payment Account → Download CSV</p>
-            <p className="text-xs opacity-75">Contains all financial data, fees, deposits</p>
-          </div>
-          <div>
-            <p className="font-semibold mb-1">Sold Orders Report (Optional)</p>
-            <p className="text-xs">Go to Etsy → click your account icon (top-right) → Options → Download Data → Under 'Orders', download 'Orders CSV'</p>
-            <p className="text-xs opacity-75">Adds product details, SKUs, buyer info</p>
-          </div>
-          <div>
-            <p className="font-semibold mb-1">Payment Deposits (Optional)</p>
-            <p className="text-xs">Etsy → account icon → Options → Download Data → Under 'Orders' → 'Etsy Payment Deposits'</p>
-            <p className="text-xs opacity-75">For reconciliation with bank deposits</p>
-          </div>
-        </div>
-      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
