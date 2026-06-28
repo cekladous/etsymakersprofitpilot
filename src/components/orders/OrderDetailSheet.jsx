@@ -31,6 +31,10 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
 
   const shareSaveCredit = orderFees?.share_save_credit || 0;
 
+  // Etsy's standard transaction fee rate (6.5% as of 2023-present)
+  const ETSY_TRANSACTION_RATE = 0.065;
+  const estimatedTransactionFee = Math.round(revenueExclTax * ETSY_TRANSACTION_RATE * 100) / 100;
+
   const totalFeesPaid = orderFees
     ? -(
         (orderFees.transaction_fees || 0) +
@@ -38,7 +42,10 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
         (order.sales_tax || 0) -
         shareSaveCredit
       )
-    : 0;
+    : -(estimatedTransactionFee + (order.card_processing_fees || 0));
+
+  // true only when an Etsy statement import has been done for this order
+  const hasStatementData = !!orderFees;
 
   const calculatedNetEarnings = calculateNetEarnings(order, orderFees);
 
