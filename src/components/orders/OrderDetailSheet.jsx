@@ -389,6 +389,11 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                   {formatCurrency(calculatedNetEarnings)}
                 </span>
               </div>
+              {!hasStatementData && (
+                <p className="text-xs text-amber-600 text-center mt-1">
+                  ⚠ Estimated — import your Etsy statement for exact figures
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
