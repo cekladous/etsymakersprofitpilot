@@ -44,11 +44,7 @@
     "change_date"
   ],
   "rls": {
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
+    "create": null,
     "read": {
       "id": {
         "$exists": true
