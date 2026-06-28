@@ -133,7 +133,7 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
              shipping_discount: parseMoney(getRowValue(normalized, "Shipping Discount")),
              shipping_charged: shipping,
              order_value: parseMoney(getRowValue(normalized, "Order Value")),
-             sales_tax: parseMoney(getRowValue(normalized, "Sales Tax")),
+        sales_tax: parseMoney(getRowValue(normalized, 'Sales Tax', 'Sales Tax Collected', 'Tax Collected', 'Tax', 'VAT')),
              order_total: parseMoney(getRowValue(normalized, "Order Total")),
              adjusted_order_total: parseMoney(getRowValue(normalized, "Adjusted Order Total")),
              card_processing_fees: parseMoney(getRowValue(normalized, "Card Processing Fees")),
