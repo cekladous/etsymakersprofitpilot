@@ -39,6 +39,9 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
             <DialogDescription>
               Start with your Monthly Statement — it includes all orders, fees, and deposits. The other two reports are optional.
             </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-2">
+            <span className="font-medium">Note for Square users:</span> If you process payments through Square on Etsy, your Etsy statement already includes those sales. Don't also import a Square CSV for the same orders — it will cause duplicates.
+          </p>
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
