@@ -1,13 +1,22 @@
 /**
  * SINGLE SOURCE OF TRUTH for per-order net earnings calculation.
- * Formula: Net = (order_value + shipping_charged - discount_amount)
- *          - transaction_fees - processing_fees + share_save_credit
- * Sales tax is NOT part of net earnings (collected for the buyer, remitted by Etsy).
  *
- * Fallback priority when OrderFee entity record is not available:
- *   1. order.order_net  — Etsy's pre-calculated "Order Net" from their CSV export
- *   2. revenueExclTax - order.card_processing_fees  — partial estimate
+ * When an Etsy statement has been imported the OrderFee entity record for the
+ * order contains the exact transaction_fees, processing_fees and share_save_credit
+ * values from Etsy and the formula is exact.
+ *
+ * When no statement has been imported yet we estimate using:
+ *   – Etsy's standard 6.5% transaction fee on the pre-tax revenue
+ *   – order.card_processing_fees stored from the sold-orders CSV
+ * (Share & Save credit cannot be estimated without statement data.)
+ *
+ * Sales tax is NEVER part of net earnings — it is collected for the buyer
+ * and remitted directly by Etsy to the tax authority.
  */
+
+// Etsy's standard transaction fee rate (as of 2023-present)
+const ETSY_TRANSACTION_RATE = 0.065;
+
 export function calculateNetEarnings(order, orderFees) {
   if (!order) return 0;
 
@@ -17,6 +26,7 @@ export function calculateNetEarnings(order, orderFees) {
     (order.discount_amount || 0);
 
   if (orderFees) {
+    // Exact calculation using statement-imported fee data
     return (
       revenueExclTax -
       (orderFees.transaction_fees || 0) -
@@ -25,17 +35,18 @@ export function calculateNetEarnings(order, orderFees) {
     );
   }
 
-  // No OrderFee record available — use Etsy's pre-calculated value if present
-  if (order.order_net > 0) return order.order_net;
-
-  // Last resort: subtract known card processing fee from revenue
-  return revenueExclTax - (order.card_processing_fees || 0);
+  // Fallback estimate when no statement has been imported:
+  // Use Etsy's standard 6.5% transaction fee + stored card processing fee.
+  // Share & Save credit is omitted (unknown without statement data).
+  const estimatedTransactionFee = Math.round(revenueExclTax * ETSY_TRANSACTION_RATE * 100) / 100;
+  const processingFee = order.card_processing_fees || 0;
+  return revenueExclTax - estimatedTransactionFee - processingFee;
 }
 
 /**
  * Aggregate net earnings across a list of orders.
- * @param {Array} orders - EtsyOrder records
- * @param {Array} orderFees - OrderFee records (matched by order_id)
+ * @param {Array} orders     - EtsyOrder records
+ * @param {Array} orderFees  - OrderFee records (matched by order_id)
  */
 export function calculateTotalNetEarnings(orders, orderFees) {
   if (!Array.isArray(orders)) return 0;
