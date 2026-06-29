@@ -600,6 +600,20 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       }
     },
     onSuccess: async (result) => {
+      // IMMEDIATELY update UI so the spinner stops regardless of background work
+      setImportResult(result);
+      queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["order-fees"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      setImporting(false);
+      setPreview(null);
+      setPendingData(null);
+
+      // Background: track subscription usage and flag duplicates (non-blocking)
       // Track import usage for Free users
       try {
         const currentUser = await base44.auth.me();
@@ -641,16 +655,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         console.warn('Failed to flag duplicates:', err);
       }
 
-      setImportResult(result);
-      queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["fees"] });
-      queryClient.invalidateQueries({ queryKey: ["transfers"] });
-      queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
-      queryClient.invalidateQueries({ queryKey: ["etsy-statement-lines"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
-      setImporting(false);
-      setPreview(null);
-      setPendingData(null);
     },
     onError: (error) => {
       console.error('[Import] Error:', error);
