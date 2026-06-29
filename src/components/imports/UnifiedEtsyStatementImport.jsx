@@ -236,6 +236,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               return await fn();
             } catch (error) {
               lastError = error;
+              // Never retry permission/auth errors — retrying won't fix them
+              if (error?.message?.toLowerCase().includes('permission') ||
+                  error?.message?.toLowerCase().includes('forbidden') ||
+                  error?.message?.toLowerCase().includes('unauthorized')) {
+                break;
+              }
               if (attempt < maxRetries) {
                 const delays = [500, 1000, 2000];
                 const delay = delays[attempt] || 2000;
@@ -453,6 +459,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               import_id: importRecord.id 
             };
           });
+          // Diagnostic: log fee create attempts to help debug permission errors
+          if (feesToCreate.length > 0) {
+            console.log('[Import] Creating', feesToCreate.length, 'fees, sample:', JSON.stringify({
+              ...feesToCreate[0], owner_user_id: feesToCreate[0]?.owner_user_id, import_id: feesToCreate[0]?.import_id
+            }));
+          }
           const feeResults = await chunkedBulkCreate(feesToCreate, 'Fee');
           result.fees.created = feeResults.created;
           if (feeResults.failed > 0) {
@@ -516,6 +528,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
 
           if (orderFeesToCreate.length > 0) {
+            console.log('[Import] Creating', orderFeesToCreate.length, 'OrderFee records');
             const ofCreateResults = await chunkedBulkCreate(orderFeesToCreate, 'OrderFee');
             if (ofCreateResults.failed > 0) {
               result.errors.push(...ofCreateResults.errors);
