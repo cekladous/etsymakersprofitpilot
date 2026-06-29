@@ -35,6 +35,12 @@ export function calculateNetEarnings(order, orderFees) {
     );
   }
 
+  // If the order was imported from an Etsy statement and has the exact net payout
+  // recorded (order_net), use it — handles cases where OrderFee couldn't be matched
+  if (order.order_net && order.source === 'etsy_statement') {
+    return order.order_net;
+  }
+
   // Fallback estimate when no statement has been imported:
   // Use Etsy's standard 6.5% transaction fee + stored card processing fee.
   // Share & Save credit is omitted (unknown without statement data).
