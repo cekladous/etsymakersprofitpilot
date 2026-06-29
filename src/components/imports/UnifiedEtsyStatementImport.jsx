@@ -1196,16 +1196,16 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           // (deleteMany unsupported in Base44 — use fetch + individual delete)
           try {
             const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImportId, owner_user_id: user.id });
-            for (const line of oldLines) {
-              try { await base44.entities.EtsyStatementLine.delete(line.id); } catch(e) {}
-            }
+            await Promise.all(oldLines.map(line =>
+              base44.entities.EtsyStatementLine.delete(line.id).catch(() => {})
+            ));
           } catch(e) { console.warn('[Import] Could not delete old statement lines:', e); }
           // Delete old fees
           try {
             const oldFees = await base44.entities.Fee.filter({ import_id: oldImportId, owner_user_id: user.id });
-            for (const fee of oldFees) {
-              try { await base44.entities.Fee.delete(fee.id); } catch(e) {}
-            }
+            await Promise.all(oldFees.map(fee =>
+              base44.entities.Fee.delete(fee.id).catch(() => {})
+            ));
           } catch(e) { console.warn('[Import] Could not delete old fees:', e); }
           console.log(`[Import] Cleaned up old data for replaced import ${oldImportId}`);
         } catch (err) {
