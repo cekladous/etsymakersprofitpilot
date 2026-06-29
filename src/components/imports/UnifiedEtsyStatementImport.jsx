@@ -1192,9 +1192,21 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             status: 'replaced',
             reconciliation_notes: `Replaced by new import on ${format(new Date(), 'MMM d, yyyy HH:mm')}`
           });
-          // Delete old statement lines and fees so dedup doesn't block the new import
-          await base44.entities.EtsyStatementLine.deleteMany({ import_id: oldImportId, owner_user_id: user.id });
-          await base44.entities.Fee.deleteMany({ import_id: oldImportId, owner_user_id: user.id });
+          // Delete old statement lines so dedup allows re-importing them
+          // (deleteMany unsupported in Base44 — use fetch + individual delete)
+          try {
+            const oldLines = await base44.entities.EtsyStatementLine.filter({ import_id: oldImportId, owner_user_id: user.id });
+            for (const line of oldLines) {
+              try { await base44.entities.EtsyStatementLine.delete(line.id); } catch(e) {}
+            }
+          } catch(e) { console.warn('[Import] Could not delete old statement lines:', e); }
+          // Delete old fees
+          try {
+            const oldFees = await base44.entities.Fee.filter({ import_id: oldImportId, owner_user_id: user.id });
+            for (const fee of oldFees) {
+              try { await base44.entities.Fee.delete(fee.id); } catch(e) {}
+            }
+          } catch(e) { console.warn('[Import] Could not delete old fees:', e); }
           console.log(`[Import] Cleaned up old data for replaced import ${oldImportId}`);
         } catch (err) {
           console.warn('Failed to clean up replaced import:', err);
