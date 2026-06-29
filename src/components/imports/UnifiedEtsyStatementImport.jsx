@@ -337,11 +337,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                 // ATOMIC DEDUPLICATION: Prevent duplicate imports
         console.log('[Import] Checking for duplicates...');
         
-        // Get all existing fees to prevent duplicates
-        const allExistingFees = await withRetry(() => base44.entities.Fee.filter({ owner_user_id: currentUser.id }));
+        // Parallel pre-flight: fetch existing fees, statement imports, and orders simultaneously
+        const [allExistingFees, existingImports, allExistingOrders] = await Promise.all([
+          withRetry(() => base44.entities.Fee.filter({ owner_user_id: currentUser.id })),
+          base44.entities.EtsyStatementImport.filter({ statement_month: statementMonth, owner_user_id: currentUser.id }),
+          withRetry(() => base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }))
+        ]);
         const existingFeeKeys = new Set(
           allExistingFees.map(f => `${f.transaction_date}|${f.order_id || ''}|${f.fee_type}|${f.amount}`)
-        );
+        )
         
         // All orders are treated as fresh — the order_id-based upsert handles duplicates
         const newOrders = orders;
@@ -358,11 +362,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         
         console.log(`[Import] Deduplication: ${orders.length - newOrders.length} orders, ${fees.length - newFees.length} fees, ${deposits.length - newDeposits.length} deposits skipped`);
         
-        // Check if this statement month was already imported (only for current user)
-        const existingImports = await base44.entities.EtsyStatementImport.filter({ 
-          statement_month: statementMonth,
-          owner_user_id: currentUser.id
-        });
+        // (existingImports fetched in parallel pre-flight above)
         
         // Create new import record
         importRecord = await base44.entities.EtsyStatementImport.create({
@@ -398,8 +398,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         // ATOMIC IMPORT: Import only new orders (bulk upsert by order_id)
         const orderIdToEntityId = {};
-        // Fetch all existing orders ONCE to avoid N+1 queries
-        const allExistingOrders = await withRetry(() => base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }));
+        // (allExistingOrders fetched in parallel pre-flight above)
         const existingOrderMap = {};
         allExistingOrders.forEach(o => { existingOrderMap[o.order_id] = o; });
 
