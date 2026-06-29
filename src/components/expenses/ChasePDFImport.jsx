@@ -117,15 +117,25 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             payment_source: 'Bank Account',
             category_group: 'business_expenses',
         }));
+        // Deduplicate: fetch existing expenses and skip already-imported ones
+        const existing = await base44.entities.Expense.filter({ owner_user_id: currentUser.id });
+        const existingKeys = new Set(existing.map(e => `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`));
+        const uniqueExpenses = expensesForImport.filter(e => {
+          const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`;
+          return !existingKeys.has(key);
+        });
+        if (uniqueExpenses.length === 0) return { importedCount: 0, totalFound: transactions.length };
+        const expensesForImport = uniqueExpenses;
         // Chunked bulk create with retry for reliability
         const chunkSize = 10;
         let importedCount = 0;
-        for (let i = 0; i < expensesToCreate.length; i += chunkSize) {
-            const chunk = expensesToCreate.slice(i, i + chunkSize);
+        for (let i = 0; i < expensesForImport.length; i += chunkSize) {
+            const chunk = expensesForImport.slice(i, i + chunkSize);
             let retries = 0;
             while (retries <= 2) {
                 try {
-                    await base44.entities.BusinessExpense.bulkCreate(chunk);
+                    await base44.entities.Expense.bulkCreate(chunk);
+
                     importedCount += chunk.length;
                     break;
                 } catch (err) {
@@ -134,7 +144,8 @@ export default function ChasePDFImport({ open, onOpenChange }) {
                     await new Promise(r => setTimeout(r, 500 * retries));
                 }
             }
-            if (i + chunkSize < expensesToCreate.length) {
+            if (i + chunkSize < expensesForImport.length) {
+
                 await new Promise(r => setTimeout(r, 200));
             }
         }
@@ -145,8 +156,9 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         title: 'Import Successful',
         description: `${importedCount} of ${totalFound} transactions imported.`,
       });
-      queryClient.invalidateQueries({ queryKey: ['business-expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
       onOpenChange(false);
+
       resetState();
     },
     onError: (e) => {
