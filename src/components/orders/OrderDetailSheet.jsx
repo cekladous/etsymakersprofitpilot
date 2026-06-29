@@ -126,276 +126,165 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
             </CardContent>
           </Card>
 
-          {/* Financial Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Financial Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-stone-50 rounded">
-                  <div>
-                    <span className="text-stone-600 font-medium">Item Subtotal</span>
-                    <p className="text-xs text-stone-400">Item total before shipping & tax</p>
-                  </div>
-                  <span className="font-bold text-stone-900 text-lg">
-                    {formatCurrency(order.order_value || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-emerald-50 rounded">
-                  <span className="text-emerald-700 font-medium">Shipping Charged</span>
-                  <span className="font-bold text-emerald-700 text-lg">
-                    {formatCurrency(order.shipping_charged || 0)}
-                  </span>
-                </div>
-                {(order.shipping_discount || 0) > 0 && (
-                  <div className="flex justify-between items-center p-3 bg-red-50 rounded">
-                    <span className="text-red-700 font-medium">Shipping Discount</span>
-                    <span className="font-bold text-red-700 text-lg">
-                      -{formatCurrency(order.shipping_discount)}
-                    </span>
-                  </div>
+          {/* Etsy-style Financial Breakdown — mirrors Etsy's own order breakdown */}
+          <Card className="border-stone-200 overflow-hidden">
+            <CardContent className="p-0">
+
+              {/* You earned header */}
+              <div className="px-6 py-5 text-center border-b border-stone-100">
+                <p className="text-sm text-stone-500 mb-1">You earned</p>
+                <p className="text-3xl font-bold text-emerald-600">
+                  {formatCurrency(calculatedNetEarnings)}
+                </p>
+                <p className="text-sm text-stone-500 mt-1">on this order</p>
+                {!hasStatementData && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    ⚠ Estimated — import your Etsy statement for exact figures
+                  </p>
                 )}
-                {(order.discount_amount || 0) > 0 && (
-                  <div className="flex justify-between items-center p-3 bg-red-50 rounded">
-                    <span className="text-red-700 font-medium">Discount {order.coupon_code ? `(${order.coupon_code})` : ""}</span>
-                    <span className="font-bold text-red-700 text-lg">
-                      -{formatCurrency(order.discount_amount)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center p-3 bg-amber-50 rounded">
-                  <span className="text-amber-700 font-medium">Sales Tax</span>
-                  <span className="font-bold text-amber-700 text-lg">
-                    {formatCurrency(order.sales_tax || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-blue-50 rounded border-2 border-blue-200">
-                  <span className="text-blue-900 font-bold">Order Total</span>
-                  <span className="font-bold text-blue-900 text-xl">
+              </div>
+
+              {/* Buyer Paid */}
+              <div className="px-6 py-5 border-b border-stone-100">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-stone-900">Buyer paid</span>
+                  <span className="font-semibold text-stone-900">
                     {formatCurrency(
                       (order.order_value || 0) +
                       (order.shipping_charged || 0) -
-                      (order.shipping_discount || 0) -
                       (order.discount_amount || 0) +
                       (order.sales_tax || 0)
                     )}
                   </span>
                 </div>
-                {order.card_processing_fees > 0 && (
-                  <div className="flex justify-between items-center p-3 bg-rose-50 rounded">
-                    <span className="text-rose-700 font-medium">Card Processing Fees</span>
-                    <span className="font-bold text-rose-700">
-                      {formatCurrency(order.card_processing_fees)}
-                    </span>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-stone-600">
+                    <span>Item(s) price</span>
+                    <span>{formatCurrency(order.order_value || 0)}</span>
                   </div>
-                )}
+                  {(order.shipping_charged || 0) > 0 && (
+                    <div className="flex justify-between text-stone-600">
+                      <span>Shipping price</span>
+                      <span>{formatCurrency(order.shipping_charged)}</span>
+                    </div>
+                  )}
+                  {(order.discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-stone-600">
+                      <span>Shop discounts{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
+                      <span>-{formatCurrency(order.discount_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-stone-600 pt-1 border-t border-stone-100">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency((order.order_value || 0) + (order.shipping_charged || 0) - (order.discount_amount || 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-stone-600">
+                    <span>Total before tax</span>
+                    <span>{formatCurrency((order.order_value || 0) + (order.shipping_charged || 0) - (order.discount_amount || 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-stone-600">
+                    <span>Tax paid by buyer</span>
+                    <span>{formatCurrency(order.sales_tax || 0)}</span>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Fees & Charges */}
-          {orderFees && orderFees.total_fees > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Fees & Charges</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {orderFees.listing_fees > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Listing Fees</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.listing_fees)}</span>
-                  </div>
-                )}
-                {orderFees.transaction_fees > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Transaction Fees</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.transaction_fees)}</span>
-                  </div>
-                )}
-                {orderFees.processing_fees > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Processing Fees</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.processing_fees)}</span>
-                  </div>
-                )}
-                {orderFees.etsy_ads > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Etsy Ads</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.etsy_ads)}</span>
-                  </div>
-                )}
-                {orderFees.offsite_ads_fees > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Offsite Ads</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.offsite_ads_fees)}</span>
-                  </div>
-                )}
-                {orderFees.etsy_shipping > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Shipping Label</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.etsy_shipping)}</span>
-                  </div>
-                )}
-                {orderFees.other_postage_costs > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Other Postage</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.other_postage_costs)}</span>
-                  </div>
-                )}
-                {orderFees.share_save_credit > 0 && (
-                   <div className="flex justify-between items-center p-2 bg-emerald-100 rounded text-sm border border-emerald-300">
-                     <span className="text-emerald-700 font-semibold">✓ Share & Save Credit</span>
-                     <span className="text-emerald-700 font-bold">
-                       +{formatCurrency(orderFees.share_save_credit)}
-                     </span>
-                   </div>
-                 )}
-                {orderFees.other_fees > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-stone-600">Other Fees</span>
-                    <span className="text-rose-600">{formatCurrency(orderFees.other_fees)}</span>
-                  </div>
-                )}
-                <div className="border-t pt-2 flex justify-between items-center">
-                  <span className="font-semibold text-stone-900">Total Fees</span>
+              {/* Fees & Credits */}
+              <div className="px-6 py-5 border-b border-stone-100">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-stone-900">Fees &amp; credits</span>
                   <span className="font-semibold text-rose-600">
                     {formatCurrency(totalFeesPaid)}
                   </span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Net Earnings — matches Etsy's statement layout */}
-          <Card className="bg-emerald-50 border-emerald-200">
-            <CardContent className="p-6 space-y-4">
-              <div className="text-center pb-2">
-                <p className="text-sm text-emerald-700 font-medium">You earned</p>
-                <p className="text-3xl font-bold text-emerald-600">
-                  {formatCurrency(calculatedNetEarnings)}
-                </p>
-                <p className="text-sm text-emerald-700 font-medium">on this order</p>
-              </div>
-
-              {/* Buyer Paid section */}
-              <div className="space-y-2 text-sm">
-                <p className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Buyer Paid</p>
-                <div className="flex justify-between items-center text-stone-600">
-                  <span>Item(s) price</span>
-                  <span>{formatCurrency(order.order_value || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-stone-600">
-                  <span>+ Shipping</span>
-                  <span>{formatCurrency(order.shipping_charged || 0)}</span>
-                </div>
-                {(order.discount_amount || 0) > 0 && (
-                  <div className="flex justify-between items-center text-red-600">
-                    <span>- Shop discounts</span>
-                    <span>-{formatCurrency(order.discount_amount)}</span>
-                  </div>
-                )}
-                <div className="border-t pt-2 flex justify-between items-center font-medium text-stone-900">
-                  <span>= Subtotal</span>
-                  <span>
-                    {formatCurrency(
-                      (order.order_value || 0) +
-                      (order.shipping_charged || 0) -
-                      (order.discount_amount || 0)
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-stone-600">
-                  <span>+ Tax paid by buyer</span>
-                  <span>{formatCurrency(order.sales_tax || 0)}</span>
-                </div>
-                <div className="border-t pt-2 flex justify-between items-center font-semibold text-stone-900">
-                  <span>= Total buyer paid</span>
-                  <span>{formatCurrency(totalBuyerPaid)}</span>
-                </div>
-              </div>
-
-              {/* Fees & Credits section */}
-              {orderFees && (
                 <div className="space-y-2 text-sm">
-                  <p className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Fees &amp; Credits</p>
-                  {orderFees.transaction_fees > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Transaction fee</span>
-                      <span>-{formatCurrency(orderFees.transaction_fees)}</span>
-                    </div>
-                  )}
-                  {orderFees.processing_fees > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Payment processing fee</span>
-                      <span>-{formatCurrency(orderFees.processing_fees)}</span>
-                    </div>
-                  )}
-                  {shareSaveCredit > 0 && (
-                    <div className="flex justify-between items-center text-emerald-700 font-semibold">
-                      <span>+ Share &amp; Save Refund</span>
-                      <span>+{formatCurrency(shareSaveCredit)}</span>
-                    </div>
-                  )}
-                  {orderFees.listing_fees > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Listing fee</span>
-                      <span>-{formatCurrency(orderFees.listing_fees)}</span>
-                    </div>
-                  )}
-                  {orderFees.etsy_ads > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Etsy Ads</span>
-                      <span>-{formatCurrency(orderFees.etsy_ads)}</span>
-                    </div>
-                  )}
-                  {orderFees.offsite_ads_fees > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Offsite Ads</span>
-                      <span>-{formatCurrency(orderFees.offsite_ads_fees)}</span>
-                    </div>
-                  )}
-                  {orderFees.etsy_shipping > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Shipping label</span>
-                      <span>-{formatCurrency(orderFees.etsy_shipping)}</span>
-                    </div>
-                  )}
-                  {orderFees.other_postage_costs > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Other postage</span>
-                      <span>-{formatCurrency(orderFees.other_postage_costs)}</span>
-                    </div>
-                  )}
-                  {orderFees.other_fees > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Other fees</span>
-                      <span>-{formatCurrency(orderFees.other_fees)}</span>
-                    </div>
-                  )}
-                  {(order.sales_tax || 0) > 0 && (
-                    <div className="flex justify-between items-center text-red-600">
-                      <span>- Tax paid by buyer</span>
-                      <span>-{formatCurrency(order.sales_tax || 0)}</span>
-                    </div>
+                  {orderFees ? (
+                    <>
+                      {orderFees.transaction_fees > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Transaction fee</span>
+                          <span>-{formatCurrency(orderFees.transaction_fees)}</span>
+                        </div>
+                      )}
+                      {orderFees.processing_fees > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Payment processing fee</span>
+                          <span>-{formatCurrency(orderFees.processing_fees)}</span>
+                        </div>
+                      )}
+                      {(order.sales_tax || 0) > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Tax paid by buyer</span>
+                          <span>-{formatCurrency(order.sales_tax)}</span>
+                        </div>
+                      )}
+                      {orderFees.share_save_credit > 0 && (
+                        <div className="flex justify-between text-emerald-700 font-medium">
+                          <span>Share &amp; Save Refund</span>
+                          <span>+{formatCurrency(orderFees.share_save_credit)}</span>
+                        </div>
+                      )}
+                      {orderFees.listing_fees > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Listing fee</span>
+                          <span>-{formatCurrency(orderFees.listing_fees)}</span>
+                        </div>
+                      )}
+                      {orderFees.etsy_ads > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Etsy Ads</span>
+                          <span>-{formatCurrency(orderFees.etsy_ads)}</span>
+                        </div>
+                      )}
+                      {orderFees.offsite_ads_fees > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Offsite Ads</span>
+                          <span>-{formatCurrency(orderFees.offsite_ads_fees)}</span>
+                        </div>
+                      )}
+                      {orderFees.etsy_shipping > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Shipping label</span>
+                          <span>-{formatCurrency(orderFees.etsy_shipping)}</span>
+                        </div>
+                      )}
+                      {orderFees.other_fees > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Other fees</span>
+                          <span>-{formatCurrency(orderFees.other_fees)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {estimatedTransactionFee > 0 && (
+                        <div className="flex justify-between text-stone-400">
+                          <span>Transaction fee (est.)</span>
+                          <span>-{formatCurrency(estimatedTransactionFee)}</span>
+                        </div>
+                      )}
+                      {(order.card_processing_fees || 0) > 0 && (
+                        <div className="flex justify-between text-stone-400">
+                          <span>Payment processing fee</span>
+                          <span>-{formatCurrency(order.card_processing_fees)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-              )}
+              </div>
 
               {/* Net Earnings total */}
-              <div className="border-t-2 border-emerald-300 pt-3 flex justify-between items-center">
-                <span className="font-bold text-emerald-700">= Net Earnings</span>
+              <div className="px-6 py-5 bg-emerald-50 flex justify-between items-center">
+                <span className="font-bold text-emerald-800 text-base">= Net Earnings</span>
                 <span className="text-2xl font-bold text-emerald-600">
                   {formatCurrency(calculatedNetEarnings)}
                 </span>
               </div>
-              {!hasStatementData && (
-                <p className="text-xs text-amber-600 text-center mt-1">
-                  ⚠ Estimated — import your Etsy statement for exact figures
-                </p>
-              )}
+
             </CardContent>
           </Card>
+
         </div>
       </SheetContent>
     </Sheet>
