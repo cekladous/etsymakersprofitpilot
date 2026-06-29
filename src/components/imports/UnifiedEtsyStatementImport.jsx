@@ -417,26 +417,10 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         }
 
-        // RECONCILIATION CLEANUP: Delete stale stmt_ records that were replaced by real order IDs.
-        // When reconciliation fixed an order's ID (stmt_xxx → real), the old DB record still has stmt_xxx.
-        // After creating the new record with the real ID, delete the stale stmt_ one.
-        const reconciledOrders = newOrders.filter(o => o._originalStmtId);
-        if (reconciledOrders.length > 0) {
-          for (const ro of reconciledOrders) {
-            try {
-              const stale = await base44.entities.EtsyOrder.filter({ 
-                order_id: ro._originalStmtId, 
-                owner_user_id: currentUser.id 
-              });
-              for (const s of stale) {
-                await base44.entities.EtsyOrder.delete(s.id);
-                console.log(`[Reconcile] Deleted stale stmt_ order ${ro._originalStmtId} → replaced by ${ro.order_id}`);
-              }
-            } catch (e) {
-              console.warn('[Reconcile] Could not clean up stale order:', e);
-            }
-          }
-        }
+        // Pass reconciled stmt_ IDs to onSuccess for background cleanup (non-blocking)
+        result.reconciledStmtIds = newOrders
+          .filter(o => o._originalStmtId)
+          .map(o => ({ stmtId: o._originalStmtId, realId: o.order_id }));
 
         // Bulk create new orders (chunked with retry)
         if (ordersToCreate.length > 0) {
@@ -880,11 +864,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         }
         
         // Check for existing import of the same month (regardless of file hash)
-        const existingImportsByMonth = await base44.entities.EtsyStatementImport.filter({
+        const allImportsByMonth = await base44.entities.EtsyStatementImport.filter({
           statement_month: parsed.statementMonth,
-          owner_user_id: user.id,
-          status: { $ne: 'replaced' } // Exclude already-replaced imports
+          owner_user_id: user.id
         });
+        // Filter out replaced imports in JS ($ne not supported by Base44)
+        const existingImportsByMonth = allImportsByMonth.filter(i => i.status !== 'replaced');
         if (existingImportsByMonth.length > 0) {
           const existing = existingImportsByMonth[0];
           const newRecordCount = parsed.orders.length + parsed.fees.length + parsed.deposits.length;
