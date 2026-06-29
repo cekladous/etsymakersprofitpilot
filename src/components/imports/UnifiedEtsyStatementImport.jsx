@@ -273,7 +273,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               }
             }
             if (i + chunkSize < items.length) {
-              await new Promise(resolve => setTimeout(resolve, 50);
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
           }
           return results;
