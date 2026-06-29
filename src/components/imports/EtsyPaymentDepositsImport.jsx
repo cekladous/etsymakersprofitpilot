@@ -59,7 +59,16 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
       });
 
       let created = 0;
-      for (const deposit of deposits) {
+      // Deduplicate: check existing deposits to avoid re-importing
+      const existingDeposits = await base44.entities.EtsyDeposit.filter({ owner_user_id: currentUser.id });
+      const existingKeys = new Set(existingDeposits.map(d => `${d.deposit_date}|${Math.abs(d.amount || 0).toFixed(2)}`));
+      const uniqueDeposits = deposits.filter(d => {
+        const key = `${d.deposit_date}|${Math.abs(d.amount || 0).toFixed(2)}`;
+        return !existingKeys.has(key);
+      });
+      
+      for (const deposit of uniqueDeposits) {
+
         try {
           await base44.entities.EtsyDeposit.create({
             ...deposit,
@@ -78,13 +87,17 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
         deposits_count: created,
       });
 
-      return { created, total: deposits.length };
+      return { created, total: deposits.length, skipped: deposits.length - uniqueDeposits.length };
+
     },
     onSuccess: (result) => {
       setImportResult(result);
       queryClient.invalidateQueries({ queryKey: ["etsy-deposits"] });
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
       queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
+      queryClient.invalidateQueries({ queryKey: ["deposits"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-payment-deposits"] });
+      queryClient.invalidateQueries({ queryKey: ["reconciliation"] });
       setImporting(false);
       setPreview(null);
       setPendingData(null);
@@ -225,7 +238,8 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
                 <p className="font-semibold text-emerald-900">Import Successful</p>
               </div>
               <p className="text-sm text-emerald-800">
-                ✓ Deposits: {importResult.created} / {importResult.total} imported
+                ✓ {importResult.created} of {importResult.total} imported{importResult.skipped > 0 ? ` (${importResult.skipped} duplicates skipped)` : ''}
+
               </p>
             </div>
           )}
@@ -318,7 +332,8 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
                 <p className="font-semibold text-emerald-900">Import Successful</p>
               </div>
               <p className="text-sm text-emerald-800">
-                ✓ Deposits: {importResult.created} / {importResult.total} imported
+                ✓ {importResult.created} of {importResult.total} imported{importResult.skipped > 0 ? ` (${importResult.skipped} duplicates skipped)` : ''}
+
               </p>
             </div>
           )}
