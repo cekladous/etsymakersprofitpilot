@@ -98,7 +98,7 @@ const classifyStatementLine = (row) => {
   const amount = parseMoney(row["Amount"]);
   
   // Extract order ID once
-  const orderId = extractOrderId(titleL) || extractOrderId(infoL) || extractOrderId(taxDetailsL);
+  const orderId = row["Order ID"] || extractOrderId(titleL) || extractOrderId(infoL) || extractOrderId(taxDetailsL);
   
   // Fast path checks - most common patterns first
   if (titleL.includes('deposit') || titleL.includes('payout') || titleL.includes('transfer')) {
@@ -1065,7 +1065,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           order_value: orderValue,
           shipping_charged: shippingCharged,
           discount_amount: parseMoney(row["Discount Amount"] || row["Coupon"]),
-          sales_tax: 0, // Sales tax is collected by Etsy and included in total fees deductions
+          sales_tax: totalTaxes,
           order_total: orderTotal,
           card_processing_fees: parseMoney(row["Card Processing Fees"]),
           order_net: orderNet,
