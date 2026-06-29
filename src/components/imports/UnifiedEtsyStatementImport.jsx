@@ -247,8 +247,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           throw lastError;
         };
 
-        // Chunked bulk create: max 10 records per call, 300ms delay between chunks
-        const chunkedBulkCreate = async (items, entityName, chunkSize = 10) => {
+        // Chunked bulk create: max 25 records per call, 50ms delay between chunks
+        const chunkedBulkCreate = async (items, entityName, chunkSize = 25) => {
           const results = { created: 0, failed: 0, errors: [], items: [] };
           for (let i = 0; i < items.length; i += chunkSize) {
             const chunk = items.slice(i, i + chunkSize);
@@ -273,7 +273,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               }
             }
             if (i + chunkSize < items.length) {
-              await new Promise(resolve => setTimeout(resolve, 300));
+              await new Promise(resolve => setTimeout(resolve, 50);
             }
           }
           return results;
