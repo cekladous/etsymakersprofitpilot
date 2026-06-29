@@ -306,7 +306,35 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           return results;
         };
         
-        // ATOMIC DEDUPLICATION: Prevent duplicate imports
+        // RECONCILIATION: Fix sale rows with missing order IDs by matching fee rows via date.
+        // Etsy sale rows sometimes have no Order Number in Title/Info → get a "stmt_" fallback ID.
+        // Fee rows always extract the real order number from the title. Match by date to fix them.
+        // _originalStmtId is saved so the upsert can find and update the existing stmt_ DB record.
+        {
+          const feeDateMap = {};
+          fees.forEach(f => {
+            if (f.order_id && f.transaction_date) {
+              if (!feeDateMap[f.transaction_date]) feeDateMap[f.transaction_date] = new Set();
+              feeDateMap[f.transaction_date].add(f.order_id);
+            }
+          });
+          const usedOrderIds = new Set(
+            orders.filter(o => o.order_id && !o.order_id.startsWith('stmt_')).map(o => o.order_id)
+          );
+          orders.forEach(order => {
+            if (!order.order_id || !order.order_id.startsWith('stmt_')) return;
+            const candidates = (feeDateMap[order.sale_date] ? [...feeDateMap[order.sale_date]] : [])
+              .filter(id => !usedOrderIds.has(id));
+            if (candidates.length === 1) {
+              const realId = candidates[0];
+              console.log(`[Reconcile] ${order.order_id} → ${realId} (${order.sale_date})`);
+              order._originalStmtId = order.order_id; // save for upsert fallback lookup
+              order.order_id = realId;
+              usedOrderIds.add(realId);
+            }
+          });
+        }
+                // ATOMIC DEDUPLICATION: Prevent duplicate imports
         console.log('[Import] Checking for duplicates...');
         
         // Get all existing fees to prevent duplicates
@@ -386,6 +414,27 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             result.orders.updated++;
           } else {
             ordersToCreate.push({ ...orderData, owner_user_id: currentUser.id });
+          }
+        }
+
+        // RECONCILIATION CLEANUP: Delete stale stmt_ records that were replaced by real order IDs.
+        // When reconciliation fixed an order's ID (stmt_xxx → real), the old DB record still has stmt_xxx.
+        // After creating the new record with the real ID, delete the stale stmt_ one.
+        const reconciledOrders = newOrders.filter(o => o._originalStmtId);
+        if (reconciledOrders.length > 0) {
+          for (const ro of reconciledOrders) {
+            try {
+              const stale = await base44.entities.EtsyOrder.filter({ 
+                order_id: ro._originalStmtId, 
+                owner_user_id: currentUser.id 
+              });
+              for (const s of stale) {
+                await base44.entities.EtsyOrder.delete(s.id);
+                console.log(`[Reconcile] Deleted stale stmt_ order ${ro._originalStmtId} → replaced by ${ro.order_id}`);
+              }
+            } catch (e) {
+              console.warn('[Reconcile] Could not clean up stale order:', e);
+            }
           }
         }
 
