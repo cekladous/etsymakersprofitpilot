@@ -45,9 +45,9 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     : -(estimatedTransactionFee + (order.card_processing_fees || 0));
 
   // true only when an Etsy statement import has been done for this order
-  const hasStatementData = !!orderFees;
+  const hasStatementData = !!orderFees || order.source === 'etsy_statement';
 
-  const calculatedNetEarnings = calculateNetEarnings(order, orderFees);
+  const calculatedNetEarnings = orderFees ? calculateNetEarnings(order, orderFees) : (order.order_net && order.source === 'etsy_statement' ? order.order_net : calculateNetEarnings(order, null));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
