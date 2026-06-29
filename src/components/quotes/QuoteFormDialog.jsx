@@ -683,21 +683,6 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <AILaborEstimator
-                projectName={formData.project_name}
-                materials={formData.materials}
-                machines={formData.machines}
-                onEstimate={(estimates) => {
-                  setFormData({
-                    ...formData,
-                    labor_hours: estimates.design_hours + estimates.labor_hours,
-                    labor_minutes: estimates.design_minutes + estimates.labor_minutes,
-                    machines: formData.machines.map((m, i) => 
-                      i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
-                    )
-                  });
-                }}
-              />
               {/* Design & Labor Service */}
               <div>
                 <div className="text-xs text-stone-500 font-medium mb-3">Design & Labor Service</div>
@@ -736,6 +721,22 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   <div className="text-xs text-stone-400 mt-1">Rate: {currencySymbol}{formData.labor_rate}/hr</div>
                 </div>
               </div>
+
+              <AILaborEstimator
+                projectName={formData.project_name}
+                materials={formData.materials}
+                machines={formData.machines}
+                onEstimate={(estimates) => {
+                  setFormData({
+                    ...formData,
+                    labor_hours: estimates.design_hours + estimates.labor_hours,
+                    labor_minutes: estimates.design_minutes + estimates.labor_minutes,
+                    machines: formData.machines.map((m, i) => 
+                      i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
+                    )
+                  });
+                }}
+              />
 
               {/* Machines Used */}
               <div>
