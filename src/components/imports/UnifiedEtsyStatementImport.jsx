@@ -1092,12 +1092,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
              );
 
              const totalOrderFees = orderFees.reduce((sum, f) => {
-               // Only apply Math.abs() to standard fees, not to our credit
-      const value = f.fee_type === 'share_save_credit' ? feeAmount : Math.abs(feeAmount || 0);
-      return sum + (value || 0);
-               return sum + Math.abs(feeAmount || 0);
-             }, 0);
-
+  const feeAmount = parseMoney(f["Fees & Taxes"]);
+  // If it's the credit, we add it directly (it's already negative).
+  // Otherwise, we add the absolute value of the fee.
+  if (f.fee_type === 'share_save_credit') {
+    return sum + feeAmount; 
+  }
+  return sum + Math.abs(feeAmount || 0);
+}, 0);
              const totalTaxes = orderTaxes.reduce((sum, { row: r }) => {
                const taxAmount = parseMoney(r["Amount"] || r["Fees & Taxes"]);
                return sum + Math.abs(taxAmount || 0);
@@ -1113,7 +1115,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             // Net column from the Monthly Statement IS the net payout.
             // Fall back to calculated value only if Net is missing or zero.
             const shareSaveCredit = orderFees.find(f => f.fee_type === 'share_save_credit') ? 0.30 : 0;
-const orderNet = parseMoney(row["Net"]) || (orderTotal - totalOrderFees - totalTaxes + shareSaveCredit);
+            const orderNet = (parseMoney(row["Net"]) || (orderTotal - totalOrderFees - totalTaxes)) + (shareSaveCredit || 0);
 
         orders.push({
           sale_date: transactionDate,
