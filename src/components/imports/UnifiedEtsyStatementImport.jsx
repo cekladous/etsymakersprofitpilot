@@ -1110,7 +1110,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
             // Net column from the Monthly Statement IS the net payout.
             // Fall back to calculated value only if Net is missing or zero.
-            const orderNet = net || (orderTotal - totalOrderFees - totalTaxes);
+            const orderNet = net || (orderTotal - totalOrderFees - totalTaxes + (order.share_save_credit || 0));
 
         orders.push({
           sale_date: transactionDate,
