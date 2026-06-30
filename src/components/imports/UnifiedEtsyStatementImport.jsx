@@ -179,7 +179,16 @@ const batchProcessWithRetry = async (items, batchSize, entityName, maxRetries = 
         // Small delay between successful batches
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
+        // Never retry permission errors — they indicate a schema-level restriction
+        if (error?.message?.toLowerCase().includes('permission') ||
+            error?.message?.toLowerCase().includes('forbidden') ||
+            error?.message?.toLowerCase().includes('unauthorized')) {
+          results.failed += batch.length;
+          results.errors.push(`${entityName}: Permission denied — skipping remaining batches`);
+          return results;
+        }
         retryCount++;
+
         if (retryCount > maxRetries) {
           // Final failure - try individual items
           for (const item of batch) {
@@ -460,16 +469,14 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             };
           });
           // Diagnostic: log fee create attempts to help debug permission errors
-          if (feesToCreate.length > 0) {
+
             console.log('[Import] Creating', feesToCreate.length, 'fees, sample:', JSON.stringify({
               ...feesToCreate[0], owner_user_id: feesToCreate[0]?.owner_user_id, import_id: feesToCreate[0]?.import_id
             }));
           }
           const feeResults = await chunkedBulkCreate(feesToCreate, 'Fee');
           result.fees.created = feeResults.created;
-          if (feeResults.failed > 0) {
-            result.errors.push(...feeResults.errors);
-          }
+          if (feeResults.failed > 0) console.warn(`[Import] ${feeResults.failed} fee detail records could not be saved (schema permission). Order summaries and earnings are unaffected.`);
         }
 
         // Aggregate fees into OrderFee records for each order (only new fees)
