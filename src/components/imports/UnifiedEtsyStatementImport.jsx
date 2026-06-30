@@ -154,7 +154,9 @@ const classifyStatementLine = (row) => {
   if (taxDetailsL) {
     return { category: 'tax', section: 'taxes', fee_type: null, order_id: orderId };
   }
-  
+  if (titleL.includes('share & save') || titleL.includes('share and save')) {
+      return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
+    }
   if (titleL.includes('fee')) {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
