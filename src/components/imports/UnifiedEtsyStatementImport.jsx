@@ -1092,7 +1092,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
              );
 
              const totalOrderFees = orderFees.reduce((sum, f) => {
-               const feeAmount = parseMoney(f["Fees & Taxes"]);
+               // Only apply Math.abs() to standard fees, not to our credit
+      const value = f.fee_type === 'share_save_credit' ? feeAmount : Math.abs(feeAmount || 0);
+      return sum + (value || 0);
                return sum + Math.abs(feeAmount || 0);
              }, 0);
 
