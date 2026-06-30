@@ -469,11 +469,9 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             };
           });
           // Diagnostic: log fee create attempts to help debug permission errors
-
-            console.log('[Import] Creating', feesToCreate.length, 'fees, sample:', JSON.stringify({
-              ...feesToCreate[0], owner_user_id: feesToCreate[0]?.owner_user_id, import_id: feesToCreate[0]?.import_id
-            }));
-          }
+          console.log('[Import] Creating', feesToCreate.length, 'fees, sample:', JSON.stringify({
+            ...feesToCreate[0], owner_user_id: feesToCreate[0]?.owner_user_id, import_id: feesToCreate[0]?.import_id
+          }));
           const feeResults = await chunkedBulkCreate(feesToCreate, 'Fee');
           result.fees.created = feeResults.created;
           if (feeResults.failed > 0) console.warn(`[Import] ${feeResults.failed} fee detail records could not be saved (schema permission). Order summaries and earnings are unaffected.`);
