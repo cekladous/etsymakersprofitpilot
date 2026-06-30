@@ -47,7 +47,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
   // true only when an Etsy statement import has been done for this order
   const hasStatementData = !!orderFees || order.source === 'etsy_statement';
 
-  const calculatedNetEarnings = orderFees ? calculateNetEarnings(order, orderFees) : (order.order_net && order.source === 'etsy_statement' ? order.order_net : calculateNetEarnings(order, null));
+  const calculatedNetEarnings = calculateNetEarnings(order, orderFees || null);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -259,13 +259,21 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                           <span>-{formatCurrency(estimatedTransactionFee)}</span>
                         </div>
                       )}
-                      {(order.card_processing_fees || 0) > 0 && (
-                        <div className="flex justify-between text-stone-400">
-                          <span>Payment processing fee</span>
-                          <span>-{formatCurrency(order.card_processing_fees)}</span>
-                        </div>
-                      )}
-                    </>
+                       {(order.card_processing_fees || 0) > 0 && (
+                         <div className="flex justify-between text-stone-400">
+                           <span>Payment processing fee (est.)</span>
+                           <span>-{formatCurrency(order.card_processing_fees)}</span>
+                         </div>
+                       )}
+                       <div className="flex justify-between text-stone-400">
+                         <span>Tax paid by buyer</span>
+                         <span>-{formatCurrency(order.sales_tax || 0)}</span>
+                       </div>
+                       <div className="flex justify-between text-stone-400">
+                         <span>Share &amp; Save Refund (est.)</span>
+                         <span>+{formatCurrency(0)}</span>
+                       </div>
+                     </>
                   )}
                 </div>
               </div>
