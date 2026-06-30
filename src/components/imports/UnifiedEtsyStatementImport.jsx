@@ -1050,7 +1050,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         transaction_date: transactionDate,
         type,
         description: title,
-        amount,
+        amount: net || feesTaxes || amount,
         order_id: classification.order_id,
         fee_type: classification.fee_type,
         category: classification.category,
