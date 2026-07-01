@@ -108,7 +108,7 @@ const classifyStatementLine = (row) => {
   // Share & Save must be checked BEFORE refund — the title is "Share & Save refund"
   // and would otherwise be misclassified as a refund instead of a fee credit
   if (titleL.includes('share') && titleL.includes('save')) {
-    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
+    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: (orderId && orderId !== '--' && /\d{5,}/.test(String(orderId))) ? String(orderId).match(/\d+/)[0] : null };
   }
 
   if (titleL.includes('refund') || titleL.includes('chargeback')) {
@@ -513,6 +513,21 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             
             // Share & Save is a credit — it reduces total fees, not increases them
             orderFeeMap[fee.order_id].total_fees += (fee.fee_type === 'share_save_credit' ? -amount : amount);
+          }
+        });
+        // Second pass: Match share_save_credit fees without valid order_id to orders by transaction date
+        fees.forEach(fee => {
+          if (fee.fee_type === 'share_save_credit' && (!fee.order_id || fee.order_id === '--')) {
+            const feeDate = fee.transaction_date;
+            const matchingFee = fees.find(f =>
+              f.order_id && f.order_id !== '--' && f.transaction_date === feeDate &&
+              (f.fee_type === 'transaction' || f.fee_type === 'processing')
+            );
+            if (matchingFee && orderFeeMap[matchingFee.order_id]) {
+              const creditAmount = Math.abs(fee.amount);
+              orderFeeMap[matchingFee.order_id].share_save_credit += creditAmount;
+              orderFeeMap[matchingFee.order_id].total_fees -= creditAmount;
+            }
           }
         });
 
