@@ -255,13 +255,13 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     <>
                       {estimatedTransactionFee > 0 && (
                         <div className="flex justify-between text-stone-400">
-                          <span>Transaction fee (est.)</span>
+                          <span>Transaction fee</span>
                           <span>-{formatCurrency(estimatedTransactionFee)}</span>
                         </div>
                       )}
                        {(order.card_processing_fees || 0) > 0 && (
                          <div className="flex justify-between text-stone-400">
-                           <span>Payment processing fee (est.)</span>
+                           <span>Processing fee</span>
                            <span>-{formatCurrency(order.card_processing_fees)}</span>
                          </div>
                        )}
@@ -270,7 +270,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                          <span>-{formatCurrency(order.sales_tax || 0)}</span>
                        </div>
                        <div className="flex justify-between text-stone-400">
-                         <span>Share &amp; Save Refund (est.)</span>
+                         <span>Share & Save Refund</span>
                          <span>+{formatCurrency(0)}</span>
                        </div>
                      </>
