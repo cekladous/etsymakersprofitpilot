@@ -481,7 +481,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
         // Aggregate fees into OrderFee records for each order (only new fees)
         const orderFeeMap = {};
-        newFees.forEach(fee => {
+        fees.forEach(fee => {
           if (fee.order_id) {
             if (!orderFeeMap[fee.order_id]) {
               orderFeeMap[fee.order_id] = {
