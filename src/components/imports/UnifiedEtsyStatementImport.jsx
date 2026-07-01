@@ -482,6 +482,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         // Aggregate fees into OrderFee records for each order (only new fees)
         const orderFeeMap = {};
         fees.forEach(fee => {
+          if (fee.fee_type === 'share_save_credit') { console.log('[DIAG] share_save fee in forEach:', JSON.stringify({order_id: fee.order_id, amount: fee.amount, fee_type: fee.fee_type})); }
           if (fee.order_id) {
             if (!orderFeeMap[fee.order_id]) {
               orderFeeMap[fee.order_id] = {
@@ -516,6 +517,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         });
 
         // Create/update OrderFee records (bulk)
+    console.log('[DIAG] orderFeeMap share_save_credit values:', Object.entries(orderFeeMap).map(([k,v]) => ({order_id: k, share_save_credit: v.share_save_credit})));
         const orderFeeRecords = Object.values(orderFeeMap);
         if (orderFeeRecords.length > 0) {
           // Fetch all existing OrderFees ONCE to avoid N+1 queries
@@ -1162,6 +1164,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           description: title || info,
           _rawLine: rawLine
         });
+            if (classification.fee_type === 'share_save_credit') { console.log('[DIAG] share_save pushed to fees array:', JSON.stringify({order_id: classification.order_id, fee_type: classification.fee_type, feesTaxes: feesTaxes, amount: amount})); }
       }
       // G) TAXES
       else if (classification.category === 'tax') {
