@@ -1143,12 +1143,16 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       // E) ADS (etsy_ads, offsite_ads)
       // F) SHIPPING (shipping_label, other_postage)
       else if (classification.category === 'fee') {
+        // For Share & Save credits, the amount may appear as a negative value
+        // in the Fees & Taxes column (credit) or as a positive in the Amount/Net column.
+        // Use Fees & Taxes first (user requirement), then Amount, then Net as fallback.
+        const feeAmount = feesTaxes || amount || net;
         fees.push({
           line_uid: lineUID,
           order_id: classification.order_id,
           transaction_date: transactionDate,
           fee_type: classification.fee_type,
-          amount: feesTaxes || amount,
+          amount: feeAmount,
           description: title || info,
           _rawLine: rawLine
         });
