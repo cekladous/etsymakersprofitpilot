@@ -108,6 +108,7 @@ const classifyStatementLine = (row) => {
   // Share & Save must be checked BEFORE refund — the title is "Share & Save refund"
   // and would otherwise be misclassified as a refund instead of a fee credit
   if (titleL.includes('share') && titleL.includes('save')) {
+    console.log('[RAW_SHARE_SAVE] full row:', JSON.stringify(row)); console.log('[RAW_SHARE_SAVE] orderId:', orderId, 'type:', typeof orderId);
     return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: (orderId && orderId !== '--' && /\d{5,}/.test(String(orderId))) ? String(orderId).match(/\d+/)[0] : null };
   }
 
