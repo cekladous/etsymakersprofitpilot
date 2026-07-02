@@ -23,16 +23,33 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Create or update customer if buyer info exists
-      if (order.customer?.name) {
+      // Create or update customer — deduplicate by etsy_buyer_name first, then by name
+      if (order.customer?.name || order.customer?.etsy_buyer_name) {
         try {
-          const existingCustomers = await base44.entities.Customer.filter({ 
-            owner_user_id: user.id,
-            name: order.customer.name 
-          });
-          
+          let existingCustomers = [];
+
+          // Prefer etsy_buyer_name (stable Etsy buyer ID) for deduplication
+          if (order.customer?.etsy_buyer_name) {
+            existingCustomers = await base44.entities.Customer.filter({
+              owner_user_id: user.id,
+              etsy_buyer_name: order.customer.etsy_buyer_name
+            });
+          }
+
+          // Fallback to exact name match only if no etsy_buyer_name match found
+          if (existingCustomers.length === 0 && order.customer?.name) {
+            existingCustomers = await base44.entities.Customer.filter({
+              owner_user_id: user.id,
+              name: order.customer.name
+            });
+          }
+
           if (existingCustomers.length > 0) {
-            await base44.entities.Customer.update(existingCustomers[0].id, order.customer);
+            const updateData = {};
+            if (order.customer.name) updateData.name = order.customer.name;
+            if (order.customer.etsy_buyer_name) updateData.etsy_buyer_name = order.customer.etsy_buyer_name;
+            if (order.customer.address) updateData.address = order.customer.address;
+            await base44.entities.Customer.update(existingCustomers[0].id, updateData);
             result.customers_updated++;
           } else {
             await base44.entities.Customer.create({ ...order.customer, owner_user_id: user.id });

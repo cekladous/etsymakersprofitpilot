@@ -105,6 +105,7 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
 
             const shipping = parseMoney(normalized["Shipping"] || "");
             const fullName = getRowValue(normalized, "Full Name");
+            const buyerUsername = getRowValue(normalized, "Buyer", "Buyer User ID");
             const firstName = getRowValue(normalized, "First Name");
             const lastName = getRowValue(normalized, "Last Name");
             const street1 = getRowValue(normalized, "Street 1");
@@ -121,7 +122,7 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
             return {
              sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
              order_id: String(getRowValue(normalized, "Order ID") || ""),
-             buyer_username: getRowValue(normalized, "Buyer", "Buyer User ID"),
+             buyer_username: buyerUsername,
              buyer_full_name: fullName,
              first_name: firstName,
              last_name: lastName,
@@ -148,9 +149,10 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
              payment_type: getRowValue(normalized, "Payment Type"),
              inperson_discount: parseMoney(getRowValue(normalized, "InPerson Discount")),
              inperson_location: getRowValue(normalized, "InPerson Location"),
-             // Customer data for upsert
+             // Customer data for upsert — use buyer_username as stable key
              customer: {
-               name: fullName,
+               name: fullName || buyerUsername,
+               etsy_buyer_name: buyerUsername || undefined,
                address: address || undefined,
              }
            };
