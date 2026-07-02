@@ -457,6 +457,64 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         }
 
+        // AUTO-CREATE CUSTOMERS FROM SALES: Upsert Customer records from buyer info
+        // in imported orders. Dedup by etsy_buyer_name (stable) then by name.
+        const buyerMap = {};
+        for (const order of newOrders) {
+          const buyerUsername = order.buyer_username || '';
+          const buyerName = order.buyer_full_name || '';
+          if (!buyerUsername && !buyerName) continue;
+          const key = buyerUsername || buyerName.toLowerCase();
+          if (!buyerMap[key]) {
+            buyerMap[key] = {
+              name: buyerName || buyerUsername,
+              etsy_buyer_name: buyerUsername || undefined,
+            };
+          }
+        }
+        const buyersToUpsert = Object.values(buyerMap);
+
+        if (buyersToUpsert.length > 0) {
+          try {
+            const existingCustomers = await withRetry(() =>
+              base44.entities.Customer.filter({ owner_user_id: currentUser.id })
+            );
+            const byBuyerName = {};
+            const byName = {};
+            existingCustomers.forEach(c => {
+              if (c.etsy_buyer_name) byBuyerName[c.etsy_buyer_name] = c;
+              if (c.name) byName[c.name.toLowerCase()] = c;
+            });
+
+            const customersToCreate = [];
+            const customersToUpdate = [];
+            for (const buyer of buyersToUpsert) {
+              let match = null;
+              if (buyer.etsy_buyer_name) match = byBuyerName[buyer.etsy_buyer_name];
+              if (!match && buyer.name) match = byName[buyer.name.toLowerCase()];
+              if (match) {
+                const updates = {};
+                if (buyer.name && buyer.name !== match.name) updates.name = buyer.name;
+                if (buyer.etsy_buyer_name && !match.etsy_buyer_name) updates.etsy_buyer_name = buyer.etsy_buyer_name;
+                if (Object.keys(updates).length > 0) customersToUpdate.push({ id: match.id, ...updates });
+              } else {
+                customersToCreate.push({ ...buyer, owner_user_id: currentUser.id });
+              }
+            }
+
+            if (customersToCreate.length > 0) {
+              const custResults = await chunkedBulkCreate(customersToCreate, 'Customer');
+              if (custResults.failed > 0) console.warn('[Import] Some customers failed to create:', custResults.errors);
+            }
+            if (customersToUpdate.length > 0) {
+              const custUpdateResults = await chunkedBulkUpdate(customersToUpdate, 'Customer');
+              if (custUpdateResults.failed > 0) console.warn('[Import] Some customers failed to update:', custUpdateResults.errors);
+            }
+          } catch (custErr) {
+            console.warn('[Import] Customer upsert failed:', custErr.message);
+          }
+        }
+
         // Import only new fees (bulk create with retry)
         if (newFees.length > 0) {
           const feesToCreate = newFees.map(fee => {
@@ -654,6 +712,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       queryClient.invalidateQueries({ queryKey: ["etsy-statement-lines"] });
       queryClient.invalidateQueries({ queryKey: ["order-fees"] });
       queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       setImporting(false);
       setPreview(null);
       setPendingData(null);

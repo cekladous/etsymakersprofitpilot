@@ -53,8 +53,33 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const gross_sale = parseFloat(data.pre_tax_amount || 0) + parseFloat(data.sales_tax_collected || 0);
+
+      // Auto-create a Customer from vendor name if no customer was selected
+      let customerId = data.customer_id;
+      if (!customerId && data.vendor?.trim()) {
+        try {
+          const vendorName = data.vendor.trim();
+          const existing = await base44.entities.Customer.filter({
+            owner_user_id: user.id,
+            name: vendorName,
+          });
+          if (existing.length > 0) {
+            customerId = existing[0].id;
+          } else {
+            const created = await base44.entities.Customer.create({
+              owner_user_id: user.id,
+              name: vendorName,
+            });
+            customerId = created.id;
+          }
+        } catch (err) {
+          console.warn('Could not auto-create customer:', err.message);
+        }
+      }
+
       return base44.entities.CustomSale.create({
         ...data,
+        customer_id: customerId || "",
         owner_user_id: user.id,
         pre_tax_amount: parseFloat(data.pre_tax_amount || 0),
         sales_tax_collected: parseFloat(data.sales_tax_collected || 0),
@@ -65,6 +90,7 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       onOpenChange(false);
       setErrorMessage("");
       setFormData({

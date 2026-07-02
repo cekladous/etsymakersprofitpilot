@@ -32,6 +32,7 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
       queryClient.invalidateQueries({ queryKey: ["etsy-orders"] });
       queryClient.invalidateQueries({ queryKey: ["order-fees"] });
       queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       setImporting(false);
       setPreview(null);
       setPendingData(null);
