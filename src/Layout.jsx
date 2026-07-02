@@ -16,13 +16,15 @@ import {
   BarChart3,
   Settings as SettingsIcon,
   FileText,
-  FileCheck
+  FileCheck,
+  Users
 } from "lucide-react";
 
 const navItems = [
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
         { name: "Etsy Sales", icon: ShoppingBag, page: "Orders" },
         { name: "Custom Sales", icon: ShoppingBag, page: "CustomSales" },
+        { name: "Customers", icon: Users, page: "Customers" },
         { name: "Quotes", icon: FileText, page: "Quotes" },
         { name: "Invoices", icon: Receipt, page: "Invoices" },
         { name: "Expenses", icon: Receipt, page: "Expenses" },
