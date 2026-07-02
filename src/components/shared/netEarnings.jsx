@@ -41,7 +41,12 @@ export function calculateTotalNetEarnings(orders, orderFees) {
   if (!Array.isArray(orders)) return 0;
   const feeMap = {};
   (orderFees || []).forEach(f => {
-    if (f.order_id) feeMap[f.order_id] = f;
+    if (!f.order_id) return;
+    const existing = feeMap[f.order_id];
+    // Prefer the record that has a Share & Save credit populated
+    if (!existing || (f.share_save_credit > 0 && !(existing.share_save_credit > 0))) {
+      feeMap[f.order_id] = f;
+    }
   });
   return orders.reduce((sum, o) => sum + calculateNetEarnings(o, feeMap[o.order_id]), 0);
 }

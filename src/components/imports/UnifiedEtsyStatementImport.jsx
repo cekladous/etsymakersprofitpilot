@@ -108,8 +108,7 @@ const classifyStatementLine = (row) => {
   // Share & Save must be checked BEFORE refund — the title is "Share & Save refund"
   // and would otherwise be misclassified as a refund instead of a fee credit
   if (titleL.includes('share') && titleL.includes('save')) {
-    console.log('[RAW_SHARE_SAVE] full row:', JSON.stringify(row)); console.log('[RAW_SHARE_SAVE] orderId:', orderId, 'type:', typeof orderId);
-    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: (orderId && orderId !== '--' && /\d{5,}/.test(String(orderId))) ? String(orderId).match(/\d+/)[0] : null };
+    return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
   }
 
   if (titleL.includes('refund') || titleL.includes('chargeback')) {
@@ -155,9 +154,6 @@ const classifyStatementLine = (row) => {
   if (taxDetailsL) {
     return { category: 'tax', section: 'taxes', fee_type: null, order_id: orderId };
   }
-  if (titleL.includes('share & save') || titleL.includes('share and save')) {
-      return { category: 'fee', section: 'fees', fee_type: 'share_save_credit', order_id: orderId };
-    }
   if (titleL.includes('fee')) {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
@@ -471,10 +467,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               import_id: importRecord.id 
             };
           });
-          // Diagnostic: log fee create attempts to help debug permission errors
-          console.log('[Import] Creating', feesToCreate.length, 'fees, sample:', JSON.stringify({
-            ...feesToCreate[0], owner_user_id: feesToCreate[0]?.owner_user_id, import_id: feesToCreate[0]?.import_id
-          }));
           const feeResults = await chunkedBulkCreate(feesToCreate, 'Fee');
           result.fees.created = feeResults.created;
           if (feeResults.failed > 0) console.warn(`[Import] ${feeResults.failed} fee detail records could not be saved (schema permission). Order summaries and earnings are unaffected.`);
@@ -483,7 +475,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         // Aggregate fees into OrderFee records for each order (only new fees)
         const orderFeeMap = {};
         fees.forEach(fee => {
-          if (fee.fee_type === 'share_save_credit') { console.log('[DIAG] share_save fee in forEach:', JSON.stringify({order_id: fee.order_id, amount: fee.amount, fee_type: fee.fee_type})); }
           if (fee.order_id) {
             if (!orderFeeMap[fee.order_id]) {
               orderFeeMap[fee.order_id] = {
@@ -516,24 +507,8 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
             orderFeeMap[fee.order_id].total_fees += (fee.fee_type === 'share_save_credit' ? -amount : amount);
           }
         });
-        // Second pass: Match share_save_credit fees without valid order_id to orders by transaction date
-        fees.forEach(fee => {
-          if (fee.fee_type === 'share_save_credit' && (!fee.order_id || fee.order_id === '--')) {
-            const feeDate = fee.transaction_date;
-            const matchingFee = fees.find(f =>
-              f.order_id && f.order_id !== '--' && f.transaction_date === feeDate &&
-              (f.fee_type === 'transaction' || f.fee_type === 'processing')
-            );
-            if (matchingFee && orderFeeMap[matchingFee.order_id]) {
-              const creditAmount = Math.abs(fee.amount);
-              orderFeeMap[matchingFee.order_id].share_save_credit += creditAmount;
-              orderFeeMap[matchingFee.order_id].total_fees -= creditAmount;
-            }
-          }
-        });
 
         // Create/update OrderFee records (bulk)
-    console.log('[DIAG] orderFeeMap share_save_credit values:', Object.entries(orderFeeMap).map(([k,v]) => ({order_id: k, share_save_credit: v.share_save_credit})));
         const orderFeeRecords = Object.values(orderFeeMap);
         if (orderFeeRecords.length > 0) {
           // Fetch all existing OrderFees ONCE to avoid N+1 queries
@@ -1070,7 +1045,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         transaction_date: transactionDate,
         type,
         description: title,
-        amount: net || feesTaxes || amount,
+        amount,
         order_id: classification.order_id,
         fee_type: classification.fee_type,
         category: classification.category,
@@ -1110,14 +1085,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
              );
 
              const totalOrderFees = orderFees.reduce((sum, f) => {
-  const feeAmount = parseMoney(f["Fees & Taxes"]);
-  // If it's the credit, we add it directly (it's already negative).
-  // Otherwise, we add the absolute value of the fee.
-  if (f.fee_type === 'share_save_credit') {
-    return sum + feeAmount; 
-  }
-  return sum + Math.abs(feeAmount || 0);
-}, 0);
+               const feeAmount = parseMoney(f["Fees & Taxes"]);
+               const fTitle = (f["Title"] || "").toLowerCase();
+               const isShareSave = fTitle.includes('share') && fTitle.includes('save');
+               // Share & Save is a credit — subtract it from total fees
+               return sum + (isShareSave ? -Math.abs(feeAmount || 0) : Math.abs(feeAmount || 0));
+             }, 0);
              const totalTaxes = orderTaxes.reduce((sum, { row: r }) => {
                const taxAmount = parseMoney(r["Amount"] || r["Fees & Taxes"]);
                return sum + Math.abs(taxAmount || 0);
@@ -1132,8 +1105,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
 
             // Net column from the Monthly Statement IS the net payout.
             // Fall back to calculated value only if Net is missing or zero.
-            const shareSaveCredit = orderFees.find(f => f.fee_type === 'share_save_credit') ? 0.30 : 0;
-            const orderNet = (parseMoney(row["Net"]) || (orderTotal - totalOrderFees - totalTaxes)) + (shareSaveCredit || 0);
+            const orderNet = net || (orderTotal - totalOrderFees - totalTaxes);
 
         orders.push({
           sale_date: transactionDate,
@@ -1180,7 +1152,6 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           description: title || info,
           _rawLine: rawLine
         });
-            if (classification.fee_type === 'share_save_credit') { console.log('[DIAG] share_save pushed to fees array:', JSON.stringify({order_id: classification.order_id, fee_type: classification.fee_type, feesTaxes: feesTaxes, amount: amount})); }
       }
       // G) TAXES
       else if (classification.category === 'tax') {
@@ -1197,6 +1168,36 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           ...rawLine,
           match_error: `Unknown pattern: Type="${type}", Title="${title}"`
         });
+      }
+    });
+
+    // Match Share & Save credits without an order_id to sales by transaction date.
+    // The Etsy CSV often omits the order number on Share & Save lines, so we
+    // match by date — and when multiple sales share a date, by closest amount
+    // (Share & Save is ~4% of the order value).
+    const salesByDate = {};
+    orders.forEach(o => {
+      if (o.order_id && !o.order_id.startsWith('stmt_')) {
+        if (!salesByDate[o.sale_date]) salesByDate[o.sale_date] = [];
+        salesByDate[o.sale_date].push(o);
+      }
+    });
+    fees.forEach(fee => {
+      if (fee.fee_type === 'share_save_credit' && !fee.order_id) {
+        const salesOnDate = salesByDate[fee.transaction_date] || [];
+        if (salesOnDate.length === 1) {
+          fee.order_id = salesOnDate[0].order_id;
+        } else if (salesOnDate.length > 1) {
+          const creditAmount = Math.abs(fee.amount);
+          let bestMatch = null;
+          let bestDiff = Infinity;
+          salesOnDate.forEach(sale => {
+            const expected = (sale.order_value || 0) * 0.04;
+            const diff = Math.abs(creditAmount - expected);
+            if (diff < bestDiff) { bestDiff = diff; bestMatch = sale; }
+          });
+          if (bestMatch) fee.order_id = bestMatch.order_id;
+        }
       }
     });
 
