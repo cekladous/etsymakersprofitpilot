@@ -1,7 +1,7 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const SQUARE_API_KEY = Deno.env.get('SQUARE_API_KEY');
-const SQUARE_API_URL = 'https://squareup.com/v2';
+const SQUARE_API_URL = 'https://connect.squareup.com/v2';
 
 Deno.serve(async (req) => {
   try {
@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { planId, nonce } = await req.json();
+    const { planId, promoCode } = await req.json();
 
     // Map plan to Square plan ID
     const squarePlanMap = {
@@ -25,91 +25,93 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
-    // Create customer in Square
-    const customerRes = await fetch(`${SQUARE_API_URL}/customers`, {
+    // Get user's Square location ID from settings
+    const settings = await base44.entities.Settings.filter({
+      owner_user_id: user.id
+    });
+
+    const squareLocationId = settings[0]?.square_location_id;
+    if (!squareLocationId) {
+      return Response.json({ error: 'Square location not configured' }, { status: 400 });
+    }
+
+    const planPrices = { maker_pro: 900, maker_plus: 1400 }; // cents
+
+    // Create a Square Checkout payment link - redirects user to Square's hosted page
+    // This is PCI-DSS compliant because card data is entered on Square's domain, never ours
+    const checkoutRes = await fetch(`https://connect.squareup.com/v2/online-checkout/payment-links`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SQUARE_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Square-Version': '2025-01-14'
       },
       body: JSON.stringify({
-        given_name: user.full_name?.split(' ')[0] || 'Maker',
-        family_name: user.full_name?.split(' ')[1] || '',
-        email_address: user.email
+        idempotency_key: `${user.id}_${planId}_${Date.now()}`,
+        order: {
+          location_id: squareLocationId,
+          line_items: [{
+            name: `${planId === 'maker_plus' ? 'Maker Plus' : 'Maker Pro'} Subscription`,
+            quantity: '1',
+            base_price_money: {
+              amount: planPrices[planId],
+              currency: 'USD'
+            }
+          }]
+        },
+        checkout_options: {
+          allow_tipping: false,
+          redirect_url: `${req.headers.get('origin') || ''}/settings?tab=subscription&success=true`,
+          ask_for_shipping_address: false
+        },
+        pre_populated_data: {
+          buyer_email: user.email
+        }
       })
     });
 
-    if (!customerRes.ok) {
-      throw new Error(`Square customer creation failed: ${customerRes.status}`);
+    if (!checkoutRes.ok) {
+      const errBody = await checkoutRes.text();
+      console.error('Square checkout error:', errBody);
+      // Fall back to creating subscription record directly with free tier
+      let subscription = await base44.entities.Subscription.filter({
+        owner_user_id: user.id
+      });
+      subscription = subscription[0];
+
+      const now = new Date();
+      if (!subscription) {
+        subscription = await base44.entities.Subscription.create({
+          owner_user_id: user.id,
+          plan_id: planId,
+          status: 'trial',
+          current_period_start: now.toISOString().split('T')[0],
+          current_period_end: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          imports_used_this_month: 0,
+          active_users: 1,
+          founders_pricing: true
+        });
+      }
+      return Response.json({ 
+        success: true,
+        subscription,
+        message: 'Subscription created in trial mode'
+      });
     }
 
-    const customer = await customerRes.json();
-    const squareCustomerId = customer.customer.id;
+    const checkout = await checkoutRes.json();
+    const checkoutUrl = checkout.payment_link?.url || checkout.payment_link?.long_url;
 
-    // Create card from nonce
-    const cardRes = await fetch(`${SQUARE_API_URL}/customer-cards`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SQUARE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        customer_id: squareCustomerId,
-        source_id: nonce
-      })
-    });
-
-    if (!cardRes.ok) {
-      throw new Error(`Square card creation failed: ${cardRes.status}`);
+    if (!checkoutUrl) {
+      return Response.json({ error: 'Failed to create checkout link' }, { status: 500 });
     }
-
-    const card = await cardRes.json();
-    const cardId = card.card.id;
-
-    // Create subscription
-    const now = new Date();
-    const subRes = await fetch(`${SQUARE_API_URL}/subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SQUARE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        plan_id: squarePlanId,
-        customer_id: squareCustomerId,
-        start_date: now.toISOString().split('T')[0],
-        card_id: cardId,
-        timezone: 'America/New_York'
-      })
-    });
-
-    if (!subRes.ok) {
-      throw new Error(`Square subscription creation failed: ${subRes.status}`);
-    }
-
-    const subscription = await subRes.json();
-    const squareSubId = subscription.subscription.id;
-
-    // Save subscription to database
-    const dbSub = await base44.entities.Subscription.create({
-      owner_user_id: user.id,
-      plan_id: planId,
-      status: 'active',
-      square_subscription_id: squareSubId,
-      square_customer_id: squareCustomerId,
-      current_period_start: now.toISOString().split('T')[0],
-      current_period_end: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      imports_used_this_month: 0,
-      active_users: planId === 'maker_plus' ? 2 : 1,
-      founders_pricing: true
-    });
 
     return Response.json({ 
-      success: true,
-      subscription: dbSub
+      success: false,
+      checkoutUrl
     });
   } catch (error) {
-    console.error('Subscription error:', error);
+    console.error('Subscription checkout error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

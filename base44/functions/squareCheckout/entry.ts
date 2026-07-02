@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
@@ -35,7 +35,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Square location ID not found' }, { status: 400 });
     }
 
-    // Create Square payment
+    // Create Square payment - requires a valid card nonce from Square Payment Form
+    // The source_id must be a tokenized card nonce from Square's Web Payment SDK
+    const { sourceId } = await req.json();
+    
+    if (!sourceId || sourceId.startsWith('cnp:')) {
+      return Response.json({ error: 'Valid payment token required' }, { status: 400 });
+    }
+
     const paymentResponse = await fetch('https://connect.squareup.com/v2/payments', {
       method: 'POST',
       headers: {
@@ -44,7 +51,7 @@ Deno.serve(async (req) => {
         'Square-Version': '2025-01-14'
       },
       body: JSON.stringify({
-        source_id: 'cnp:card-nonce-ok',
+        source_id: sourceId,
         amount_money: {
           amount: Math.round(amount * 100),
           currency: currency

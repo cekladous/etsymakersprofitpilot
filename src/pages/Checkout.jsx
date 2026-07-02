@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, Loader2, Check } from 'lucide-react';
+import { AlertCircle, Loader2, Check, Lock } from 'lucide-react';
 
 export default function Checkout() {
   const [searchParams] = useSearchParams();
@@ -15,14 +15,9 @@ export default function Checkout() {
   const [promoValid, setPromoValid] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
   const [discount, setDiscount] = useState(null);
-  
-  const [cardName, setCardName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
 
   const planId = searchParams.get('plan') || 'maker_pro';
-  
+
   const planInfo = {
     maker_pro: { name: 'Maker Pro', price: 9 },
     maker_plus: { name: 'Maker Plus', price: 14 }
@@ -62,13 +57,9 @@ export default function Checkout() {
     setError('');
 
     try {
-      // Call createSquareSubscription with card details
+      // Call createSquareSubscription - payment is handled by Square's secure checkout
       const response = await base44.functions.invoke('createSquareSubscription', {
         planId,
-        cardName,
-        cardNumber,
-        expiry,
-        cvv,
         promoCode: promoValid ? promoCode : null
       });
 
@@ -79,8 +70,11 @@ export default function Checkout() {
         }
         // Subscription created, redirect to success page
         navigate('/settings?tab=subscription&success=true');
+      } else if (response.data?.checkoutUrl) {
+        // Redirect to Square's hosted checkout page
+        window.location.href = response.data.checkoutUrl;
       } else {
-        setError(response.data?.error || 'Payment failed');
+        setError(response.data?.error || 'Payment setup failed');
       }
     } catch (err) {
       setError(err.message || 'Payment processing failed');
@@ -106,8 +100,8 @@ export default function Checkout() {
             )}
             {discount && (
               <p className="text-lg text-emerald-700 font-bold mt-2">
-                {discount.discount_type === 'free' ? 'FREE' : 
-                 discount.discount_type === 'percentage' ? `${discount.discount_value}% off` : 
+                {discount.discount_type === 'free' ? 'FREE' :
+                 discount.discount_type === 'percentage' ? `${discount.discount_value}% off` :
                  `$${discount.discount_value} off`}
                 {' '}for {discount.duration_months} month{discount.duration_months !== 1 ? 's' : ''}
               </p>
@@ -153,57 +147,15 @@ export default function Checkout() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Full Name
-              </label>
-              <Input
-                type="text"
-                placeholder="John Doe"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Card Number
-              </label>
-              <Input
-                type="text"
-                placeholder="1234 5678 9012 3456"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  Expiry (MM/YY)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="12/25"
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  required
-                />
+            <div className="p-4 bg-stone-50 rounded-lg border border-stone-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-4 h-4 text-stone-500" />
+                <p className="text-sm font-medium text-stone-700">Secure Payment via Square</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  CVV
-                </label>
-                <Input
-                  type="text"
-                  placeholder="123"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  required
-                />
-              </div>
+              <p className="text-xs text-stone-500">
+                You'll be redirected to Square's secure checkout to enter your payment details.
+                Your card information is never stored or transmitted through our servers.
+              </p>
             </div>
 
             <Button
@@ -217,13 +169,14 @@ export default function Checkout() {
                   Processing...
                 </>
               ) : (
-                `Pay $${plan.price}/month`
+                `Subscribe — $${plan.price}/month`
               )}
             </Button>
           </form>
 
-          <p className="text-xs text-stone-500 text-center mt-4">
-            Your payment is secure and processed by Square
+          <p className="text-xs text-stone-500 text-center mt-4 flex items-center justify-center gap-1">
+            <Lock className="w-3 h-3" />
+            Payments secured by Square — PCI-DSS compliant
           </p>
         </CardContent>
       </Card>
