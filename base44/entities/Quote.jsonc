@@ -213,15 +213,17 @@
     "customer_name"
   ],
   "rls": {
-    "create": null,
+    "create": {
+      "data.owner_user_id": "{{user.id}}"
+    },
     "read": {
-      "owner_user_id": "{{user.id}}"
+      "data.owner_user_id": "{{user.id}}"
     },
     "update": {
-      "owner_user_id": "{{user.id}}"
+      "data.owner_user_id": "{{user.id}}"
     },
     "delete": {
-      "owner_user_id": "{{user.id}}"
+      "data.owner_user_id": "{{user.id}}"
     }
   }
 }
