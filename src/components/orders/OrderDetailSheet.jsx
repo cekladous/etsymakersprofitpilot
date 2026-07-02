@@ -183,6 +183,9 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     <span>Tax paid by buyer</span>
                     <span>{formatCurrency(order.sales_tax || 0)}</span>
                   </div>
+                  <p className="text-xs text-stone-400 pl-1">
+                    Collected from buyer and remitted by Etsy — not seller income
+                  </p>
                 </div>
               </div>
 
@@ -210,7 +213,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                         </div>
                       )}
                       <div className="flex justify-between text-stone-600">
-                        <span>Tax paid by buyer</span>
+                        <span>Tax remitted by Etsy</span>
                         <span>-{formatCurrency(order.sales_tax || 0)}</span>
                       </div>
                       <div className="flex justify-between text-emerald-700 font-medium">
@@ -267,7 +270,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                          <span>+{formatCurrency(0)}</span>
                        </div>
                        <div className="flex justify-between text-stone-400">
-                         <span>Tax paid by buyer</span>
+                         <span>Tax remitted by Etsy</span>
                          <span>-{formatCurrency(order.sales_tax || 0)}</span>
                        </div>
                        </>
