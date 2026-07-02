@@ -30,7 +30,7 @@ export default function CustomersPage() {
     enabled: !!user,
     queryFn: () => base44.entities.Customer.filter({
       owner_user_id: user.id,
-    }, "-created_date"),
+    }, "-created_date", 10000),
   });
 
   const deleteMutation = useMutation({
