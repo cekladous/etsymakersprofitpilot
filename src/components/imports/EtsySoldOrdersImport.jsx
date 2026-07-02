@@ -250,8 +250,10 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
             <p className="font-semibold text-emerald-900">Import Successful</p>
           </div>
           <div className="text-sm text-emerald-800 space-y-1">
-            <p>✓ {importResult.created} new orders created</p>
+            {importResult.created > 0 && <p>✓ {importResult.created} new orders created</p>}
             <p>✓ {importResult.updated} existing orders updated</p>
+            {importResult.customers_created > 0 && <p>✓ {importResult.customers_created} customers added</p>}
+            {importResult.customers_updated > 0 && <p>✓ {importResult.customers_updated} customers updated</p>}
           </div>
           <Button 
             onClick={handleClose} 

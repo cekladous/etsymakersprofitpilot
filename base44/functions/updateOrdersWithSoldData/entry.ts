@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.35';
 
 Deno.serve(async (req) => {
   try {
@@ -15,7 +15,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid data format' }, { status: 400 });
     }
 
-    const result = { updated: 0, skipped: 0, failed: 0, customers_created: 0, customers_updated: 0 };
+    const result = { created: 0, updated: 0, skipped: 0, failed: 0, customers_created: 0, customers_updated: 0 };
+
+    // Pre-fetch all existing orders and customers ONCE to avoid N+1 queries
+    const allExistingOrders = await base44.entities.EtsyOrder.filter({ owner_user_id: user.id });
+    const orderMap = {};
+    allExistingOrders.forEach(o => { orderMap[String(o.order_id).trim()] = o; });
+
+    const allExistingCustomers = await base44.entities.Customer.filter({ owner_user_id: user.id });
+    const customerByBuyerName = {};
+    const customerByName = {};
+    allExistingCustomers.forEach(c => {
+      if (c.etsy_buyer_name) customerByBuyerName[c.etsy_buyer_name] = c;
+      if (c.name) customerByName[c.name.toLowerCase()] = c;
+    });
 
     for (const order of orders) {
       if (!order.order_id) {
@@ -23,36 +36,28 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const orderIdKey = String(order.order_id).trim();
+
       // Create or update customer — deduplicate by etsy_buyer_name first, then by name
       if (order.customer?.name || order.customer?.etsy_buyer_name) {
         try {
-          let existingCustomers = [];
+          let match = null;
+          if (order.customer.etsy_buyer_name) match = customerByBuyerName[order.customer.etsy_buyer_name];
+          if (!match && order.customer.name) match = customerByName[order.customer.name.toLowerCase()];
 
-          // Prefer etsy_buyer_name (stable Etsy buyer ID) for deduplication
-          if (order.customer?.etsy_buyer_name) {
-            existingCustomers = await base44.entities.Customer.filter({
-              owner_user_id: user.id,
-              etsy_buyer_name: order.customer.etsy_buyer_name
-            });
-          }
-
-          // Fallback to exact name match only if no etsy_buyer_name match found
-          if (existingCustomers.length === 0 && order.customer?.name) {
-            existingCustomers = await base44.entities.Customer.filter({
-              owner_user_id: user.id,
-              name: order.customer.name
-            });
-          }
-
-          if (existingCustomers.length > 0) {
+          if (match) {
             const updateData = {};
-            if (order.customer.name) updateData.name = order.customer.name;
-            if (order.customer.etsy_buyer_name) updateData.etsy_buyer_name = order.customer.etsy_buyer_name;
-            if (order.customer.address) updateData.address = order.customer.address;
-            await base44.entities.Customer.update(existingCustomers[0].id, updateData);
+            if (order.customer.name && order.customer.name !== match.name) updateData.name = order.customer.name;
+            if (order.customer.etsy_buyer_name && !match.etsy_buyer_name) updateData.etsy_buyer_name = order.customer.etsy_buyer_name;
+            if (order.customer.address && !match.address) updateData.address = order.customer.address;
+            if (Object.keys(updateData).length > 0) {
+              await base44.entities.Customer.update(match.id, updateData);
+            }
             result.customers_updated++;
           } else {
-            await base44.entities.Customer.create({ ...order.customer, owner_user_id: user.id });
+            const newCustomer = await base44.entities.Customer.create({ ...order.customer, owner_user_id: user.id });
+            if (order.customer.etsy_buyer_name) customerByBuyerName[order.customer.etsy_buyer_name] = newCustomer;
+            if (order.customer.name) customerByName[order.customer.name.toLowerCase()] = newCustomer;
             result.customers_created++;
           }
         } catch (err) {
@@ -60,19 +65,17 @@ Deno.serve(async (req) => {
         }
       }
 
-      const existing = await base44.entities.EtsyOrder.filter({ 
-        owner_user_id: user.id,
-        order_id: String(order.order_id).trim()
-      });
+      const existing = orderMap[orderIdKey];
 
-      if (existing.length > 0) {
+      if (existing) {
         const updateData = {};
-        // Update all provided fields
         if (order.sku) updateData.sku = order.sku;
         if (order.product_name) updateData.product_name = order.product_name;
         if (order.coupon_code) updateData.coupon_code = order.coupon_code;
         if (order.buyer_username) updateData.buyer_username = order.buyer_username;
         if (order.buyer_full_name) updateData.buyer_full_name = order.buyer_full_name;
+        if (order.first_name) updateData.first_name = order.first_name;
+        if (order.last_name) updateData.last_name = order.last_name;
         if (order.number_of_items) updateData.number_of_items = order.number_of_items;
         if (order.order_value) updateData.order_value = order.order_value;
         updateData.shipping_charged = order.shipping_charged;
@@ -94,13 +97,21 @@ Deno.serve(async (req) => {
         if (order.inperson_location) updateData.inperson_location = order.inperson_location;
         if (order.status) updateData.status = order.status;
         
-        await base44.entities.EtsyOrder.update(existing[0].id, updateData);
+        await base44.entities.EtsyOrder.update(existing.id, updateData);
         result.updated++;
       } else {
-        result.skipped++;
+        // Create new order from Sold Orders Report data
+        const { customer, ...orderData } = order;
+        const newOrder = await base44.entities.EtsyOrder.create({
+          ...orderData,
+          owner_user_id: user.id,
+          source: 'etsy_sold_orders'
+        });
+        orderMap[orderIdKey] = newOrder;
+        result.created++;
       }
 
-      if ((result.updated + result.skipped) % 10 === 0) {
+      if ((result.created + result.updated + result.skipped) % 10 === 0) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
