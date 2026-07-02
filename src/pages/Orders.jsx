@@ -45,7 +45,7 @@ import DeleteAllDataDialog from "@/components/orders/DeleteAllDataDialog";
 import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 import ReconciliationTab from "@/components/etsy/ReconciliationTab";
-import { calculateNetEarnings, calculateTotalNetEarnings } from "@/components/shared/netEarnings";
+import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@/components/shared/netEarnings";
 
 export default function Orders() {
   const { user, loading } = useAuth();
@@ -280,7 +280,7 @@ export default function Orders() {
 
   // Aggregate all fee categories for filtered orders
   const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
-  const totalFees = relevantOrderFees.reduce((sum, f) => sum + (f.total_fees || 0), 0);
+  const totalFees = relevantOrderFees.reduce((sum, f) => sum + (f.total_fees || 0), 0); // total_fees already has Share & Save subtracted
   const feeBreakdown = {
     listing: relevantOrderFees.reduce((sum, f) => sum + (f.listing_fees || 0), 0),
     transaction: relevantOrderFees.reduce((sum, f) => sum + (f.transaction_fees || 0), 0),
@@ -338,7 +338,11 @@ export default function Orders() {
     return deposits;
   }, [transfers, dateRange, timeRange]);
 
-  const totalAllFees = filteredFees.reduce((sum, f) => sum + Math.abs(f.amount || 0), 0);
+  // Share & Save credits reduce total fees, not increase them
+  const totalAllFees = filteredFees.reduce((sum, f) => {
+    const amt = f.amount || 0;
+    return sum + (f.fee_type === 'share_save_credit' ? -Math.abs(amt) : Math.abs(amt));
+  }, 0);
   const totalDeposits = etsyDeposits.reduce((sum, d) => sum + (d.amount || 0), 0);
 
   const feeTypeLabels = {
@@ -381,7 +385,7 @@ export default function Orders() {
     const csv = [
       ["Order ID", "Date", "Buyer", "Items", "Order Value", "Shipping", "Sales Tax", "Total Fees", "Net"],
       ...filteredOrders.map(o => {
-        const fees = orderFees.find(f => f.order_id === o.order_id);
+        const fees = findOrderFee(orderFees, o.order_id);
         const netEarnings = calculateNetEarnings(o, fees);
         return [
           o.order_id,
@@ -540,11 +544,14 @@ export default function Orders() {
     },
     {
       header: "Amount",
-      render: (row) => (
-        <span className={`font-semibold ${row.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-          {formatCurrency(Math.abs(row.amount || 0))}
-        </span>
-      ),
+      render: (row) => {
+        const isCredit = row.fee_type === 'share_save_credit' || row.amount < 0;
+        return (
+          <span className={`font-semibold ${isCredit ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {isCredit ? '+' : '-'}{formatCurrency(Math.abs(row.amount || 0))}
+          </span>
+        );
+      },
     },
     ];
 
@@ -648,7 +655,7 @@ export default function Orders() {
     {
       header: "Fees",
       render: (row) => {
-        const fees = orderFees.find(f => f.order_id === row.order_id);
+        const fees = findOrderFee(orderFees, row.order_id);
         if (!fees || fees.total_fees === 0) {
           return <span className="text-stone-400">—</span>;
         }
@@ -699,7 +706,7 @@ export default function Orders() {
     {
       header: "Net Earnings",
       render: (row) => {
-        const fees = orderFees.find(f => f.order_id === row.order_id);
+        const fees = findOrderFee(orderFees, row.order_id);
         const netEarnings = calculateNetEarnings(row, fees);
         return (
           <span className="font-semibold text-emerald-600">
@@ -1318,7 +1325,7 @@ export default function Orders() {
 
       <OrderDetailSheet 
         order={filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])}
-      orderFees={orderFees.filter(f => filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id === f.order_id).sort((a, b) => (b.share_save_credit || 0) - (a.share_save_credit || 0))[0]}
+      orderFees={findOrderFee(orderFees, filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id)}
         open={selectedIds.length === 1 && !bulkDeleteMutation.isPending}
         onOpenChange={() => setSelectedIds([])}
       />

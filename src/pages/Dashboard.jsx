@@ -303,7 +303,10 @@ export default function Dashboard() {
       toNumber(financialData.sellingExpenses.etsyListingFees) +
       toNumber(financialData.sellingExpenses.otherFees) +
       toNumber(financialData.sellingExpenses.etsyAds) +
-      toNumber(financialData.sellingExpenses.etsyOffsiteAdsFees)
+      toNumber(financialData.sellingExpenses.etsyOffsiteAdsFees) +
+      toNumber(financialData.sellingExpenses.shareSaveRefunds) + // negative (credit)
+      toNumber(financialData.sellingExpenses.etsyShipping) +
+      toNumber(financialData.sellingExpenses.otherPostage)
     );
     const periodBusinessExpenses = toNumber(totalExpenses - periodOrderFees);
 

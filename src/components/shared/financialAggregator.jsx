@@ -336,6 +336,11 @@ export function aggregateFinancials(data, dateRange) {
   const etsyProcessingFees = toNumber(processingFeesFromFees || (processingFeesFromLedger + legacyProcessingFees));
 
   // 4) Share & Save Fee Refunds & Misc. Credits (NEGATIVE = credits that reduce fees)
+  // Pull from Fee entity (statement import), ledger entries, and legacy Expense entity
+  const shareSaveFromFees = periodFees
+    .filter(f => f.fee_type === 'share_save_credit')
+    .reduce((sum, f) => sum - Math.abs(toNumber(f.amount)), 0); // Credits are negative (reduce fees)
+
   const shareSaveRows = matchLedgerRows([
     "share & save refund*",
     "etsy miscellaneous credit*"
@@ -344,7 +349,9 @@ export function aggregateFinancials(data, dateRange) {
   const legacyShareSave = periodLegacyExpenses
     .filter(e => ["share_save_refunds_credits"].includes(e.category))
     .reduce((sum, e) => sum - toNumber(e.amount), 0); // Credits reduce expenses (negative)
-  const shareSaveRefunds = toNumber(shareSaveFromLedger + legacyShareSave); // Already negative
+
+  // Use Fee entity as primary source (most reliable from statement imports), fall back to ledger + legacy
+  const shareSaveRefunds = toNumber(shareSaveFromFees || (shareSaveFromLedger + legacyShareSave)); // Already negative
 
   // 5) Other Fees
   const otherFeeRows = matchLedgerRows([

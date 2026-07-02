@@ -35,13 +35,10 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
   const ETSY_TRANSACTION_RATE = 0.065;
   const estimatedTransactionFee = Math.round(revenueExclTax * ETSY_TRANSACTION_RATE * 100) / 100;
 
+  // Fees & credits total = -(all per-order fees + tax - Share & Save credit)
+  // total_fees already has Share & Save subtracted, so we add tax separately
   const totalFeesPaid = orderFees
-    ? -(
-        (orderFees.transaction_fees || 0) +
-        (orderFees.processing_fees || 0) +
-        (order.sales_tax || 0) -
-        shareSaveCredit
-      )
+    ? -((orderFees.total_fees || 0) + (order.sales_tax || 0))
     : -(estimatedTransactionFee + (order.card_processing_fees || 0));
 
   // true only when an Etsy statement import has been done for this order
@@ -216,10 +213,12 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                         <span>Tax paid by buyer</span>
                         <span>-{formatCurrency(order.sales_tax || 0)}</span>
                       </div>
-                      <div className="flex justify-between text-emerald-700 font-medium">
-                        <span>Share &amp; Save Refund</span>
-                        <span>+{formatCurrency(orderFees.share_save_credit || 0)}</span>
-                      </div>
+                      {(orderFees.share_save_credit || 0) > 0 && (
+                        <div className="flex justify-between text-emerald-700 font-medium">
+                          <span>Share &amp; Save Refund</span>
+                          <span>+{formatCurrency(orderFees.share_save_credit)}</span>
+                        </div>
+                      )}
                       {orderFees.listing_fees > 0 && (
                         <div className="flex justify-between text-stone-600">
                           <span>Listing fee</span>
@@ -269,12 +268,8 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                          <span>Tax paid by buyer</span>
                          <span>-{formatCurrency(order.sales_tax || 0)}</span>
                        </div>
-                       <div className="flex justify-between text-stone-400">
-                         <span>Share & Save Refund</span>
-                         <span>+{formatCurrency(0)}</span>
-                       </div>
-                     </>
-                  )}
+                       </>
+                       )}
                 </div>
               </div>
 
@@ -293,4 +288,4 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
       </SheetContent>
     </Sheet>
   );
-} 
+}
