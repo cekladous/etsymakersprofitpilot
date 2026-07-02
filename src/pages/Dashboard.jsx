@@ -52,8 +52,7 @@ import TransferDialog from "@/components/monthly/TransferDialog";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import ReconciliationWarning from "@/components/dashboard/ReconciliationWarning";
-import ReconciliationCheckCard from "@/components/dashboard/ReconciliationCheckCard";
-import CashflowReconciliationCard from "@/components/reconciliation/CashflowReconciliationCard";
+import CompactReconciliationCard from "@/components/dashboard/CompactReconciliationCard";
 import MonthCloseWorkflow from "@/components/reconciliation/MonthCloseWorkflow";
 import GracePeriodWarning from "@/components/subscriptions/GracePeriodWarning";
 import ExpiredSubscriptionWarning from "@/components/subscriptions/ExpiredSubscriptionWarning";
@@ -733,72 +732,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Reconciliation Cards */}
-      <ReconciliationCheckCard
+      {/* Compact Reconciliation Card */}
+      <CompactReconciliationCard
         etsyOrders={etsyOrders}
         etsyStatementImports={etsyStatementImports}
         etsyStatementLines={etsyStatementLines}
-        periodStart={periodStart}
-        periodEnd={periodEnd}
-      />
-      
-      <CashflowReconciliationCard
-        etsyOrders={etsyOrders}
-        etsyStatementImports={etsyStatementImports}
         orderFees={orderFees}
         transfers={transfers}
+        financialData={financialData}
         periodStart={periodStart}
         periodEnd={periodEnd}
       />
-
-      {/* Sales Tax Warning */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
-            <p className="font-semibold text-blue-900">Sales Tax Tracking</p>
-            <p className="text-sm text-blue-700 mt-1">
-              Sales tax collected from Etsy orders is shown for reference only. Etsy Maker's Profit Pilot does not automatically file or remit sales tax. 
-              <strong> You are responsible for tracking, filing, and paying sales tax to your state.</strong> The app displays collected tax amounts to help with your records, but you must manage tax obligations separately.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Unmatched Rows Banner - CRITICAL */}
-      {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0 || (financialData.deduplicationWarnings || []).length > 0) &&
-         <Link to={createPageUrl("Orders") + "?tab=reconciliation"} className="block">
-         <div className={`rounded-xl p-4 hover:shadow-md transition-all border-l-4 ${
-           financialData.unmatchedNetImpact !== 0 
-             ? 'bg-red-50 border-red-300 border' 
-             : 'bg-amber-50 border-amber-200 border'
-         }`}>
-           <div className="flex items-start justify-between gap-4">
-             <div className="flex-1">
-               <p className={`font-semibold ${financialData.unmatchedNetImpact !== 0 ? 'text-red-900' : 'text-amber-900'}`}>
-                 {(financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0)} transactions need categorization
-                 {(financialData.deduplicationWarnings || []).length > 0 && ' • Plus deduplication required'}
-               </p>
-               <p className={`text-sm mt-2 ${financialData.unmatchedNetImpact !== 0 ? 'text-red-800' : 'text-amber-700'}`}>
-                 {(financialData.deduplicationWarnings || []).map((w, i) => <div key={i}>• {w}</div>)}
-                 {((financialData.unmatchedLedgerEntriesCount || 0) + (financialData.unmatchedStatementLinesCount || 0) > 0) && 
-                   <div className="mt-2">
-                     • These entries are <strong>excluded from profit calculations</strong>
-                     {financialData.unmatchedNetImpact !== 0 && (
-                       <div className={`mt-1 font-semibold ${financialData.unmatchedNetImpact > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                         Potential impact: ${Math.abs(financialData.unmatchedNetImpact).toFixed(2)}
-                       </div>
-                     )}
-                   </div>
-                 }
-               </p>
-             </div>
-             <Button variant={financialData.unmatchedNetImpact !== 0 ? "default" : "outline"} size="sm" className={financialData.unmatchedNetImpact !== 0 ? "bg-red-600 hover:bg-red-700" : "bg-white"}>
-               Review & Reconcile
-             </Button>
-           </div>
-         </div>
-        </Link>
-         }
 
       {/* Alerts */}
       {(ordersWithoutJobs.length > 0 || lowStockSheets.length > 0) &&
