@@ -1318,7 +1318,7 @@ export default function Orders() {
 
       <OrderDetailSheet 
         order={filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])}
-        orderFees={orderFees.find(f => filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id === f.order_id)}
+      orderFees={orderFees.filter(f => filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id === f.order_id).sort((a, b) => (b.share_save_credit || 0) - (a.share_save_credit || 0))[0]}
         open={selectedIds.length === 1 && !bulkDeleteMutation.isPending}
         onOpenChange={() => setSelectedIds([])}
       />
