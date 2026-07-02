@@ -151,7 +151,7 @@ const classifyStatementLine = (row) => {
     return { category: 'sale', section: 'orders', fee_type: null, order_id: orderId };
   }
   
-  if (taxDetailsL) {
+  if (typeL === 'tax' || titleL.includes('sales tax') || titleL.includes('tax paid by buyer')) {
     return { category: 'tax', section: 'taxes', fee_type: null, order_id: orderId };
   }
   if (titleL.includes('fee')) {
@@ -1092,7 +1092,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
                return sum + (isShareSave ? -Math.abs(feeAmount || 0) : Math.abs(feeAmount || 0));
              }, 0);
              const totalTaxes = orderTaxes.reduce((sum, { row: r }) => {
-               const taxAmount = parseMoney(r["Amount"] || r["Fees & Taxes"]);
+               const amtVal = parseMoney(r["Amount"]);
+               const feesVal = parseMoney(r["Fees & Taxes"]);
+               // "Amount" is "--" for tax rows in Etsy Monthly Statement CSV,
+               // and "--" is truthy in JS so || would never fall through.
+               // Parse both, then pick the non-zero value.
+               const taxAmount = amtVal !== 0 ? amtVal : feesVal;
                return sum + Math.abs(taxAmount || 0);
              }, 0);
 

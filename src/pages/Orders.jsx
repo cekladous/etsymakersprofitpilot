@@ -88,7 +88,7 @@ export default function Orders() {
     enabled: !!user,
     queryFn: () => base44.entities.OrderFee.filter({
       owner_user_id: user.id,
-    }),
+    }, "-created_date", 1000),
   });
 
   const { data: etsyLedgerEntries = [] } = useQuery({
