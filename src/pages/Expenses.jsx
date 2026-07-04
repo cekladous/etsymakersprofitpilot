@@ -377,6 +377,15 @@ export default function Expenses() {
       });
     }
     
+    // Deduplicate across sources (same date+description+amount = same transaction)
+    const seen = new Set();
+    allExpenses = allExpenses.filter(expense => {
+      const key = `${expense.date}|${(expense.description || '').toLowerCase().trim()}|${expense.amount}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
     // Apply filters
     return allExpenses.filter(expense => {
       const matchesSearch = !search ||

@@ -55,9 +55,9 @@ export default function StatementSummary({ user }) {
   const summary = useMemo(() => {
     const lines = statementLines;
 
-    // Sales come from EtsyOrder records (the import creates orders from sales rows,
-    // not statement lines). This mirrors how Etsy's statement shows gross sales.
-    const salesTotal = orders.reduce((s, o) => s + (o.order_value || 0) + (o.shipping_charged || 0) - (o.discount_amount || 0), 0);
+    // Sales come from EtsyOrder records. Etsy's "Total Sales" = order_total
+    // (includes item value + shipping + sales tax - discounts - refunds).
+    const salesTotal = orders.reduce((s, o) => s + (o.order_total || 0) - (o.refund_amount || 0), 0);
     const salesCount = orders.length;
 
     const feeLines = lines.filter(l => l.section === 'fees');

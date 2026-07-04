@@ -152,7 +152,7 @@ export default function QuotesPage() {
       key: "actions",
       label: "",
       render: (quote) => (
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-end" onMouseDown={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant="outline"

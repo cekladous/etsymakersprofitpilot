@@ -266,8 +266,15 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     return totalHours * (parseFloat(formData.labor_rate) || 0);
   };
 
+  const getSuggestedPrice = () => {
+    const overhead = parseFloat(formData.overhead_per_item) || 0;
+    const totalCOGS = getMaterialsTotal() + getLaborTotal() + getMachinesTotal() + overhead;
+    const margin = parseFloat(desiredMargin) || 0;
+    return margin > 0 && margin < 100 ? totalCOGS / (1 - margin / 100) : totalCOGS;
+  };
+
   const getGrandTotal = () => {
-    return getMaterialsTotal() + getLaborTotal() + getMachinesTotal();
+    return getSuggestedPrice();
   };
 
   const handleProductTemplateSelect = (productId) => {
@@ -414,7 +421,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    saveMutation.mutate({ ...formData, total: getGrandTotal() });
+    saveMutation.mutate({ ...formData, total: getSuggestedPrice(), subtotal: getMaterialsTotal() + getLaborTotal() + getMachinesTotal() });
   };
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || "$";

@@ -92,6 +92,7 @@ export default function DataTable({
 
     const handleMouseUp = () => {
       setIsSelecting(false);
+      setSelectedCells(new Set());
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -108,7 +109,9 @@ export default function DataTable({
     selectedCells.forEach(cellKey => {
       const [rowIndex, colIndex] = cellKey.split('-').map(Number);
       const row = data[rowIndex];
+      if (!row) return;
       const col = columns[colIndex];
+      if (!col) return;
       let cellValue = col.render ? col.render(row) : row[col.accessor];
       
       // Extract text content from React elements
@@ -126,7 +129,9 @@ export default function DataTable({
     selectedCells.forEach(cellKey => {
       const [rowIndex, colIndex] = cellKey.split('-').map(Number);
       const row = data[rowIndex];
+      if (!row) return;
       const col = columns[colIndex];
+      if (!col) return;
       
       if (!totals[colIndex]) {
         totals[colIndex] = 0;

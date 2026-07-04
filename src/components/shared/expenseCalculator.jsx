@@ -43,7 +43,7 @@ export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses
 
   // Calculate order fees for the period (transaction date = order sale_date)
   const periodOrderFeesTotal = orderFees
-    .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
+    .filter(f => periodEtsyOrders.some(o => o.order_id === f.order_id))
     .reduce((sum, f) => {
       const fees = (f.listing_fees || 0) + 
                    (f.transaction_fees || 0) + 
@@ -58,7 +58,7 @@ export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses
 
   // Calculate fee credits for the period (Share & Save credit reduces total fees)
   const periodFeeCredits = orderFees
-    .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
+    .filter(f => periodEtsyOrders.some(o => o.order_id === f.order_id))
     .reduce((sum, f) => sum + (f.share_save_credit || 0), 0);
 
   // Calculate business expenses by transaction date (date field)
