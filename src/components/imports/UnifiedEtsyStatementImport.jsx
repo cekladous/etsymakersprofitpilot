@@ -680,7 +680,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           refunds_count: result.refunds.created,
           taxes_count: result.taxes.created,
           unmatched_count: result.unmatched.count,
-          reconciliation_status: hasErrors ? 'partial' : 'success',
+          reconciliation_status: hasErrors ? 'FAIL' : 'PASS',
           reconciliation_notes: hasErrors ? `Import completed with ${result.errors.length} error(s)` : null
         });
 

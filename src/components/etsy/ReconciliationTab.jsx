@@ -22,10 +22,10 @@ export default function ReconciliationTab({ user }) {
     queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }, "-imported_at"),
   });
 
-  const { data: etsyDeposits = [] } = useQuery({
-    queryKey: ["etsy-deposits", user?.id],
+  const { data: transfers = [] } = useQuery({
+    queryKey: ["transfers", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EtsyDeposit.filter({ owner_user_id: user.id })
+    queryFn: () => base44.entities.Transfer.filter({ owner_user_id: user.id, type: "etsy_deposit" }, "-date", 1000)
   });
 
   const { data: unmatchedStatementLines = [] } = useQuery({
@@ -67,9 +67,13 @@ export default function ReconciliationTab({ user }) {
 
   const totalUnmatched = unmatchedStatementLines.length + unmatchedLedgerEntries.length;
 
-  const statementTotal = etsyDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
-  const ordersTotal = imports.filter(imp => imp.status === 'success').reduce((sum, imp) => sum + (imp.orders_count || 0), 0);
-  const difference = ordersTotal - statementTotal;
+  // Reconciliation check: compare Etsy statement net (sales - fees - marketing - shipping)
+  // against actual bank deposits. Both are dollar amounts from the same source of truth.
+  const activeImports = imports.filter(imp => imp.status !== 'replaced');
+  const depositsTotal = transfers.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const ordersTotal = activeImports.reduce((sum, imp) => sum + (imp.orders_count || 0), 0);
+  const feesCount = activeImports.reduce((sum, imp) => sum + (imp.fees_count || 0), 0);
+  const depositsCount = activeImports.reduce((sum, imp) => sum + (imp.deposits_count || 0), 0);
 
   const allUnmatchedRows = [
     ...unmatchedStatementLines.map(line => ({
@@ -261,16 +265,21 @@ export default function ReconciliationTab({ user }) {
           </CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-4">
             <div className="bg-stone-100 p-4 rounded-lg">
-              <p className="text-sm text-stone-500">Statement Total</p>
-              <p className="text-2xl font-bold">${statementTotal.toFixed(2)}</p>
+              <p className="text-sm text-stone-500">Total Deposits (Bank)</p>
+              <p className="text-2xl font-bold">${depositsTotal.toFixed(2)}</p>
+              <p className="text-xs text-stone-400 mt-1">{depositsCount} deposit records</p>
             </div>
             <div className="bg-stone-100 p-4 rounded-lg">
-              <p className="text-sm text-stone-500">Orders Total</p>
-              <p className="text-2xl font-bold">${ordersTotal.toFixed(2)}</p>
+              <p className="text-sm text-stone-500">Imported Orders</p>
+              <p className="text-2xl font-bold">{ordersTotal}</p>
+              <p className="text-xs text-stone-400 mt-1">{feesCount} fee lines</p>
             </div>
-            <div className={`p-4 rounded-lg ${difference === 0 ? 'bg-emerald-100' : 'bg-rose-100'}`}>
-              <p className={`text-sm ${difference === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>Difference</p>
-              <p className={`text-2xl font-bold ${difference === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>${difference.toFixed(2)}</p>
+            <div className={`p-4 rounded-lg ${depositsCount > 0 ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+              <p className={`text-sm ${depositsCount > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>Deposit Status</p>
+              <p className={`text-2xl font-bold ${depositsCount > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {depositsCount > 0 ? 'Tracked' : 'Missing'}
+              </p>
+              <p className="text-xs text-stone-400 mt-1">See Statement Summary for $ reconciliation</p>
             </div>
           </CardContent>
         </Card>

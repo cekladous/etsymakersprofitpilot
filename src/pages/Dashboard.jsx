@@ -351,7 +351,7 @@ export default function Dashboard() {
       sum + (o.order_value || o.order_total || 0), 0);
 
       const fees = orderFees.
-      filter((f) => periodEtsyOrders.some((o) => o.id === f.order_id)).
+      filter((f) => periodEtsyOrders.some((o) => o.order_id === f.order_id)).
       reduce((sum, f) => sum + (f.total_fees || 0), 0);
 
       const periodExpenses = businessExpenses.

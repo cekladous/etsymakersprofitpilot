@@ -59,23 +59,25 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
       });
 
       let created = 0;
-      // Deduplicate: check existing deposits to avoid re-importing
-      const existingDeposits = await base44.entities.EtsyDeposit.filter({ owner_user_id: currentUser.id });
-      const existingKeys = new Set(existingDeposits.map(d => `${d.deposit_date}|${Math.abs(d.amount || 0).toFixed(2)}`));
+      // Deduplicate: check existing Transfers (etsy_deposit) to avoid re-importing.
+      // The app reads deposits from the Transfer entity everywhere (Orders, Dashboard,
+      // Reconciliation), so we must write here — not just to EtsyDeposit.
+      const existingTransfers = await base44.entities.Transfer.filter({ owner_user_id: currentUser.id, type: "etsy_deposit" });
+      const existingKeys = new Set(existingTransfers.map(d => `${d.date}|${Math.abs(d.amount || 0).toFixed(2)}`));
       const uniqueDeposits = deposits.filter(d => {
         const key = `${d.deposit_date}|${Math.abs(d.amount || 0).toFixed(2)}`;
         return !existingKeys.has(key);
       });
-      
-      for (const deposit of uniqueDeposits) {
 
+      for (const deposit of uniqueDeposits) {
         try {
-          await base44.entities.EtsyDeposit.create({
-            ...deposit,
+          // Write to Transfer entity — the single source of truth for deposits
+          await base44.entities.Transfer.create({
             owner_user_id: currentUser.id,
-            import_batch_id: importRecord.id,
-            source_file: fileName,
-            imported_at: new Date().toISOString(),
+            date: deposit.deposit_date,
+            type: "etsy_deposit",
+            amount: Math.abs(deposit.amount || 0),
+            notes: deposit.description || "Etsy Deposit",
           });
           created++;
         } catch (err) {
@@ -92,12 +94,11 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
     },
     onSuccess: (result) => {
       setImportResult(result);
-      queryClient.invalidateQueries({ queryKey: ["etsy-deposits"] });
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
       queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
-      queryClient.invalidateQueries({ queryKey: ["deposits"] });
-      queryClient.invalidateQueries({ queryKey: ["etsy-payment-deposits"] });
       queryClient.invalidateQueries({ queryKey: ["reconciliation"] });
+      queryClient.invalidateQueries({ queryKey: ["statement-lines-month"] });
+      queryClient.invalidateQueries({ queryKey: ["deposits-month"] });
       setImporting(false);
       setPreview(null);
       setPendingData(null);
@@ -148,7 +149,7 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
 
         const deposits = jsonData.map(row => ({
           deposit_date: parseDate(row["Date"]),
-          amount: parseMoney(row["Amount"]),
+          amount: Math.abs(parseMoney(row["Amount"])),
           currency: row["Currency"] || "USD",
           type: row["Type"] || "deposit",
           description: row["Description"] || "",

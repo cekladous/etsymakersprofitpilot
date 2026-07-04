@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
         ['Revenue Breakdown'],
         ['Category', 'Amount'],
         ['Etsy Sales (Net)', financialData.revenue?.netEtsySales || 0],
-        ['Etsy Refunds', −(financialData.revenue?.etsyRefunds || 0)],
+        ['Etsy Refunds', -(financialData.revenue?.etsyRefunds || 0)],
         ['Custom Sales A', financialData.revenue?.customSaleA || 0],
         ['Custom Sales B', financialData.revenue?.customSaleB || 0],
         ['Sales Tax (Reference)', financialData.revenue?.customSalesTaxCollected || 0],
