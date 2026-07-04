@@ -107,6 +107,14 @@ export default function Orders() {
     }, "-transaction_date", 5000),
   });
 
+  const { data: statementLines = [] } = useQuery({
+    queryKey: ["statement-lines-orders", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.EtsyStatementLine.filter({
+      owner_user_id: user.id,
+    }, "-transaction_date", 10000),
+  });
+
   const { data: etsyStatementImports = [] } = useQuery({
     queryKey: ["etsy-statement-imports", user?.id],
     enabled: !!user,
@@ -275,14 +283,39 @@ export default function Orders() {
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
 
-  // Filter fees from active imports only (excludes replaced imports)
+  // Unified fees: merge EtsyStatementLine fee records (authoritative source from
+  // imports) with Fee entity records (secondary derivative). Dedup by composite key.
+  // This ensures fees display correctly even when Fee entity creation fails during import.
   const activeFees = useMemo(() => {
-    return fees.filter(fee => {
-      if (!fee.import_id) return true;
-      const feeImport = etsyStatementImports.find(imp => imp.id === fee.import_id);
-      return !feeImport || feeImport.status !== 'replaced';
-    });
-  }, [fees, etsyStatementImports]);
+    const statementFeeLines = statementLines
+      .filter(l => l.category === 'fee')
+      .map(l => ({
+        id: l.id,
+        transaction_date: l.transaction_date,
+        order_id: l.order_id || '',
+        fee_type: l.fee_type,
+        amount: l.amount,
+        description: l.description,
+        import_id: l.import_id,
+      }));
+
+    const stmtKeys = new Set(
+      statementFeeLines.map(f => `${f.transaction_date}|${f.order_id}|${f.fee_type}|${f.amount}`)
+    );
+
+    const feeEntityFees = fees
+      .filter(fee => {
+        if (!fee.import_id) return true;
+        const feeImport = etsyStatementImports.find(imp => imp.id === fee.import_id);
+        return !feeImport || feeImport.status !== 'replaced';
+      })
+      .filter(fee => {
+        const key = `${fee.transaction_date}|${fee.order_id || ''}|${fee.fee_type}|${fee.amount}`;
+        return !stmtKeys.has(key);
+      });
+
+    return [...statementFeeLines, ...feeEntityFees];
+  }, [statementLines, fees, etsyStatementImports]);
 
   const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
   // Period fees: ALL fees for the selected date range (independent of fee search/filter).

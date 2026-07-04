@@ -116,6 +116,44 @@ export default function StatementSummary({ user }) {
     };
   }, [orders, statementLines]);
 
+  // Detect missing statement categories that Etsy's monthly statement should contain
+  const missingCategories = useMemo(() => {
+    const missing = [];
+    const hasOffsiteAds = statementLines.some(l => l.fee_type === 'offsite_ads');
+    const hasEtsyPlus = statementLines.some(l =>
+      (l.description || '').toLowerCase().includes('etsy plus') ||
+      (l.description || '').toLowerCase().includes('subscription')
+    );
+    const hasDeposits = deposits.length > 0;
+    const hasShipping = statementLines.some(l => l.section === 'shipping');
+
+    if (!hasOffsiteAds) {
+      missing.push({
+        name: 'Offsite Ads',
+        reason: 'No Offsite Ads rows found. If you run Offsite Ads, this fee may be missing from the uploaded CSV.',
+      });
+    }
+    if (!hasEtsyPlus) {
+      missing.push({
+        name: 'Etsy Plus Subscription',
+        reason: 'Etsy Plus subscription ($10/mo) is billed to your credit card and does not appear in the Payment Account CSV. This is expected.',
+      });
+    }
+    if (!hasDeposits) {
+      missing.push({
+        name: 'Deposits / Payouts',
+        reason: 'No bank deposits found for this month. Import the Etsy Deposits CSV or add deposits manually on the Deposits tab.',
+      });
+    }
+    if (!hasShipping) {
+      missing.push({
+        name: 'Shipping Labels',
+        reason: 'No shipping label or postage rows found. If you purchased labels through Etsy, they may be missing from this file.',
+      });
+    }
+    return missing;
+  }, [statementLines, deposits]);
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-8"><div className="w-8 h-8 border-4 border-stone-200 border-t-stone-800 rounded-full animate-spin" /></div>;
   }
@@ -200,6 +238,28 @@ export default function StatementSummary({ user }) {
                       Etsy Net ({formatCurrency(summary.etsyNet)}) differs from deposits ({formatCurrency(summary.depositsTotal)}) by {formatCurrency(summary.difference)}.
                       This can happen if some fees (e.g., Etsy Plus subscription) are billed to a credit card and don't appear in the Payment Account CSV.
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {missingCategories.length > 0 && (
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-900">Missing Statement Categories</p>
+                      <p className="text-sm text-blue-700 mb-2">
+                        The following categories were not found in the uploaded file. This may indicate incomplete source data.
+                      </p>
+                      <div className="space-y-2">
+                        {missingCategories.map((cat, idx) => (
+                          <div key={idx} className="text-sm bg-white/50 rounded-md p-2">
+                            <span className="font-medium text-blue-900">{cat.name}:</span>{" "}
+                            <span className="text-blue-700">{cat.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

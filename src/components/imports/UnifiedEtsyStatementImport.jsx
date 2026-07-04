@@ -673,6 +673,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         // Update import counts and status
         const hasErrors = result.errors.length > 0;
         await base44.entities.EtsyStatementImport.update(importRecord.id, {
+          status: hasErrors ? 'partial' : 'success',
           orders_count: result.orders.created + result.orders.updated,
           fees_count: result.fees.created,
           deposits_count: result.deposits.created,
