@@ -56,10 +56,10 @@ export function calculateTotalExpenses({ etsyOrders, orderFees, businessExpenses
       return sum + fees;
     }, 0);
 
-  // Calculate fee credits for the period
+  // Calculate fee credits for the period (Share & Save credit reduces total fees)
   const periodFeeCredits = orderFees
     .filter(f => periodEtsyOrders.some(o => o.id === f.order_id))
-    .reduce((sum, f) => sum + (f.share_save_refunds_credits || 0), 0);
+    .reduce((sum, f) => sum + (f.share_save_credit || 0), 0);
 
   // Calculate business expenses by transaction date (date field)
   const periodBusinessExpenses = businessExpenses
