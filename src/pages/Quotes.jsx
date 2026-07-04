@@ -8,6 +8,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import StatusBadge from "@/components/shared/StatusBadge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -17,6 +27,7 @@ export default function QuotesPage() {
   const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
+  const [quoteToDelete, setQuoteToDelete] = useState(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -76,9 +87,14 @@ export default function QuotesPage() {
     setFormOpen(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm("Delete this quote?")) {
-      deleteMutation.mutate(id);
+  const handleDelete = (quote) => {
+    setQuoteToDelete(quote);
+  };
+
+  const confirmDelete = () => {
+    if (quoteToDelete) {
+      deleteMutation.mutate(quoteToDelete.id);
+      setQuoteToDelete(null);
     }
   };
 
@@ -182,7 +198,7 @@ export default function QuotesPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleDelete(quote.id)}
+            onClick={() => handleDelete(quote)}
             className="text-rose-600 hover:text-rose-700"
           >
             <Trash2 className="w-3 h-3" />
@@ -234,6 +250,29 @@ export default function QuotesPage() {
         onOpenChange={setFormOpen}
         quote={selectedQuote}
       />
+
+      <AlertDialog
+        open={!!quoteToDelete}
+        onOpenChange={(open) => { if (!open) setQuoteToDelete(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {quoteToDelete && `Quote ${quoteToDelete.quote_number} for ${quoteToDelete.customer_name} will be permanently deleted. This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
