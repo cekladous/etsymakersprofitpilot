@@ -275,22 +275,40 @@ export default function Orders() {
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
 
-  // Total Net Earnings using the canonical formula (excl. tax)
-  const totalNetEarnings = calculateTotalNetEarnings(filteredOrders, orderFees);
+  // Total Net Earnings: revenue + shipping - ALL fees for the period.
+  // Per-order calculation (calculateTotalNetEarnings) only subtracts per-order fees
+  // and misses listing fees + Etsy Ads that can't be linked to specific orders.
+  const totalNetEarnings = totalRevenue + totalShipping - totalFees;
 
-  // Aggregate all fee categories for filtered orders
+  // Period fees: ALL fees for the selected date range (independent of fee search/filter).
+  // Listing fees and Etsy Ads can't be linked to specific orders (Etsy uses Listing IDs,
+  // not Order IDs), so per-order OrderFee records undercount. The Fee entity has everything.
   const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
-  const totalFees = relevantOrderFees.reduce((sum, f) => sum + (f.total_fees || 0), 0); // total_fees already has Share & Save subtracted
+  const periodFees = useMemo(() => {
+    let filtered = activeFees;
+    if (dateRange) {
+      filtered = filtered.filter(f => {
+        const date = new Date(f.transaction_date);
+        return date >= dateRange.start && date <= dateRange.end;
+      });
+    }
+    return filtered;
+  }, [activeFees, dateRange]);
+
+  const totalFees = periodFees.reduce((sum, f) => {
+    const amt = Math.abs(f.amount || 0);
+    return sum + (f.fee_type === 'share_save_credit' ? -amt : amt);
+  }, 0);
   const feeBreakdown = {
-    listing: relevantOrderFees.reduce((sum, f) => sum + (f.listing_fees || 0), 0),
-    transaction: relevantOrderFees.reduce((sum, f) => sum + (f.transaction_fees || 0), 0),
-    processing: relevantOrderFees.reduce((sum, f) => sum + (f.processing_fees || 0), 0),
-    etsy_ads: relevantOrderFees.reduce((sum, f) => sum + (f.etsy_ads || 0), 0),
-    offsite_ads: relevantOrderFees.reduce((sum, f) => sum + (f.offsite_ads_fees || 0), 0),
-    shipping: relevantOrderFees.reduce((sum, f) => sum + (f.etsy_shipping || 0), 0),
-    other_postage: relevantOrderFees.reduce((sum, f) => sum + (f.other_postage_costs || 0), 0),
-    share_save: relevantOrderFees.reduce((sum, f) => sum + (f.share_save_credit || 0), 0),
-    other: relevantOrderFees.reduce((sum, f) => sum + (f.other_fees || 0), 0),
+    listing: periodFees.filter(f => f.fee_type === "listing").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    transaction: periodFees.filter(f => f.fee_type === "transaction").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    processing: periodFees.filter(f => f.fee_type === "processing").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    etsy_ads: periodFees.filter(f => f.fee_type === "etsy_ads").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    offsite_ads: periodFees.filter(f => f.fee_type === "offsite_ads").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    shipping: periodFees.filter(f => f.fee_type === "shipping_label").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    other_postage: periodFees.filter(f => f.fee_type === "other_postage").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    share_save: periodFees.filter(f => f.fee_type === "share_save_credit").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
+    other: periodFees.filter(f => !["listing","transaction","processing","etsy_ads","offsite_ads","share_save_credit","shipping_label","other_postage"].includes(f.fee_type)).reduce((s, f) => s + Math.abs(f.amount || 0), 0),
   };
   
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
