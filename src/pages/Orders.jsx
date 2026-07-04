@@ -275,24 +275,25 @@ export default function Orders() {
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
 
-  // Total Net Earnings: revenue + shipping - ALL fees for the period.
-  // Per-order calculation (calculateTotalNetEarnings) only subtracts per-order fees
-  // and misses listing fees + Etsy Ads that can't be linked to specific orders.
-  const totalNetEarnings = totalRevenue + totalShipping - totalFees;
+  // Filter fees from active imports only (excludes replaced imports)
+  const activeFees = useMemo(() => {
+    return fees.filter(fee => {
+      if (!fee.import_id) return true;
+      const feeImport = etsyStatementImports.find(imp => imp.id === fee.import_id);
+      return !feeImport || feeImport.status !== 'replaced';
+    });
+  }, [fees, etsyStatementImports]);
 
+  const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
   // Period fees: ALL fees for the selected date range (independent of fee search/filter).
   // Listing fees and Etsy Ads can't be linked to specific orders (Etsy uses Listing IDs,
   // not Order IDs), so per-order OrderFee records undercount. The Fee entity has everything.
-  const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
   const periodFees = useMemo(() => {
-    let filtered = activeFees;
-    if (dateRange) {
-      filtered = filtered.filter(f => {
-        const date = new Date(f.transaction_date);
-        return date >= dateRange.start && date <= dateRange.end;
-      });
-    }
-    return filtered;
+    if (!dateRange) return activeFees;
+    return activeFees.filter(f => {
+      const date = new Date(f.transaction_date);
+      return date >= dateRange.start && date <= dateRange.end;
+    });
   }, [activeFees, dateRange]);
 
   const totalFees = periodFees.reduce((sum, f) => {
@@ -310,17 +311,11 @@ export default function Orders() {
     share_save: periodFees.filter(f => f.fee_type === "share_save_credit").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
     other: periodFees.filter(f => !["listing","transaction","processing","etsy_ads","offsite_ads","share_save_credit","shipping_label","other_postage"].includes(f.fee_type)).reduce((s, f) => s + Math.abs(f.amount || 0), 0),
   };
+
+  // Total Net Earnings: revenue + shipping - ALL fees for the period.
+  const totalNetEarnings = totalRevenue + totalShipping - totalFees;
   
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
-
-  // Filter fees from active imports only
-  const activeFees = useMemo(() => {
-    return fees.filter(fee => {
-      if (!fee.import_id) return true;
-      const feeImport = etsyStatementImports.find(imp => imp.id === fee.import_id);
-      return !feeImport || feeImport.status !== 'replaced';
-    });
-  }, [fees, etsyStatementImports]);
 
   const filteredFees = useMemo(() => {
     let filtered = activeFees;
