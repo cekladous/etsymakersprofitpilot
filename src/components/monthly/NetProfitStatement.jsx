@@ -40,8 +40,10 @@ export default function NetProfitStatement({ financialData, dateRange }) {
       'advertising_marketing': ['advertising', 'software', 'advertising_marketing'],
       'office_expenses': ['utilities', 'office_expenses'],
       'professional_services': ['professional_services'],
-      'other': ['other', 'maintenance', 'shipping'],
+      'other': ['other', 'maintenance'],
       'miscellaneous_expenses': ['miscellaneous_expenses'],
+      'shipping_postage': ['shipping', 'shipping_postage'],
+      'software_subscriptions': ['software', 'software_subscriptions'],
       'etsy_listing_fees': ['etsy_listing_fees'],
       'etsy_transaction_fees': ['etsy_transaction_fees'],
       'etsy_processing_fees': ['etsy_processing_fees'],
@@ -415,15 +417,27 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             categoryName="professional_services"
             linkTo={buildExpensesLink("professional_services")}
           />
-          <Row 
-            label="Other Business Expenses" 
-            amount={businessExpenses.other || 0} 
+          <Row
+            label="Shipping & Postage"
+            amount={businessExpenses.shippingPostage || 0}
+            categoryName="shipping_postage"
+            linkTo={buildExpensesLink("shipping_postage")}
+          />
+          <Row
+            label="Software & Subscriptions"
+            amount={businessExpenses.softwareSubscriptions || 0}
+            categoryName="software_subscriptions"
+            linkTo={buildExpensesLink("software_subscriptions")}
+          />
+          <Row
+            label="Other Business Expenses"
+            amount={businessExpenses.other || 0}
             categoryName="other"
             linkTo={buildExpensesLink("other")}
           />
-          <Row 
-            label="Miscellaneous" 
-            amount={businessExpenses.miscellaneous || 0} 
+          <Row
+            label="Miscellaneous"
+            amount={businessExpenses.miscellaneous || 0}
             categoryName="miscellaneous_expenses"
             linkTo={buildExpensesLink("miscellaneous_expenses")}
           />
