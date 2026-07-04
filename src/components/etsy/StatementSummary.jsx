@@ -55,8 +55,10 @@ export default function StatementSummary({ user }) {
   const summary = useMemo(() => {
     const lines = statementLines;
 
-    const salesLines = lines.filter(l => l.category === 'sale');
-    const salesTotal = salesLines.reduce((s, l) => s + (l.amount || 0), 0);
+    // Sales come from EtsyOrder records (the import creates orders from sales rows,
+    // not statement lines). This mirrors how Etsy's statement shows gross sales.
+    const salesTotal = orders.reduce((s, o) => s + (o.order_value || 0) + (o.shipping_charged || 0) - (o.discount_amount || 0), 0);
+    const salesCount = orders.length;
 
     const feeLines = lines.filter(l => l.section === 'fees');
     const feesTotal = feeLines.reduce((s, l) => s + (l.amount || 0), 0);
@@ -69,6 +71,9 @@ export default function StatementSummary({ user }) {
 
     const taxLines = lines.filter(l => l.category === 'tax');
     const taxTotal = taxLines.reduce((s, l) => s + Math.abs(l.amount || 0), 0);
+    // Also include sales tax from orders if no tax statement lines exist
+    const ordersTax = orders.reduce((s, o) => s + (o.sales_tax || 0), 0);
+    const finalTaxTotal = taxTotal > 0 ? taxTotal : ordersTax;
 
     const depositsTotal = deposits.reduce((s, d) => s + (d.amount || 0), 0);
 
@@ -80,16 +85,16 @@ export default function StatementSummary({ user }) {
       feesTotal: Math.abs(feesTotal),
       marketingTotal: Math.abs(marketingTotal),
       shippingTotal: Math.abs(shippingTotal),
-      taxTotal,
+      taxTotal: finalTaxTotal,
       depositsTotal,
       etsyNet,
       difference,
-      salesCount: salesLines.length,
+      salesCount,
       feeCount: feeLines.length,
       marketingCount: marketingLines.length,
       shippingCount: shippingLines.length,
     };
-  }, [statementLines, deposits]);
+  }, [statementLines, deposits, orders]);
 
   const internalProfit = useMemo(() => {
     const revenue = orders.reduce((s, o) => s + (o.order_value || 0), 0);
