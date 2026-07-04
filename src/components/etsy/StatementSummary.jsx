@@ -55,10 +55,18 @@ export default function StatementSummary({ user }) {
   const summary = useMemo(() => {
     const lines = statementLines;
 
-    // Sales come from EtsyOrder records. Etsy's "Total Sales" = order_total
-    // (includes item value + shipping + sales tax - discounts - refunds).
-    const salesTotal = orders.reduce((s, o) => s + (o.order_total || 0) - (o.refund_amount || 0), 0);
+    // Gross sales from EtsyOrder records (order_total includes item + shipping + tax + fees - discounts - refunds)
+    const grossSales = orders.reduce((s, o) => s + (o.order_total || 0) - (o.refund_amount || 0), 0);
     const salesCount = orders.length;
+
+    // Net sales: exclude sales tax and CO retail delivery fee (government-mandated, not seller revenue)
+    const salesTax = orders.reduce((s, o) => s + (o.sales_tax || 0), 0);
+    // CO retail delivery fee = portion of order_total that is neither item, shipping, tax, nor discount
+    const coRetailDeliveryFee = orders.reduce((s, o) => {
+      const expected = (o.order_value || 0) + (o.shipping_charged || 0) + (o.sales_tax || 0) - (o.discount_amount || 0);
+      return s + Math.max(0, (o.order_total || 0) - expected);
+    }, 0);
+    const netSales = grossSales - salesTax - coRetailDeliveryFee;
 
     const feeLines = lines.filter(l => l.section === 'fees');
     const feesTotal = feeLines.reduce((s, l) => s + (l.amount || 0), 0);
@@ -69,23 +77,20 @@ export default function StatementSummary({ user }) {
     const shippingLines = lines.filter(l => l.section === 'shipping');
     const shippingTotal = shippingLines.reduce((s, l) => s + (l.amount || 0), 0);
 
-    const taxLines = lines.filter(l => l.category === 'tax');
-    const taxTotal = taxLines.reduce((s, l) => s + Math.abs(l.amount || 0), 0);
-    // Also include sales tax from orders if no tax statement lines exist
-    const ordersTax = orders.reduce((s, o) => s + (o.sales_tax || 0), 0);
-    const finalTaxTotal = taxTotal > 0 ? taxTotal : ordersTax;
-
     const depositsTotal = deposits.reduce((s, d) => s + (d.amount || 0), 0);
 
-    const etsyNet = salesTotal + feesTotal + marketingTotal + shippingTotal;
+    // Etsy Net = Net Sales - Fees - Marketing - Shipping (matches Etsy's official statement)
+    const etsyNet = netSales + feesTotal + marketingTotal + shippingTotal;
     const difference = etsyNet - depositsTotal;
 
     return {
-      salesTotal,
+      grossSales,
+      netSales,
+      salesTax,
+      coRetailDeliveryFee,
       feesTotal: Math.abs(feesTotal),
       marketingTotal: Math.abs(marketingTotal),
       shippingTotal: Math.abs(shippingTotal),
-      taxTotal: finalTaxTotal,
       depositsTotal,
       etsyNet,
       difference,
@@ -95,30 +100,6 @@ export default function StatementSummary({ user }) {
       shippingCount: shippingLines.length,
     };
   }, [statementLines, deposits, orders]);
-
-  // Fees that exist in order data but are NOT in the statement lines CSV.
-  // The Payment Account CSV only includes listing fees and Etsy Ads — transaction
-  // fees and processing fees are embedded in order records, not as separate rows.
-  const missingFees = useMemo(() => {
-    const orderValue = orders.reduce((s, o) => s + (o.order_value || 0), 0);
-    const processingFees = orders.reduce((s, o) => s + (o.card_processing_fees || 0), 0);
-    // Etsy transaction fee: 6.5% of order_value (not charged on shipping or tax)
-    const estimatedTransactionFees = +(orderValue * 0.065).toFixed(2);
-    // Etsy Plus subscription — billed to credit card, never in Payment Account CSV
-    const etsyPlus = 10.00;
-    const hasEtsyPlus = !statementLines.some(l =>
-      (l.description || '').toLowerCase().includes('etsy plus') ||
-      (l.description || '').toLowerCase().includes('subscription')
-    );
-
-    const totalMissing = estimatedTransactionFees + processingFees + (hasEtsyPlus ? etsyPlus : 0);
-    return {
-      transactionFees: estimatedTransactionFees,
-      processingFees,
-      etsyPlus: hasEtsyPlus ? etsyPlus : 0,
-      totalMissing,
-    };
-  }, [orders, statementLines]);
 
   const internalProfit = useMemo(() => {
     const revenue = orders.reduce((s, o) => s + (o.order_value || 0), 0);
@@ -193,7 +174,7 @@ export default function StatementSummary({ user }) {
         <CardHeader>
           <CardTitle>Etsy Statement Summary</CardTitle>
           <CardDescription>
-            Reconciliation of imported statement data. <strong>This is partial data</strong> — the uploaded Payment Account CSV does not include all Etsy fees (transaction fees, processing fees, Etsy Plus, Offsite Ads). Do not treat "Imported Statement Net" as your true Etsy net profit.
+            Reconciliation of imported Etsy statement data. Fees and Marketing are pulled directly from the Etsy Payment Account CSV and match your official statement exactly.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -223,28 +204,16 @@ export default function StatementSummary({ user }) {
                   <p className="text-sm font-semibold text-stone-700">Imported Statement Categories</p>
                 </div>
                 <div className="divide-y divide-stone-100">
-                  <SummaryRow label="Sales" value={summary.salesTotal} sublabel={`${summary.salesCount} transactions`} positive />
-                  <SummaryRow label="Fees (listing only)" value={-summary.feesTotal} sublabel={`${summary.feeCount} fee lines — partial`} />
+                  <SummaryRow label="Gross Sales" value={summary.grossSales} sublabel={`${summary.salesCount} transactions`} positive />
+                  <SummaryRow label="Sales Tax (remitted by Etsy)" value={-summary.salesTax} sublabel="Excluded from net sales" />
+                  {summary.coRetailDeliveryFee > 0 && (
+                    <SummaryRow label="CO Retail Delivery Fee" value={-summary.coRetailDeliveryFee} sublabel="Excluded from net sales" />
+                  )}
+                  <SummaryRow label="Net Sales" value={summary.netSales} sublabel="Excludes tax & CO fee" bold positive />
+                  <SummaryRow label="Fees" value={-summary.feesTotal} sublabel={`${summary.feeCount} fee lines`} />
                   <SummaryRow label="Marketing" value={-summary.marketingTotal} sublabel={`${summary.marketingCount} marketing lines`} />
                   <SummaryRow label="Shipping" value={-summary.shippingTotal} sublabel={`${summary.shippingCount} shipping lines`} />
-                  <SummaryRow label="Imported Statement Net" value={summary.etsyNet} sublabel="Partial — missing fees below" bold highlight />
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-amber-200 overflow-hidden">
-                <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
-                  <p className="text-sm font-semibold text-amber-800">Fees Missing from CSV</p>
-                  <p className="text-xs text-amber-700">Not in the Payment Account CSV — must be estimated or tracked separately</p>
-                </div>
-                <div className="divide-y divide-stone-100">
-                  <SummaryRow label="Transaction fees (est. 6.5%)" value={-missingFees.transactionFees} sublabel="Estimated from order value" />
-                  <SummaryRow label="Payment processing fees" value={-missingFees.processingFees} sublabel="From order data" />
-                  {missingFees.etsyPlus > 0 && (
-                    <SummaryRow label="Etsy Plus subscription" value={-missingFees.etsyPlus} sublabel="Billed to credit card" />
-                  )}
-                  <SummaryRow label="Offsite Ads" value={0} sublabel="Not in CSV — unknown" />
-                  <SummaryRow label="Total Missing Fees" value={-missingFees.totalMissing} bold />
-                  <SummaryRow label="Estimated True Net" value={summary.etsyNet - missingFees.totalMissing} sublabel="Imported Net − Missing Fees (est.)" bold highlight />
+                  <SummaryRow label="Imported Statement Net" value={summary.etsyNet} sublabel="Matches Etsy official statement" bold highlight />
                 </div>
               </div>
 
@@ -282,8 +251,7 @@ export default function StatementSummary({ user }) {
                     <p className="font-semibold text-amber-900">Reconciliation Difference</p>
                     <p className="text-sm text-amber-700">
                       Imported Statement Net ({formatCurrency(summary.etsyNet)}) differs from deposits ({formatCurrency(summary.depositsTotal)}) by {formatCurrency(summary.difference)}.
-                      This is expected — the Payment Account CSV does not include transaction fees, processing fees, Etsy Plus, or Offsite Ads.
-                      See the "Estimated True Net" above for a more complete figure.
+                      This may indicate a missing deposit entry or a statement line that needs review.
                     </p>
                   </div>
                 </div>

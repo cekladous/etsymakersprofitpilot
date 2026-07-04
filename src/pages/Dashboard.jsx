@@ -259,7 +259,7 @@ export default function Dashboard() {
       etsyStatementLines,
       etsyStatementImports
     }, dateRange);
-  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, dateRange]);
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports, dateRange]);
 
   // For backward compatibility with existing components
   const filteredSummaryData = financialData._rawData;
