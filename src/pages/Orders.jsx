@@ -296,10 +296,21 @@ export default function Orders() {
     });
   }, [activeFees, dateRange]);
 
-  const totalFees = periodFees.reduce((sum, f) => {
-    const amt = Math.abs(f.amount || 0);
-    return sum + (f.fee_type === 'share_save_credit' ? -amt : amt);
-  }, 0);
+  // Etsy Fees: listing, transaction, processing, share_save credit, other fees
+  // (NOT ads — those are Marketing, shown separately to match Etsy's statement)
+  const etsyFees = periodFees
+    .filter(f => !['etsy_ads', 'offsite_ads'].includes(f.fee_type))
+    .reduce((sum, f) => {
+      const amt = Math.abs(f.amount || 0);
+      return sum + (f.fee_type === 'share_save_credit' ? -amt : amt);
+    }, 0);
+
+  // Marketing: Etsy Ads + Offsite Ads (separate from Etsy Fees per Etsy's statement)
+  const marketingTotal = periodFees
+    .filter(f => ['etsy_ads', 'offsite_ads'].includes(f.fee_type))
+    .reduce((sum, f) => sum + Math.abs(f.amount || 0), 0);
+
+  const totalFees = etsyFees + marketingTotal;
   const feeBreakdown = {
     listing: periodFees.filter(f => f.fee_type === "listing").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
     transaction: periodFees.filter(f => f.fee_type === "transaction").reduce((s, f) => s + Math.abs(f.amount || 0), 0),
@@ -312,8 +323,8 @@ export default function Orders() {
     other: periodFees.filter(f => !["listing","transaction","processing","etsy_ads","offsite_ads","share_save_credit","shipping_label","other_postage"].includes(f.fee_type)).reduce((s, f) => s + Math.abs(f.amount || 0), 0),
   };
 
-  // Total Net Earnings: revenue + shipping - ALL fees for the period.
-  const totalNetEarnings = totalRevenue + totalShipping - totalFees;
+  // Total Net Earnings (internal profit): revenue + shipping - Etsy Fees - Marketing
+  const totalNetEarnings = totalRevenue + totalShipping - etsyFees - marketingTotal;
   
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
 
@@ -928,8 +939,15 @@ export default function Orders() {
             </div>
           )}
 
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Info: Internal profit view */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-800">
+              <strong>Internal Profit View:</strong> Revenue excludes sales tax. Etsy Fees and Marketing are shown separately to match Etsy's statement categories. For Etsy statement reconciliation, see the Reconciliation tab.
+            </p>
+          </div>
+
+          {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -973,11 +991,11 @@ export default function Orders() {
                     </div>
                     <div>
                       <p className="text-sm text-stone-500 flex items-center gap-1">
-                        Total Fees
+                        Etsy Fees
                         <Info className="w-3 h-3 text-stone-400" />
                       </p>
                       <p className="text-2xl font-bold text-stone-900">
-                        {formatCurrency(totalFees)}
+                        {formatCurrency(etsyFees)}
                       </p>
                     </div>
                   </div>
@@ -1039,6 +1057,22 @@ export default function Orders() {
                         <span className="font-medium">{formatCurrency(feeBreakdown.other)}</span>
                       </div>
                     )}
+                    <div className="border-t pt-2 mt-2 space-y-1">
+                      <div className="flex justify-between gap-4 text-xs font-semibold">
+                        <span>Etsy Fees:</span>
+                        <span>{formatCurrency(etsyFees)}</span>
+                      </div>
+                      {marketingTotal > 0 && (
+                        <div className="flex justify-between gap-4 text-xs font-semibold">
+                          <span>Marketing:</span>
+                          <span>{formatCurrency(marketingTotal)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-4 text-xs font-semibold border-t pt-1">
+                        <span>Total Charges:</span>
+                        <span>{formatCurrency(totalFees)}</span>
+                      </div>
+                    </div>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -1049,11 +1083,28 @@ export default function Orders() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-100 rounded-lg">
+                <CreditCard className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Marketing</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {formatCurrency(marketingTotal)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
               <div className="p-3 bg-emerald-100 rounded-lg">
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-stone-500">Total Net Earnings</p>
+                <p className="text-sm text-stone-500">Net Earnings</p>
+                <p className="text-xs text-stone-400">Internal profit view</p>
                 <p className="text-2xl font-bold text-stone-900">
                   {formatCurrency(totalNetEarnings)}
                 </p>
