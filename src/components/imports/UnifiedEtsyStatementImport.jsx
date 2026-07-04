@@ -1096,7 +1096,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
       const feesTaxes = parseMoney(row["Fees & Taxes"]);
       const net = parseMoney(row["Net"]);
       const statementMonth = transactionDate.substring(0, 7);
-      const lineUID = generateLineUID(transactionDate, type, amount, title, classification.order_id || "", statementMonth);
+
+      // For fee/tax rows, Etsy's CSV puts "--" in the Amount column; the real
+      // value lives in "Fees & Taxes" (or "Net"). Use the correct source so
+      // EtsyStatementLine records carry the actual fee amount, not 0.
+      const effectiveAmount = (amount === 0 && (feesTaxes !== 0 || net !== 0))
+        ? (feesTaxes || net)
+        : amount;
+
+      const lineUID = generateLineUID(transactionDate, type, effectiveAmount, title, classification.order_id || "", statementMonth);
 
       // Create raw line for this transaction
       const rawLine = {
@@ -1104,7 +1112,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         transaction_date: transactionDate,
         type,
         description: title,
-        amount,
+        amount: effectiveAmount,
         order_id: classification.order_id,
         fee_type: classification.fee_type,
         category: classification.category,
