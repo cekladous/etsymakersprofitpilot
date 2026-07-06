@@ -157,13 +157,13 @@ export default function Dashboard() {
   const { data: fees = [] } = useQuery({
     queryKey: ["fees", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Fee.filter({ owner_user_id: user.id })
+    queryFn: () => base44.entities.Fee.filter({ owner_user_id: user.id }, "-transaction_date", 5000)
   });
 
   const { data: etsyStatementLines = [] } = useQuery({
     queryKey: ["etsy-statement-lines", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id })
+    queryFn: () => base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }, "-transaction_date", 5000)
   });
 
   const { data: etsyStatementImports = [] } = useQuery({
