@@ -272,7 +272,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             bgColor="bg-cyan-50" 
           />
           <Row 
-            label="Etsy Sales (item + shipping)" 
+            label="Etsy Sales (net)" 
             amount={revenue.etsySales || 0}
             categoryName="etsy_sales"
             linkTo={createPageUrl("Orders")}
@@ -293,8 +293,15 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             <span className="text-sm min-w-[100px] text-right">{formatCurrency(revenue.taxCollectedByEtsy || 0)}</span>
             <span className="text-xs text-stone-500 min-w-[50px] text-right"></span>
           </div>
+          {(revenue.coRetailDeliveryFee || 0) > 0 && (
+            <div className="flex items-center justify-between py-2 px-4 pl-8">
+              <span className="text-sm">CO Retail Delivery Fee</span>
+              <span className="text-sm min-w-[100px] text-right">{formatCurrency(revenue.coRetailDeliveryFee || 0)}</span>
+              <span className="text-xs text-stone-500 min-w-[50px] text-right"></span>
+            </div>
+          )}
           <Row 
-            label="Total Etsy Sales (incl. tax)" 
+            label="Total Etsy Sales (gross)" 
             amount={revenue.totalEtsySales || 0} 
             bold 
           />
@@ -330,41 +337,20 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row label="Listing Fees" amount={sellingExpenses.etsyListingFees || 0} categoryName="etsy_listing_fees" linkTo={buildExpensesLink("etsy_listing_fees")} />
           <Row label="Transaction Fees" amount={sellingExpenses.etsyTransactionFees || 0} categoryName="etsy_transaction_fees" linkTo={buildExpensesLink("etsy_transaction_fees")} />
           <Row label="Processing Fees" amount={sellingExpenses.etsyProcessingFees || 0} categoryName="etsy_processing_fees" linkTo={buildExpensesLink("etsy_processing_fees")} />
-          <div className="flex justify-between items-center py-2 px-4 group">
-            <div className="flex items-center gap-2">
-              <span 
-                className="text-sm cursor-pointer hover:underline"
-                onClick={() => handleDrillDown("Share & Save Credits", "share_save_refunds_credits")}
-              >
-                Share & Save Credits
-              </span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <HelpCircle className="w-3 h-3 text-stone-400" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-xs">Share & Save credits are fee refunds from Etsy (shown as negative). They reduce your total fees.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link to={buildExpensesLink("share_save_refunds_credits")}>
-                <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer" />
-              </Link>
-              <span className="text-sm text-emerald-600 min-w-[100px] text-right">
-                {formatCurrency(sellingExpenses.shareSaveRefunds || 0)}
-              </span>
-              <span className="text-xs text-stone-500 min-w-[50px] text-right">
-                {totalRevenue > 0 ? `${((Math.abs(sellingExpenses.shareSaveRefunds || 0) / totalRevenue) * 100).toFixed(1)}%` : ''}
-              </span>
-            </div>
-          </div>
+          <Row label="Credits" amount={sellingExpenses.feeCredits || 0} isNegative categoryName="share_save_refunds_credits" />
+          <Row label="Share & Save Refund" amount={sellingExpenses.shareSaveRefunds || 0} isNegative categoryName="share_save_refunds_credits" linkTo={buildExpensesLink("share_save_refunds_credits")} />
           <Row label="Other Fees" amount={sellingExpenses.otherFees || 0} categoryName="other_fees" linkTo={buildExpensesLink("other_fees")} />
+          <Row label="Total Fees" amount={sellingExpenses.totalEtsyFees || 0} bold />
+          
+          {/* MARKETING SECTION */}
+          <Section 
+            title="Marketing" 
+            tooltip="Etsy Ads charges and Etsy Plus subscription fees. These are separate from platform fees."
+            bgColor="bg-orange-50" 
+          />
           <Row label="Etsy Ads" amount={sellingExpenses.etsyAds || 0} categoryName="etsy_ads" linkTo={buildExpensesLink("etsy_ads")} />
           <Row label="Offsite Ads" amount={sellingExpenses.etsyOffsiteAds || 0} categoryName="etsy_offsite_ads_fees" linkTo={buildExpensesLink("etsy_offsite_ads_fees")} />
-          <Row label="Total Fees" amount={sellingExpenses.totalEtsyFees || 0} bold />
+          <Row label="Etsy Plus Subscription" amount={sellingExpenses.etsyPlusSubscription || 0} />
           
           <Row label="Shipping Labels (Etsy)" amount={sellingExpenses.etsyShipping || 0} categoryName="etsy_shipping" linkTo={buildExpensesLink("etsy_shipping")} highlight="bg-yellow-50" />
           <Row label="Other Postage" amount={sellingExpenses.otherPostage || 0} categoryName="other_postage_costs" linkTo={buildExpensesLink("other_postage_costs")} highlight="bg-yellow-50" />
