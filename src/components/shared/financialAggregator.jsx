@@ -316,11 +316,11 @@ export function aggregateFinancials(data, dateRange) {
     .filter(f => f.fee_type === feeType && toNumber(f.amount) > 0)
     .reduce((sum, f) => sum + toNumber(f.amount), 0);
 
-  // 1) Etsy Listing Fees — use Fee entity (has per-fee-type split), fall back to statement lines
-  const etsyListingFees = hasFeeRecords
-    ? sumGrossFees('listing')
-    : (hasStatementFees
-        ? stmtFeeLines.filter(l => l.fee_type === 'listing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+  // 1) Etsy Listing Fees — use statement lines (authoritative), fall back to Fee entity
+  const etsyListingFees = hasStatementFees
+    ? stmtFeeLines.filter(l => l.fee_type === 'listing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? sumGrossFees('listing')
         : (() => {
             const listingFeeRows = matchLedgerRows(["listing fee*", "credit for listing fee*", "tax: auto-renew", "tax: listing"]);
             const legacyListingFees = periodLegacyExpenses.filter(e => ["etsy_listing_fees"].includes(e.category)).reduce((sum, e) => sum + toNumber(e.amount), 0);
@@ -328,10 +328,10 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 2) Etsy Transaction Fees
-  const etsyTransactionFees = hasFeeRecords
-    ? sumGrossFees('transaction')
-    : (hasStatementFees
-        ? stmtFeeLines.filter(l => l.fee_type === 'transaction').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+  const etsyTransactionFees = hasStatementFees
+    ? stmtFeeLines.filter(l => l.fee_type === 'transaction').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? sumGrossFees('transaction')
         : (() => {
             const transactionFeeRows = matchLedgerRows(["transaction fee*", "credit for transaction fee*", "tax: transaction*"]);
             const legacyTransactionFees = periodLegacyExpenses.filter(e => ["etsy_transaction_fees"].includes(e.category)).reduce((sum, e) => sum + toNumber(e.amount), 0);
@@ -339,10 +339,10 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 3) Etsy Processing Fees
-  const etsyProcessingFees = hasFeeRecords
-    ? sumGrossFees('processing')
-    : (hasStatementFees
-        ? stmtFeeLines.filter(l => l.fee_type === 'processing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+  const etsyProcessingFees = hasStatementFees
+    ? stmtFeeLines.filter(l => l.fee_type === 'processing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? sumGrossFees('processing')
         : (() => {
             const processingFeeRows = matchLedgerRows(["processing fee*", "credit for processing fee*", "tax: processing fee*"]);
             const legacyProcessingFees = periodLegacyExpenses.filter(e => ["etsy_processing_fees"].includes(e.category)).reduce((sum, e) => sum + toNumber(e.amount), 0);
@@ -351,15 +351,18 @@ export function aggregateFinancials(data, dateRange) {
 
   // 4) Fee Credits (all positive amounts — credit for listing fee, credit for Etsy Ads fee, etc.)
   // Shown as a separate line that reduces total fees (matches Etsy statement format)
-  const feeCredits = hasFeeRecords
-    ? periodFees.filter(f => toNumber(f.amount) > 0).reduce((sum, f) => sum + toNumber(f.amount), 0)
-    : 0;
+  // Include credits from BOTH fees and ads sections to match Etsy statement totals
+  const feeCredits = hasStatementFees
+    ? [...stmtFeeLines, ...stmtAdsLines].filter(l => toNumber(l.amount) > 0).reduce((sum, l) => sum + toNumber(l.amount), 0)
+    : hasFeeRecords
+      ? periodFees.filter(f => toNumber(f.amount) > 0).reduce((sum, f) => sum + toNumber(f.amount), 0)
+      : 0;
 
   // 5) Share & Save Credits (negative — reduces fees)
-  const shareSaveRefunds = hasFeeRecords
-    ? -sumFeeCredits('share_save_credit')
-    : (hasStatementFees
-        ? stmtFeeLines.filter(l => l.fee_type === 'share_save_credit').reduce((sum, l) => sum - Math.abs(toNumber(l.amount)), 0)
+  const shareSaveRefunds = hasStatementFees
+    ? stmtFeeLines.filter(l => l.fee_type === 'share_save_credit').reduce((sum, l) => sum - Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? -sumFeeCredits('share_save_credit')
         : (() => {
             const shareSaveRows = matchLedgerRows(["share & save refund*", "etsy miscellaneous credit*"]);
             const legacyShareSave = periodLegacyExpenses.filter(e => ["share_save_refunds_credits"].includes(e.category)).reduce((sum, e) => sum - toNumber(e.amount), 0);
@@ -367,21 +370,21 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 6) Other Fees (regulatory operating fees, etc.)
-  const otherFees = hasFeeRecords
-    ? sumGrossFees('other_fee')
-    : (hasStatementFees
-        ? stmtFeeLines.filter(l => l.fee_type === 'other_fee').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+  const otherFees = hasStatementFees
+    ? stmtFeeLines.filter(l => l.fee_type === 'other_fee').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? sumGrossFees('other_fee')
         : (() => {
             const otherFeeRows = matchLedgerRows(["buyer fee*", "regulatory operating fee*", "tax: regulatory operating fee*"]);
             const legacyOtherFees = periodLegacyExpenses.filter(e => ["other_fees"].includes(e.category)).reduce((sum, e) => sum + toNumber(e.amount), 0);
             return toNumber(toNumber(sumLedgerExpense(otherFeeRows)) + legacyOtherFees);
           })());
 
-  // 7) Etsy Ads — gross fees from Fee entity (credits shown separately in feeCredits)
-  const etsyAds = hasFeeRecords
-    ? sumGrossFees('etsy_ads')
-    : (hasStatementFees
-        ? stmtAdsLines.filter(l => l.fee_type === 'etsy_ads').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+  // 7) Etsy Ads — gross fees from statement lines (authoritative), fall back to Fee entity
+  const etsyAds = hasStatementFees
+    ? stmtAdsLines.filter(l => l.fee_type === 'etsy_ads').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? sumGrossFees('etsy_ads')
         : (() => {
             const adsFeesFromFees = periodFees.filter(f => f.fee_type === 'etsy_ads').reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
             const adsRows = matchLedgerRows(["etsy ads", "refund for invalid etsy ads clicks", "etsy plus subscription fee*", "sales tax on etsy plus subscription fee*", "credit for etsy ads fee*"]);
@@ -395,10 +398,10 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0);
 
   // 8) Etsy Offsite Ads
-  const etsyOffsiteAds = hasFeeRecords
-    ? sumGrossFees('offsite_ads')
-    : (hasStatementFees
-        ? stmtAdsLines.filter(l => l.fee_type === 'offsite_ads').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+  const etsyOffsiteAds = hasStatementFees
+    ? stmtAdsLines.filter(l => l.fee_type === 'offsite_ads').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    : (hasFeeRecords
+        ? sumGrossFees('offsite_ads')
         : (() => {
             const offsiteAdsFeesFromFees = periodFees.filter(f => f.fee_type === 'offsite_ads').reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
             const offsiteAdsRows = matchLedgerRows(["offsite ads"]);
@@ -407,9 +410,10 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 9) Total Etsy Fees (gross fees minus credits and share & save)
+  // Includes Etsy Plus subscription so total matches Etsy statement (fees + marketing)
   const totalEtsyFees = toNumber(
     etsyListingFees + etsyTransactionFees + etsyProcessingFees +
-    shareSaveRefunds + otherFees + etsyAds + etsyOffsiteAds - feeCredits
+    shareSaveRefunds + otherFees + etsyAds + etsyOffsiteAds + etsyPlusSubscription - feeCredits
   );
 
   // 9) Etsy Shipping (shipping labels)
