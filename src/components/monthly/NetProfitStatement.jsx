@@ -351,6 +351,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row label="Etsy Ads" amount={sellingExpenses.etsyAds || 0} categoryName="etsy_ads" linkTo={buildExpensesLink("etsy_ads")} />
           <Row label="Offsite Ads" amount={sellingExpenses.etsyOffsiteAds || 0} categoryName="etsy_offsite_ads_fees" linkTo={buildExpensesLink("etsy_offsite_ads_fees")} />
           <Row label="Etsy Plus Subscription" amount={sellingExpenses.etsyPlusSubscription || 0} />
+          <Row label="Total Marketing" amount={sellingExpenses.totalMarketing || 0} bold />
           
           <Row label="Shipping Labels (Etsy)" amount={sellingExpenses.etsyShipping || 0} categoryName="etsy_shipping" linkTo={buildExpensesLink("etsy_shipping")} highlight="bg-yellow-50" />
           <Row label="Other Postage" amount={sellingExpenses.otherPostage || 0} categoryName="other_postage_costs" linkTo={buildExpensesLink("other_postage_costs")} highlight="bg-yellow-50" />

@@ -20,51 +20,30 @@ export default function CompactReconciliationCard({
   const data = useMemo(() => {
     if (!periodStart || !periodEnd) return null;
 
-    const filterByDate = (items, dateField) =>
-      (items || []).filter((item) => {
-        const d = new Date(item[dateField]);
-        return d >= periodStart && d <= periodEnd;
-      });
+    // Pull from financialData (shared aggregator — single source of truth)
+    const rev = financialData?.revenue || {};
+    const sell = financialData?.sellingExpenses || {};
+    const cash = financialData?.cashflow || {};
 
-    // Orders total (order_value + shipping)
-    const periodOrders = filterByDate(etsyOrders, "sale_date");
-    const ordersTotal = periodOrders.reduce(
-      (sum, o) => sum + (o.order_value || 0) + (o.shipping_charged || 0),
-      0
-    );
+    const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
-    // Statement total (sales + refunds from active imports)
-    const statementLines = (etsyStatementLines || []).filter((l) => {
-      const d = new Date(l.transaction_date);
-      if (d < periodStart || d > periodEnd) return false;
-      if (!l.import_id) return false;
-      const imp = (etsyStatementImports || []).find((i) => i.id === l.import_id);
-      return imp && imp.status !== "replaced";
-    });
+    // Net Sales (order_total - refunds - tax - CO fee) — matches Etsy statement
+    const netSales = toNum(rev.netEtsySales);
 
-    const statementTotal = statementLines.reduce((sum, l) => {
-      if (l.category === "sale" || l.category === "refund") return sum + (l.amount || 0);
-      return sum;
-    }, 0);
+    // Fees + Marketing + Shipping (all platform-controlled deductions)
+    const feesTotal = toNum(sell.totalEtsyFees);
+    const marketingTotal = toNum(sell.totalMarketing);
+    const shippingTotal = toNum(sell.etsyShipping) + toNum(sell.otherPostage);
 
-    const statementDelta = Math.abs(ordersTotal - statementTotal);
+    // Imported Statement Net = Net Sales - Fees - Marketing - Shipping (matches Etsy official statement)
+    const statementNet = netSales - feesTotal - marketingTotal - shippingTotal;
 
-    // Cashflow: expected payout vs actual deposits
-    const refunds = periodOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
-    const fees = (orderFees || []).reduce((sum, f) => {
-      const feeAmount = (f.total_fees || 0) - (f.share_save_credit || 0);
-      return sum + Math.max(0, feeAmount);
-    }, 0);
-    const expectedPayout = ordersTotal - refunds - fees;
+    // Actual deposits from Transfer records
+    const actualDeposits = toNum(cash.etsyDeposits);
 
-    const periodTransfers = filterByDate(transfers, "date");
-    const actualDeposits = periodTransfers
-      .filter((t) => t.type === "etsy_deposit")
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
+    // Difference between what Etsy should deposit and what actually hit the bank
+    const depositDelta = statementNet - actualDeposits;
 
-    const depositDelta = expectedPayout - actualDeposits;
-
-    // Unmatched / excluded counts from financialData
     const unmatchedCount =
       (financialData?.unmatchedLedgerEntriesCount || 0) +
       (financialData?.unmatchedStatementLinesCount || 0);
@@ -77,33 +56,29 @@ export default function CompactReconciliationCard({
     }).length;
 
     return {
-      ordersTotal,
-      statementTotal,
-      statementDelta,
-      expectedPayout,
+      netSales,
+      feesTotal,
+      marketingTotal,
+      statementNet,
       actualDeposits,
       depositDelta,
       unmatchedCount,
       excludedCount,
     };
-  }, [etsyOrders, etsyStatementImports, etsyStatementLines, orderFees, transfers, financialData, periodStart, periodEnd]);
+  }, [etsyStatementLines, etsyStatementImports, financialData, periodStart, periodEnd]);
 
   if (!data) return null;
 
   // Build short status indicators
   const indicators = [];
-  if (data.statementDelta >= 0.01) {
+  const absDepositDelta = Math.abs(data.depositDelta);
+  if (absDepositDelta >= 0.01) {
     indicators.push({
       icon: AlertCircle,
-      text: `${fmt(data.statementDelta)} difference to review`,
+      text: data.depositDelta > 0
+        ? `${fmt(absDepositDelta)} deposits missing`
+        : `${fmt(absDepositDelta)} over deposited`,
       tone: "amber",
-    });
-  }
-  if (data.depositDelta > 1) {
-    indicators.push({
-      icon: AlertCircle,
-      text: `Deposits missing (${fmt(data.depositDelta)})`,
-      tone: "red",
     });
   }
   if (data.excludedCount > 0) {
@@ -153,11 +128,11 @@ export default function CompactReconciliationCard({
         {/* Key Numbers */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
           {[
-            { label: "Orders Total", value: data.ordersTotal },
-            { label: "Statement Total", value: data.statementTotal },
-            { label: "Difference", value: data.statementDelta, highlight: data.statementDelta >= 0.01 },
-            { label: "Expected Payout", value: data.expectedPayout },
-            { label: "Actual Deposits", value: data.actualDeposits, highlight: data.depositDelta > 1 },
+            { label: "Net Sales", value: data.netSales },
+            { label: "Fees + Marketing", value: data.feesTotal + data.marketingTotal },
+            { label: "Statement Net", value: data.statementNet },
+            { label: "Actual Deposits", value: data.actualDeposits, highlight: Math.abs(data.depositDelta) > 1 },
+            { label: "Difference", value: data.depositDelta, highlight: Math.abs(data.depositDelta) >= 0.01 },
           ].map((item) => (
             <div key={item.label} className="text-center md:text-left">
               <p className="text-xs text-stone-500 uppercase font-medium">{item.label}</p>

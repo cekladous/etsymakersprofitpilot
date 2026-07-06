@@ -409,12 +409,14 @@ export function aggregateFinancials(data, dateRange) {
             return toNumber(offsiteAdsFeesFromFees || (toNumber(sumLedgerExpense(offsiteAdsRows)) + legacyOffsiteAds));
           })());
 
-  // 9) Total Etsy Fees (gross fees minus credits and share & save)
-  // Includes Etsy Plus subscription so total matches Etsy statement (fees + marketing)
+  // 9) Total Etsy Fees — fees section only (listing + transaction + processing + other + share&save - credits)
   const totalEtsyFees = toNumber(
     etsyListingFees + etsyTransactionFees + etsyProcessingFees +
-    shareSaveRefunds + otherFees + etsyAds + etsyOffsiteAds + etsyPlusSubscription - feeCredits
+    shareSaveRefunds + otherFees - feeCredits
   );
+
+  // 9b) Total Marketing — Etsy Ads + Offsite Ads + Etsy Plus subscription
+  const totalMarketing = toNumber(etsyAds + etsyOffsiteAds + etsyPlusSubscription);
 
   // 9) Etsy Shipping (shipping labels)
   const etsyShipping = hasStatementFees
@@ -569,7 +571,7 @@ export function aggregateFinancials(data, dateRange) {
   // ==================== E) TOTALS ====================
   
   // 1) Total Expenses (Order Fees + Business Expenses - Fee Credits)
-  const totalSellingExpenses = toNumber(totalEtsyFees + etsyShipping + otherPostage);
+  const totalSellingExpenses = toNumber(totalEtsyFees + totalMarketing + etsyShipping + otherPostage);
   // Product expenses include packaging materials (cost of goods)
   const totalProductExpenses = toNumber(totalMaterialsSupplies + toolsEquipment + packagingMaterials);
   // Business expenses: include ALL non-product categories so the total matches the Expenses page
@@ -678,7 +680,8 @@ export function aggregateFinancials(data, dateRange) {
       etsyAds,
       etsyOffsiteAds,
       etsyPlusSubscription, // Etsy Plus subscription from statement (separate from Etsy Ads)
-      totalEtsyFees,
+      totalEtsyFees, // Fees section subtotal (listing + transaction + processing + other - credits)
+      totalMarketing, // Marketing section subtotal (Etsy Ads + Offsite Ads + Etsy Plus)
       etsyShipping,
       otherPostage,
       total: totalSellingExpenses,
