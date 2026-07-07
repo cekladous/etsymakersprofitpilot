@@ -20,6 +20,9 @@ export default function ActualsSpendingMatrix({
   materialPurchases,
   etsyLedgerEntries,
   orderFees,
+  fees,
+  etsyStatementLines,
+  etsyStatementImports,
   expenses
 }) {
   const [includeFees, setIncludeFees] = useState(false);
@@ -61,10 +64,13 @@ export default function ActualsSpendingMatrix({
         materialPurchases,
         etsyLedgerEntries,
         orderFees,
+        fees,
+        etsyStatementLines,
+        etsyStatementImports,
         expenses,
       }, monthRange)
     );
-  }, [months, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses]);
+  }, [months, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, fees, etsyStatementLines, etsyStatementImports, expenses]);
 
   // Load categories dynamically from schema (single source of truth)
   const expenseCategories = useMemo(() => getBusinessExpenseCategories(), []);

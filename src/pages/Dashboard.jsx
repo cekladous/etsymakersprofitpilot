@@ -844,6 +844,9 @@ export default function Dashboard() {
             materialPurchases={materialPurchases}
             etsyLedgerEntries={etsyLedgerEntries}
             orderFees={orderFees}
+            fees={fees}
+            etsyStatementLines={etsyStatementLines}
+            etsyStatementImports={etsyStatementImports}
             expenses={expenses} />
 
         </TabsContent>
