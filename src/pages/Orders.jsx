@@ -384,6 +384,16 @@ export default function Orders() {
   // Matches the Reconciliation tab's "Internal Profit View" exactly
   const totalNetEarnings = totalItemRevenue + totalShipping - totalDiscounts - totalRefunds - etsyFees - marketingTotal;
   
+  // Sum of per-order profits (Order Profit column) — each order's net after
+  // transaction + processing fees + Share & Save credit, but before shop-level costs.
+  const sumOfOrderProfits = filteredOrders.reduce((sum, o) => {
+    const fees = findOrderFee(orderFees, o.order_id);
+    return sum + calculateNetEarnings(o, fees);
+  }, 0);
+  // Shop-level costs bridge the gap between sum-of-order-profits and totalNetEarnings:
+  // listing fees, Etsy Ads, Offsite Ads, other shop fees not tied to individual orders.
+  const shopLevelCosts = sumOfOrderProfits - totalNetEarnings;
+
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
 
   const filteredFees = useMemo(() => {
@@ -788,7 +798,7 @@ export default function Orders() {
       },
     },
     {
-      header: "Net Earnings",
+      header: "Order Profit",
       render: (row) => {
         const fees = findOrderFee(orderFees, row.order_id);
         const netEarnings = calculateNetEarnings(row, fees);
@@ -1253,6 +1263,26 @@ export default function Orders() {
               isLoading={ordersLoading}
               emptyMessage="No orders match your filters"
             />
+          )}
+
+          {/* Reconciliation summary: bridges per-order profit and shop-level net earnings */}
+          {filteredOrders.length > 0 && (
+            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+              <p className="text-sm text-stone-700">
+                <span className="font-medium">Sum of order profits</span>{" "}
+                <span className="font-semibold text-emerald-700">{formatCurrency(sumOfOrderProfits)}</span>
+                {" — minus "}
+                <span className="font-medium">shop-level costs</span>{" "}
+                <span className="text-stone-500">(listing fees, Etsy Ads, subscription)</span>{" "}
+                <span className="font-semibold text-rose-600">{formatCurrency(shopLevelCosts)}</span>
+                {" = "}
+                <span className="font-medium">Net Earnings</span>{" "}
+                <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarnings)}</span>
+              </p>
+              <p className="text-xs text-stone-500 mt-1">
+                Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Net Earnings.
+              </p>
+            </div>
           )}
         </TabsContent>
 
