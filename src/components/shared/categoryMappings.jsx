@@ -16,6 +16,7 @@ const CATEGORY_MAPPINGS = {
   office_general_expenses: { label: "Office Expenses", key: "officeExpenses", section: "business" },
   gas_mileage: { label: "Gas & Mileage", key: "gasMileage", section: "business" },
   utilities_cell_phone: { label: "Utilities & Cell Phone", key: "utilitiesCellPhone", section: "business" },
+  shipping_postage: { label: "Shipping & Postage", key: "shippingPostage", section: "business" },
   software_subscriptions: { label: "Software Subscriptions", key: "softwareSubscriptions", section: "business" },
   professional_services: { label: "Professional Services", key: "professionalServices", section: "business" },
   payment_processing_fees: { label: "Payment Processing Fees", key: "paymentProcessingFees", section: "business" },
