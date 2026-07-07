@@ -742,16 +742,16 @@ export default function Orders() {
           return <span className="text-stone-400">—</span>;
         }
         
-        const feeBreakdown = [
-          { label: "Listing", value: fees.listing_fees },
-          { label: "Transaction", value: fees.transaction_fees },
-          { label: "Processing", value: fees.processing_fees },
-          { label: "Etsy Ads", value: fees.etsy_ads },
-          { label: "Offsite Ads", value: fees.offsite_ads_fees },
-          { label: "Shipping Label", value: fees.etsy_shipping },
-          { label: "Other Postage", value: fees.other_postage_costs },
-          { label: "Share & Save Credit", value: fees.share_save_credit },
-          { label: "Other", value: fees.other_fees },
+        const feeItems = [
+          { label: "Listing", value: fees.listing_fees, isCredit: false },
+          { label: "Transaction", value: fees.transaction_fees, isCredit: false },
+          { label: "Processing", value: fees.processing_fees, isCredit: false },
+          { label: "Etsy Ads", value: fees.etsy_ads, isCredit: false },
+          { label: "Offsite Ads", value: fees.offsite_ads_fees, isCredit: false },
+          { label: "Shipping Label", value: fees.etsy_shipping, isCredit: false },
+          { label: "Other Postage", value: fees.other_postage_costs, isCredit: false },
+          { label: "Share & Save Credit", value: fees.share_save_credit, isCredit: true },
+          { label: "Other", value: fees.other_fees, isCredit: false },
         ].filter(item => item.value > 0);
 
         return (
@@ -760,7 +760,7 @@ export default function Orders() {
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 cursor-help">
                   <span className="text-rose-600 font-medium">
-                    {formatCurrency(fees.total_fees)}
+                    -{formatCurrency(fees.total_fees)}
                   </span>
                   <Info className="w-3 h-3 text-stone-400" />
                 </div>
@@ -768,15 +768,17 @@ export default function Orders() {
               <TooltipContent side="left" className="max-w-xs">
                 <div className="space-y-1">
                   <p className="font-semibold text-xs mb-2">Fee Breakdown</p>
-                  {feeBreakdown.map((item, idx) => (
+                  {feeItems.map((item, idx) => (
                     <div key={idx} className="flex justify-between gap-4 text-xs">
                       <span className="text-stone-600">{item.label}:</span>
-                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                      <span className={`font-medium ${item.isCredit ? "text-emerald-600" : "text-rose-600"}`}>
+                        {item.isCredit ? "+" : "-"}{formatCurrency(item.value)}
+                      </span>
                     </div>
                   ))}
                   <div className="border-t pt-1 mt-2 flex justify-between gap-4 text-xs font-semibold">
                     <span>Total:</span>
-                    <span>{formatCurrency(fees.total_fees)}</span>
+                    <span className="text-rose-600">-{formatCurrency(fees.total_fees)}</span>
                   </div>
                 </div>
               </TooltipContent>
@@ -1006,7 +1008,13 @@ export default function Orders() {
 
           {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card>
+        <Card
+          onClick={() => {
+            const el = document.getElementById('orders-table-section');
+            if (el) window.scrollTo({ top: el.offsetTop - 80, behavior: 'smooth' });
+          }}
+          className="cursor-pointer hover:shadow-md transition-shadow"
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-blue-100 rounded-lg">
@@ -1022,7 +1030,10 @@ export default function Orders() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setActiveTab("reconciliation")}
+          className="cursor-pointer hover:shadow-md transition-shadow"
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-emerald-100 rounded-lg">
@@ -1038,27 +1049,26 @@ export default function Orders() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setActiveTab("fees")}
+          className="cursor-pointer hover:shadow-md transition-shadow"
+        >
           <CardContent className="p-6">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-3 cursor-help">
-                    <div className="p-3 bg-rose-100 rounded-lg">
-                      <CreditCard className="w-6 h-6 text-rose-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500 flex items-center gap-1">
-                        Etsy Fees
-                        <Info className="w-3 h-3 text-stone-400" />
-                      </p>
-                      <p className="text-2xl font-bold text-stone-900">
-                        {formatCurrency(etsyFees)}
-                      </p>
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-100 rounded-lg">
+                <CreditCard className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-sm text-stone-500 flex items-center gap-1">
+                  Etsy Fees
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span onClick={(e) => e.stopPropagation()} className="inline-flex cursor-help">
+                          <Info className="w-3 h-3 text-stone-400" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
                   <div className="space-y-1">
                     <p className="font-semibold text-xs mb-2">Fee Breakdown</p>
                     {feeBreakdown.listing > 0 && (
@@ -1132,13 +1142,22 @@ export default function Orders() {
                       </div>
                     </div>
                   </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {formatCurrency(etsyFees)}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setActiveTab("fees")}
+          className="cursor-pointer hover:shadow-md transition-shadow"
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-amber-100 rounded-lg">
@@ -1154,7 +1173,10 @@ export default function Orders() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setActiveTab("reconciliation")}
+          className="cursor-pointer hover:shadow-md transition-shadow"
+        >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-emerald-100 rounded-lg">
