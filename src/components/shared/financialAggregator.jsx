@@ -352,10 +352,12 @@ export function aggregateFinancials(data, dateRange) {
   // 4) Fee Credits (all positive amounts — credit for listing fee, credit for Etsy Ads fee, etc.)
   // Shown as a separate line that reduces total fees (matches Etsy statement format)
   // Include credits from BOTH fees and ads sections to match Etsy statement totals
+  // EXCLUDE share_save_credit lines — those are already counted as shareSaveRefunds (below)
+  // so they are not double-subtracted from total fees.
   const feeCredits = hasStatementFees
-    ? [...stmtFeeLines, ...stmtAdsLines].filter(l => toNumber(l.amount) > 0).reduce((sum, l) => sum + toNumber(l.amount), 0)
+    ? [...stmtFeeLines, ...stmtAdsLines].filter(l => toNumber(l.amount) > 0 && l.fee_type !== 'share_save_credit').reduce((sum, l) => sum + toNumber(l.amount), 0)
     : hasFeeRecords
-      ? periodFees.filter(f => toNumber(f.amount) > 0).reduce((sum, f) => sum + toNumber(f.amount), 0)
+      ? periodFees.filter(f => toNumber(f.amount) > 0 && f.fee_type !== 'share_save_credit').reduce((sum, f) => sum + toNumber(f.amount), 0)
       : 0;
 
   // 5) Share & Save Credits (negative — reduces fees)

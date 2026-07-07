@@ -8,7 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { calculateNetEarnings } from "@/components/shared/netEarnings";
+import { calculateNetEarnings, perOrderFees } from "@/components/shared/netEarnings";
 
 export default function OrderDetailSheet({ order, orderFees, open, onOpenChange }) {
   if (!order) return null;
@@ -20,7 +20,9 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     }).format(amount);
   };
 
-  // Net Earnings = (order_value + shipping_charged - discount_amount) - transaction_fees - processing_fees + share_save_credit
+  // Net Earnings = (order_value + shipping_charged - discount_amount) - per_order_fees
+  // Per-order fees = transaction + processing - share_save_credit (matches Etsy's "You earned")
+  // Shop-level costs (listing, ads, shipping labels) are NOT shown per-order.
   // Sales tax is NOT part of net earnings (collected for buyer, remitted by Etsy)
   const revenueExclTax =
     (order.order_value || 0) +
@@ -35,10 +37,10 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
   const ETSY_TRANSACTION_RATE = 0.065;
   const estimatedTransactionFee = Math.round(revenueExclTax * ETSY_TRANSACTION_RATE * 100) / 100;
 
-  // Fees & credits total = -(all per-order fees + tax - Share & Save credit)
-  // total_fees already has Share & Save subtracted, so we add tax separately
+  // Fees & credits total = -(per-order fees + tax)
+  // Only transaction + processing - share_save + tax remitted by Etsy
   const totalFeesPaid = orderFees
-    ? -((orderFees.total_fees || 0) + (order.sales_tax || 0))
+    ? -(perOrderFees(orderFees) + (order.sales_tax || 0))
     : -(estimatedTransactionFee + (order.card_processing_fees || 0));
 
   // true only when an Etsy statement import has been done for this order
@@ -220,36 +222,6 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                         <span>Share &amp; Save Refund</span>
                         <span>+{formatCurrency(orderFees.share_save_credit || 0)}</span>
                       </div>
-                      {orderFees.listing_fees > 0 && (
-                        <div className="flex justify-between text-stone-600">
-                          <span>Listing fee</span>
-                          <span>-{formatCurrency(orderFees.listing_fees)}</span>
-                        </div>
-                      )}
-                      {orderFees.etsy_ads > 0 && (
-                        <div className="flex justify-between text-stone-600">
-                          <span>Etsy Ads</span>
-                          <span>-{formatCurrency(orderFees.etsy_ads)}</span>
-                        </div>
-                      )}
-                      {orderFees.offsite_ads_fees > 0 && (
-                        <div className="flex justify-between text-stone-600">
-                          <span>Offsite Ads</span>
-                          <span>-{formatCurrency(orderFees.offsite_ads_fees)}</span>
-                        </div>
-                      )}
-                      {orderFees.etsy_shipping > 0 && (
-                        <div className="flex justify-between text-stone-600">
-                          <span>Shipping label</span>
-                          <span>-{formatCurrency(orderFees.etsy_shipping)}</span>
-                        </div>
-                      )}
-                      {orderFees.other_fees > 0 && (
-                        <div className="flex justify-between text-stone-600">
-                          <span>Other fees</span>
-                          <span>-{formatCurrency(orderFees.other_fees)}</span>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <>

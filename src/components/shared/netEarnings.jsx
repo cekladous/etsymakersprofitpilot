@@ -1,13 +1,12 @@
 /**
  * SINGLE SOURCE OF TRUTH for per-order net earnings calculation.
  *
- * When an Etsy statement has been imported the OrderFee entity record for the
- * order contains the exact transaction_fees, processing_fees, listing_fees,
- * share_save_credit, ads, shipping, and other fees from Etsy.
- * total_fees already has Share & Save subtracted (it's a credit).
+ * Matches Etsy's own per-order "You earned" breakdown exactly:
+ *   Net Earnings = revenueExclTax - transaction_fees - processing_fees + share_save_credit
  *
- * Net Earnings = revenueExclTax - total_fees
- *   where total_fees = listing + transaction + processing - share_save + ads + shipping + other
+ * Shop-level costs (Listing fees, Etsy Ads, Offsite Ads, shipping labels, etc.)
+ * are NOT attributed to individual orders — they appear only in the shop-wide
+ * statement totals via aggregateFinancials.
  *
  * When no statement has been imported yet we estimate using:
  *   - Etsy's standard 6.5% transaction fee on the pre-tax revenue
@@ -31,6 +30,19 @@ export function findOrderFee(orderFees, orderId) {
   return withShareSave || matches[0];
 }
 
+/**
+ * Per-order fees as shown in Etsy's "You earned" breakdown.
+ * Only includes order-specific fees: transaction + processing - share_save_credit.
+ * Shop-level costs (listing, ads, shipping labels) are excluded — they appear
+ * only in the shop-wide statement totals.
+ */
+export function perOrderFees(orderFees) {
+  if (!orderFees) return 0;
+  return (orderFees.transaction_fees || 0) +
+    (orderFees.processing_fees || 0) -
+    (orderFees.share_save_credit || 0);
+}
+
 export function calculateNetEarnings(order, orderFees) {
   if (!order) return 0;
 
@@ -40,8 +52,11 @@ export function calculateNetEarnings(order, orderFees) {
     (order.discount_amount || 0);
 
   if (orderFees) {
-    // total_fees already includes all fee types with Share & Save subtracted
-    return revenueExclTax - (orderFees.total_fees || 0);
+    // Only per-order fees: transaction + processing - share_save_credit
+    // Listing fees, Etsy Ads, Offsite Ads, shipping labels, etc. are
+    // shop-level costs — they are NOT attributed to individual orders
+    // (matches Etsy's own per-order "You earned" breakdown).
+    return revenueExclTax - perOrderFees(orderFees);
   }
 
   // Fallback estimate. order.order_net is NOT used here - it omits
