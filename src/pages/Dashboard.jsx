@@ -332,7 +332,8 @@ export default function Dashboard() {
     return sheet.owner_user_id === user.id && type && sheet.remaining_percentage <= 20 && sheet.status !== "depleted";
   }) : [];
 
-  // Chart data
+  // Chart data — uses aggregateFinancials (EtsyStatementLine-based) for consistency
+  // with KPI cards and Net Profit Statement. Same source of truth everywhere.
   const chartData = useMemo(() => {
     const periods = [];
     const monthsToShow = timeRange === "month" ? 6 : timeRange === "quarter" ? 6 : 12;
@@ -342,31 +343,21 @@ export default function Dashboard() {
       const start = startOfMonth(date);
       const end = endOfMonth(date);
 
-      const periodEtsyOrders = etsyOrders.filter((o) => {
-        const d = new Date(o.sale_date);
-        return d >= start && d <= end;
-      });
-
-      const revenue = periodEtsyOrders.reduce((sum, o) =>
-      sum + (o.order_value || o.order_total || 0), 0);
-
-      const fees = orderFees.
-      filter((f) => periodEtsyOrders.some((o) => o.order_id === f.order_id)).
-      reduce((sum, f) => sum + (f.total_fees || 0), 0);
-
-      const periodExpenses = businessExpenses.
-      filter((e) => e?.date && new Date(e.date) >= start && new Date(e.date) <= end).
-      reduce((sum, e) => sum + (e.amount || 0), 0);
+      const fd = aggregateFinancials({
+        etsyOrders, customSales, businessExpenses, transfers,
+        materialPurchases, etsyLedgerEntries, orderFees, expenses,
+        fees, etsyStatementLines, etsyStatementImports,
+      }, { start, end });
 
       periods.push({
         period: format(date, "MMM"),
-        revenue: Math.round(revenue),
-        profit: Math.round(revenue - fees - periodExpenses)
+        revenue: Math.round(fd.totalRevenue || 0),
+        profit: Math.round(fd.netProfit || 0),
       });
     }
 
     return periods;
-  }, [etsyOrders, orderFees, businessExpenses, timeRange, selectedDate]);
+  }, [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports, timeRange, selectedDate]);
 
   const formatCurrency = (val) => {
     if (val >= 1000) return `$${(val / 1000).toFixed(1)}k`;

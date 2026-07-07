@@ -1330,7 +1330,7 @@ export default function Orders() {
           </div>
 
           {/* Table */}
-          {fees.length === 0 && !feesLoading ? (
+          {activeFees.length === 0 && !feesLoading ? (
             <EmptyState
               icon={CreditCard}
               title="No fees imported"
