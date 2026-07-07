@@ -22,19 +22,19 @@ import { format } from "date-fns";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const defaultInputs = {
-  sales_price: 0,
-  shipping_charged: 0,
-  discounts: 0,
+  sales_price: "",
+  shipping_charged: "",
+  discounts: "",
   discounts_type: "fixed",
-  refunds: 0,
-  sales_tax: 0,
-  cost_of_goods: 0,
-  shipping_cost: 0,
-  overhead_cost: 0,
-  labor_hours: 0,
-  labor_rate: 0,
+  refunds: "",
+  sales_tax: "",
+  cost_of_goods: "",
+  shipping_cost: "",
+  overhead_cost: "",
+  labor_hours: "",
+  labor_rate: "",
   advertising_type: "none",
-  advertising_value: 0,
+  advertising_value: "",
   advertising_value_type: "percent",
   share_save_enabled: false,
   share_save_discount: 10,
@@ -59,12 +59,16 @@ export default function CalculatorTool() {
   const feeConfig = settings[0] || {};
   const laborCost = (parseFloat(inputs.labor_hours) || 0) * (parseFloat(inputs.labor_rate) || 0);
   const totalCogs = (parseFloat(inputs.cost_of_goods) || 0) + laborCost;
-  const results = calculateProfit({ ...inputs, cost_of_goods: totalCogs, labor_cost: 0 }, feeConfig);
+  // Ensure numeric values for calculations (empty strings → 0)
+  const numInputs = Object.fromEntries(
+    Object.entries(inputs).map(([k, v]) => [k, typeof v === 'string' && v === "" ? 0 : v])
+  );
+  const results = calculateProfit({ ...numInputs, cost_of_goods: totalCogs, labor_cost: 0 }, feeConfig);
 
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
       ...prev,
-      [field]: typeof value === 'boolean' ? value : (typeof value === 'string' && isNaN(parseFloat(value)) ? value : (parseFloat(value) || 0)),
+      [field]: typeof value === 'boolean' ? value : (value === "" ? "" : (typeof value === 'string' && isNaN(parseFloat(value)) ? value : (parseFloat(value) || 0))),
     }));
   };
 
