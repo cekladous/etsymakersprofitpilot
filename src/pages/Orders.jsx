@@ -274,14 +274,23 @@ export default function Orders() {
     });
   }, [etsyOrders, search, dateRange, customerFilter]);
 
-  // Revenue from orders (tax collected by Etsy separately)
-  // Revenue (excl. tax) = order_value (item total before shipping/tax)
+  // Revenue (excl. tax) = Net Sales, matching Etsy's statement Sales figure.
+  // Net Sales = (order_total - refunds) - sales_tax - CO Retail Delivery Fee
   const totalRevenue = filteredOrders.reduce((sum, o) => {
-    return sum + (o.order_value || 0);
+    const gross = (o.order_total || 0) - (o.refund_amount || 0);
+    const tax = (o.sales_tax || 0);
+    const expected = (o.order_value || 0) + (o.shipping_charged || 0) + tax - (o.discount_amount || 0);
+    const coFee = Math.max(0, (o.order_total || 0) - expected);
+    return sum + gross - tax - coFee;
   }, 0);
 
   // Shipping revenue (kept by seller)
   const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
+  // Discounts and refunds (used in internal profit view, matching Reconciliation tab)
+  const totalDiscounts = filteredOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0);
+  const totalRefunds = filteredOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
+  // Item revenue (order_value only, used in internal profit view formula)
+  const totalItemRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
 
   // Unified fees: merge EtsyStatementLine fee records (authoritative source from
   // imports) with Fee entity records (secondary derivative). Dedup by composite key.
@@ -371,8 +380,9 @@ export default function Orders() {
       + statementPeriodLines.filter(l => l.section === 'ads' && !["etsy_ads","offsite_ads"].includes(l.fee_type)).reduce((s, l) => s + Math.abs(l.amount || 0), 0),
   };
 
-  // Total Net Earnings (internal profit): revenue + shipping - Etsy Fees - Marketing
-  const totalNetEarnings = totalRevenue + totalShipping - etsyFees - marketingTotal - shippingFeesTotal;
+  // Total Net Earnings (internal profit): item revenue + shipping - discounts - refunds - Etsy Fees - Marketing
+  // Matches the Reconciliation tab's "Internal Profit View" exactly
+  const totalNetEarnings = totalItemRevenue + totalShipping - totalDiscounts - totalRefunds - etsyFees - marketingTotal;
   
   const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
 
