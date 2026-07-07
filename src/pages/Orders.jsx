@@ -1244,17 +1244,17 @@ export default function Orders() {
            </div>
 
            {/* Charts */}
-           <FeeBreakdownChart fees={filteredFees} formatCurrency={formatCurrency} />
+           <FeeBreakdownChart fees={statementPeriodLines.filter(l => l.section === 'fees' || l.section === 'ads' || l.section === 'shipping')} formatCurrency={formatCurrency} />
 
-           {/* Fee Breakdown by Category */}
+           {/* Fee Breakdown by Category — sourced from EtsyStatementLine (authoritative, matches Reconciliation tab) */}
            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
              {[
-               { label: "Listing Fees", value: filteredFees.filter(f => f.fee_type === "listing").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
-               { label: "Transaction Fees", value: filteredFees.filter(f => f.fee_type === "transaction").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
-               { label: "Processing Fees", value: filteredFees.filter(f => f.fee_type === "processing").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
-               { label: "Etsy Ads", value: filteredFees.filter(f => f.fee_type === "etsy_ads").reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
-               { label: "Share & Save Credits", value: filteredFees.filter(f => f.fee_type === "share_save_credit").reduce((s, f) => s + Math.abs(f.amount || 0), 0), isCredit: true },
-               { label: "Other Fees", value: filteredFees.filter(f => !["listing","transaction","processing","etsy_ads","offsite_ads","share_save_credit","shipping_label","other_postage"].includes(f.fee_type)).reduce((s, f) => s + Math.abs(f.amount || 0), 0) },
+               { label: "Listing Fees", value: feeBreakdown.listing },
+               { label: "Transaction Fees", value: feeBreakdown.transaction },
+               { label: "Processing Fees", value: feeBreakdown.processing },
+               { label: "Etsy Ads", value: feeBreakdown.etsy_ads },
+               { label: "Share & Save Credits", value: feeBreakdown.share_save, isCredit: true },
+               { label: "Other Fees", value: feeBreakdown.other },
              ].map((item, idx) => (
                <Card key={idx}>
                  <CardContent className="p-4">
@@ -1277,7 +1277,7 @@ export default function Orders() {
                  <div>
                    <p className="text-sm text-stone-500">Total Fees & Charges</p>
                    <p className="text-2xl font-bold text-stone-900">
-                     {formatCurrency(totalAllFees)}
+                     {formatCurrency(totalFees)}
                    </p>
                  </div>
                </div>
