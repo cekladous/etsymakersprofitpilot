@@ -12,7 +12,7 @@ export default function DepositMatcher({ user }) {
   const [selectedTransfer, setSelectedTransfer] = useState(null);
   const queryClient = useQueryClient();
 
-  // Fetch Etsy deposits
+  // Fetch Etsy deposits (Transfer records imported from Etsy Payment Account CSV)
   const { data: etsyDeposits = [] } = useQuery({
     queryKey: ["etsy-deposits", user?.id],
     enabled: !!user,
@@ -23,7 +23,7 @@ export default function DepositMatcher({ user }) {
       }, "-date")
   });
 
-  // Fetch all transfers (bank transfers)
+  // Fetch all transfers (bank transfers — optional, if user imports bank statements)
   const { data: bankTransfers = [] } = useQuery({
     queryKey: ["bank-transfers", user?.id],
     enabled: !!user,
@@ -34,7 +34,19 @@ export default function DepositMatcher({ user }) {
       }, "-date")
   });
 
-  // Fetch existing links
+  // Fetch Etsy statement imports — each deposit was imported as part of a
+  // statement, so we auto-match by checking if the deposit date falls within
+  // the import's date range.
+  const { data: statementImports = [] } = useQuery({
+    queryKey: ["etsy-statement-imports", user?.id],
+    enabled: !!user,
+    queryFn: () =>
+      base44.entities.EtsyStatementImport.filter({
+        owner_user_id: user.id
+      }, "-imported_at")
+  });
+
+  // Fetch existing manual links (deposits linked to bank transfers)
   const { data: existingLinks = [] } = useQuery({
     queryKey: ["transaction-links", user?.id],
     enabled: !!user,
@@ -43,6 +55,27 @@ export default function DepositMatcher({ user }) {
         owner_user_id: user.id
       })
   });
+
+  // Auto-match deposits to their parent statement import by date range.
+  // A deposit is "matched" if it falls within an active (non-replaced) import's
+  // date_range_start..date_range_end.
+  const activeImports = (statementImports || []).filter(imp => imp.status !== 'replaced');
+  const statementMatches = useMemo(() => {
+    const matches = new Map(); // deposit.id -> import record
+    etsyDeposits.forEach(deposit => {
+      const match = activeImports.find(imp => {
+        if (!imp.date_range_start || !imp.date_range_end) return false;
+        try {
+          return isWithinInterval(parseISO(deposit.date), {
+            start: parseISO(imp.date_range_start),
+            end: parseISO(imp.date_range_end)
+          });
+        } catch { return false; }
+      });
+      if (match) matches.set(deposit.id, match);
+    });
+    return matches;
+  }, [etsyDeposits, statementImports]);
 
   // Create link mutation
   const createLinkMutation = useMutation({
@@ -74,10 +107,11 @@ export default function DepositMatcher({ user }) {
     }
   });
 
-  // Find unlinked items
+  // Find unlinked items — a deposit is "matched" if it has a manual bank link
+  // OR an auto-match to a statement line deposit.
   const linkedDepositIds = new Set(existingLinks.map(l => l.etsy_deposit_id));
   const linkedTransferIds = new Set(existingLinks.map(l => l.bank_transfer_id));
-  const unlinkedDeposits = etsyDeposits.filter(d => !linkedDepositIds.has(d.id));
+  const unlinkedDeposits = etsyDeposits.filter(d => !linkedDepositIds.has(d.id) && !statementMatches.has(d.id));
   const unlinkedTransfers = bankTransfers.filter(t => !linkedTransferIds.has(t.id));
 
   // Auto-suggest matches
@@ -102,11 +136,16 @@ export default function DepositMatcher({ user }) {
       .sort((a, b) => a.discrepancy - b.discrepancy);
   }, [unlinkedDeposits, unlinkedTransfers]);
 
-  // Calculate summary
+  // Calculate summary — matched includes both manual bank links and auto-matched
+  // statement line deposits.
+  const statementMatchedAmount = etsyDeposits
+    .filter(d => statementMatches.has(d.id))
+    .reduce((sum, d) => sum + d.amount, 0);
+  const bankMatchedAmount = existingLinks.reduce((sum, link) => sum + link.etsy_amount, 0);
   const summary = {
     totalDeposits: etsyDeposits.reduce((sum, d) => sum + d.amount, 0),
     totalTransfers: bankTransfers.reduce((sum, t) => sum + t.amount, 0),
-    matched: existingLinks.reduce((sum, link) => sum + link.etsy_amount, 0),
+    matched: bankMatchedAmount + statementMatchedAmount,
     unmatched: unlinkedDeposits.reduce((sum, d) => sum + d.amount, 0),
     discrepancies: existingLinks.reduce((sum, link) => sum + Math.abs(link.discrepancy), 0)
   };
@@ -199,6 +238,41 @@ export default function DepositMatcher({ user }) {
                 </Button>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Auto-matched statement deposits */}
+      {statementMatches.size > 0 && (
+        <Card className="border-emerald-200">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              Auto-Matched to Statement ({statementMatches.size})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {etsyDeposits.filter(d => statementMatches.has(d.id)).map((deposit) => {
+                const imp = statementMatches.get(deposit.id);
+                return (
+                  <div key={deposit.id} className="bg-stone-50 rounded-lg border p-4 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold text-stone-900">
+                          {format(parseISO(deposit.date), "MMM d, yyyy")}
+                        </p>
+                        <Badge className="bg-emerald-100 text-emerald-800">matched</Badge>
+                      </div>
+                      <p className="text-sm text-stone-600">
+                        Deposit: ${deposit.amount.toFixed(2)} → Statement: {imp.statement_month}
+                      </p>
+                    </div>
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
