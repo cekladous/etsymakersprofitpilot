@@ -3,8 +3,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Upload, Loader2, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = false }) {
   const { user } = useAuth();
@@ -272,111 +280,206 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
     if (!embedded) onOpenChange(false);
   };
 
-  return (
-    <div className="space-y-4">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv,.xlsx,.xls"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
+  if (embedded) {
+    return (
+      <div className="space-y-4 py-4">
+        <DialogHeader>
+          <DialogTitle>Import Etsy Sold Orders Report</DialogTitle>
+          <DialogDescription>
+            Upload your Etsy Sold Orders CSV to populate buyer names, addresses, and item details. Go to Etsy → Options → Orders, then click Orders, select the month and download the CSV file.
+          </DialogDescription>
+        </DialogHeader>
 
-      {!importing && !preview && !importResult && (
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm font-medium text-blue-900 mb-1">How to download this file from Etsy</p>
-            <p className="text-xs text-blue-800">
-              Go to <span className="font-medium">Etsy → Options → Orders</span>, then click <span className="font-medium">Orders</span>, select the month you want, and download the CSV file.
-            </p>
-          </div>
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full"
-            variant="outline"
-            size="lg"
-          >
-            <Upload className="w-5 h-5 mr-2" />
-            Select Sold Orders CSV
-          </Button>
-        </div>
-      )}
+        <div className="space-y-4 py-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
 
-      {importing && (
-        <div className="text-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-sm text-stone-600">Processing orders...</p>
-        </div>
-      )}
+          {!importing && !preview && !importResult && (
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+              variant="outline"
+              size="lg"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              Select Sold Orders CSV
+            </Button>
+          )}
 
-      {preview && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <div className="bg-stone-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-stone-900">Ready to Import</p>
-              <p className="text-3xl font-bold text-emerald-600 mt-2">{preview.count}</p>
-              <p className="text-xs text-stone-500 mt-1">orders found</p>
+          {importing && (
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-sm text-stone-600">Processing orders...</p>
             </div>
-            
-            <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => { setPreview(null); setPendingData(null); }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={confirmImport} 
-                className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-              >
-                Confirm Import
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {importResult && !importResult.error && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <p className="font-semibold text-emerald-900">Import Successful</p>
-          </div>
-          <div className="text-sm text-emerald-800 space-y-1">
-            {importResult.created > 0 && <p>✓ {importResult.created} new orders created</p>}
-            <p>✓ {importResult.updated} existing orders updated</p>
-            {importResult.customers_created > 0 && <p>✓ {importResult.customers_created} customers added</p>}
-            {importResult.customers_updated > 0 && <p>✓ {importResult.customers_updated} customers updated</p>}
-          </div>
-          <Button 
-            onClick={handleClose} 
-            variant="outline" 
-            size="sm" 
-            className="mt-4 w-full"
-          >
+          {preview && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Import Preview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="bg-stone-50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-stone-900">Orders Found</p>
+                  <p className="text-2xl font-semibold text-emerald-600">{preview.count}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {importResult && !importResult.error && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <p className="font-semibold text-emerald-900">Import Successful</p>
+              </div>
+              <div className="text-sm text-emerald-800 space-y-1">
+                {importResult.created > 0 && <p>✓ {importResult.created} new orders created</p>}
+                <p>✓ {importResult.updated} existing orders updated</p>
+                {importResult.customers_created > 0 && <p>✓ {importResult.customers_created} customers added</p>}
+                {importResult.customers_updated > 0 && <p>✓ {importResult.customers_updated} customers updated</p>}
+              </div>
+            </div>
+          )}
+
+          {importResult?.error && (
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <p className="font-semibold text-rose-900">Import Failed</p>
+              </div>
+              <p className="text-sm text-rose-800">{importResult.error}</p>
+            </div>
+          )}
+        </div>
+
+        {!preview && !importing && importResult && (
+          <Button onClick={handleClose} variant="outline" className="w-full">
             Done
           </Button>
-        </div>
-      )}
+        )}
 
-      {importResult?.error && (
-        <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="w-5 h-5 text-rose-600" />
-            <p className="font-semibold text-rose-900">Import Failed</p>
+        {preview && !importResult && (
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => { setPreview(null); setPendingData(null); }} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={confirmImport} className="bg-emerald-600 hover:bg-emerald-700 flex-1">
+              Confirm Import
+            </Button>
           </div>
-          <p className="text-sm text-rose-800">{importResult.error}</p>
-          <Button 
-            onClick={handleClose} 
-            variant="outline" 
-            size="sm" 
-            className="mt-4 w-full"
-          >
-            Close
-          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl sm:max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle>Import Etsy Sold Orders Report</DialogTitle>
+          <DialogDescription>
+            Upload your Etsy Sold Orders CSV to populate buyer names, addresses, and item details. Go to Etsy → Options → Orders, then click Orders, select the month and download the CSV file.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          {!importing && !preview && !importResult && (
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+              variant="outline"
+              size="lg"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              Select Sold Orders CSV
+            </Button>
+          )}
+
+          {importing && (
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-sm text-stone-600">Processing orders...</p>
+            </div>
+          )}
+
+          {preview && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Import Preview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="bg-stone-50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-stone-900">Orders Found</p>
+                  <p className="text-2xl font-semibold text-emerald-600">{preview.count}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {importResult && !importResult.error && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <p className="font-semibold text-emerald-900">Import Successful</p>
+              </div>
+              <div className="text-sm text-emerald-800 space-y-1">
+                {importResult.created > 0 && <p>✓ {importResult.created} new orders created</p>}
+                <p>✓ {importResult.updated} existing orders updated</p>
+                {importResult.customers_created > 0 && <p>✓ {importResult.customers_created} customers added</p>}
+                {importResult.customers_updated > 0 && <p>✓ {importResult.customers_updated} customers updated</p>}
+              </div>
+            </div>
+          )}
+
+          {importResult?.error && (
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <p className="font-semibold text-rose-900">Import Failed</p>
+              </div>
+              <p className="text-sm text-rose-800">{importResult.error}</p>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+
+        <DialogFooter className="flex-shrink-0">
+          {preview && !importResult && (
+            <>
+              <Button variant="outline" onClick={() => { setPreview(null); setPendingData(null); }}>
+                Cancel
+              </Button>
+              <Button onClick={confirmImport} className="bg-emerald-600 hover:bg-emerald-700">
+                Confirm Import
+              </Button>
+            </>
+          )}
+          {!preview && !importing && (
+            <Button onClick={handleClose} variant="outline">
+              {importResult ? "Done" : "Cancel"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
