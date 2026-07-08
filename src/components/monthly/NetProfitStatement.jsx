@@ -170,13 +170,14 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     linkTo = null,
     indent = false,
     isNegative = false,
+    isCredit = false,
     highlight = "",
     showPercentage = true,
     isProfitMargin = false
   }) => {
     const hasQuickView = categoryName && amount !== 0;
     const hasLinkTo = linkTo && amount !== 0;
-    const displayAmount = isNegative ? -Math.abs(amount) : amount;
+    const displayAmount = isNegative ? -Math.abs(amount) : isCredit ? Math.abs(amount) : amount;
     const percentage = totalRevenue > 0 
       ? (isProfitMargin ? (displayAmount / totalRevenue) * 100 : (Math.abs(displayAmount) / totalRevenue) * 100)
       : 0;
@@ -217,8 +218,8 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors" />
             </div>
           )}
-          <span className={`text-sm ${bold ? "font-bold" : ""} ${displayAmount < 0 ? "text-rose-600" : ""} min-w-[100px] text-right`}>
-            {formatCurrency(displayAmount)}
+          <span className={`text-sm ${bold ? "font-bold" : ""} ${isCredit ? "text-emerald-600" : displayAmount < 0 ? "text-rose-600" : ""} min-w-[100px] text-right`}>
+            {isCredit ? "+" : ""}{formatCurrency(displayAmount)}
           </span>
           {showPercentage && (
             <span className={`text-xs ${percentage < 0 ? 'text-rose-600' : 'text-stone-500'} min-w-[50px] text-right ${bold ? "font-semibold" : ""}`}>
@@ -338,7 +339,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row label="Transaction Fees" amount={sellingExpenses.etsyTransactionFees || 0} categoryName="etsy_transaction_fees" linkTo={buildExpensesLink("etsy_transaction_fees")} />
           <Row label="Processing Fees" amount={sellingExpenses.etsyProcessingFees || 0} categoryName="etsy_processing_fees" linkTo={buildExpensesLink("etsy_processing_fees")} />
           <Row label="Credits" amount={sellingExpenses.feeCredits || 0} isNegative categoryName="share_save_refunds_credits" />
-          <Row label="Share & Save Refund" amount={sellingExpenses.shareSaveRefunds || 0} isNegative categoryName="share_save_refunds_credits" linkTo={buildExpensesLink("share_save_refunds_credits")} />
+          <Row label="Share & Save Refund" amount={sellingExpenses.shareSaveRefunds || 0} isCredit categoryName="share_save_refunds_credits" linkTo={buildExpensesLink("share_save_refunds_credits")} />
           <Row label="Other Fees" amount={sellingExpenses.otherFees || 0} categoryName="other_fees" linkTo={buildExpensesLink("other_fees")} />
           <Row label="Total Fees" amount={sellingExpenses.totalEtsyFees || 0} bold />
           

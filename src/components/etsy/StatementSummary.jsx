@@ -51,6 +51,7 @@ export default function StatementSummary({ user }) {
   }, [availableMonths]);
 
   const formatCurrency = (amount) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0);
+  const fmt = (v) => `$${(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const summary = useMemo(() => {
     const lines = statementLines;
@@ -223,7 +224,7 @@ export default function StatementSummary({ user }) {
                 </div>
                 <div className="divide-y divide-stone-100">
                   <SummaryRow label="Total Deposits" value={summary.depositsTotal} sublabel={`${deposits.length} deposits`} positive />
-                  <SummaryRow label="Difference (Imported Net - Deposits)" value={summary.difference} sublabel={Math.abs(summary.difference) < 0.01 ? "Reconciled" : "Needs review"} bold highlight={Math.abs(summary.difference) < 0.01} />
+                  <SummaryRow label="Difference (Imported Net - Deposits)" value={summary.difference} sublabel={Math.abs(summary.difference) < 0.01 ? "Reconciled" : Math.abs(summary.difference) < 50 ? "Normal payout timing" : "Needs review"} bold highlight={Math.abs(summary.difference) < 0.01} />
                 </div>
               </div>
 
@@ -242,6 +243,18 @@ export default function StatementSummary({ user }) {
                   <div>
                     <p className="font-semibold text-emerald-900">Statement Reconciled</p>
                     <p className="text-sm text-emerald-700">Etsy Net matches total deposits for {selectedMonth}.</p>
+                  </div>
+                </div>
+              ) : Math.abs(summary.difference) < 50 ? (
+                <div className="flex items-center gap-3 bg-stone-100 border border-stone-200 rounded-lg p-4">
+                  <AlertCircle className="w-5 h-5 text-stone-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-stone-700">
+                      {fmt(Math.abs(summary.difference))} {summary.difference > 0 ? 'pending deposit' : 'minor overage'} — normal payout timing
+                    </p>
+                    <p className="text-sm text-stone-500">
+                      Imported Statement Net ({formatCurrency(summary.etsyNet)}) differs from deposits ({formatCurrency(summary.depositsTotal)}) by {formatCurrency(summary.difference)}. This is normal — deposits may arrive a day or two after the statement period closes.
+                    </p>
                   </div>
                 </div>
               ) : (

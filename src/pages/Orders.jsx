@@ -1310,7 +1310,7 @@ export default function Orders() {
            </div>
 
            {/* Charts */}
-           <FeeBreakdownChart fees={statementPeriodLines.filter(l => l.section === 'fees' || l.section === 'ads' || l.section === 'shipping')} formatCurrency={formatCurrency} />
+           <FeeBreakdownChart feeBreakdown={feeBreakdown} formatCurrency={formatCurrency} />
 
            {/* Fee Breakdown by Category — sourced from EtsyStatementLine (authoritative, matches Reconciliation tab) */}
            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

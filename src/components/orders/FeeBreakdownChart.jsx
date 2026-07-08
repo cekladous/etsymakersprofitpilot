@@ -2,30 +2,44 @@ import React from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function FeeBreakdownChart({ fees, formatCurrency }) {
-  // Aggregate fees by type from individual fee records
-  const feeTypeMapping = {
-    listing: "Listing Fees",
-    transaction: "Transaction Fees",
-    processing: "Processing Fees",
-    etsy_ads: "Etsy Ads",
-    offsite_ads: "Offsite Ads",
-    shipping_label: "Shipping Labels",
-    other_postage: "Other Postage",
-    share_save_credit: "Share & Save Credit",
-    other_fee: "Other Fees",
-  };
-
-  const aggregatedFees = {};
-  fees.forEach(fee => {
-    const feeType = fee.fee_type;
-    const label = feeTypeMapping[feeType] || "Other Fees";
-    aggregatedFees[label] = (aggregatedFees[label] || 0) + Math.abs(fee.amount || 0);
-  });
-
-  const feeData = Object.entries(aggregatedFees)
-    .map(([name, value]) => ({ name, value }))
-    .filter(item => item.value > 0);
+export default function FeeBreakdownChart({ fees, feeBreakdown, formatCurrency }) {
+  // Build chart data from the corrected feeBreakdown object (sourced from OrderFee entity),
+  // which matches the category cards below. Falls back to raw fee lines only if no breakdown.
+  let feeData;
+  if (feeBreakdown) {
+    const items = [
+      { name: "Listing Fees", value: feeBreakdown.listing },
+      { name: "Transaction Fees", value: feeBreakdown.transaction },
+      { name: "Processing Fees", value: feeBreakdown.processing },
+      { name: "Etsy Ads", value: feeBreakdown.etsy_ads },
+      { name: "Offsite Ads", value: feeBreakdown.offsite_ads },
+      { name: "Shipping Labels", value: feeBreakdown.shipping },
+      { name: "Other Postage", value: feeBreakdown.other_postage },
+      { name: "Share & Save Credit", value: feeBreakdown.share_save },
+      { name: "Other Fees", value: feeBreakdown.other },
+    ];
+    feeData = items.filter(item => item.value > 0);
+  } else {
+    const feeTypeMapping = {
+      listing: "Listing Fees",
+      transaction: "Transaction Fees",
+      processing: "Processing Fees",
+      etsy_ads: "Etsy Ads",
+      offsite_ads: "Offsite Ads",
+      shipping_label: "Shipping Labels",
+      other_postage: "Other Postage",
+      share_save_credit: "Share & Save Credit",
+      other_fee: "Other Fees",
+    };
+    const aggregatedFees = {};
+    (fees || []).forEach(fee => {
+      const label = feeTypeMapping[fee.fee_type] || "Other Fees";
+      aggregatedFees[label] = (aggregatedFees[label] || 0) + Math.abs(fee.amount || 0);
+    });
+    feeData = Object.entries(aggregatedFees)
+      .map(([name, value]) => ({ name, value }))
+      .filter(item => item.value > 0);
+  }
 
   const COLORS = [
     "#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e",
