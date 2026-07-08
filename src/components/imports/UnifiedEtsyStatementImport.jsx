@@ -555,19 +555,22 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
               };
             }
             
-            const amount = Math.abs(fee.amount);
-            if (fee.fee_type === 'listing') orderFeeMap[fee.order_id].listing_fees += amount;
-            else if (fee.fee_type === 'transaction') orderFeeMap[fee.order_id].transaction_fees += amount;
-            else if (fee.fee_type === 'processing') orderFeeMap[fee.order_id].processing_fees += amount;
-            else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_credit += amount;
-            else if (fee.fee_type === 'etsy_ads') orderFeeMap[fee.order_id].etsy_ads += amount;
-            else if (fee.fee_type === 'offsite_ads') orderFeeMap[fee.order_id].offsite_ads_fees += amount;
-            else if (fee.fee_type === 'shipping_label') orderFeeMap[fee.order_id].etsy_shipping += amount;
-            else if (fee.fee_type === 'other_postage') orderFeeMap[fee.order_id].other_postage_costs += amount;
-            else orderFeeMap[fee.order_id].other_fees += amount;
-            
-            // Share & Save is a credit — it reduces total fees, not increases them
-            orderFeeMap[fee.order_id].total_fees += (fee.fee_type === 'share_save_credit' ? -amount : amount);
+            // Fee credits (positive amounts, e.g. "Credit for transaction fee")
+            // reduce fees; charges (negative amounts) increase them.
+            const isCredit = fee.amount > 0;
+            const amt = Math.abs(fee.amount);
+            const signed = isCredit ? -amt : amt;
+            if (fee.fee_type === 'listing') orderFeeMap[fee.order_id].listing_fees += signed;
+            else if (fee.fee_type === 'transaction') orderFeeMap[fee.order_id].transaction_fees += signed;
+            else if (fee.fee_type === 'processing') orderFeeMap[fee.order_id].processing_fees += signed;
+            else if (fee.fee_type === 'share_save_credit') orderFeeMap[fee.order_id].share_save_credit += amt;
+            else if (fee.fee_type === 'etsy_ads') orderFeeMap[fee.order_id].etsy_ads += signed;
+            else if (fee.fee_type === 'offsite_ads') orderFeeMap[fee.order_id].offsite_ads_fees += signed;
+            else if (fee.fee_type === 'shipping_label') orderFeeMap[fee.order_id].etsy_shipping += signed;
+            else if (fee.fee_type === 'other_postage') orderFeeMap[fee.order_id].other_postage_costs += signed;
+            else orderFeeMap[fee.order_id].other_fees += signed;
+
+            orderFeeMap[fee.order_id].total_fees += signed;
           }
         });
 
@@ -622,11 +625,12 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           }
         }
 
-        // Apply refunds to orders
+        // Apply refunds to orders — only count actual refund amounts (negative),
+        // not "Charge for refund" (positive) or tax refund lines (positive).
         const refundsByOrderId = {};
         newRefunds.forEach(refund => {
-          if (refund.orderId) {
-            refundsByOrderId[refund.orderId] = (refundsByOrderId[refund.orderId] || 0) + refund.amount;
+          if (refund.orderId && refund.amount < 0) {
+            refundsByOrderId[refund.orderId] = (refundsByOrderId[refund.orderId] || 0) + Math.abs(refund.amount);
           }
         });
 
@@ -1208,12 +1212,15 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           _rawLine: rawLine
         });
       }
-      // C) REFUNDS - Track refunds to apply to orders
+      // C) REFUNDS - Track refunds to apply to orders.
+      // Preserve the sign: negative = actual refund to buyer,
+      // positive = charge/adjustment back to seller (e.g. "Charge for refund").
+      // Only negative amounts are summed into refund_amount.
       else if (classification.category === 'refund') {
         refunds.push({
           transactionDate,
           orderId: classification.order_id,
-          amount: Math.abs(amount), // Always positive amount
+          amount: amount, // Signed: negative = refund, positive = charge
           description: title,
           _rawLine: rawLine
         });

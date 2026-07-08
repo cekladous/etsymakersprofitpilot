@@ -337,17 +337,24 @@ export default function Orders() {
     });
   }, [activeFees, dateRange]);
 
-  // Statement-line-based fees (matches Reconciliation tab - single source of truth).
-  // EtsyStatementLine is the authoritative source from imports. The Fee entity may
-  // contain stale/duplicated records, so we use statement lines directly for KPI totals.
+  // When search is active, scope statement lines to only the filtered orders
+  // so KPI cards and reconciliation summary stay consistent with the table.
+  const isSearchActive = !!(search && search.trim());
   const statementPeriodLines = useMemo(() => {
-    if (!dateRange) return statementLines;
-    return statementLines.filter(l => {
-      if (!l.transaction_date) return false;
-      const d = new Date(l.transaction_date);
-      return d >= dateRange.start && d <= dateRange.end;
-    });
-  }, [statementLines, dateRange]);
+    let lines = statementLines;
+    if (dateRange) {
+      lines = lines.filter(l => {
+        if (!l.transaction_date) return false;
+        const d = new Date(l.transaction_date);
+        return d >= dateRange.start && d <= dateRange.end;
+      });
+    }
+    if (isSearchActive) {
+      const filteredOrderIds = new Set(filteredOrders.map(o => o.order_id));
+      lines = lines.filter(l => !l.order_id || filteredOrderIds.has(l.order_id));
+    }
+    return lines;
+  }, [statementLines, dateRange, isSearchActive, filteredOrders]);
 
   // Etsy Fees: all lines in the 'fees' section (listing, transaction, processing, share_save, other)
   // Marketing: all lines in the 'ads' section (etsy ads, offsite ads, Etsy Plus)
@@ -814,16 +821,24 @@ export default function Orders() {
     },
     {
       header: "Status",
-      render: (row) => (
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-          row.status === "shipped" ? "bg-blue-100 text-blue-700" :
-          row.status === "completed" ? "bg-emerald-100 text-emerald-700" :
-          row.status === "in_production" ? "bg-amber-100 text-amber-700" :
-          "bg-stone-100 text-stone-600"
-        }`}>
-          {row.status || "completed"}
-        </span>
-      ),
+      render: (row) => {
+        // Detect fully refunded/canceled orders: refund covers the pre-tax sale amount
+        const refund = row.refund_amount || 0;
+        const preTaxTotal = (row.order_total || 0) - (row.sales_tax || 0);
+        const isCanceled = refund > 0 && refund >= preTaxTotal - 0.01;
+        const status = isCanceled ? "Canceled" : (row.status || "completed");
+        return (
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+            status === "Canceled" ? "bg-rose-100 text-rose-700" :
+            status === "shipped" ? "bg-blue-100 text-blue-700" :
+            status === "completed" ? "bg-emerald-100 text-emerald-700" :
+            status === "in_production" ? "bg-amber-100 text-amber-700" :
+            "bg-stone-100 text-stone-600"
+          }`}>
+            {status}
+          </span>
+        );
+      },
     },
   ];
 
@@ -1282,20 +1297,30 @@ export default function Orders() {
           {/* Reconciliation summary: bridges per-order profit and shop-level net earnings */}
           {filteredOrders.length > 0 && (
             <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-sm text-stone-700">
-                <span className="font-medium">Sum of order profits</span>{" "}
-                <span className="font-semibold text-emerald-700">{formatCurrency(sumOfOrderProfits)}</span>
-                {" — minus "}
-                <span className="font-medium">shop-level costs</span>{" "}
-                <span className="text-stone-500">(listing fees, Etsy Ads, subscription)</span>{" "}
-                <span className="font-semibold text-rose-600">{formatCurrency(shopLevelCosts)}</span>
-                {" = "}
-                <span className="font-medium">Etsy Net Earnings</span>{" "}
-                <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarnings)}</span>
-              </p>
-              <p className="text-xs text-stone-500 mt-1">
-                Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Etsy Net Earnings. This is Etsy-only profit — see the Dashboard for Total Business Net Profit (includes non-Etsy expenses).
-              </p>
+              {isSearchActive ? (
+                <p className="text-sm text-stone-700">
+                  <span className="font-medium">Search filter active.</span>{" "}
+                  Showing results for {filteredOrders.length} matching order(s) only.
+                  Shop-level costs (listing fees, Etsy Ads, subscription) are scoped to these orders — clear the search to see the full shop-wide reconciliation.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-stone-700">
+                    <span className="font-medium">Sum of order profits</span>{" "}
+                    <span className="font-semibold text-emerald-700">{formatCurrency(sumOfOrderProfits)}</span>
+                    {" — minus "}
+                    <span className="font-medium">shop-level costs</span>{" "}
+                    <span className="text-stone-500">(listing fees, Etsy Ads, subscription)</span>{" "}
+                    <span className="font-semibold text-rose-600">{formatCurrency(shopLevelCosts)}</span>
+                    {" = "}
+                    <span className="font-medium">Etsy Net Earnings</span>{" "}
+                    <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarnings)}</span>
+                  </p>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Etsy Net Earnings. This is Etsy-only profit — see the Dashboard for Total Business Net Profit (includes non-Etsy expenses).
+                  </p>
+                </>
+              )}
             </div>
           )}
         </TabsContent>

@@ -51,19 +51,18 @@ export function calculateNetEarnings(order, orderFees) {
     (order.shipping_charged || 0) -
     (order.discount_amount || 0);
 
+  // Subtract refund amount (if any). When an order is fully refunded/canceled,
+  // revenue becomes 0 and only non-refundable fees remain as a loss.
+  const refundAmount = order.refund_amount || 0;
+  const netRevenue = Math.max(0, revenueExclTax - refundAmount);
+
   if (orderFees) {
-    // Only per-order fees: transaction + processing - share_save_credit
-    // Listing fees, Etsy Ads, Offsite Ads, shipping labels, etc. are
-    // shop-level costs — they are NOT attributed to individual orders
-    // (matches Etsy's own per-order "You earned" breakdown).
-    return revenueExclTax - perOrderFees(orderFees);
+    return netRevenue - perOrderFees(orderFees);
   }
 
-  // Fallback estimate. order.order_net is NOT used here - it omits
-  // processing fees and Share and Save credits.
-  const estimatedTransactionFee = Math.round(revenueExclTax * ETSY_TRANSACTION_RATE * 100) / 100;
+  const estimatedTransactionFee = Math.round(netRevenue * ETSY_TRANSACTION_RATE * 100) / 100;
   const processingFee = order.card_processing_fees || 0;
-  return revenueExclTax - estimatedTransactionFee - processingFee;
+  return netRevenue - estimatedTransactionFee - processingFee;
 }
 
 export function calculateTotalNetEarnings(orders, orderFees) {
