@@ -283,15 +283,23 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
       />
 
       {!importing && !preview && !importResult && (
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full"
-          variant="outline"
-          size="lg"
-        >
-          <Upload className="w-5 h-5 mr-2" />
-          Select Sold Orders CSV
-        </Button>
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm font-medium text-blue-900 mb-1">How to download this file from Etsy</p>
+            <p className="text-xs text-blue-800">
+              Go to <span className="font-medium">Etsy → Options → Orders</span>, then click <span className="font-medium">Orders</span>, select the month you want, and download the CSV file.
+            </p>
+          </div>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full"
+            variant="outline"
+            size="lg"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            Select Sold Orders CSV
+          </Button>
+        </div>
       )}
 
       {importing && (
