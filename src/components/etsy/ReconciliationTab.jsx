@@ -64,15 +64,19 @@ export default function ReconciliationTab({ user }) {
     },
   });
 
-  const totalUnmatched = unmatchedStatementLines.length + unmatchedLedgerEntries.length;
+  const activeImports = imports.filter(imp => imp.status !== 'replaced');
+  const unmatchedFromImports = activeImports.reduce((sum, imp) => sum + (imp.unmatched_count || 0), 0);
+  const totalUnmatched = Math.max(unmatchedFromImports, unmatchedStatementLines.length + unmatchedLedgerEntries.length);
 
   // Reconciliation check: compare Etsy statement net (sales - fees - marketing - shipping)
   // against actual bank deposits. Both are dollar amounts from the same source of truth.
-  const activeImports = imports.filter(imp => imp.status !== 'replaced');
   const depositsTotal = transfers.reduce((sum, t) => sum + (t.amount || 0), 0);
   const ordersTotal = activeImports.reduce((sum, imp) => sum + (imp.orders_count || 0), 0);
   const feesCount = activeImports.reduce((sum, imp) => sum + (imp.fees_count || 0), 0);
   const depositsCount = activeImports.reduce((sum, imp) => sum + (imp.deposits_count || 0), 0);
+
+  const importMonthMap = {};
+  imports.forEach(imp => { importMonthMap[imp.id] = imp.statement_month; });
 
   const allUnmatchedRows = [
     ...unmatchedStatementLines.map(line => ({
@@ -82,6 +86,7 @@ export default function ReconciliationTab({ user }) {
       description: line.description,
       amount: line.amount,
       match_error: line.match_error,
+      import_month: importMonthMap[line.import_id] || "—",
       source: "New Import"
     })),
     ...unmatchedLedgerEntries.map(entry => ({
@@ -169,6 +174,10 @@ export default function ReconciliationTab({ user }) {
           ${row.amount?.toFixed(2) || "0.00"}
         </span>
       ),
+    },
+    {
+      header: "Statement",
+      render: (row) => row.import_month || "—",
     },
     {
       header: "Source",
@@ -270,7 +279,7 @@ export default function ReconciliationTab({ user }) {
                   {totalUnmatched} rows need review
                 </p>
                 <p className="text-sm text-amber-700">
-                  These statement lines could not be automatically matched or categorized.
+                  These statement lines could not be automatically matched or categorized. See the detail table below.
                 </p>
               </div>
             </div>
@@ -322,85 +331,105 @@ export default function ReconciliationTab({ user }) {
 
       {totalUnmatched > 0 && (
         <>
-          {Object.keys(unmatchedBreakdown).length > 0 && (
-            <Card className="border-blue-200 bg-blue-50">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span>Unmatched Patterns (Debug)</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setShowBreakdown(!showBreakdown)}
-                  >
-                    {showBreakdown ? "Hide" : "Show"}
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              {showBreakdown && (
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(unmatchedBreakdown).map(([type, data]) => (
-                      <div key={type} className="bg-white rounded-lg border border-blue-200 p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-stone-900">{type}</p>
-                          <Badge variant="outline">{data.count} rows</Badge>
-                        </div>
-                        <div className="space-y-1 text-sm text-stone-600">
-                          {data.examples.map((ex, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span className="truncate max-w-md">{ex.description}</span>
-                              <span className="font-medium ml-2">${ex.amount?.toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+          {allUnmatchedRows.length === 0 ? (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-amber-900">
+                      {totalUnmatched} unmatched rows detected during import
+                    </p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Row-level details were not saved for these imports. Re-import the statement to see each unmatched row's date, type, amount, and reason here.
+                    </p>
                   </div>
-                </CardContent>
-              )}
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Unmatched Rows ({totalUnmatched})</span>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export for Review
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {selectedIds.length > 0 && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-                  <p className="text-sm font-medium text-emerald-900">
-                    {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
-                  </p>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
-                        bulkDeleteMutation.mutate(selectedIds);
-                      }
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Selected
-                  </Button>
                 </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {Object.keys(unmatchedBreakdown).length > 0 && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>Unmatched Row Breakdown</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowBreakdown(!showBreakdown)}
+                      >
+                        {showBreakdown ? "Hide" : "Show"}
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  {showBreakdown && (
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(unmatchedBreakdown).map(([type, data]) => (
+                          <div key={type} className="bg-white rounded-lg border border-blue-200 p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-semibold text-stone-900">{type}</p>
+                              <Badge variant="outline">{data.count} rows</Badge>
+                            </div>
+                            <div className="space-y-1 text-sm text-stone-600">
+                              {data.examples.map((ex, idx) => (
+                                <div key={idx} className="flex justify-between">
+                                  <span className="truncate max-w-md">{ex.description}</span>
+                                  <span className="font-medium ml-2">${ex.amount?.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
               )}
-              <DataTable
-                columns={columns}
-                data={allUnmatchedRows}
-                emptyMessage="No unmatched rows"
-              />
-            </CardContent>
-          </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Unmatched Rows ({allUnmatchedRows.length})</span>
+                    <Button variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-2" />
+                      Export for Review
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedIds.length > 0 && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                      <p className="text-sm font-medium text-emerald-900">
+                        {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
+                      </p>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
+                            bulkDeleteMutation.mutate(selectedIds);
+                          }
+                        }}
+                        disabled={bulkDeleteMutation.isPending}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Selected
+                      </Button>
+                    </div>
+                  )}
+                  <DataTable
+                    columns={columns}
+                    data={allUnmatchedRows}
+                    emptyMessage="No unmatched rows"
+                  />
+                </CardContent>
+              </Card>
+            </>
+          )}
         </>
-        )}
+      )}
         </div>
         </div>
         );

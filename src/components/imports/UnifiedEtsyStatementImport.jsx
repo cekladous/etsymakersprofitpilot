@@ -651,12 +651,13 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         result.taxes.created = taxes.length;
         result.unmatched.count = unmatchedLines.length;
 
-        // Save all new statement lines (including refunds) with source_etsy_order_id links
+        // Save all new statement lines (including refunds and unmatched rows) with source_etsy_order_id links
         const newLines = [
           ...newOrders.map(o => ({ ...o._rawLine, source_etsy_order_id: orderIdToEntityId[o.order_id] || null })),
           ...newFees.map(f => ({ ...f._rawLine, source_etsy_order_id: orderIdToEntityId[f.order_id] || null })),
           ...newDeposits.map(d => d._rawLine),
-          ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null }))
+          ...newRefunds.map(r => ({ ...r._rawLine, source_etsy_order_id: orderIdToEntityId[r.orderId] || null })),
+          ...unmatchedLines.map(l => ({ ...l, transaction_date: l.transaction_date || dateRangeStart }))
         ].filter(line => line && line.line_uid); // Only save lines with valid UIDs
         if (newLines.length > 0) {
           const linesToCreate = newLines.map(line => ({
