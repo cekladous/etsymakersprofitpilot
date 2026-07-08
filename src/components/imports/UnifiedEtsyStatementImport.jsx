@@ -1370,7 +1370,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         <DialogHeader>
           <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
           <DialogDescription>
-            Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Payment Account → Download CSV.
+            Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Monthly Statements → select the month and then download the CSV file.
             This will automatically populate Orders, Fees, Ads, Shipping Labels, and Deposits throughout the entire app.
           </DialogDescription>
         </DialogHeader>
@@ -1558,7 +1558,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Import Etsy Monthly Statement</DialogTitle>
           <DialogDescription>
-            Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Payment Account → Download CSV.
+            Upload your <strong>Etsy Monthly Statement CSV</strong> (not PDF). Go to Etsy → Finances → Monthly Statements → select the month and then download the CSV file.
             This will automatically populate Orders, Fees, Ads, Shipping Labels, and Deposits throughout the entire app.
           </DialogDescription>
         </DialogHeader>
