@@ -351,7 +351,7 @@ export default function Orders() {
     }
     if (isSearchActive) {
       const filteredOrderIds = new Set(filteredOrders.map(o => o.order_id));
-      lines = lines.filter(l => !l.order_id || filteredOrderIds.has(l.order_id));
+      lines = lines.filter(l => l.order_id && filteredOrderIds.has(l.order_id));
     }
     return lines;
   }, [statementLines, dateRange, isSearchActive, filteredOrders]);
