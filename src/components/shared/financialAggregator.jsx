@@ -148,6 +148,13 @@ export function aggregateFinancials(data, dateRange) {
   const hasStatementFees = stmtFeeLines.length > 0 || stmtAdsLines.length > 0;
   const hasFeeRecords = periodFees.length > 0;
 
+  // OrderFee entity: per-order fee breakdown (authoritative split of listing/transaction/processing)
+  // EtsyStatementLine may have combined lines that lump all fees into one "transaction" entry.
+  const allPeriodOrderIds = new Set(periodEtsyOrders.map(o => o.order_id));
+  const periodOrderFees = (Array.isArray(data.orderFees) ? data.orderFees : [])
+    .filter(f => allPeriodOrderIds.has(f.order_id));
+  const hasOrderFees = periodOrderFees.length > 0;
+
   // ==================== A) REVENUE ====================
   
   // 1) Etsy Sales - Net Sales (matches Etsy official statement & Reconciliation tab)
@@ -316,8 +323,10 @@ export function aggregateFinancials(data, dateRange) {
     .filter(f => f.fee_type === feeType && toNumber(f.amount) > 0)
     .reduce((sum, f) => sum + toNumber(f.amount), 0);
 
-  // 1) Etsy Listing Fees — use statement lines (authoritative), fall back to Fee entity
-  const etsyListingFees = hasStatementFees
+  // 1) Etsy Listing Fees — use OrderFee (per-order split), fall back to statement/Fee/ledger
+  const etsyListingFees = hasOrderFees
+    ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.listing_fees), 0)
+    : hasStatementFees
     ? stmtFeeLines.filter(l => l.fee_type === 'listing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('listing')
@@ -328,7 +337,9 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 2) Etsy Transaction Fees
-  const etsyTransactionFees = hasStatementFees
+  const etsyTransactionFees = hasOrderFees
+    ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.transaction_fees), 0)
+    : hasStatementFees
     ? stmtFeeLines.filter(l => l.fee_type === 'transaction').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('transaction')
@@ -339,7 +350,9 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 3) Etsy Processing Fees
-  const etsyProcessingFees = hasStatementFees
+  const etsyProcessingFees = hasOrderFees
+    ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.processing_fees), 0)
+    : hasStatementFees
     ? stmtFeeLines.filter(l => l.fee_type === 'processing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('processing')
@@ -361,7 +374,9 @@ export function aggregateFinancials(data, dateRange) {
       : 0;
 
   // 5) Share & Save Credits (negative — reduces fees)
-  const shareSaveRefunds = hasStatementFees
+  const shareSaveRefunds = hasOrderFees
+    ? -periodOrderFees.reduce((sum, f) => sum + toNumber(f.share_save_credit), 0)
+    : hasStatementFees
     ? stmtFeeLines.filter(l => l.fee_type === 'share_save_credit').reduce((sum, l) => sum - Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? -sumFeeCredits('share_save_credit')
@@ -372,7 +387,9 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 6) Other Fees (regulatory operating fees, etc.)
-  const otherFees = hasStatementFees
+  const otherFees = hasOrderFees
+    ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.other_fees), 0)
+    : hasStatementFees
     ? stmtFeeLines.filter(l => l.fee_type === 'other_fee').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('other_fee')

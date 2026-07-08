@@ -283,28 +283,7 @@ export default function StatementSummary({ user }) {
         </CardContent>
       </Card>
 
-      {orders.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Internal Profit View (for comparison)</CardTitle>
-            <CardDescription>
-              The maker P&amp;L view used on the Orders tab. Excludes sales tax from revenue and may differ from Etsy statement totals.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <MiniStat label="Revenue (excl. tax)" value={internalProfit.revenue} />
-              <MiniStat label="Shipping Revenue" value={internalProfit.shipping} />
-              <MiniStat label="Etsy Fees" value={internalProfit.etsyFees} expense />
-              <MiniStat label="Marketing" value={internalProfit.marketing} expense />
-              <MiniStat label="Discounts" value={internalProfit.discounts} expense />
-              <MiniStat label="Refunds" value={internalProfit.refunds} expense />
-              <MiniStat label="Net Earnings" value={internalProfit.net} highlight />
-              <MiniStat label="Sales Tax (not revenue)" value={internalProfit.salesTax} muted />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Internal Profit View removed — see the Etsy Sales > Orders tab for the per-order profit breakdown. */}
     </div>
   );
 }

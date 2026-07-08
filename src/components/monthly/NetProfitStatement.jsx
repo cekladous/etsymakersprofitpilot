@@ -245,19 +245,19 @@ export default function NetProfitStatement({ financialData, dateRange }) {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle>Net Profit Statement</CardTitle>
+            <CardTitle>Total Business Net Profit</CardTitle>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
                   <HelpCircle className="w-4 h-4 text-stone-400" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-sm">
-                  <p className="text-xs font-semibold mb-2">Net Profit Statement</p>
-                  <p className="text-xs mb-2">This mirrors the Etsy Seller Spreadsheet methodology:</p>
+                  <p className="text-xs font-semibold mb-2">Total Business Net Profit</p>
+                  <p className="text-xs mb-2">Includes ALL revenue (Etsy + custom sales) minus ALL expenses (Etsy fees, materials, business expenses). This is your whole-business profit, not just Etsy.</p>
                   <p className="text-xs mb-1">• Revenue excludes sales tax (pass-through)</p>
-                  <p className="text-xs mb-1">• Fees reduce revenue first</p>
-                  <p className="text-xs mb-1">• Business expenses reduce profit</p>
-                  <p className="text-xs text-stone-500 mt-2">All totals reconcile 1:1 with Expenses page and Orders for the same period.</p>
+                  <p className="text-xs mb-1">• Etsy fees + marketing reduce revenue first</p>
+                  <p className="text-xs mb-1">• Materials + business expenses reduce profit</p>
+                  <p className="text-xs text-stone-500 mt-2">For Etsy-only profit, see Etsy Net Earnings on the Etsy Sales tab. All totals reconcile 1:1 with Expenses page and Orders for the same period.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -439,7 +439,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               linkTo={buildExpensesLink()}
             />
             <Row 
-              label="Net Profit (Revenue - All Expenses)" 
+              label="Total Business Net Profit (Revenue - All Expenses)"
               amount={netProfit} 
               bold 
               highlight={netProfit >= 0 ? "bg-emerald-50" : "bg-rose-50"}

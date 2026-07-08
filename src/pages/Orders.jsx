@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2, Plus } from "lucide-react";
+import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2, Plus, Copy } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -52,7 +52,8 @@ export default function Orders() {
   const { canExportCSV } = useFeatureAccess();
   const urlParams = new URLSearchParams(window.location.search);
   const customerFilter = urlParams.get("customer");
-  const initialTab = urlParams.get("tab") || "orders";
+  const tabParam = urlParams.get("tab");
+  const initialTab = tabParam === "fees" ? "fees_deposits" : tabParam || "orders";
   
   const [activeTab, setActiveTab] = useState(initialTab);
   const [search, setSearch] = useState("");
@@ -367,16 +368,18 @@ export default function Orders() {
     .reduce((sum, l) => sum + Math.abs(l.amount || 0), 0);
 
   const totalFees = etsyFees + marketingTotal + shippingFeesTotal;
+  // Fee breakdown: use OrderFee (per-order split) for listing/transaction/processing/share_save/other,
+  // and statement lines for shop-level items (etsy_ads, offsite_ads, shipping, postage).
   const feeBreakdown = {
-    listing: statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === "listing").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    transaction: statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === "transaction").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    processing: statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === "processing").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
+    listing: relevantOrderFees.reduce((s, f) => s + (f.listing_fees || 0), 0),
+    transaction: relevantOrderFees.reduce((s, f) => s + (f.transaction_fees || 0), 0),
+    processing: relevantOrderFees.reduce((s, f) => s + (f.processing_fees || 0), 0),
     etsy_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "etsy_ads").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
     offsite_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "offsite_ads").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
     shipping: statementPeriodLines.filter(l => l.section === 'shipping' && l.fee_type === "shipping_label").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
     other_postage: statementPeriodLines.filter(l => l.section === 'shipping' && l.fee_type === "other_postage").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    share_save: statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === "share_save_credit").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    other: statementPeriodLines.filter(l => l.section === 'fees' && !["listing","transaction","processing","share_save_credit"].includes(l.fee_type)).reduce((s, l) => s + Math.abs(l.amount || 0), 0)
+    share_save: relevantOrderFees.reduce((s, f) => s + (f.share_save_credit || 0), 0),
+    other: relevantOrderFees.reduce((s, f) => s + (f.other_fees || 0), 0)
       + statementPeriodLines.filter(l => l.section === 'ads' && !["etsy_ads","offsite_ads"].includes(l.fee_type)).reduce((s, l) => s + Math.abs(l.amount || 0), 0),
   };
 
@@ -973,13 +976,24 @@ export default function Orders() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="fees">Fees & Charges</TabsTrigger>
-          <TabsTrigger value="deposits">Deposits</TabsTrigger>
-          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
-<TabsTrigger value="duplicates">Duplicates</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center gap-2 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="fees_deposits">Fees & Deposits</TabsTrigger>
+            <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
+          </TabsList>
+          {etsyOrders.filter(o => o.possible_duplicate).length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("duplicates")}
+              className="text-amber-600 hover:text-amber-700"
+            >
+              <Copy className="w-4 h-4 mr-1" />
+              {etsyOrders.filter(o => o.possible_duplicate).length} Duplicates
+            </Button>
+          )}
+        </div>
 
         <TabsContent value="orders" className="space-y-6">
           {/* Bulk Actions */}
@@ -1060,7 +1074,7 @@ export default function Orders() {
         </Card>
 
         <Card
-          onClick={() => setActiveTab("fees")}
+          onClick={() => setActiveTab("fees_deposits")}
           className="cursor-pointer hover:shadow-md transition-shadow"
         >
           <CardContent className="p-6">
@@ -1165,7 +1179,7 @@ export default function Orders() {
         </Card>
 
         <Card
-          onClick={() => setActiveTab("fees")}
+          onClick={() => setActiveTab("fees_deposits")}
           className="cursor-pointer hover:shadow-md transition-shadow"
         >
           <CardContent className="p-6">
@@ -1193,8 +1207,8 @@ export default function Orders() {
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-stone-500">Net Earnings</p>
-                <p className="text-xs text-stone-400">Internal profit view</p>
+                <p className="text-sm text-stone-500">Etsy Net Earnings</p>
+                <p className="text-xs text-stone-400">Etsy-only profit (excludes non-Etsy expenses)</p>
                 <p className="text-2xl font-bold text-stone-900">
                   {formatCurrency(totalNetEarnings)}
                 </p>
@@ -1276,17 +1290,17 @@ export default function Orders() {
                 <span className="text-stone-500">(listing fees, Etsy Ads, subscription)</span>{" "}
                 <span className="font-semibold text-rose-600">{formatCurrency(shopLevelCosts)}</span>
                 {" = "}
-                <span className="font-medium">Net Earnings</span>{" "}
+                <span className="font-medium">Etsy Net Earnings</span>{" "}
                 <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarnings)}</span>
               </p>
               <p className="text-xs text-stone-500 mt-1">
-                Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Net Earnings.
+                Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Etsy Net Earnings. This is Etsy-only profit — see the Dashboard for Total Business Net Profit (includes non-Etsy expenses).
               </p>
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="fees" className="space-y-6">
+        <TabsContent value="fees_deposits" className="space-y-6">
            {/* About Section */}
            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
              <h3 className="font-semibold text-blue-900 mb-2">About Fees & Charges</h3>
@@ -1398,20 +1412,19 @@ export default function Orders() {
               emptyMessage="No fees match your filters"
             />
           )}
-        </TabsContent>
-
-        <TabsContent value="deposits" className="space-y-6">
-           {/* Add Deposit Button */}
-           <div className="flex justify-end">
-             <Button
-               size="sm"
-               className="bg-emerald-600 hover:bg-emerald-700"
-               onClick={() => setDepositDialogOpen(true)}
-             >
-               <Plus className="w-4 h-4 mr-2" />
-               Add Deposit
-             </Button>
-           </div>
+          {/* Deposits / Payouts Section */}
+          <div className="border-t border-stone-200 pt-6 mt-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-stone-900">Deposits / Payouts</h3>
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => setDepositDialogOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Deposit
+              </Button>
+            </div>
 
            {/* Summary Card */}
            <Card>
@@ -1461,10 +1474,11 @@ export default function Orders() {
                data={etsyDeposits}
                emptyMessage="No deposits for selected period"
              />
-           )}
-         </TabsContent>
+             )}
+             </div>
+             </TabsContent>
 
-         <TabsContent value="reconciliation" className="space-y-6">
+             <TabsContent value="reconciliation" className="space-y-6">
            <ReconciliationTab user={user} />
          </TabsContent>
          <TabsContent value="duplicates" className="space-y-6">

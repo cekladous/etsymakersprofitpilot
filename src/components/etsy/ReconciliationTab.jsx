@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2, Download, Trash2 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DataTable from "@/components/ui/DataTable";
 import DepositMatcher from "@/components/reconciliation/DepositMatcher";
 import StatementSummary from "@/components/etsy/StatementSummary";
@@ -252,47 +251,15 @@ export default function ReconciliationTab({ user }) {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="summary" className="w-full">
-        <TabsList>
-          <TabsTrigger value="summary">Statement Summary</TabsTrigger>
-          <TabsTrigger value="deposits">Deposit Matching</TabsTrigger>
-          <TabsTrigger value="statement">Statement Review</TabsTrigger>
-        </TabsList>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Reconciliation Check</CardTitle>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-4">
-            <div className="bg-stone-100 p-4 rounded-lg">
-              <p className="text-sm text-stone-500">Total Deposits (Bank)</p>
-              <p className="text-2xl font-bold">${depositsTotal.toFixed(2)}</p>
-              <p className="text-xs text-stone-400 mt-1">{depositsCount} deposit records</p>
-            </div>
-            <div className="bg-stone-100 p-4 rounded-lg">
-              <p className="text-sm text-stone-500">Imported Orders</p>
-              <p className="text-2xl font-bold">{ordersTotal}</p>
-              <p className="text-xs text-stone-400 mt-1">{feesCount} fee lines</p>
-            </div>
-            <div className={`p-4 rounded-lg ${depositsCount > 0 ? 'bg-emerald-100' : 'bg-amber-100'}`}>
-              <p className={`text-sm ${depositsCount > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>Deposit Status</p>
-              <p className={`text-2xl font-bold ${depositsCount > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {depositsCount > 0 ? 'Tracked' : 'Missing'}
-              </p>
-              <p className="text-xs text-stone-400 mt-1">See Statement Summary for $ reconciliation</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <TabsContent value="summary" className="space-y-6">
           <StatementSummary user={user} />
-        </TabsContent>
 
-        <TabsContent value="deposits" className="space-y-6">
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-stone-900">Deposit Matching</h3>
           <DepositMatcher user={user} />
-        </TabsContent>
+        </div>
 
-        <TabsContent value="statement" className="space-y-6">
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-stone-900">Statement Review</h3>
       {totalUnmatched > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-6">
@@ -434,8 +401,7 @@ export default function ReconciliationTab({ user }) {
           </Card>
         </>
         )}
-        </TabsContent>
-        </Tabs>
+        </div>
         </div>
         );
         }

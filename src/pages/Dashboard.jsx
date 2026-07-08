@@ -626,7 +626,7 @@ export default function Dashboard() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="summary">
             <TableIcon className="w-4 h-4 mr-2" />
-            Net Profit
+            Business Net Profit
           </TabsTrigger>
           <TabsTrigger value="budget">
             <BarChart3 className="w-4 h-4 mr-2" />
@@ -682,9 +682,9 @@ export default function Dashboard() {
         </Link>
         <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
           <KPICard
-                title="Net Profit"
+                title="Total Business Net Profit"
                 value={`$${metrics.periodProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                subtitle={`${metrics.periodMargin != null ? `${metrics.periodMargin.toFixed(1)}% margin` : 'N/A margin'} • View breakdown`}
+                subtitle={`${metrics.periodMargin != null ? `${metrics.periodMargin.toFixed(1)}% margin` : 'N/A margin'} • Includes all revenue & expenses`}
                 icon={TrendingUp}
                 accentColor={metrics.periodProfit >= 0 ? "emerald" : "rose"} />
 

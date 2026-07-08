@@ -70,14 +70,24 @@ export default function CompactReconciliationCard({
   if (!data) return null;
 
   // Build short status indicators
+  // Small differences between statement net and actual deposits are normal due to
+  // payout timing (deposits may arrive a day or two after the statement period closes).
+  // Only flag as a warning when the difference is unusually large (> $50).
   const indicators = [];
   const absDepositDelta = Math.abs(data.depositDelta);
-  if (absDepositDelta >= 0.01) {
+  const LARGE_THRESHOLD = 50;
+  if (absDepositDelta >= 0.01 && absDepositDelta < LARGE_THRESHOLD) {
+    indicators.push({
+      icon: AlertCircle,
+      text: `${fmt(absDepositDelta)} ${data.depositDelta > 0 ? 'pending deposit' : 'minor overage'} — normal payout timing`,
+      tone: "stone",
+    });
+  } else if (absDepositDelta >= LARGE_THRESHOLD) {
     indicators.push({
       icon: AlertCircle,
       text: data.depositDelta > 0
-        ? `${fmt(absDepositDelta)} deposits missing`
-        : `${fmt(absDepositDelta)} over deposited`,
+        ? `${fmt(absDepositDelta)} deposits missing — review needed`
+        : `${fmt(absDepositDelta)} over deposited — review needed`,
       tone: "amber",
     });
   }
