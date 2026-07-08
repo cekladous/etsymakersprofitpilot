@@ -17,15 +17,101 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
 
   const importMutation = useMutation({
     mutationFn: async ({ orders }) => {
-      // Add owner_user_id to all orders before sending to backend
-      const ordersWithOwner = orders.map(order => ({
-        ...order,
-        owner_user_id: user.id,
-        customer: order.customer ? { ...order.customer, owner_user_id: user.id } : undefined
-      }));
-      // Use backend function to update orders with product details
-      const { data } = await base44.functions.invoke('updateOrdersWithSoldData', { orders: ordersWithOwner });
-      return data;
+      const currentUser = await base44.auth.me();
+
+      // Pre-fetch all existing orders and customers ONCE (same pattern as Monthly Statement)
+      const [allExistingOrders, allExistingCustomers] = await Promise.all([
+        base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }),
+        base44.entities.Customer.filter({ owner_user_id: currentUser.id }),
+      ]);
+
+      const orderMap = {};
+      allExistingOrders.forEach(o => { orderMap[String(o.order_id).trim()] = o; });
+
+      const customerByBuyerName = {};
+      const customerByName = {};
+      allExistingCustomers.forEach(c => {
+        if (c.etsy_buyer_name) customerByBuyerName[c.etsy_buyer_name] = c;
+        if (c.name) customerByName[c.name.toLowerCase()] = c;
+      });
+
+      const result = { created: 0, updated: 0, skipped: 0, customers_created: 0, customers_updated: 0 };
+
+      // --- Customer upsert (dedup by etsy_buyer_name, then by name) ---
+      const customersToCreate = [];
+      const customersToUpdate = [];
+      const seenBuyerKeys = new Set();
+
+      for (const order of orders) {
+        if (!order.customer?.name && !order.customer?.etsy_buyer_name) continue;
+
+        const buyerKey = order.customer.etsy_buyer_name || order.customer.name?.toLowerCase();
+        if (seenBuyerKeys.has(buyerKey)) continue;
+        seenBuyerKeys.add(buyerKey);
+
+        let match = null;
+        if (order.customer.etsy_buyer_name) match = customerByBuyerName[order.customer.etsy_buyer_name];
+        if (!match && order.customer.name) match = customerByName[order.customer.name.toLowerCase()];
+
+        if (match) {
+          const updateData = {};
+          if (order.customer.name && order.customer.name !== match.name) updateData.name = order.customer.name;
+          if (order.customer.etsy_buyer_name && !match.etsy_buyer_name) updateData.etsy_buyer_name = order.customer.etsy_buyer_name;
+          if (order.customer.address && !match.address) updateData.address = order.customer.address;
+          if (Object.keys(updateData).length > 0) customersToUpdate.push({ id: match.id, ...updateData });
+          result.customers_updated++;
+        } else {
+          customersToCreate.push({ ...order.customer, owner_user_id: currentUser.id });
+          result.customers_created++;
+        }
+      }
+
+      if (customersToCreate.length > 0) {
+        for (let i = 0; i < customersToCreate.length; i += 25) {
+          await base44.entities.Customer.bulkCreate(customersToCreate.slice(i, i + 25));
+          if (i + 25 < customersToCreate.length) await new Promise(r => setTimeout(r, 50));
+        }
+      }
+      if (customersToUpdate.length > 0) {
+        for (let i = 0; i < customersToUpdate.length; i += 10) {
+          await base44.entities.Customer.bulkUpdate(customersToUpdate.slice(i, i + 10));
+          if (i + 10 < customersToUpdate.length) await new Promise(r => setTimeout(r, 50));
+        }
+      }
+
+      // --- Order upsert (dedup by order_id) ---
+      const ordersToCreate = [];
+      const ordersToUpdate = [];
+
+      for (const order of orders) {
+        if (!order.order_id) { result.skipped++; continue; }
+        const orderIdKey = String(order.order_id).trim();
+        const { customer, ...orderData } = order;
+        const existing = orderMap[orderIdKey];
+
+        if (existing) {
+          ordersToUpdate.push({ id: existing.id, ...orderData });
+          result.updated++;
+        } else {
+          ordersToCreate.push({ ...orderData, owner_user_id: currentUser.id, source: 'etsy_sold_orders' });
+          result.created++;
+        }
+      }
+
+      if (ordersToCreate.length > 0) {
+        for (let i = 0; i < ordersToCreate.length; i += 25) {
+          await base44.entities.EtsyOrder.bulkCreate(ordersToCreate.slice(i, i + 25));
+          if (i + 25 < ordersToCreate.length) await new Promise(r => setTimeout(r, 50));
+        }
+      }
+      if (ordersToUpdate.length > 0) {
+        for (let i = 0; i < ordersToUpdate.length; i += 10) {
+          await base44.entities.EtsyOrder.bulkUpdate(ordersToUpdate.slice(i, i + 10));
+          if (i + 10 < ordersToUpdate.length) await new Promise(r => setTimeout(r, 50));
+        }
+      }
+
+      return result;
     },
     onSuccess: (result) => {
       setImportResult(result);
