@@ -9,10 +9,13 @@
  * statement totals via aggregateFinancials.
  *
  * When no statement has been imported yet we estimate using:
- *   - Etsy's standard 6.5% transaction fee on the pre-tax revenue
- *   - order.card_processing_fees stored from the sold-orders CSV
+ *   - Etsy's standard 6.5% transaction fee on the pre-tax revenue (for online orders)
+ *   - Square's 2.9% + $0.30 processing fee (for in-person Square orders)
+ *   - order.card_processing_fees stored from the sold-orders CSV (for online orders)
  * Sales tax is NEVER part of net earnings.
  */
+
+import { isSquareInPersonOrder, SQUARE_FEE_PERCENT, SQUARE_FEE_FIXED } from "@/components/shared/channelUtils";
 
 const ETSY_TRANSACTION_RATE = 0.065;
 
@@ -58,6 +61,13 @@ export function calculateNetEarnings(order, orderFees) {
 
   if (orderFees) {
     return netRevenue - perOrderFees(orderFees);
+  }
+
+  // Fallback: use Square's processing fee for in-person Square orders,
+  // Etsy's standard rate for everything else
+  if (isSquareInPersonOrder(order)) {
+    const estimatedSquareFee = Math.round((netRevenue * SQUARE_FEE_PERCENT + SQUARE_FEE_FIXED) * 100) / 100;
+    return netRevenue - estimatedSquareFee;
   }
 
   const estimatedTransactionFee = Math.round(netRevenue * ETSY_TRANSACTION_RATE * 100) / 100;

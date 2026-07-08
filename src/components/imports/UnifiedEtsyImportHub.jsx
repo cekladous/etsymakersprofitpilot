@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UnifiedEtsyStatementImport from "./UnifiedEtsyStatementImport";
 import EtsySoldOrdersImport from "./EtsySoldOrdersImport";
 import EtsyPaymentDepositsImport from "./EtsyPaymentDepositsImport";
+import EtsyPaymentAccountImport from "./EtsyPaymentAccountImport";
 import UpgradeCTA from "@/components/subscriptions/UpgradeCTA";
 import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 
@@ -37,7 +38,7 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
           <DialogHeader>
             <DialogTitle>Import Etsy Data</DialogTitle>
             <DialogDescription>
-              Start with your Monthly Statement — it includes all orders, fees, and deposits. The other two reports are optional.
+              Start with your Monthly Statement — it includes all orders, fees, and deposits. The other reports are optional and supplement your data.
             </DialogDescription>
           <p className="text-xs text-muted-foreground mt-2">
             <span className="font-medium">Note for Square users:</span> If you process payments through Square on Etsy, your Etsy statement already includes those sales. Don't also import a Square CSV for the same orders — it will cause duplicates.
@@ -45,10 +46,11 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="statement">Monthly Statement</TabsTrigger>
               <TabsTrigger value="orders">Sold Orders Report</TabsTrigger>
               <TabsTrigger value="deposits">Payment Deposits</TabsTrigger>
+              <TabsTrigger value="payment_account">Payment Account</TabsTrigger>
             </TabsList>
 
             <TabsContent value="statement" className="mt-4">
@@ -69,6 +71,14 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
 
             <TabsContent value="deposits" className="mt-4">
               <EtsyPaymentDepositsImport
+                open={true}
+                onOpenChange={() => {}}
+                embedded={true}
+              />
+            </TabsContent>
+
+            <TabsContent value="payment_account" className="mt-4">
+              <EtsyPaymentAccountImport
                 open={true}
                 onOpenChange={() => {}}
                 embedded={true}

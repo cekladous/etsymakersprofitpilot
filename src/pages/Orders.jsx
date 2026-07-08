@@ -46,6 +46,7 @@ import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 import ReconciliationTab from "@/components/etsy/ReconciliationTab";
 import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@/components/shared/netEarnings";
+import ChannelBadge from "@/components/orders/ChannelBadge";
 
 export default function Orders() {
   const { user, loading } = useAuth();
@@ -828,15 +829,18 @@ export default function Orders() {
         const isCanceled = refund > 0 && refund >= preTaxTotal - 0.01;
         const status = isCanceled ? "Canceled" : (row.status || "completed");
         return (
-          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-            status === "Canceled" ? "bg-rose-100 text-rose-700" :
-            status === "shipped" ? "bg-blue-100 text-blue-700" :
-            status === "completed" ? "bg-emerald-100 text-emerald-700" :
-            status === "in_production" ? "bg-amber-100 text-amber-700" :
-            "bg-stone-100 text-stone-600"
-          }`}>
-            {status}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+              status === "Canceled" ? "bg-rose-100 text-rose-700" :
+              status === "shipped" ? "bg-blue-100 text-blue-700" :
+              status === "completed" ? "bg-emerald-100 text-emerald-700" :
+              status === "in_production" ? "bg-amber-100 text-amber-700" :
+              "bg-stone-100 text-stone-600"
+            }`}>
+              {status}
+            </span>
+            <ChannelBadge order={row} />
+          </div>
         );
       },
     },

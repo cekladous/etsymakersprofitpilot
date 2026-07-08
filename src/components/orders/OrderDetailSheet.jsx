@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { calculateNetEarnings, perOrderFees } from "@/components/shared/netEarnings";
+import ChannelBadge from "@/components/orders/ChannelBadge";
+import { isSquareInPersonOrder, SQUARE_FEE_PERCENT, SQUARE_FEE_FIXED } from "@/components/shared/channelUtils";
 
 export default function OrderDetailSheet({ order, orderFees, open, onOpenChange }) {
   if (!order) return null;
@@ -35,13 +37,18 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
 
   // Etsy's standard transaction fee rate (6.5% as of 2023-present)
   const ETSY_TRANSACTION_RATE = 0.065;
+  const isSquare = isSquareInPersonOrder(order);
   const estimatedTransactionFee = Math.round(revenueExclTax * ETSY_TRANSACTION_RATE * 100) / 100;
+  const estimatedSquareFee = Math.round((revenueExclTax * SQUARE_FEE_PERCENT + SQUARE_FEE_FIXED) * 100) / 100;
 
   // Fees & credits total = -(per-order fees + tax)
   // Only transaction + processing - share_save + tax remitted by Etsy
+  // Square in-person orders use Square's processing fee instead of Etsy's fees
   const totalFeesPaid = orderFees
     ? -(perOrderFees(orderFees) + (order.sales_tax || 0))
-    : -(estimatedTransactionFee + (order.card_processing_fees || 0));
+    : isSquare
+      ? -(estimatedSquareFee)
+      : -(estimatedTransactionFee + (order.card_processing_fees || 0));
 
   // true only when an Etsy statement import has been done for this order
   const hasStatementData = !!orderFees || order.source === 'etsy_statement';
@@ -52,9 +59,10 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto max-w-2xl">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-3">
+          <SheetTitle className="flex items-center gap-3 flex-wrap">
             <span>Order #{order.order_id}</span>
             <Badge variant="outline">{order.status || "completed"}</Badge>
+            <ChannelBadge order={order} />
           </SheetTitle>
         </SheetHeader>
 
@@ -225,28 +233,39 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                     </>
                   ) : (
                     <>
-                      {estimatedTransactionFee > 0 && (
-                        <div className="flex justify-between text-stone-400">
-                          <span>Transaction fee</span>
-                          <span>-{formatCurrency(estimatedTransactionFee)}</span>
-                        </div>
+                      {isSquare ? (
+                        estimatedSquareFee > 0 && (
+                          <div className="flex justify-between text-stone-400">
+                            <span>Processing fee (Square est.)</span>
+                            <span>-{formatCurrency(estimatedSquareFee)}</span>
+                          </div>
+                        )
+                      ) : (
+                        <>
+                          {estimatedTransactionFee > 0 && (
+                            <div className="flex justify-between text-stone-400">
+                              <span>Transaction fee</span>
+                              <span>-{formatCurrency(estimatedTransactionFee)}</span>
+                            </div>
+                          )}
+                          {(order.card_processing_fees || 0) > 0 && (
+                            <div className="flex justify-between text-stone-400">
+                              <span>Processing fee</span>
+                              <span>-{formatCurrency(order.card_processing_fees)}</span>
+                            </div>
+                          )}
+                        </>
                       )}
-                       {(order.card_processing_fees || 0) > 0 && (
-                         <div className="flex justify-between text-stone-400">
-                           <span>Processing fee</span>
-                           <span>-{formatCurrency(order.card_processing_fees)}</span>
-                         </div>
-                       )}
-                       <div className="flex justify-between text-stone-400">
-                         <span>Share &amp; Save Refund</span>
-                         <span>+{formatCurrency(0)}</span>
-                       </div>
-                       <div className="flex justify-between text-stone-400">
-                         <span>Tax remitted by Etsy</span>
-                         <span>-{formatCurrency(order.sales_tax || 0)}</span>
-                       </div>
-                       </>
-                       )}
+                      <div className="flex justify-between text-stone-400">
+                        <span>Share &amp; Save Refund</span>
+                        <span>+{formatCurrency(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-stone-400">
+                        <span>Tax remitted by Etsy</span>
+                        <span>-{formatCurrency(order.sales_tax || 0)}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
