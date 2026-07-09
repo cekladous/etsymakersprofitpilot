@@ -74,7 +74,7 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
             </CardHeader>
             <CardContent>
               <p className="text-lg font-semibold text-stone-900">
-                {order.sale_date ? format(new Date(order.sale_date), "MMM d, yyyy") : "—"}
+                {order.sale_date ? format(new Date(order.sale_date + "T00:00:00"), "MMM d, yyyy") : "—"}
               </p>
             </CardContent>
           </Card>

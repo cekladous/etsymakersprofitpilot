@@ -756,7 +756,7 @@ export default function Orders() {
       header: "Date",
       render: (row) => (
         <span className="text-sm text-stone-600">
-          {row.sale_date ? format(new Date(row.sale_date), "MMM d, yyyy") : "—"}
+          {row.sale_date ? format(new Date(row.sale_date + "T00:00:00"), "MMM d, yyyy") : "—"}
         </span>
       ),
     },
