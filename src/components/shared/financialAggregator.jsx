@@ -4,6 +4,8 @@
  * Used by Dashboard, Monthly Summary, Orders, and all drill-downs
  */
 
+import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
+
 /**
  * Safely convert any value to a number, defaulting to 0
  */
@@ -138,6 +140,12 @@ export function aggregateFinancials(data, dateRange) {
     deduplicationWarnings.push(`${linkedOrderIds.size} EtsyOrder records excluded (using EtsyStatementLine as canonical source)`);
   }
 
+  // Split: Etsy online orders vs Square in-person orders.
+  // Etsy's Activity Summary never includes Square sales — keep them separate so
+  // Etsy-only KPIs are accurate. Square revenue is still counted in totalRevenue.
+  const etsyOnlineOrders = dedupedEtsyOrders.filter(o => !isSquareInPersonOrder(o));
+  const squareInPersonOrders = dedupedEtsyOrders.filter(o => isSquareInPersonOrder(o));
+
   // ==================== STATEMENT-LINE-BASED FEES ====================
   // EtsyStatementLine is the authoritative source from imports (matches Etsy's
   // official statement). The Fee entity may contain stale/duplicated records, so
@@ -150,7 +158,7 @@ export function aggregateFinancials(data, dateRange) {
 
   // OrderFee entity: per-order fee breakdown (authoritative split of listing/transaction/processing)
   // EtsyStatementLine may have combined lines that lump all fees into one "transaction" entry.
-  const allPeriodOrderIds = new Set(periodEtsyOrders.map(o => o.order_id));
+  const allPeriodOrderIds = new Set(etsyOnlineOrders.map(o => o.order_id));
   const periodOrderFees = (Array.isArray(data.orderFees) ? data.orderFees : [])
     .filter(f => allPeriodOrderIds.has(f.order_id));
   const hasOrderFees = periodOrderFees.length > 0;
@@ -159,13 +167,24 @@ export function aggregateFinancials(data, dateRange) {
   
   // 1) Etsy Sales - Net Sales (matches Etsy official statement & Reconciliation tab)
   // Net Sales = Gross Sales (order_total - refunds) - Sales Tax - CO Retail Delivery Fee
-  const etsySalesFromOrders = dedupedEtsyOrders.reduce((sum, o) => {
+  // EXCLUDES Square in-person orders (Etsy's Activity Summary never includes them)
+  const etsySalesFromOrders = etsyOnlineOrders.reduce((sum, o) => {
     const gross = toNumber(o.order_total) - toNumber(o.refund_amount);
     const tax = toNumber(o.sales_tax);
     const expected = toNumber(o.order_value) + toNumber(o.shipping_charged) + tax - toNumber(o.discount_amount);
     const coFee = Math.max(0, toNumber(o.order_total) - expected);
     return sum + gross - tax - coFee;
   }, 0);
+
+  // Square in-person revenue (same formula, separate from Etsy)
+  const squareInPersonRevenue = squareInPersonOrders.reduce((sum, o) => {
+    const gross = toNumber(o.order_total) - toNumber(o.refund_amount);
+    const tax = toNumber(o.sales_tax);
+    const expected = toNumber(o.order_value) + toNumber(o.shipping_charged) + tax - toNumber(o.discount_amount);
+    const coFee = Math.max(0, toNumber(o.order_total) - expected);
+    return sum + gross - tax - coFee;
+  }, 0);
+  const squareInPersonRefunds = squareInPersonOrders.reduce((sum, o) => sum + toNumber(o.refund_amount), 0);
 
   // Add sales from statement lines (for orders that were excluded due to deduplication)
   const etsySalesFromStatementLines = periodStatementLines
@@ -175,21 +194,21 @@ export function aggregateFinancials(data, dateRange) {
   const etsySales = etsySalesFromOrders + etsySalesFromStatementLines;
 
   // 2) Tax Collected by Etsy (excluded from profit)
-  const taxCollectedByEtsy = dedupedEtsyOrders.reduce((sum, o) =>
+  const taxCollectedByEtsy = etsyOnlineOrders.reduce((sum, o) =>
     sum + toNumber(o.sales_tax), 0);
 
   // CO Retail Delivery Fee (government-mandated, excluded from net sales)
-  const coRetailDeliveryFee = dedupedEtsyOrders.reduce((sum, o) => {
+  const coRetailDeliveryFee = etsyOnlineOrders.reduce((sum, o) => {
     const expected = toNumber(o.order_value) + toNumber(o.shipping_charged) + toNumber(o.sales_tax) - toNumber(o.discount_amount);
     return sum + Math.max(0, toNumber(o.order_total) - expected);
   }, 0);
 
   // 3) Total Etsy Sales (gross sales = order_total - refunds, matches Etsy statement)
-  const totalEtsySales = dedupedEtsyOrders.reduce((sum, o) =>
+  const totalEtsySales = etsyOnlineOrders.reduce((sum, o) =>
     sum + toNumber(o.order_total) - toNumber(o.refund_amount), 0) + etsySalesFromStatementLines;
   
   // 4) Etsy Refunds - CANONICAL: from orders (per-order data is most reliable)
-  const refundsFromOrders = dedupedEtsyOrders.reduce((sum, o) => 
+  const refundsFromOrders = etsyOnlineOrders.reduce((sum, o) => 
     sum + toNumber(o.refund_amount || 0), 0);
 
   const etsyRefundsFromLedger = periodLedgerEntries
@@ -230,9 +249,9 @@ export function aggregateFinancials(data, dateRange) {
     sum + toNumber(s.sales_tax_collected), 0);
   
   // 6) Total Revenue (tax EXCLUDED — tax is collected for the buyer, not seller revenue)
-  const totalRevenue = (etsySales - etsyRefunds) + customSaleA + customSaleB;
+  const totalRevenue = (etsySales - etsyRefunds) + squareInPersonRevenue + customSaleA + customSaleB;
 
-  // 7) Revenue by Source breakdown (Etsy + each Custom Sales source)
+  // 7) Revenue by Source breakdown (Etsy + Square in-person + each Custom Sales source)
   const SOURCE_KEYS = ["Squarespace", "Square", "In-Person/Cash", "Website", "Instagram", "Other"];
   const customRevenueBySource = {};
   SOURCE_KEYS.forEach(key => { customRevenueBySource[key] = 0; });
@@ -242,6 +261,7 @@ export function aggregateFinancials(data, dateRange) {
   });
   const revenueBySource = {
     Etsy: etsySales - etsyRefunds,
+    "In-Person (Square)": squareInPersonRevenue,
     ...customRevenueBySource,
   };
 
@@ -680,6 +700,9 @@ export function aggregateFinancials(data, dateRange) {
       totalEtsySales,
       etsyRefunds,
       netEtsySales: etsySales - etsyRefunds, // CRITICAL: Net after refunds, tax excluded
+      squareInPersonRevenue, // Square in-person sales (excluded from Etsy figures)
+      squareInPersonRefunds,
+      squareInPersonOrderCount: squareInPersonOrders.length,
       customSaleA,
       customSaleB,
       customSalesTaxCollected,
@@ -755,7 +778,8 @@ export function aggregateFinancials(data, dateRange) {
     
     // Raw filtered data for drill-downs
     _rawData: {
-      etsyOrders: dedupedEtsyOrders,
+      etsyOrders: etsyOnlineOrders, // Etsy-only (excludes Square in-person)
+      squareInPersonOrders, // Square in-person orders (separate from Etsy)
       customSales: periodCustomSales,
       businessExpenses: periodBusinessExpenses,
       transfers: periodTransfers,

@@ -47,6 +47,7 @@ import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 import ReconciliationTab from "@/components/etsy/ReconciliationTab";
 import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@/components/shared/netEarnings";
 import ChannelBadge from "@/components/orders/ChannelBadge";
+import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
 
 export default function Orders() {
   const { user, loading } = useAuth();
@@ -276,9 +277,17 @@ export default function Orders() {
     });
   }, [etsyOrders, search, dateRange, customerFilter]);
 
+  // Etsy-only orders: excludes Square/in-person orders (which Etsy's Activity
+  // Summary never includes). Used for all Etsy-only KPIs. Square orders remain
+  // in filteredOrders for the table and Total Business view.
+  const etsyOnlyOrders = useMemo(
+    () => filteredOrders.filter(o => !isSquareInPersonOrder(o)),
+    [filteredOrders]
+  );
+
   // Revenue (excl. tax) = Net Sales, matching Etsy's statement Sales figure.
   // Net Sales = (order_total - refunds) - sales_tax - CO Retail Delivery Fee
-  const totalRevenue = filteredOrders.reduce((sum, o) => {
+  const totalRevenue = etsyOnlyOrders.reduce((sum, o) => {
     const gross = (o.order_total || 0) - (o.refund_amount || 0);
     const tax = (o.sales_tax || 0);
     const expected = (o.order_value || 0) + (o.shipping_charged || 0) + tax - (o.discount_amount || 0);
@@ -287,12 +296,12 @@ export default function Orders() {
   }, 0);
 
   // Shipping revenue (kept by seller)
-  const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
+  const totalShipping = etsyOnlyOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
   // Discounts and refunds (used in internal profit view, matching Reconciliation tab)
-  const totalDiscounts = filteredOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0);
-  const totalRefunds = filteredOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
+  const totalDiscounts = etsyOnlyOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0);
+  const totalRefunds = etsyOnlyOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
   // Item revenue (order_value only, used in internal profit view formula)
-  const totalItemRevenue = filteredOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
+  const totalItemRevenue = etsyOnlyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
 
   // Unified fees: merge EtsyStatementLine fee records (authoritative source from
   // imports) with Fee entity records (secondary derivative). Dedup by composite key.
@@ -328,7 +337,7 @@ export default function Orders() {
     return [...statementFeeLines, ...feeEntityFees];
   }, [statementLines, fees, etsyStatementImports]);
 
-  const relevantOrderFees = orderFees.filter(f => filteredOrders.some(o => o.order_id === f.order_id));
+  const relevantOrderFees = orderFees.filter(f => etsyOnlyOrders.some(o => o.order_id === f.order_id));
   // Period fees: ALL fees for the selected date range (independent of fee search/filter).
   const periodFees = useMemo(() => {
     if (!dateRange) return activeFees;
@@ -351,8 +360,8 @@ export default function Orders() {
       });
     }
     if (isSearchActive) {
-      const filteredOrderIds = new Set(filteredOrders.map(o => o.order_id));
-      lines = lines.filter(l => l.order_id && filteredOrderIds.has(l.order_id));
+      const etsyOnlyOrderIds = new Set(etsyOnlyOrders.map(o => o.order_id));
+      lines = lines.filter(l => l.order_id && etsyOnlyOrderIds.has(l.order_id));
     }
     return lines;
   }, [statementLines, dateRange, isSearchActive, filteredOrders]);
@@ -397,7 +406,7 @@ export default function Orders() {
   
   // Sum of per-order profits (Order Profit column) — each order's net after
   // transaction + processing fees + Share & Save credit, but before shop-level costs.
-  const sumOfOrderProfits = filteredOrders.reduce((sum, o) => {
+  const sumOfOrderProfits = etsyOnlyOrders.reduce((sum, o) => {
     const fees = findOrderFee(orderFees, o.order_id);
     return sum + calculateNetEarnings(o, fees);
   }, 0);
@@ -405,7 +414,17 @@ export default function Orders() {
   // listing fees, Etsy Ads, Offsite Ads, other shop fees not tied to individual orders.
   const shopLevelCosts = sumOfOrderProfits - totalNetEarnings;
 
-  const totalSalesTax = filteredOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
+  const totalSalesTax = etsyOnlyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
+
+  // Total Business view: all orders including Square/in-person
+  const totalBusinessRevenue = filteredOrders.reduce((sum, o) => {
+    const gross = (o.order_total || 0) - (o.refund_amount || 0);
+    const tax = (o.sales_tax || 0);
+    const expected = (o.order_value || 0) + (o.shipping_charged || 0) + tax - (o.discount_amount || 0);
+    const coFee = Math.max(0, (o.order_total || 0) - expected);
+    return sum + gross - tax - coFee;
+  }, 0);
+  const squareOrderCount = filteredOrders.length - etsyOnlyOrders.length;
 
   const filteredFees = useMemo(() => {
     let filtered = activeFees;
@@ -1043,9 +1062,17 @@ export default function Orders() {
           )}
 
                 {/* Info: Internal profit view */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
             <p className="text-xs text-blue-800">
-              <strong>Internal Profit View:</strong> Revenue excludes sales tax. Etsy Fees and Marketing are shown separately to match Etsy's statement categories. For Etsy statement reconciliation, see the Reconciliation tab.
+              <strong>Etsy-only KPIs:</strong> Revenue, Order Count, Fees, and Net Earnings exclude in-person Square sales (which Etsy's Activity Summary never includes). Square orders remain visible in the table below.
+            </p>
+            {squareOrderCount > 0 && (
+              <p className="text-xs text-blue-600">
+                <strong>Total Business Revenue (all channels):</strong> {formatCurrency(totalBusinessRevenue)} across {filteredOrders.length} orders ({squareOrderCount} in-person/Square).
+              </p>
+            )}
+            <p className="text-xs text-blue-800">
+              Revenue excludes sales tax. Etsy Fees and Marketing are shown separately to match Etsy's statement categories. For Etsy statement reconciliation, see the Reconciliation tab.
             </p>
           </div>
 
@@ -1064,10 +1091,13 @@ export default function Orders() {
                 <ShoppingBag className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-stone-500">Total Orders</p>
+                <p className="text-sm text-stone-500">Etsy Orders</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {filteredOrders.length}
+                  {etsyOnlyOrders.length}
                 </p>
+                {squareOrderCount > 0 && (
+                  <p className="text-xs text-stone-400">+{squareOrderCount} in-person</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -1321,7 +1351,7 @@ export default function Orders() {
                     <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarnings)}</span>
                   </p>
                   <p className="text-xs text-stone-500 mt-1">
-                    Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Etsy Net Earnings. This is Etsy-only profit — see the Dashboard for Total Business Net Profit (includes non-Etsy expenses).
+                    Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Etsy Net Earnings. This is Etsy-only profit (excludes in-person Square sales) — see the Dashboard for Total Business Net Profit (includes non-Etsy expenses).
                   </p>
                 </>
               )}

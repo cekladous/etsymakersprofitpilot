@@ -1,8 +1,9 @@
 import React from "react";
-import { ShoppingBag, Store, CreditCard, Wallet, Globe, Instagram, MoreHorizontal } from "lucide-react";
+import { ShoppingBag, Store, CreditCard, Wallet, Globe, Instagram, MoreHorizontal, Smartphone } from "lucide-react";
 
 const SOURCE_CONFIG = [
   { key: "Etsy", icon: ShoppingBag, color: "text-orange-600", bg: "bg-orange-50", bar: "bg-orange-500" },
+  { key: "In-Person (Square)", icon: Smartphone, color: "text-slate-700", bg: "bg-slate-50", bar: "bg-slate-600" },
   { key: "Squarespace", icon: Store, color: "text-stone-700", bg: "bg-stone-50", bar: "bg-stone-600" },
   { key: "Square", icon: CreditCard, color: "text-slate-700", bg: "bg-slate-50", bar: "bg-slate-500" },
   { key: "In-Person/Cash", icon: Wallet, color: "text-emerald-700", bg: "bg-emerald-50", bar: "bg-emerald-500" },

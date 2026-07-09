@@ -659,8 +659,11 @@ export default function Dashboard() {
         <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl border border-emerald-200 p-4">
           <p className="text-xs font-semibold text-stone-600 uppercase">Total Revenue</p>
           <p className="text-2xl font-bold text-stone-900 mt-1">${metrics.periodRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="flex justify-between text-xs text-stone-600 mt-2 pt-2 border-t border-stone-200">
+          <div className="flex justify-between text-xs text-stone-600 mt-2 pt-2 border-t border-stone-200 flex-wrap gap-1">
             <span>Etsy: ${financialData.revenue.netEtsySales.toFixed(0)}</span>
+            {financialData.revenue.squareInPersonRevenue > 0 && (
+              <span>In-Person: ${financialData.revenue.squareInPersonRevenue.toFixed(0)}</span>
+            )}
             <span>Custom: ${financialData.revenue.customRevenueTotal.toFixed(0)}</span>
           </div>
         </div>
