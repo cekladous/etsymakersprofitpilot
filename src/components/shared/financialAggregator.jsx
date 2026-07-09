@@ -433,7 +433,7 @@ export function aggregateFinancials(data, dateRange) {
 
   // 7b) Etsy Plus Subscription — from EtsyStatementLine ads section (not in Fee entity)
   const etsyPlusSubscription = stmtAdsLines
-    .filter(l => l.fee_type === 'other_fee')
+    .filter(l => l.fee_type === 'etsy_plus_subscription')
     .reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0);
 
   // 8) Etsy Offsite Ads

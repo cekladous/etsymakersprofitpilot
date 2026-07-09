@@ -137,7 +137,7 @@ const classifyStatementLine = (row) => {
 
   // Etsy Plus / subscription fees appear under "Marketing" on Etsy's statement
   if (titleL.includes('etsy plus') || titleL.includes('subscription')) {
-    return { category: 'fee', section: 'ads', fee_type: 'other_fee', order_id: orderId };
+    return { category: 'fee', section: 'ads', fee_type: 'etsy_plus_subscription', order_id: orderId };
   }
   
   if (titleL.includes('shipping label')) {

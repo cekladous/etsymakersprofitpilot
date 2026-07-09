@@ -49,6 +49,7 @@
         "other_fee",
         "etsy_ads",
         "offsite_ads",
+        "etsy_plus_subscription",
         "shipping_label",
         "other_postage"
       ],

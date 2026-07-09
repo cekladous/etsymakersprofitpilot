@@ -132,6 +132,7 @@ export default function StatementSummary({ user }) {
     const missing = [];
     const hasOffsiteAds = statementLines.some(l => l.fee_type === 'offsite_ads');
     const hasEtsyPlus = statementLines.some(l =>
+      l.fee_type === 'etsy_plus_subscription' ||
       (l.description || '').toLowerCase().includes('etsy plus') ||
       (l.description || '').toLowerCase().includes('subscription')
     );
