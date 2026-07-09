@@ -101,6 +101,12 @@ export default function EtsyPaymentAccountImport({ open, onOpenChange, embedded 
           updateData.refund_amount = refundAmount;
           result.refundsUpdated++;
           hasChanges = true;
+
+          // Set status based on refund amount vs order total
+          const ordTotal = existingOrder.order_total || 0;
+          if (refundAmount > 0) {
+            updateData.status = (ordTotal > 0 && refundAmount >= ordTotal - 0.01) ? "Canceled" : "Refunded";
+          }
         }
 
         // 2. Only set channel info if order doesn't already have it

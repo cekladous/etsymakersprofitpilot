@@ -211,8 +211,24 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
             const country = getRowValue(normalized, "Ship Country");
 
             const address = [street1, street2, city, state, zip, country]
-              .filter(Boolean)
-              .join(", ");
+             .filter(Boolean)
+             .join(", ");
+
+            // Parse refund amount from RefundAmount column (various header spellings)
+            const refundAmount = parseMoney(getRowValue(normalized, "RefundAmount", "Refund Amount", "Refund"));
+            const orderTotalVal = parseMoney(getRowValue(normalized, "Order Total"));
+
+            // Determine order status from Status column + refund amount
+            const rawStatus = String(getRowValue(normalized, "Status") || "").trim().toUpperCase();
+            let orderStatus = getRowValue(normalized, "Status") || "completed";
+            if (["CANCELED", "CANCELLED"].includes(rawStatus)) {
+             orderStatus = "Canceled";
+            } else if (rawStatus === "REFUNDED") {
+             orderStatus = "Refunded";
+            } else if (refundAmount > 0) {
+             // Full refund (refund >= order total) → Canceled; partial → Refunded
+             orderStatus = (orderTotalVal > 0 && refundAmount >= orderTotalVal - 0.01) ? "Canceled" : "Refunded";
+            }
 
             return {
              sale_date: parseDate(getRowValue(normalized, "Sale Date", "Order Date")),
@@ -238,7 +254,10 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
              adjusted_net_order_amount: parseMoney(getRowValue(normalized, "Adjusted Net Order Amount")),
              payment_method: getRowValue(normalized, "Payment Method"),
              date_shipped: parseDate(getRowValue(normalized, "Date Shipped")),
-             status: getRowValue(normalized, "Status") || "completed",
+             status: orderStatus,
+             // Only include refund_amount when non-zero to avoid overwriting
+             // existing refund data when the CSV row has no refund info
+             ...(refundAmount > 0 ? { refund_amount: refundAmount } : {}),
              currency: getRowValue(normalized, "Currency"),
              order_type: getRowValue(normalized, "Order Type"),
              payment_type: getRowValue(normalized, "Payment Type"),

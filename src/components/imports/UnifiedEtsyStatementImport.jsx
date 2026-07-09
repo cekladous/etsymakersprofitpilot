@@ -641,7 +641,16 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
           if (entityId) {
             const existing = existingOrderMap[orderId];
             const currentRefund = existing?.refund_amount || 0;
-            refundUpdates.push({ id: entityId, refund_amount: currentRefund + refundAmount });
+            const newRefundTotal = currentRefund + refundAmount;
+            const updateObj = { id: entityId, refund_amount: newRefundTotal };
+            // Set status: full refund → Canceled, partial → Refunded
+            const ordTotal = existing?.order_total || 0;
+            if (ordTotal > 0 && newRefundTotal >= ordTotal - 0.01) {
+              updateObj.status = "Canceled";
+            } else {
+              updateObj.status = "Refunded";
+            }
+            refundUpdates.push(updateObj);
           }
         }
         if (refundUpdates.length > 0) {
