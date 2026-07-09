@@ -369,12 +369,11 @@ export default function Orders() {
   // Etsy Fees: all lines in the 'fees' section (listing, transaction, processing, share_save, other)
   // Marketing: all lines in the 'ads' section (etsy ads, offsite ads, Etsy Plus)
   // Split by section to match Etsy's official statement categories
+  // Fees are stored as negative amounts, credits as positive amounts.
+  // Negating the signed amount adds charges and subtracts credits — no Math.abs().
   const etsyFees = statementPeriodLines
     .filter(l => l.section === 'fees')
-    .reduce((sum, l) => {
-      const amt = Math.abs(l.amount || 0);
-      return sum + (l.fee_type === 'share_save_credit' ? -amt : amt);
-    }, 0);
+    .reduce((sum, l) => sum + (-(l.amount || 0)), 0);
 
   const marketingTotal = statementPeriodLines
     .filter(l => l.section === 'ads')
