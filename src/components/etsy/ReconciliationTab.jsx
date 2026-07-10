@@ -377,17 +377,17 @@ export default function ReconciliationTab({ user }) {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-stone-900">Statement Review</h3>
 
-        {totalUnmatched > 0 && (
+        {allUnmatchedRows.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-amber-900 text-sm">{totalUnmatched} rows need review</p>
+              <p className="font-semibold text-amber-900 text-sm">{allUnmatchedRows.length} rows need review</p>
               <p className="text-sm text-amber-700">These lines could not be automatically matched. See the table below.</p>
             </div>
           </div>
         )}
 
-        {totalUnmatched === 0 && imports.length > 0 && (
+        {allUnmatchedRows.length === 0 && imports.length > 0 && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             <div>
