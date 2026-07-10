@@ -111,11 +111,11 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   
   if (payment_method === "paypal") {
     processing_fee = 
-      (payment_base * (config.paypal_fee_percent || 3.49)) / 100 + 
+      (payment_base * (config.paypal_fee_percent || 2.99)) / 100 + 
       (config.paypal_fee_fixed || 0.49);
   } else if (payment_method === "square") {
     processing_fee = 
-      (payment_base * (config.square_fee_percent || 2.9)) / 100 + 
+      (payment_base * (config.square_fee_percent || 3.3)) / 100 + 
       (config.square_fee_fixed || 0.30);
   } else if (payment_method === "venmo_business") {
     processing_fee = 

@@ -60,9 +60,9 @@ export default function SettingsTool() {
     etsy_transaction_fee_percent: 6.5,
     payment_processing_fee_percent: 3.0,
     payment_processing_fee_fixed: 0.25,
-    paypal_fee_percent: 3.49,
+    paypal_fee_percent: 2.99,
     paypal_fee_fixed: 0.49,
-    square_fee_percent: 2.9,
+    square_fee_percent: 3.3,
     square_fee_fixed: 0.30,
     venmo_business_fee_percent: 1.9,
     venmo_business_fee_fixed: 0.10,
@@ -71,20 +71,20 @@ export default function SettingsTool() {
     shopify_fee_percent: 2.9,
     shopify_fee_fixed: 0.30,
     fee_country: "US",
-    fee_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
+    fee_source_url: "https://help.etsy.com/hc/en-us/articles/115014483627-What-are-the-Fees-and-Taxes-for-Selling-on-Etsy",
     fees_last_verified_date: "",
-    paypal_source_url: "https://www.paypal.com/us/webapps/mpp/merchant-fees",
+    paypal_source_url: "https://www.paypal.com/us/business/paypal-business-fees",
     paypal_last_verified_date: "",
-    square_source_url: "https://squareup.com/us/en/pricing",
+    square_source_url: "https://squareup.com/help/us/en/article/5068-what-are-square-s-fees",
     square_last_verified_date: "",
-    venmo_source_url: "https://help.venmo.com/hc/en-us/articles/360016096533",
+    venmo_source_url: "https://help.venmo.com/cs/articles/business-profile-transaction-fees-vhel221",
     venmo_last_verified_date: "",
-    squarespace_source_url: "https://www.squarespace.com/payment-processing",
+    squarespace_source_url: "https://support.squarespace.com/hc/en-us/articles/27853679334157-Transaction-fees-and-payment-processing-rates",
     squarespace_last_verified_date: "",
-    shopify_source_url: "https://help.shopify.com/en/manual/payments/shopify-payments",
+    shopify_source_url: "https://www.shopify.com/pricing",
     shopify_last_verified_date: "",
     share_save_rate_pct: 4.0,
-    share_save_source_url: "https://help.etsy.com/hc/en-us/articles/360035902374",
+    share_save_source_url: "https://help.etsy.com/hc/en-us/articles/115014483627-What-are-the-Fees-and-Taxes-for-Selling-on-Etsy",
     advertising_type: "none",
     etsy_ads_rate: 0,
     etsy_ads_rate_type: "percent",
@@ -183,9 +183,9 @@ export default function SettingsTool() {
         etsy_transaction_fee_percent: s.etsy_transaction_fee_percent ?? 6.5,
         payment_processing_fee_percent: s.payment_processing_fee_percent ?? 3.0,
         payment_processing_fee_fixed: s.payment_processing_fee_fixed ?? 0.25,
-        paypal_fee_percent: s.paypal_fee_percent ?? 3.49,
+        paypal_fee_percent: s.paypal_fee_percent ?? 2.99,
         paypal_fee_fixed: s.paypal_fee_fixed ?? 0.49,
-        square_fee_percent: s.square_fee_percent ?? 2.9,
+        square_fee_percent: s.square_fee_percent ?? 3.3,
         square_fee_fixed: s.square_fee_fixed ?? 0.30,
         venmo_business_fee_percent: s.venmo_business_fee_percent ?? 1.9,
         venmo_business_fee_fixed: s.venmo_business_fee_fixed ?? 0.10,
@@ -194,20 +194,20 @@ export default function SettingsTool() {
         shopify_fee_percent: s.shopify_fee_percent ?? 2.9,
         shopify_fee_fixed: s.shopify_fee_fixed ?? 0.30,
         fee_country: s.fee_country || "US",
-        fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
+        fee_source_url: s.fee_source_url || "https://help.etsy.com/hc/en-us/articles/115014483627-What-are-the-Fees-and-Taxes-for-Selling-on-Etsy",
         fees_last_verified_date: s.fees_last_verified_date || "",
-        paypal_source_url: s.paypal_source_url || "https://www.paypal.com/us/webapps/mpp/merchant-fees",
+        paypal_source_url: s.paypal_source_url || "https://www.paypal.com/us/business/paypal-business-fees",
         paypal_last_verified_date: s.paypal_last_verified_date || "",
-        square_source_url: s.square_source_url || "https://squareup.com/us/en/pricing",
+        square_source_url: s.square_source_url || "https://squareup.com/help/us/en/article/5068-what-are-square-s-fees",
         square_last_verified_date: s.square_last_verified_date || "",
-        venmo_source_url: s.venmo_source_url || "https://help.venmo.com/hc/en-us/articles/360016096533",
+        venmo_source_url: s.venmo_source_url || "https://help.venmo.com/cs/articles/business-profile-transaction-fees-vhel221",
         venmo_last_verified_date: s.venmo_last_verified_date || "",
-        squarespace_source_url: s.squarespace_source_url || "https://www.squarespace.com/payment-processing",
+        squarespace_source_url: s.squarespace_source_url || "https://support.squarespace.com/hc/en-us/articles/27853679334157-Transaction-fees-and-payment-processing-rates",
         squarespace_last_verified_date: s.squarespace_last_verified_date || "",
-        shopify_source_url: s.shopify_source_url || "https://help.shopify.com/en/manual/payments/shopify-payments",
+        shopify_source_url: s.shopify_source_url || "https://www.shopify.com/pricing",
         shopify_last_verified_date: s.shopify_last_verified_date || "",
         share_save_rate_pct: s.share_save_rate_pct ?? 4.0,
-        share_save_source_url: s.share_save_source_url || "https://help.etsy.com/hc/en-us/articles/360035902374",
+        share_save_source_url: s.share_save_source_url || "https://help.etsy.com/hc/en-us/articles/115014483627-What-are-the-Fees-and-Taxes-for-Selling-on-Etsy",
         advertising_type: s.advertising_type || "none",
         etsy_ads_rate: s.etsy_ads_rate || 0,
         etsy_ads_rate_type: s.etsy_ads_rate_type || "percent",
@@ -686,10 +686,10 @@ export default function SettingsTool() {
                       <Input
                         type="number"
                         step="0.01"
-                        value={settingsData.paypal_fee_percent ?? 3.49}
+                        value={settingsData.paypal_fee_percent ?? 2.99}
                         onChange={(e) => setSettingsData({ ...settingsData, paypal_fee_percent: parseFloat(e.target.value) || 0 })}
                       />
-                      <p className="text-xs text-stone-500">Current US rate: 3.49%</p>
+                      <p className="text-xs text-stone-500">Current US rate: 2.99%</p>
                     </div>
                     <div className="space-y-2">
                       <Label>PayPal Fixed Fee ($)</Label>
@@ -758,10 +758,10 @@ export default function SettingsTool() {
                       <Input
                         type="number"
                         step="0.01"
-                        value={settingsData.square_fee_percent ?? 2.9}
+                        value={settingsData.square_fee_percent ?? 3.3}
                         onChange={(e) => setSettingsData({ ...settingsData, square_fee_percent: parseFloat(e.target.value) || 0 })}
                       />
-                      <p className="text-xs text-stone-500">Current online rate: 2.9%</p>
+                      <p className="text-xs text-stone-500">Current online rate: 3.3%</p>
                     </div>
                     <div className="space-y-2">
                       <Label>Square Fixed Fee ($)</Label>
