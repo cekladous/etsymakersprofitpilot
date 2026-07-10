@@ -400,7 +400,8 @@ export default function Orders() {
   // Fee breakdown: use OrderFee (per-order split) for listing/transaction/processing/share_save/other,
   // and statement lines for shop-level items (etsy_ads, offsite_ads, shipping, postage).
   const feeBreakdown = {
-    listing: statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === 'listing').reduce((s, l) => s + Math.abs(l.amount || 0), 0),
+    listing: relevantOrderFees.reduce((s, f) => s + (f.listing_fees || 0), 0)
+      || statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === 'listing').reduce((s, l) => s + Math.abs(l.amount || 0), 0),
     transaction: relevantOrderFees.reduce((s, f) => s + (f.transaction_fees || 0), 0),
     processing: relevantOrderFees.reduce((s, f) => s + (f.processing_fees || 0), 0),
     etsy_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "etsy_ads").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
