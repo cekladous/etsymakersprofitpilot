@@ -472,17 +472,7 @@ export default function ReconciliationTab({ user }) {
           </Card>
         )}
 
-        {totalUnmatched > 0 && allUnmatchedRows.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-amber-900 text-sm">{totalUnmatched} unmatched rows detected during import</p>
-              <p className="text-sm text-amber-700 mt-1">
-                Row-level details were not saved. Re-import the statement to see each row.
-              </p>
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );
