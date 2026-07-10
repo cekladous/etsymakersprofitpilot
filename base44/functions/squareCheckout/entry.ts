@@ -9,10 +9,31 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { amount, description, currency = 'USD' } = await req.json();
+    // SECURITY: Accept an invoiceId — never a client-supplied amount.
+    // The charge amount is fetched from the Invoice record server-side
+    // to prevent price manipulation.
+    const { invoiceId, currency = 'USD' } = await req.json();
 
-    if (!amount || amount <= 0) {
-      return Response.json({ error: 'Invalid amount' }, { status: 400 });
+    if (!invoiceId) {
+      return Response.json({ error: 'Invoice ID is required' }, { status: 400 });
+    }
+
+    // Fetch the invoice from the database and verify ownership
+    const invoices = await base44.entities.Invoice.filter({
+      id: invoiceId,
+      owner_user_id: user.id
+    });
+
+    if (!invoices || invoices.length === 0) {
+      return Response.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    const invoice = invoices[0];
+
+    // Use the invoice's balance due as the charge amount (server-side, not client-supplied)
+    const amount = Number(invoice.balance_due || invoice.total || 0);
+    if (amount <= 0) {
+      return Response.json({ error: 'Invoice has no balance due' }, { status: 400 });
     }
 
     const squareApiKey = Deno.env.get('SQUARE_API_KEY');
@@ -38,7 +59,7 @@ Deno.serve(async (req) => {
     // Create Square payment - requires a valid card nonce from Square Payment Form
     // The source_id must be a tokenized card nonce from Square's Web Payment SDK
     const { sourceId } = await req.json();
-    
+
     if (!sourceId || sourceId.startsWith('cnp:')) {
       return Response.json({ error: 'Valid payment token required' }, { status: 400 });
     }
@@ -57,8 +78,8 @@ Deno.serve(async (req) => {
           currency: currency
         },
         location_id: squareLocationId,
-        reference_id: `order_${user.id}_${Date.now()}`,
-        note: description || 'Payment from Etsy Maker Profit Pilot'
+        reference_id: `invoice_${invoiceId}`,
+        note: `Payment for ${invoice.invoice_number || invoiceId}`
       })
     });
 

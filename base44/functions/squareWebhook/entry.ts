@@ -16,12 +16,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Webhook not configured' }, { status: 500 });
     }
 
-    // Verify webhook signature
+    // Verify webhook signature using standard HMAC-SHA256
+    // (Square uses HMAC-SHA256 — not a simple concatenated hash)
     const encoder = new TextEncoder();
-    const data = encoder.encode(webhookSecret + body);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const computedSignature = btoa(String.fromCharCode.apply(null, hashArray));
+    const keyData = encoder.encode(webhookSecret);
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const bodyData = encoder.encode(body);
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, bodyData);
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const computedSignature = btoa(String.fromCharCode.apply(null, signatureArray));
 
     if (computedSignature !== signature) {
       console.warn('Invalid webhook signature');

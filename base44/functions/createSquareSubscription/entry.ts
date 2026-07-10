@@ -126,30 +126,13 @@ Deno.serve(async (req) => {
     if (!checkoutRes.ok) {
       const errBody = await checkoutRes.text();
       console.error('Square checkout error:', errBody);
-      // Fall back to creating subscription record directly with free tier
-      let subscription = await base44.entities.Subscription.filter({
-        owner_user_id: user.id
-      });
-      subscription = subscription[0];
-
-      const now = new Date();
-      if (!subscription) {
-        subscription = await base44.entities.Subscription.create({
-          owner_user_id: user.id,
-          plan_id: planId,
-          status: 'trial',
-          current_period_start: now.toISOString().split('T')[0],
-          current_period_end: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          imports_used_this_month: 0,
-          active_users: 1,
-          founders_pricing: true
-        });
-      }
-      return Response.json({ 
-        success: true,
-        subscription,
-        message: 'Subscription created in trial mode'
-      });
+      // SECURITY: Do NOT fall back to a free trial on Square API failure.
+      // Returning an error ensures users cannot bypass payment by
+      // deliberately misconfiguring their Square location ID.
+      return Response.json({
+        error: 'Failed to create checkout link. Please verify your Square integration settings and try again.',
+        details: errBody
+      }, { status: 502 });
     }
 
     const checkout = await checkoutRes.json();
