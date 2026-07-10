@@ -35,6 +35,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Square location not configured' }, { status: 400 });
     }
 
+    // Validate the Origin header against an allow-list to prevent open redirect.
+    // Only base44.app subdomains are accepted; anything else is rejected.
+    const origin = req.headers.get('origin') || '';
+    const isAllowedOrigin = /^https:\/\/[a-z0-9-]+\.base44\.app$/.test(origin);
+    if (!isAllowedOrigin) {
+      return Response.json({ error: 'Invalid origin for redirect' }, { status: 400 });
+    }
+
     const planPrices = { maker_pro: 900, maker_plus: 1400 }; // cents
 
     // Create a Square Checkout payment link - redirects user to Square's hosted page
@@ -61,7 +69,7 @@ Deno.serve(async (req) => {
         },
         checkout_options: {
           allow_tipping: false,
-          redirect_url: `${req.headers.get('origin') || ''}/settings?tab=subscription&success=true`,
+          redirect_url: `${origin}/settings?tab=subscription&success=true`,
           ask_for_shipping_address: false
         },
         pre_populated_data: {

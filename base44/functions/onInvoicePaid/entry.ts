@@ -4,6 +4,13 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    // Require authentication — prevents unauthenticated direct HTTP calls
+    // from forging invoice-paid events and manipulating financial records.
+    const isAuthenticated = await base44.auth.isAuthenticated();
+    if (!isAuthenticated) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let payload;
     try {
       payload = await req.json();
