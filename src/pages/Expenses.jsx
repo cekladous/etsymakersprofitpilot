@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw, CopyCheck } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +62,7 @@ export default function Expenses() {
   const [navSource, setNavSource] = useState(null);
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
   const [pdfImportOpen, setPdfImportOpen] = useState(false);
+  const [deduping, setDeduping] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -217,6 +218,20 @@ export default function Expenses() {
         }
       }
 
+      // Check for duplicates by date+amount+description
+      const dedupeKey = `${parsed.date}|${Math.abs(parsed.amount).toFixed(2)}|${(parsed.description || '').substring(0, 40).trim().toLowerCase()}`;
+      const existingByContent = expenses.find(e =>
+        `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}` === dedupeKey
+      );
+      if (existingByContent) {
+        skipped++;
+        skippedRecords.push({
+          row,
+          reason: "Duplicate (same date, amount, and description)"
+        });
+        continue;
+      }
+
       await base44.entities.Expense.create({
         ...parsed,
         owner_user_id: user.id,
@@ -289,6 +304,68 @@ export default function Expenses() {
       id: expense.id,
       data: { category, is_categorized: true },
     });
+  };
+
+  const handleRemoveDuplicates = async () => {
+    setDeduping(true);
+    try {
+      // Fetch all expenses fresh (not just the filtered view)
+      const allExpenses = await base44.entities.Expense.filter({ owner_user_id: user.id }, "-date");
+      const allBusinessExpenses = await base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, "-date", 1000);
+
+      const toDeleteExpense = [];
+      const toDeleteBusiness = [];
+      const seenExpense = new Set();
+      const seenBusiness = new Set();
+
+      for (const e of allExpenses) {
+        const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`;
+        if (seenExpense.has(key)) {
+          toDeleteExpense.push(e.id);
+        } else {
+          seenExpense.add(key);
+        }
+      }
+
+      for (const e of allBusinessExpenses) {
+        const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`;
+        if (seenBusiness.has(key)) {
+          toDeleteBusiness.push(e.id);
+        } else {
+          seenBusiness.add(key);
+        }
+      }
+
+      // Delete duplicates in parallel batches
+      const deleteBatch = async (ids, entityName) => {
+        for (let i = 0; i < ids.length; i += 10) {
+          const chunk = ids.slice(i, i + 10);
+          await Promise.all(chunk.map(id => base44.entities[entityName].delete(id)));
+        }
+      };
+
+      await deleteBatch(toDeleteExpense, "Expense");
+      await deleteBatch(toDeleteBusiness, "BusinessExpense");
+
+      const totalRemoved = toDeleteExpense.length + toDeleteBusiness.length;
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
+
+      toast({
+        title: totalRemoved > 0 ? "Duplicates Removed" : "No Duplicates Found",
+        description: totalRemoved > 0
+          ? `Removed ${toDeleteExpense.length} duplicate expense(s) and ${toDeleteBusiness.length} duplicate business expense(s).`
+          : "Your expense records are already clean.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to remove duplicates: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setDeduping(false);
+    }
   };
 
   // Calculate date range
@@ -876,6 +953,10 @@ export default function Expenses() {
           
           <div className="h-6 w-px bg-stone-300 mx-1"></div>
           
+          <Button variant="outline" onClick={handleRemoveDuplicates} size="sm" disabled={deduping}>
+            <CopyCheck className="w-4 h-4 mr-2" />
+            {deduping ? "Checking..." : "Remove Duplicates"}
+          </Button>
           <Button variant="outline" onClick={exportCSV} size="sm">
             <Download className="w-4 h-4 mr-2" />
             Export

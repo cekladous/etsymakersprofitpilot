@@ -128,10 +128,13 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         })).filter(e => e.date); // Skip entries with unparseable dates
         // Deduplicate: fetch existing business expenses and skip already-imported ones
         const existing = await base44.entities.BusinessExpense.filter({ owner_user_id: currentUser.id });
-        const existingKeys = new Set(existing.map(e => `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`));
+        const existingKeys = new Set(existing.map(e => `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`));
+        const seenInBatch = new Set();
         const expensesForImport = expensesToCreate.filter(e => {
-          const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`;
-          return !existingKeys.has(key);
+          const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`;
+          if (existingKeys.has(key) || seenInBatch.has(key)) return false;
+          seenInBatch.add(key);
+          return true;
         });
         if (expensesForImport.length === 0) return { importedCount: 0, totalFound: transactions.length };
         // Chunked bulk create with retry for reliability
