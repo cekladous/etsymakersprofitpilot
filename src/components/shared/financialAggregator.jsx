@@ -5,6 +5,7 @@
  */
 
 import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
+import { parseLocalDate } from "@/components/shared/periodHelpers";
 
 /**
  * Safely convert any value to a number, defaulting to 0
@@ -38,7 +39,7 @@ export function aggregateFinancials(data, dateRange) {
   
   const filterByDate = (items, dateField) => {
     return (items || []).filter(item => {
-      const d = new Date(item[dateField]);
+      const d = parseLocalDate(item[dateField]);
       return d >= start && d <= end;
     });
   };
@@ -58,7 +59,7 @@ export function aggregateFinancials(data, dateRange) {
   // Generate occurrence dates for a recurring expense within the period
   const getRecurringOccurrences = (expense, periodStart, periodEnd) => {
     const occurrences = [];
-    const expenseDate = new Date(expense.date);
+    const expenseDate = parseLocalDate(expense.date);
     if (expenseDate > periodEnd) return occurrences;
 
     let current = new Date(expenseDate);
@@ -87,7 +88,7 @@ export function aggregateFinancials(data, dateRange) {
           result.push({ ...e, date: occDate });
         });
       } else {
-        const d = new Date(e.date);
+        const d = parseLocalDate(e.date);
         if (d >= start && d <= end) {
           result.push(e);
         }

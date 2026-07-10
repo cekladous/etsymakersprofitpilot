@@ -60,7 +60,12 @@ export function calculateNetEarnings(order, orderFees) {
   const netRevenue = Math.max(0, revenueExclTax - refundAmount);
 
   if (orderFees) {
-    return netRevenue - perOrderFees(orderFees);
+    const fees = perOrderFees(orderFees);
+    // For refunded orders, fee credits (negative perOrderFees) only reverse
+    // original charges and should never create positive profit. Cap at 0.
+    const isRefunded = refundAmount > 0;
+    const effectiveFees = isRefunded ? Math.max(0, fees) : fees;
+    return netRevenue - effectiveFees;
   }
 
   // Fallback: use Square's processing fee for in-person Square orders,

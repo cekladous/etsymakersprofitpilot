@@ -5,13 +5,29 @@
 import { format, startOfMonth, startOfQuarter, startOfYear, getQuarter } from "date-fns";
 
 /**
+ * Parse a date string (yyyy-MM-dd) as a LOCAL calendar date at midnight,
+ * avoiding the UTC timezone shift that causes month-boundary bucketing errors.
+ * Falls back to native Date parsing for non-ISO formats.
+ */
+export function parseLocalDate(value) {
+  if (!value) return new Date(NaN);
+  if (value instanceof Date) return value;
+  const str = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(str);
+}
+
+/**
  * Get period key from date
  * @param {string|Date} dateISO - Date string or Date object
  * @param {string} mode - "month" | "quarter" | "year"
  * @returns {string} Period key (e.g., "2024-01", "2024-Q1", "2024")
  */
 export function getPeriodKey(dateISO, mode) {
-  const date = new Date(dateISO);
+  const date = parseLocalDate(dateISO);
   
   if (mode === "month") {
     return format(date, "yyyy-MM");
@@ -32,7 +48,7 @@ export function getPeriodKey(dateISO, mode) {
  * @returns {Date} First day of period
  */
 export function getPeriodStart(dateISO, mode) {
-  const date = new Date(dateISO);
+  const date = parseLocalDate(dateISO);
   
   if (mode === "month") {
     return startOfMonth(date);

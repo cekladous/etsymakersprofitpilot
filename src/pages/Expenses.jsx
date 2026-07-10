@@ -228,8 +228,22 @@ export default function Expenses() {
     return { success: true, added, updated, skipped, skippedRecords };
   };
 
+  const parseDateSafe = (dateStr) => {
+    if (!dateStr) return null;
+    const formats = ["MM/dd/yyyy", "yyyy-MM-dd", "MMM d, yyyy", "MMM dd, yyyy", "d-MMM-yyyy", "MM-dd-yyyy", "dd/MM/yyyy", "M/d/yyyy", "M/d/yy"];
+    for (const fmt of formats) {
+      try {
+        const d = parse(dateStr, fmt, new Date());
+        if (d instanceof Date && !isNaN(d.getTime())) return d;
+      } catch (e) { /* try next format */ }
+    }
+    const native = new Date(dateStr);
+    return (native instanceof Date && !isNaN(native.getTime())) ? native : null;
+  };
+
   const parseExpenseRow = (row) => {
     const date = row["Date"] || row["Transaction Date"] || row["Posted Date"] || "";
+    const parsedDate = parseDateSafe(date);
     const amountStr = row["Amount"] || row["Debit"] || row["Charge"] || row["Credit"] || "";
     const typeStr = (row["Type"] || "sale").toLowerCase();
     
@@ -253,7 +267,7 @@ export default function Expenses() {
     
     return {
       transaction_id: row["Transaction ID"] || row["Reference"] || `${date}-${amountStr}`,
-      date: date ? format(new Date(date), "yyyy-MM-dd") : "",
+      date: parsedDate ? format(parsedDate, "yyyy-MM-dd") : "",
       description: row["Description"] || row["Merchant"] || row["Name"] || "",
       amount: amount,
       type: type,
@@ -596,11 +610,14 @@ export default function Expenses() {
     },
     {
       header: "Date",
-      render: (row) => (
-        <span className="text-stone-600">
-          {row.date ? format(new Date(row.date), "MMM d, yyyy") : "-"}
-        </span>
-      ),
+      render: (row) => {
+        const d = row.date ? new Date(row.date) : null;
+        return (
+          <span className="text-stone-600">
+            {d && !isNaN(d.getTime()) ? format(d, "MMM d, yyyy") : "-"}
+          </span>
+        );
+      },
     },
     {
       header: "Description",
