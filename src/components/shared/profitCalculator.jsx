@@ -13,9 +13,9 @@ export const DEFAULT_FEE_CONFIG = {
   etsy_ads_rate: 0,
   etsy_ads_rate_type: "percent",
   offsite_ads_rate: 15,
-  paypal_fee_percent: 3.49,
+  paypal_fee_percent: 2.99,
   paypal_fee_fixed: 0.49,
-  square_fee_percent: 2.9,
+  square_fee_percent: 3.3,
   square_fee_fixed: 0.30,
   venmo_business_fee_percent: 1.9,
   venmo_business_fee_fixed: 0.10,
@@ -39,7 +39,7 @@ export const DEFAULT_FEE_CONFIG = {
  * @param {number} input.share_save_discount - Share & Save discount
  * @param {string} input.share_save_discount_type - "percent" or "fixed"
  * @param {number} input.share_save_fee_rate - Share & Save credit rate (default 4%)
- * @param {string} input.payment_method - "etsy" or "paypal" or other
+ * @param {string} input.payment_method - "etsy", "paypal", "square", "squarespace", "venmo_business", "venmo_personal", "zelle", "cash"
  * @param {Object} feeConfig - Fee configuration (optional, uses defaults if not provided)
  * @returns {Object} Detailed profit breakdown
  */

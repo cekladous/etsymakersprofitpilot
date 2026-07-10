@@ -94,8 +94,8 @@
     },
     "paypal_fee_percent": {
       "type": "number",
-      "default": 3.49,
-      "description": "PayPal fee percentage (2026 US: 3.49%)"
+      "default": 2.99,
+      "description": "PayPal fee percentage (2026 US: 2.99%)"
     },
     "paypal_fee_fixed": {
       "type": "number",
@@ -104,8 +104,8 @@
     },
     "square_fee_percent": {
       "type": "number",
-      "default": 2.9,
-      "description": "Square online fee percentage (2026: 2.9%)"
+      "default": 3.3,
+      "description": "Square online fee percentage (2026: 3.3%)"
     },
     "square_fee_fixed": {
       "type": "number",
@@ -125,12 +125,12 @@
     "squarespace_fee_percent": {
       "type": "number",
       "default": 2.9,
-      "description": "Squarespace Payments fee percentage (Core/Plus/Advanced: 2.9%)"
+      "description": "Squarespace Payments fee percentage (Basic/Core: 2.9%, Plus: 2.7%, Advanced: 2.5%)"
     },
     "squarespace_fee_fixed": {
       "type": "number",
       "default": 0.3,
-      "description": "Squarespace Payments fixed fee (Core/Plus/Advanced: $0.30)"
+      "description": "Squarespace Payments fixed fee ($0.30)"
     },
     "squarespace_source_url": {
       "type": "string",
