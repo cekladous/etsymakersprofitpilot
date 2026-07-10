@@ -400,7 +400,8 @@ export default function Dashboard() {
     try {
       const response = await base44.functions.invoke('exportDashboardReport', {
         format: exportFormat,
-        financialData,
+        periodStart: format(periodStart, 'yyyy-MM-dd'),
+        periodEnd: format(periodEnd, 'yyyy-MM-dd'),
         periodLabel: getPeriodLabel()
       });
 
