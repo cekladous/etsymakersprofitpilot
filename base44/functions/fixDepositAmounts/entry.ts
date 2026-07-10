@@ -29,8 +29,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    // Fetch all deposits with zero or near-zero amounts
-    const allDeposits = await base44.entities.Transfer.list();
+    console.log(`[AUDIT] fixDepositAmounts invoked by user ${user.id} (${user.email || 'no email'})`);
+
+    // Fetch deposits scoped to the calling admin — never access other users' data
+    const allDeposits = await base44.entities.Transfer.filter({ owner_user_id: user.id });
     const depositsToFix = allDeposits.filter(d => 
       d.type === "etsy_deposit" && (!d.amount || d.amount === 0)
     );
