@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -24,6 +24,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
   const [userRules, setUserRules] = useState([]);
+  const parseSessionRef = useRef(0);
 
   // Fetch user's auto-categorization rules from Settings when dialog opens
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   };
 
   const handleParse = async (pdfFile) => {
+    const sessionId = ++parseSessionRef.current;
     setParsing(true);
     setError(null);
     setTransactions([]);
@@ -91,6 +93,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
 
       const result = await Promise.race([extractPromise, timeoutPromise]);
 
+      if (parseSessionRef.current !== sessionId) return;
       if (result.status === 'success' && result.output?.transactions) {
         setTransactions(result.output.transactions.map(t => {
           const desc = (t.description || '').toLowerCase();
@@ -106,9 +109,10 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         throw new Error(result.details || 'Failed to extract transactions from PDF.');
       }
     } catch (e) {
+      if (parseSessionRef.current !== sessionId) return;
       setError(`Error parsing PDF: ${e.message || String(e)}`);
     } finally {
-      setParsing(false);
+      if (parseSessionRef.current === sessionId) setParsing(false);
     }
   };
 
@@ -261,6 +265,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   };
 
   const resetState = () => {
+    parseSessionRef.current++; // invalidate any in-flight parse
     setFile(null);
     setParsing(false);
     setTransactions([]);
