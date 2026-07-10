@@ -601,11 +601,18 @@ export default function Expenses() {
   const totals = useMemo(() => {
     // Always calculate from the actual filtered expenses shown in the table
     const totalAmount = filteredExpenses.reduce((sum, e) => {
-      const amount = e.amount || 0;
-      return e.type === "return" ? sum - amount : sum + amount;
+      const amount = Math.abs(e.amount || 0);
+      const isReturn = e.type === "return" || (e.amount || 0) < 0;
+      return isReturn ? sum - amount : sum + amount;
     }, 0);
-    const totalDebits = filteredExpenses.reduce((sum, e) => e.type !== "return" ? sum + (e.amount || 0) : sum, 0);
-    const totalCredits = filteredExpenses.reduce((sum, e) => e.type === "return" ? sum + (e.amount || 0) : sum, 0);
+    const totalDebits = filteredExpenses.reduce((sum, e) => {
+      const isReturn = e.type === "return" || (e.amount || 0) < 0;
+      return isReturn ? sum : sum + Math.abs(e.amount || 0);
+    }, 0);
+    const totalCredits = filteredExpenses.reduce((sum, e) => {
+      const isReturn = e.type === "return" || (e.amount || 0) < 0;
+      return isReturn ? sum + Math.abs(e.amount || 0) : sum;
+    }, 0);
     
     // For date-filtered views, also calculate Dashboard-compatible breakdown
     let dashboardBreakdown = { orderFees: 0, businessExpenses: totalAmount, feeCredits: 0 };
@@ -641,8 +648,8 @@ export default function Expenses() {
     const grouped = filteredExpenses.reduce((acc, exp) => {
       const cat = exp.category || "other";
       if (!acc[cat]) acc[cat] = 0;
-      const amount = exp.amount || 0;
-      acc[cat] += exp.type === "return" ? -amount : amount;
+      const amount = Math.abs(exp.amount || 0);
+      acc[cat] += (exp.type === "return" || (exp.amount || 0) < 0) ? -amount : amount;
       return acc;
     }, {});
     
@@ -851,7 +858,7 @@ export default function Expenses() {
       header: () => renderSortableHeader("amount", "Amount"),
       render: (row) => {
         const amount = row.amount || 0;
-        const isReturn = row.type === "return";
+        const isReturn = row.type === "return" || amount < 0;
         return (
           <span className={`font-semibold ${isReturn ? "text-emerald-600" : "text-stone-900"}`}>
             {isReturn ? "-" : ""}${Math.abs(amount).toFixed(2)}
