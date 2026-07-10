@@ -6,6 +6,7 @@ import { ChevronRight, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import LineItemDrillDown from "./LineItemDrillDown";
+import { collectDrillDownItems } from "./collectDrillDownItems";
 
 export default function NetProfitStatement({ financialData, dateRange }) {
   const [drillDownOpen, setDrillDownOpen] = useState(false);
@@ -30,117 +31,10 @@ export default function NetProfitStatement({ financialData, dateRange }) {
     }).format(amount);
   };
 
-  const handleDrillDown = (label, categoryName) => {
-    let items = [];
-    
-    // Category mapping for legacy expenses (old category names to new)
-    const legacyCategoryMap = {
-      'materials_supplies': ['materials', 'packaging', 'materials_supplies'],
-      'tools_equipment': ['tools', 'equipment', 'tools_equipment'],
-      'advertising_marketing': ['advertising', 'software', 'advertising_marketing'],
-      'office_expenses': ['utilities', 'office_expenses'],
-      'professional_services': ['professional_services'],
-      'other': ['other', 'maintenance'],
-      'miscellaneous_expenses': ['miscellaneous_expenses'],
-      'shipping_postage': ['shipping', 'shipping_postage'],
-      'software_subscriptions': ['software', 'software_subscriptions'],
-      'etsy_listing_fees': ['etsy_listing_fees'],
-      'etsy_transaction_fees': ['etsy_transaction_fees'],
-      'etsy_processing_fees': ['etsy_processing_fees'],
-      'share_save_refunds_credits': ['share_save_refunds_credits'],
-      'other_fees': ['other_fees'],
-      'etsy_ads': ['etsy_ads'],
-      'etsy_offsite_ads_fees': ['etsy_offsite_ads_fees'],
-      'etsy_shipping': ['etsy_shipping'],
-      'other_postage_costs': ['other_postage_costs'],
-    };
-    
-    // Handle Etsy Sales
-    if (categoryName === "etsy_sales") {
-      const orders = (filteredData.etsyOrders || []).map(o => ({
-        date: o.sale_date,
-        description: `Order #${o.order_id} - ${o.buyer_username || o.buyer_full_name || 'Unknown'}`,
-        vendor: "Etsy",
-        payment_source: o.payment_method || "Etsy",
-        amount: (o.order_value || 0) + (o.shipping_charged || 0),
-      }));
-      items.push(...orders);
-    }
-    
-    // Handle Etsy Refunds
-    if (categoryName === "etsy_refunds") {
-      const refundEntries = (filteredData.etsyLedgerEntries || [])
-        .filter(e => {
-          const title = (e.title || "").toLowerCase();
-          const type = (e.type || "").toLowerCase();
-          return e.matched_category === "etsy_refunds" || 
-                 type.includes("refund") ||
-                 title.includes("refund to buyer");
-        })
-        .map(e => ({
-          date: e.entry_date,
-          description: `${e.title || 'Refund'} - ${e.info || ''}`,
-          vendor: "Etsy",
-          payment_source: "Etsy Payment Ledger",
-          amount: Math.abs(e.net || 0),
-        }));
-      items.push(...refundEntries);
-    }
-    
-    // Include MaterialPurchases for materials_supplies
-    if (categoryName === "materials_supplies") {
-      const purchases = (filteredData.materialPurchases || []).map(p => ({
-        date: p.purchase_date,
-        description: p.material_name,
-        vendor: p.vendor,
-        payment_source: p.payment_method,
-        amount: p.total_cost,
-      }));
-      items.push(...purchases);
-    }
-    
-    // Include BusinessExpenses for this category
-    const expenses = (filteredData.businessExpenses || [])
-      .filter(e => e.category_name === categoryName)
-      .map(e => ({
-        date: e.date,
-        description: e.description,
-        vendor: e.vendor,
-        payment_source: e.payment_source,
-        amount: e.amount,
-      }));
-    
-    items.push(...expenses);
-    
-    // CRITICAL: Include legacy Expense entity (both old and new category names)
-    const legacyCategories = legacyCategoryMap[categoryName] || [categoryName];
-    const legacyExpenses = (filteredData.expenses || [])
-      .filter(e => e.type !== "return" && legacyCategories.includes(e.category))
-      .map(e => ({
-        date: e.date,
-        description: e.description,
-        vendor: e.vendor,
-        payment_source: e.payment_method,
-        amount: e.amount,
-      }));
-    
-    items.push(...legacyExpenses);
-    
-    // Include matched Etsy Ledger entries for fee categories
-    const ledgerEntries = (filteredData.etsyLedgerEntries || [])
-      .filter(e => e.matched_category === categoryName)
-      .map(e => ({
-        date: e.entry_date,
-        description: `${e.title} - ${e.info}`,
-        vendor: "Etsy",
-        payment_source: "Etsy Payment Ledger",
-        amount: Math.abs(e.net || 0),
-      }));
-    
-    items.push(...ledgerEntries);
+  const handleDrillDown = (label, categoryName, expectedTotal) => {
+    const items = collectDrillDownItems(categoryName, filteredData);
     items.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    setDrillDownData({ title: label, items });
+    setDrillDownData({ title: label, items, expectedTotal });
     setDrillDownOpen(true);
   };
 
@@ -198,7 +92,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           `}
           onClick={() => {
             if (hasQuickView) {
-              handleDrillDown(label, categoryName);
+              handleDrillDown(label, categoryName, displayAmount);
             }
           }}
         >
@@ -213,7 +107,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           {hasQuickView && !hasLinkTo && (
             <div 
               className="cursor-pointer"
-              onClick={() => handleDrillDown(label, categoryName)}
+              onClick={() => handleDrillDown(label, categoryName, displayAmount)}
             >
               <ChevronRight className="w-4 h-4 text-stone-400 hover:text-stone-600 transition-colors" />
             </div>
@@ -315,11 +209,13 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row 
             label="Custom Sales A" 
             amount={revenue.customSaleA || 0} 
+            categoryName="custom_sale_a"
             highlight="bg-green-50"
           />
           <Row 
             label="Custom Sales B" 
             amount={revenue.customSaleB || 0} 
+            categoryName="custom_sale_b"
             highlight="bg-green-50"
           />
           <Row 
@@ -338,7 +234,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           <Row label="Listing Fees" amount={sellingExpenses.etsyListingFees || 0} categoryName="etsy_listing_fees" linkTo={buildExpensesLink("etsy_listing_fees")} />
           <Row label="Transaction Fees" amount={sellingExpenses.etsyTransactionFees || 0} categoryName="etsy_transaction_fees" linkTo={buildExpensesLink("etsy_transaction_fees")} />
           <Row label="Processing Fees" amount={sellingExpenses.etsyProcessingFees || 0} categoryName="etsy_processing_fees" linkTo={buildExpensesLink("etsy_processing_fees")} />
-          <Row label="Credits" amount={sellingExpenses.feeCredits || 0} isNegative categoryName="share_save_refunds_credits" />
+          <Row label="Credits" amount={sellingExpenses.feeCredits || 0} isNegative categoryName="fee_credits" />
           <Row label="Share & Save Refund" amount={sellingExpenses.shareSaveRefunds || 0} isCredit categoryName="share_save_refunds_credits" linkTo={buildExpensesLink("share_save_refunds_credits")} />
           <Row label="Other Fees" amount={sellingExpenses.otherFees || 0} categoryName="other_fees" linkTo={buildExpensesLink("other_fees")} />
           <Row label="Total Fees" amount={sellingExpenses.totalEtsyFees || 0} bold />
@@ -351,7 +247,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
           />
           <Row label="Etsy Ads" amount={sellingExpenses.etsyAds || 0} categoryName="etsy_ads" linkTo={buildExpensesLink("etsy_ads")} />
           <Row label="Offsite Ads" amount={sellingExpenses.etsyOffsiteAds || 0} categoryName="etsy_offsite_ads_fees" linkTo={buildExpensesLink("etsy_offsite_ads_fees")} />
-          <Row label="Etsy Plus Subscription" amount={sellingExpenses.etsyPlusSubscription || 0} />
+          <Row label="Etsy Plus Subscription" amount={sellingExpenses.etsyPlusSubscription || 0} categoryName="etsy_plus_subscription" />
           <Row label="Total Marketing" amount={sellingExpenses.totalMarketing || 0} bold />
           
           <Row label="Shipping Labels (Etsy)" amount={sellingExpenses.etsyShipping || 0} categoryName="etsy_shipping" linkTo={buildExpensesLink("etsy_shipping")} highlight="bg-yellow-50" />
@@ -455,8 +351,8 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               tooltip="Money moved in/out of your business bank account - tracked separately from revenue/expenses"
               bgColor="bg-slate-50" 
             />
-            <Row label="Deposits from Etsy" amount={cashflow.etsyDeposits || 0} showPercentage={false} />
-            <Row label="Owner Transfers (Take Home)" amount={cashflow.ownerTransfers || 0} showPercentage={false} />
+            <Row label="Deposits from Etsy" amount={cashflow.etsyDeposits || 0} categoryName="etsy_deposits" showPercentage={false} />
+            <Row label="Owner Transfers (Take Home)" amount={cashflow.ownerTransfers || 0} categoryName="owner_transfers" showPercentage={false} />
           </div>
         </CardContent>
       </Card>
@@ -466,6 +362,7 @@ export default function NetProfitStatement({ financialData, dateRange }) {
         onOpenChange={setDrillDownOpen}
         title={drillDownData.title}
         items={drillDownData.items}
+        expectedTotal={drillDownData.expectedTotal}
       />
     </>
   );

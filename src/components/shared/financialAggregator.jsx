@@ -780,6 +780,7 @@ export function aggregateFinancials(data, dateRange) {
       expenses: periodLegacyExpenses,
       fees: periodFees,
       statementLines: periodStatementLines,
+      orderFees: periodOrderFees,
     },
   };
 }
