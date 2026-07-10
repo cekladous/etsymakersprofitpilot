@@ -121,6 +121,10 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
     processing_fee = 
       (payment_base * (config.venmo_business_fee_percent || 1.9)) / 100 + 
       (config.venmo_business_fee_fixed || 0.10);
+  } else if (payment_method === "squarespace") {
+    processing_fee = 
+      (payment_base * (config.squarespace_fee_percent || 2.9)) / 100 + 
+      (config.squarespace_fee_fixed || 0.30);
   } else if (payment_method === "zelle" || payment_method === "cash" || payment_method === "venmo_personal") {
     processing_fee = 0;
   } else {

@@ -523,6 +523,7 @@ export default function CalculatorTool() {
                     <SelectItem value="etsy">Etsy Payments</SelectItem>
                     <SelectItem value="paypal">PayPal</SelectItem>
                     <SelectItem value="square">Square</SelectItem>
+                    <SelectItem value="squarespace">Squarespace</SelectItem>
                     <SelectItem value="venmo_business">Venmo (Business)</SelectItem>
                     <SelectItem value="venmo_personal">Venmo (Personal)</SelectItem>
                     <SelectItem value="zelle">Zelle</SelectItem>
@@ -536,6 +537,8 @@ export default function CalculatorTool() {
                     ? `PayPal: ${(feeConfig?.paypal_fee_percent || 3.49).toFixed(2)}% + $${(feeConfig?.paypal_fee_fixed || 0.49).toFixed(2)}`
                     : inputs.payment_method === "square"
                     ? `Square: ${(feeConfig?.square_fee_percent || 2.9).toFixed(1)}% + $${(feeConfig?.square_fee_fixed || 0.30).toFixed(2)}`
+                    : inputs.payment_method === "squarespace"
+                    ? `Squarespace: ${(feeConfig?.squarespace_fee_percent || 2.9).toFixed(1)}% + $${(feeConfig?.squarespace_fee_fixed || 0.30).toFixed(2)}`
                     : inputs.payment_method === "venmo_business"
                     ? `Venmo Business: ${(feeConfig?.venmo_business_fee_percent || 1.9).toFixed(1)}% + $${(feeConfig?.venmo_business_fee_fixed || 0.10).toFixed(2)}`
                     : "No fee"
