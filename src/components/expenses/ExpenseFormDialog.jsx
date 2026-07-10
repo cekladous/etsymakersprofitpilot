@@ -63,10 +63,15 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
     if (expense) {
       // Handle both legacy and new BusinessExpense formats
       const category = expense.category_name || expense.category;
+      // For legacy expenses with type "return", show amount as negative
+      const rawAmount = expense.amount ?? 0;
+      const displayAmount = expense.source === "legacy" && expense.type === "return"
+        ? -Math.abs(rawAmount)
+        : rawAmount;
       setFormData({
         date: expense.date || "",
         description: expense.description || "",
-        amount: expense.amount?.toString() || "",
+        amount: displayAmount?.toString() || "",
         category: category || "miscellaneous_expenses",
         vendor: expense.vendor || "",
         payment_method: expense.payment_source || expense.payment_method || "",
@@ -110,9 +115,11 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
         return base44.entities.BusinessExpense.update(expense.id, payload);
       } else if (expense) {
         // Legacy expense - still update via Expense entity
+        const numAmount = parseFloat(data.amount) || 0;
         return base44.entities.Expense.update(expense.id, {
           ...data,
-          amount: parseFloat(data.amount) || 0,
+          amount: Math.abs(numAmount),
+          type: numAmount < 0 ? "return" : "sale",
           is_categorized: true,
         });
       }
