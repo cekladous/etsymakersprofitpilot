@@ -29,8 +29,8 @@ export default function EtsySoldOrdersImport({ open, onOpenChange, embedded = fa
 
       // Pre-fetch all existing orders and customers ONCE (same pattern as Monthly Statement)
       const [allExistingOrders, allExistingCustomers] = await Promise.all([
-        base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }),
-        base44.entities.Customer.filter({ owner_user_id: currentUser.id }),
+        base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }, '-created_date', 1000),
+        base44.entities.Customer.filter({ owner_user_id: currentUser.id }, '-created_date', 1000),
       ]);
 
       const orderMap = {};

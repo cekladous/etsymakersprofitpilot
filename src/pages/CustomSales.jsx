@@ -5,10 +5,18 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Pencil, Trash2, Calendar, Zap, Wrench } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Zap, Wrench, Copy, AlertTriangle, Loader2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import QuickAddSaleDialog from "@/components/monthly/QuickAddSaleDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
 
 export default function CustomSalesPage() {
@@ -20,6 +28,8 @@ export default function CustomSalesPage() {
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [fixing, setFixing] = useState(false);
+  const [dupScan, setDupScan] = useState(null); // null | { loading, result, error }
+  const [dupDeleting, setDupDeleting] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -233,7 +243,93 @@ export default function CustomSalesPage() {
           </button>
         </div>
 
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={dupScan?.loading}
+          onClick={async () => {
+            setDupScan({ loading: true });
+            try {
+              const res = await base44.functions.invoke('deduplicateSales', {});
+              setDupScan({ loading: false, result: res.data });
+            } catch (err) {
+              setDupScan({ loading: false, error: err.message });
+            }
+          }}
+        >
+          {dupScan?.loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Copy className="w-4 h-4 mr-2" />}
+          Check Duplicates
+        </Button>
+
       </div>
+
+      {/* Duplicate Results Dialog */}
+      <Dialog open={!!dupScan && !dupScan?.loading} onOpenChange={(open) => !open && setDupScan(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Duplicate Check Results
+            </DialogTitle>
+            <DialogDescription>
+              Found {dupScan?.result?.duplicate_count || 0} duplicate CustomSales that overlap with Etsy orders or each other.
+            </DialogDescription>
+          </DialogHeader>
+
+          {dupScan?.result?.duplicates?.length > 0 ? (
+            <div className="space-y-3 py-2">
+              {dupScan.result.duplicates.map((dup, idx) => (
+                <div key={dup.id} className="border rounded-lg p-3 bg-amber-50 border-amber-200">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-stone-600">
+                      {dup.date} · ${(dup.gross_sale || 0).toFixed(2)}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                      dup.duplicate_type === 'etsy_order'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {dup.duplicate_type === 'etsy_order' ? 'Matches Etsy Order' : 'Duplicate CustomSale'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-stone-700">{dup.vendor || '—'}: {dup.description || '—'}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 text-center">
+              <p className="text-stone-600">No duplicates found. Your sales data is clean.</p>
+            </div>
+          )}
+
+          {dupScan?.result?.duplicates?.length > 0 && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDupScan(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={dupDeleting}
+                onClick={async () => {
+                  setDupDeleting(true);
+                  try {
+                    await base44.functions.invoke('deduplicateSales', {});
+                    setDupScan(null);
+                    queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
+                  } catch (err) {
+                    console.error("Delete failed:", err);
+                  } finally {
+                    setDupDeleting(false);
+                  }
+                }}
+              >
+                {dupDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Remove {dupScan?.result?.duplicates?.length || 0} Duplicates
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
       <Card>

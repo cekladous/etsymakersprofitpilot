@@ -54,8 +54,8 @@ export default function EtsyPaymentAccountImport({ open, onOpenChange, embedded 
 
       // Pre-fetch existing orders and order fees in parallel
       const [allExistingOrders, allExistingOrderFees] = await Promise.all([
-        base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }),
-        base44.entities.OrderFee.filter({ owner_user_id: currentUser.id }),
+        base44.entities.EtsyOrder.filter({ owner_user_id: currentUser.id }, '-created_date', 1000),
+        base44.entities.OrderFee.filter({ owner_user_id: currentUser.id }, '-created_date', 1000),
       ]);
 
       const orderMap = {};

@@ -245,24 +245,53 @@ export default function PlatformSalesImport({ open, onOpenChange, platform }) {
 
   const handleImport = async (rows, parseRow, getUniqueKey) => {
     const [existingSales, existingEtsyOrders] = await Promise.all([
-      base44.entities.CustomSale.filter({ owner_user_id: user.id }),
+      base44.entities.CustomSale.filter({ owner_user_id: user.id }, '-date', 1000),
       // For Square imports, also cross-check against Etsy orders so in-person
       // Square sales already captured via Etsy's Sold Orders Report aren't duplicated
       platform === "square"
-        ? base44.entities.EtsyOrder.filter({ owner_user_id: user.id })
+        ? base44.entities.EtsyOrder.filter({ owner_user_id: user.id }, '-sale_date', 1000)
         : Promise.resolve([]),
     ]);
 
     const existingKeys = new Set(existingSales.map((s) => s.description));
 
-    // Build a date+amount lookup from Etsy orders to detect Square sales
-    // that were already imported through Etsy's Sold Orders Report
-    const etsyDateAmountKeys = new Set();
-    existingEtsyOrders.forEach((o) => {
-      if (o.sale_date && o.order_total) {
-        etsyDateAmountKeys.add(`${o.sale_date}|${Number(o.order_total).toFixed(2)}`);
+    // Build date+amount lookup from existing CustomSales (catches invoice-created dupes)
+    const customSaleDateAmountKeys = new Set();
+    existingSales.forEach((s) => {
+      if (s.date && s.gross_sale) {
+        customSaleDateAmountKeys.add(`${s.date}|${Number(s.gross_sale).toFixed(2)}`);
       }
     });
+
+    // Build a robust lookup from Etsy orders for fuzzy matching.
+    // Square's "Total Collected" can differ from Etsy's "Order Total" by a few dollars
+    // (e.g. $3 Square processing fee), so we store each order as { date, amounts[] }
+    // and match with a $5 tolerance + date ± 1 day for timezone shifts.
+    const etsyOrdersForMatching = existingEtsyOrders.map((o) => ({
+      sale_date: o.sale_date,
+      amounts: [o.order_total, o.adjusted_order_total, o.order_value, o.order_net, o.adjusted_net_order_amount]
+        .filter((a) => a != null && !isNaN(a)),
+    }));
+    const dateShift = (dateStr, deltaDays) => {
+      const d = new Date(dateStr + "T00:00:00");
+      d.setDate(d.getDate() + deltaDays);
+      return d.toISOString().split("T")[0];
+    };
+    const fuzzyMatchEtsy = (date, amount) => {
+      if (!date || !amount) return false;
+      for (let delta = -1; delta <= 1; delta++) {
+        const d = dateShift(date, delta);
+        for (const o of etsyOrdersForMatching) {
+          if (!o.sale_date) continue;
+          const oDate = dateShift(o.sale_date, delta);
+          if (oDate !== d) continue;
+          for (const oAmt of o.amounts) {
+            if (Math.abs(oAmt - amount) <= 5) return true;
+          }
+        }
+      }
+      return false;
+    };
 
     const toCreate = [];
     const skipped = [];
@@ -278,15 +307,23 @@ export default function PlatformSalesImport({ open, onOpenChange, platform }) {
         skipped.push({ row, reason: "Duplicate order already imported" });
         continue;
       }
-      // Cross-check against Etsy orders by date + amount (Square in-person sales)
-      if (platform === "square" && parsed.date && parsed.gross_sale) {
-        const etsyKey = `${parsed.date}|${Number(parsed.gross_sale).toFixed(2)}`;
-        if (etsyDateAmountKeys.has(etsyKey)) {
-          skipped.push({ row, reason: "Already exists as an Etsy order" });
+      // Check against existing CustomSales by date + amount
+      if (parsed.date && parsed.gross_sale) {
+        const dateAmountKey = `${parsed.date}|${Number(parsed.gross_sale).toFixed(2)}`;
+        if (customSaleDateAmountKeys.has(dateAmountKey)) {
+          skipped.push({ row, reason: "Duplicate sale (same date + amount already exists)" });
+          continue;
+        }
+        // Cross-check against Etsy orders with fuzzy amount matching ($5 tolerance + date ± 1 day)
+        if (platform === "square" && fuzzyMatchEtsy(parsed.date, parsed.gross_sale)) {
+          skipped.push({ row, reason: "Already exists as an Etsy order (in-person Square sale)" });
           continue;
         }
       }
       existingKeys.add(descKey);
+      if (parsed.date && parsed.gross_sale) {
+        customSaleDateAmountKeys.add(`${parsed.date}|${Number(parsed.gross_sale).toFixed(2)}`);
+      }
       toCreate.push({ ...parsed, owner_user_id: user.id });
     }
 

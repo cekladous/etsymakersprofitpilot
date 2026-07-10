@@ -44,6 +44,80 @@ export default function InvoicesPage() {
     mutationFn: async (invoice) => {
       if (!invoice.custom_sale_id) {
         const saleDate = invoice.invoice_date || new Date().toISOString().split('T')[0];
+        const saleAmount = Number(invoice.total || 0).toFixed(2);
+        const dateAmountKey = `${saleDate}|${saleAmount}`;
+
+        // Check if a CustomSale or EtsyOrder already exists for this date + amount
+        // to prevent duplicates from Square CSV imports or Etsy Sold Orders imports
+        const [existingSales, existingEtsyOrders] = await Promise.all([
+          base44.entities.CustomSale.filter({ owner_user_id: user.id }, '-date', 1000),
+          base44.entities.EtsyOrder.filter({ owner_user_id: user.id }, '-sale_date', 1000),
+        ]);
+
+        const dateShift = (dateStr, deltaDays) => {
+          const d = new Date(dateStr + "T00:00:00");
+          d.setDate(d.getDate() + deltaDays);
+          return d.toISOString().split("T")[0];
+        };
+
+        // Build lookup sets with date ± 1 day for timezone tolerance
+        const customSaleKeys = new Set();
+        existingSales.forEach((s) => {
+          if (s.date && s.gross_sale) {
+            for (let delta = -1; delta <= 1; delta++) {
+              customSaleKeys.add(`${dateShift(s.date, delta)}|${Number(s.gross_sale).toFixed(2)}`);
+            }
+          }
+        });
+
+        // Fuzzy match against Etsy orders ($5 tolerance for Square fee discrepancies)
+        const etsyOrdersForMatching = existingEtsyOrders.map((o) => ({
+          sale_date: o.sale_date,
+          amounts: [o.order_total, o.adjusted_order_total, o.order_value, o.order_net]
+            .filter((a) => a != null && !isNaN(a)),
+        }));
+        const fuzzyMatchEtsy = (date, amount) => {
+          if (!date || !amount) return false;
+          for (let delta = -1; delta <= 1; delta++) {
+            const d = dateShift(date, delta);
+            for (const o of etsyOrdersForMatching) {
+              if (!o.sale_date) continue;
+              const oDate = dateShift(o.sale_date, delta);
+              if (oDate !== d) continue;
+              for (const oAmt of o.amounts) {
+                if (Math.abs(oAmt - amount) <= 5) return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        if (customSaleKeys.has(dateAmountKey)) {
+          // A CustomSale already exists for this date + amount — link it instead of duplicating
+          const existing = existingSales.find(
+            (s) => dateShift(s.date, 0) === saleDate && Number(s.gross_sale).toFixed(2) === saleAmount
+          );
+          if (existing) {
+            await base44.entities.Invoice.update(invoice.id, {
+              status: "Paid",
+              amount_paid: invoice.total || 0,
+              balance_due: 0,
+              custom_sale_id: existing.id,
+            });
+            return;
+          }
+        }
+
+        if (fuzzyMatchEtsy(saleDate, invoice.total || 0)) {
+          // This sale already exists as an Etsy order — don't create a duplicate CustomSale
+          await base44.entities.Invoice.update(invoice.id, {
+            status: "Paid",
+            amount_paid: invoice.total || 0,
+            balance_due: 0,
+          });
+          return;
+        }
+
         const customSale = await base44.entities.CustomSale.create({
           owner_user_id: user.id,
           date: saleDate,
