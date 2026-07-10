@@ -7,11 +7,19 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = await req.json();
-    const { format: exportFormat = 'pdf', financialData, settings, periodLabel } = payload;
+    const { format: exportFormat = 'pdf', financialData, periodLabel } = payload;
 
-    if (!financialData || !settings) {
+    if (!financialData) {
       return Response.json({ error: 'Missing required data' }, { status: 400 });
     }
+
+    // SECURITY: Fetch settings from the database instead of trusting client-provided
+    // settings. This prevents an attacker from injecting a fabricated business_name
+    // or other settings into the exported report.
+    const userSettings = await base44.entities.Settings.filter({
+      owner_user_id: user.id
+    });
+    const settings = userSettings[0] || { business_name: '' };
 
     if (exportFormat === 'pdf') {
       const { jsPDF } = await import('npm:jspdf@4.0.0');

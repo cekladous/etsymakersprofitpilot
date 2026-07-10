@@ -3,10 +3,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const isAuthenticated = await base44.auth.isAuthenticated();
+    if (!isAuthenticated) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const user = await base44.auth.me();
 
     if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     // Get all orders with order_value = 0 from December 2025
