@@ -25,6 +25,43 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
+    // SECURITY: Validate and increment promo code usage here — inside the
+    // server-side payment flow — rather than via a standalone client-triggerable
+    // endpoint. This prevents authenticated users from exhausting promo codes
+    // without going through the checkout process.
+    if (promoCode) {
+      const promoCodes = await base44.asServiceRole.entities.PromoCode.filter({
+        code: String(promoCode).toUpperCase(),
+        is_active: true
+      });
+
+      if (promoCodes.length === 0) {
+        return Response.json({ error: 'Promo code not found or inactive' }, { status: 404 });
+      }
+
+      const promo = promoCodes[0];
+
+      if (promo.expires_at) {
+        const expiry = new Date(promo.expires_at + 'T23:59:59');
+        if (expiry < new Date()) {
+          return Response.json({ error: 'Promo code has expired' }, { status: 410 });
+        }
+      }
+
+      if (promo.max_uses !== -1 && (promo.current_uses || 0) >= promo.max_uses) {
+        return Response.json({ error: 'Promo code usage limit reached' }, { status: 410 });
+      }
+
+      if (promo.plan_id !== planId) {
+        return Response.json({ error: `Promo code is for ${promo.plan_id}, not ${planId}` }, { status: 400 });
+      }
+
+      // Atomically increment usage as part of the checkout flow
+      await base44.asServiceRole.entities.PromoCode.update(promo.id, {
+        current_uses: (promo.current_uses || 0) + 1
+      });
+    }
+
     // Get user's Square location ID from settings
     const settings = await base44.entities.Settings.filter({
       owner_user_id: user.id

@@ -15,7 +15,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Code required' }, { status: 400 });
     }
 
-    // Find and update the promo code
+    // SECURITY: This endpoint is validation-only — it does NOT increment
+    // current_uses. Usage counters are incremented inside the server-side
+    // payment flow (createSquareSubscription) to prevent authenticated users
+    // from exhausting promo codes via direct calls to this endpoint.
     const promoCodes = await base44.asServiceRole.entities.PromoCode.filter({
       code: code.toUpperCase()
     });
@@ -26,7 +29,6 @@ Deno.serve(async (req) => {
 
     const promo = promoCodes[0];
 
-    // Validate promo is still usable before incrementing (prevents brute-force exhaustion)
     if (!promo.is_active) {
       return Response.json({ error: 'Promo code is no longer active' }, { status: 410 });
     }
@@ -40,15 +42,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Promo code usage limit reached' }, { status: 410 });
     }
 
-    const newUses = (promo.current_uses || 0) + 1;
-
-    await base44.asServiceRole.entities.PromoCode.update(promo.id, {
-      current_uses: newUses
+    return Response.json({
+      success: true,
+      discount_type: promo.discount_type,
+      discount_value: promo.discount_value,
+      duration_months: promo.duration_months,
+      plan_id: promo.plan_id
     });
-
-    // SECURITY: Do not leak current_uses back to the client — it reveals
-    // internal usage data that could aid brute-force attacks.
-    return Response.json({ success: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
