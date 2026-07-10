@@ -4,6 +4,18 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    // SECURITY: This endpoint mutates financial data (creates CustomSale records)
+    // using asServiceRole privilege. Without authentication, a direct HTTP caller
+    // could probe arbitrary invoice IDs across users and create fraudulent sales.
+    // Entity automations carry no user auth context, so we verify a shared secret
+    // that only the Base44 automation system knows how to pass. The secret is
+    // stored as the ETSY_SHARED_SECRET env var (already set for this app).
+    const sharedSecret = Deno.env.get("ETSY_SHARED_SECRET");
+    const providedSecret = req.headers.get("x-automation-secret");
+    if (!sharedSecret || providedSecret !== sharedSecret) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let payload;
     try {
       payload = await req.json();
