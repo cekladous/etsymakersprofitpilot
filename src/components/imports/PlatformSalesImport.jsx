@@ -43,22 +43,23 @@ const PLATFORM_CONFIGS = {
       const tax = parseMoney(getVal(row, "Tax", "tax", "Sales Tax"));
       const netSales = parseMoney(getVal(row, "Net Sales", "NetSales", "net_sales"));
       const fee = parseMoney(
-        getVal(row, "Processing Fee", "ProcessingFee", "processing_fee", "Fee", "Fees")
+        getVal(row, "Fees", "Fee", "Processing Fee", "ProcessingFee", "processing_fee")
       );
       const date = parseDate(getVal(row, "Date", "date", "Transaction Date"));
-      const customerName = getVal(row, "Customer", "Customer Name", "customer_name", "Buyer");
-      const tenderType = getVal(
+      const customerName = getVal(
         row,
-        "Tender Type",
-        "Payment Method",
-        "Transaction Type",
-        "tender_type"
+        "Customer Name",
+        "customer_name",
+        "Customer",
+        "Buyer"
       );
-      const status = getVal(row, "Status", "status");
-      const orderRef = getVal(row, "Order ID", "OrderID", "order_id");
+      const eventType = getVal(row, "Event Type", "event_type");
+      const source = getVal(row, "Source", "source");
+      const status = getVal(row, "Transaction Status", "Status", "status");
+      const orderRef = getVal(row, "Order Reference ID", "Order ID", "OrderID", "order_id");
 
       // Skip non-sale transactions (refunds, voided)
-      const typeLower = String(tenderType || "").toLowerCase();
+      const typeLower = String(eventType || "").toLowerCase();
       const statusLower = String(status || "").toLowerCase();
       if (statusLower === "voided" || statusLower === "refunded") return null;
       if (typeLower === "refund" || typeLower === "void") return null;
@@ -68,8 +69,8 @@ const PLATFORM_CONFIGS = {
 
       const noteParts = [`Imported from Square. Transaction: ${transactionId || "N/A"}`];
       if (orderRef) noteParts.push(`Square Order: ${orderRef}`);
-      if (tenderType) noteParts.push(`Tender: ${tenderType}`);
-      if (fee) noteParts.push(`Processing Fee: $${fee.toFixed(2)}`);
+      if (source) noteParts.push(`Source: ${source}`);
+      if (fee) noteParts.push(`Processing Fee: $${Math.abs(fee).toFixed(2)}`);
 
       // Use Square transaction ID in description for dedup
       const desc =
@@ -90,7 +91,15 @@ const PLATFORM_CONFIGS = {
       };
     },
     getUniqueKey: (row) =>
-      getVal(row, "Transaction ID", "TransactionID", "transaction_id", "Order ID", "OrderID"),
+      getVal(
+        row,
+        "Transaction ID",
+        "TransactionID",
+        "transaction_id",
+        "Order Reference ID",
+        "Order ID",
+        "OrderID"
+      ),
   },
   shopify: {
     title: "Import Shopify Sales",
