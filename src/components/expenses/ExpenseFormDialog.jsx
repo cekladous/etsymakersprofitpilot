@@ -157,7 +157,6 @@ export default function ExpenseFormDialog({ open, onOpenChange, expense, onClose
               <Input
                 type="number"
                 step="0.01"
-                min="0"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 required
