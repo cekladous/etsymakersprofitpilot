@@ -8,6 +8,7 @@ import { AlertCircle, CheckCircle2, Download, Trash2 } from "lucide-react";
 import DataTable from "@/components/ui/DataTable";
 import DepositMatcher from "@/components/reconciliation/DepositMatcher";
 import StatementSummary from "@/components/etsy/StatementSummary";
+import { classifyEtsyLedgerEntry } from "@/components/shared/financialAggregator";
 import { format } from "date-fns";
 
 export default function ReconciliationTab({ user }) {
@@ -41,7 +42,22 @@ export default function ReconciliationTab({ user }) {
     enabled: !!user,
     queryFn: async () => {
       const all = await base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000);
-      return all.filter(e => e.status === "Unmatched" || !e.matched_category);
+      const unmatched = all.filter(e => e.status === "Unmatched" || !e.matched_category);
+      // Auto-classify entries that the classifier can now recognize (e.g., deposits)
+      const stillUnmatched = [];
+      for (const entry of unmatched) {
+        const classification = classifyEtsyLedgerEntry(entry);
+        if (classification.status === "Matched" && classification.category) {
+          // Update the entry in the background so it doesn't show up next time
+          base44.entities.EtsyLedgerEntry.update(entry.id, {
+            matched_category: classification.category,
+            status: "Matched",
+          }).catch(() => {});
+        } else {
+          stillUnmatched.push(entry);
+        }
+      }
+      return stillUnmatched;
     },
   });
 
