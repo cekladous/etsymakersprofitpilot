@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -24,7 +24,6 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
   const [userRules, setUserRules] = useState([]);
-  const fileInputRef = useRef(null);
 
   // Fetch user's auto-categorization rules from Settings when dialog opens
   useEffect(() => {
@@ -42,8 +41,9 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   }, [open, user]);
 
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    const isPdf = selectedFile && (selectedFile.type === 'application/pdf' || selectedFile.name?.toLowerCase().endsWith('.pdf'));
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name?.toLowerCase().endsWith('.pdf');
     if (isPdf) {
       setFile(selectedFile);
       setError(null);
@@ -51,6 +51,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
     } else {
       setError('Please select a valid PDF file.');
     }
+    e.target.value = '';
   };
 
   const handleParse = async (pdfFile) => {
@@ -270,14 +271,12 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         </DialogHeader>
         
         {!file && (
-          <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-stone-200 rounded-lg">
-            <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileChange} className="hidden" />
-            <Button onClick={() => fileInputRef.current.click()} variant="outline">
-              <Upload className="w-4 h-4 mr-2" />
-              Select PDF Statement
-            </Button>
+          <label className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-stone-200 rounded-lg cursor-pointer hover:border-stone-300 hover:bg-stone-50 transition-colors">
+            <input type="file" accept=".pdf" onChange={handleFileChange} className="sr-only" />
+            <Upload className="w-10 h-10 text-stone-400 mb-3" />
+            <span className="text-stone-600 font-medium">Click to select PDF Statement</span>
             <p className="text-xs text-stone-500 mt-2">Chase bank statements supported.</p>
-          </div>
+          </label>
         )}
 
         {parsing && (
