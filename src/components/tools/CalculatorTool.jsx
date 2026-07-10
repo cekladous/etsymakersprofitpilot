@@ -63,7 +63,7 @@ export default function CalculatorTool() {
   const numInputs = Object.fromEntries(
     Object.entries(inputs).map(([k, v]) => [k, typeof v === 'string' && v === "" ? 0 : v])
   );
-  const results = calculateProfit({ ...numInputs, cost_of_goods: totalCogs, labor_cost: 0 }, feeConfig);
+  const results = calculateProfit({ ...numInputs, cost_of_goods: totalCogs, labor_cost: 0 }, (inputs.sales_price !== "" && parseFloat(inputs.sales_price) > 0) ? feeConfig : { ...feeConfig, etsy_listing_fee: 0, payment_processing_fee_fixed: 0, paypal_fee_fixed: 0, square_fee_fixed: 0, venmo_business_fee_fixed: 0 });
 
   const handleInputChange = (field, value) => {
     setInputs(prev => ({
