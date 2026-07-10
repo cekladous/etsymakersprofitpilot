@@ -371,11 +371,14 @@ export default function Dashboard() {
     return "Good evening";
   };
 
+  // Strip any HTML/script tags from user-provided strings (defense-in-depth XSS prevention)
+  const sanitizeText = (str) => String(str || "").replace(/<[^>]*>/g, "").trim();
+
   const getFirstName = () => {
     const userName = settings[0]?.user_name;
-    if (userName) return userName.split(" ")[0];
+    if (userName) return sanitizeText(userName).split(" ")[0];
     if (!user?.full_name) return "";
-    return user.full_name.split(" ")[0];
+    return sanitizeText(user.full_name).split(" ")[0];
   };
 
   const getPeriodLabel = () => {
@@ -398,7 +401,6 @@ export default function Dashboard() {
       const response = await base44.functions.invoke('exportDashboardReport', {
         format: exportFormat,
         financialData,
-        settings: settings[0] || {},
         periodLabel: getPeriodLabel()
       });
 

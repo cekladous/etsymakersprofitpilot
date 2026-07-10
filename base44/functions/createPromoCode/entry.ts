@@ -14,7 +14,23 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const promo = await base44.asServiceRole.entities.PromoCode.create(body);
+
+    // SECURITY: Whitelist only allowed fields — never pass the raw body to create()
+    const allowedFields = ['code', 'plan_id', 'discount_type', 'discount_value', 'duration_months', 'max_uses', 'expires_at', 'is_active', 'description'];
+    const sanitized = {};
+    for (const key of allowedFields) {
+      if (body[key] !== undefined) sanitized[key] = body[key];
+    }
+
+    // Validate required fields
+    if (!sanitized.code || !sanitized.plan_id) {
+      return Response.json({ error: 'code and plan_id are required' }, { status: 400 });
+    }
+
+    // Always start with 0 uses — never trust client-provided current_uses
+    sanitized.current_uses = 0;
+
+    const promo = await base44.entities.PromoCode.create(sanitized);
     
     return Response.json({ success: true, data: promo });
   } catch (error) {

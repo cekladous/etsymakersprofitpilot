@@ -46,7 +46,9 @@ Deno.serve(async (req) => {
       current_uses: newUses
     });
 
-    return Response.json({ success: true, current_uses: newUses });
+    // SECURITY: Do not leak current_uses back to the client — it reveals
+    // internal usage data that could aid brute-force attacks.
+    return Response.json({ success: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

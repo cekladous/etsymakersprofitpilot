@@ -35,11 +35,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Square location not configured' }, { status: 400 });
     }
 
-    // Validate the Origin header against an allow-list to prevent open redirect.
-    // Only base44.app subdomains are accepted; anything else is rejected.
-    const origin = req.headers.get('origin') || '';
-    const isAllowedOrigin = /^https:\/\/[a-z0-9-]+\.base44\.app$/.test(origin);
-    if (!isAllowedOrigin) {
+    // SECURITY: Parse the Origin with URL() and validate the hostname against
+    // a strict allow-list. Reconstruct the redirect URL from the validated
+    // hostname rather than using the raw header string — prevents injection
+    // of extra path/query components or protocol smuggling.
+    const rawOrigin = req.headers.get('origin') || '';
+    let validatedBase = '';
+    try {
+      const parsed = new URL(rawOrigin);
+      if (parsed.protocol === 'https:' && /^[a-z0-9-]+\.base44\.app$/.test(parsed.hostname)) {
+        validatedBase = `${parsed.protocol}//${parsed.hostname}`;
+      }
+    } catch (_) { /* invalid URL */ }
+    if (!validatedBase) {
       return Response.json({ error: 'Invalid origin for redirect' }, { status: 400 });
     }
 
@@ -69,7 +77,7 @@ Deno.serve(async (req) => {
         },
         checkout_options: {
           allow_tipping: false,
-          redirect_url: `${origin}/settings?tab=subscription&success=true`,
+          redirect_url: `${validatedBase}/settings?tab=subscription&success=true`,
           ask_for_shipping_address: false
         },
         pre_populated_data: {
