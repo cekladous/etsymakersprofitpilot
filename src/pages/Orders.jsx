@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Upload, Search, Download, ShoppingBag, DollarSign, CreditCard, Trash2, Calendar, Info, Loader2, Plus, Copy } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfQuarter, endOfQuarter, subMonths, parse } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -77,6 +77,19 @@ export default function Orders() {
   const [depositForm, setDepositForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
 
   const queryClient = useQueryClient();
+
+  // Read date range from URL params (e.g., when navigating from Dashboard)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const startDateParam = params.get("startDate");
+    const endDateParam = params.get("endDate");
+    const rangeParam = params.get("range");
+    if (startDateParam && endDateParam) {
+      setCustomStartDate(parse(startDateParam, 'yyyy-MM-dd', new Date()));
+      setCustomEndDate(parse(endDateParam, 'yyyy-MM-dd', new Date()));
+      if (rangeParam) setTimeRange(rangeParam);
+    }
+  }, []);
 
   const { data: etsyOrders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["etsy-orders", user?.id],
@@ -387,7 +400,7 @@ export default function Orders() {
   // Fee breakdown: use OrderFee (per-order split) for listing/transaction/processing/share_save/other,
   // and statement lines for shop-level items (etsy_ads, offsite_ads, shipping, postage).
   const feeBreakdown = {
-    listing: relevantOrderFees.reduce((s, f) => s + (f.listing_fees || 0), 0),
+    listing: statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === 'listing').reduce((s, l) => s + Math.abs(l.amount || 0), 0),
     transaction: relevantOrderFees.reduce((s, f) => s + (f.transaction_fees || 0), 0),
     processing: relevantOrderFees.reduce((s, f) => s + (f.processing_fees || 0), 0),
     etsy_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "etsy_ads").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
@@ -670,7 +683,7 @@ export default function Orders() {
     {
       header: "Amount",
       render: (row) => {
-        const isCredit = row.fee_type === 'share_save_credit' || row.amount < 0;
+        const isCredit = row.fee_type === 'share_save_credit';
         return (
           <span className={`font-semibold ${isCredit ? 'text-emerald-600' : 'text-rose-600'}`}>
             {isCredit ? '+' : '-'}{formatCurrency(Math.abs(row.amount || 0))}

@@ -611,12 +611,12 @@ export default function Expenses() {
     {
       header: "Date",
       render: (row) => {
-        const d = row.date ? new Date(row.date) : null;
-        return (
-          <span className="text-stone-600">
-            {d && !isNaN(d.getTime()) ? format(d, "MMM d, yyyy") : "-"}
-          </span>
-        );
+        const d = row.date ? new Date(row.date + "T00:00:00") : null;
+          return (
+            <span className="text-stone-600">
+              {d && !isNaN(d.getTime()) ? format(d, "MMM d, yyyy") : "-"}
+            </span>
+          );
       },
     },
     {

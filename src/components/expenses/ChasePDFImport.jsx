@@ -125,8 +125,8 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             payment_source: 'Bank Account',
             category_group: 'business_expenses',
         })).filter(e => e.date); // Skip entries with unparseable dates
-        // Deduplicate: fetch existing expenses and skip already-imported ones
-        const existing = await base44.entities.Expense.filter({ owner_user_id: currentUser.id });
+        // Deduplicate: fetch existing business expenses and skip already-imported ones
+        const existing = await base44.entities.BusinessExpense.filter({ owner_user_id: currentUser.id });
         const existingKeys = new Set(existing.map(e => `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`));
         const expensesForImport = expensesToCreate.filter(e => {
           const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`;
@@ -141,7 +141,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             let retries = 0;
             while (retries <= 2) {
                 try {
-                    await base44.entities.Expense.bulkCreate(chunk);
+                    await base44.entities.BusinessExpense.bulkCreate(chunk);
 
                     importedCount += chunk.length;
                     break;
@@ -163,6 +163,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         title: 'Import Successful',
         description: `${importedCount} of ${totalFound} transactions imported.`,
       });
+      queryClient.invalidateQueries({ queryKey: ['business-expenses'] });
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       onOpenChange(false);
 
@@ -178,7 +179,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
 
   const parseDateSafe = (dateStr) => {
     if (!dateStr) return null;
-    const formats = ['MM/dd/yyyy', 'yyyy-MM-dd', 'MMM d, yyyy', 'MMM dd, yyyy', 'd-MMM-yyyy', 'MM-dd-yyyy', 'dd/MM/yyyy', 'M/d/yyyy', 'M/d/yy', 'MMMM d, yyyy'];
+    const formats = ['MM/dd/yyyy', 'yyyy-MM-dd', 'MMM d, yyyy', 'MMM dd, yyyy', 'd-MMM-yyyy', 'MM-dd-yyyy', 'dd/MM/yyyy', 'M/d/yyyy', 'M/d/yy', 'MMMM d, yyyy', 'MMM d yyyy', 'MMM dd yyyy', 'd MMM yyyy', 'dd MMM yyyy', 'MM/dd/yy'];
     for (const fmt of formats) {
       try {
         const d = parse(String(dateStr), fmt, new Date());

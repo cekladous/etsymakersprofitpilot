@@ -639,7 +639,7 @@ export default function Dashboard() {
 
       {/* Revenue Breakdown Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Link to={createPageUrl("Orders")} className="block">
+        <Link to={createPageUrl("Orders") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}`} className="block">
           <div className="bg-white rounded-xl border border-stone-200 p-4 hover:shadow-md transition-shadow">
             <p className="text-xs font-semibold text-stone-600 uppercase">Etsy Revenue</p>
             <p className="text-2xl font-bold text-emerald-600 mt-1">${financialData.revenue.netEtsySales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -674,7 +674,7 @@ export default function Dashboard() {
 
       {/* KPI Cards - ALL CLICKABLE */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Link to={createPageUrl("Orders")} className="block transition-transform hover:scale-105">
+        <Link to={createPageUrl("Orders") + `?startDate=${format(periodStart, 'yyyy-MM-dd')}&endDate=${format(periodEnd, 'yyyy-MM-dd')}&range=${timeRange}`} className="block transition-transform hover:scale-105">
           <KPICard
                 title="Total Fees"
                 value={`$${metrics.periodFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
