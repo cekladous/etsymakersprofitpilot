@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
+import { parse, format } from 'date-fns';
 import DataTable from '../ui/DataTable';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
@@ -109,23 +110,22 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         const currentUser = await base44.auth.me();
         const expensesToCreate = selectedTransactions.map(t => ({
             owner_user_id: currentUser.id,
-            date: new Date(t.date).toISOString().split('T')[0],
+            date: formatDateSafe(t.date),
             description: t.description,
             amount: t.amount,
             category_name: t.category,
             vendor: 'Chase Bank',
             payment_source: 'Bank Account',
             category_group: 'business_expenses',
-        }));
+        })).filter(e => e.date); // Skip entries with unparseable dates
         // Deduplicate: fetch existing expenses and skip already-imported ones
         const existing = await base44.entities.Expense.filter({ owner_user_id: currentUser.id });
         const existingKeys = new Set(existing.map(e => `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`));
-        const uniqueExpenses = expensesForImport.filter(e => {
+        const expensesForImport = expensesToCreate.filter(e => {
           const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim()}`;
           return !existingKeys.has(key);
         });
-        if (uniqueExpenses.length === 0) return { importedCount: 0, totalFound: transactions.length };
-        const expensesForImport = uniqueExpenses;
+        if (expensesForImport.length === 0) return { importedCount: 0, totalFound: transactions.length };
         // Chunked bulk create with retry for reliability
         const chunkSize = 10;
         let importedCount = 0;
@@ -169,6 +169,24 @@ export default function ChasePDFImport({ open, onOpenChange }) {
     }
   });
 
+  const parseDateSafe = (dateStr) => {
+    if (!dateStr) return null;
+    const formats = ['MM/dd/yyyy', 'yyyy-MM-dd', 'MMM d, yyyy', 'MMM dd, yyyy', 'd-MMM-yyyy', 'MM-dd-yyyy', 'dd/MM/yyyy', 'M/d/yyyy', 'M/d/yy', 'MMMM d, yyyy'];
+    for (const fmt of formats) {
+      try {
+        const d = parse(String(dateStr), fmt, new Date());
+        if (d instanceof Date && !isNaN(d.getTime())) return d;
+      } catch (e) { /* try next */ }
+    }
+    const native = new Date(dateStr);
+    return (native instanceof Date && !isNaN(native.getTime())) ? native : null;
+  };
+
+  const formatDateSafe = (dateStr) => {
+    const d = parseDateSafe(dateStr);
+    return d ? format(d, 'yyyy-MM-dd') : null;
+  };
+
   const handleImport = () => {
     setImporting(true);
     const selected = transactions.filter(t => t.include);
@@ -196,7 +214,10 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         />,
         render: (row, index) => <Checkbox checked={row.include} onCheckedChange={(checked) => handleTransactionChange(index, 'include', checked)} />
     },
-    { header: 'Date', render: (row) => new Date(row.date).toLocaleDateString() },
+    { header: 'Date', render: (row) => {
+        const d = parseDateSafe(row.date);
+        return d ? format(d, 'MMM d, yyyy') : (row.date || '-');
+    } },
     { 
         header: 'Description', 
         render: (row, index) => <Input value={row.description} onChange={(e) => handleTransactionChange(index, 'description', e.target.value)} className="w-full" />
