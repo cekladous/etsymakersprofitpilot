@@ -98,12 +98,12 @@ export function calculateProfit(input, feeConfig = DEFAULT_FEE_CONFIG) {
   // Calculate revenue (excludes sales tax, includes Share & Save discount)
   const gross_revenue = sales_price + shipping_charged - discount_amount - share_save_discount_amount - refunds;
   
-  // Etsy Listing Fee (flat per listing)
-  const listing_fee = config.etsy_listing_fee || 0.20;
+  // Etsy Listing Fee (flat per listing) — only applies to Etsy sales
+  const listing_fee = payment_method === "etsy" ? (config.etsy_listing_fee || 0.20) : 0;
   
-  // Etsy Transaction Fee (percentage of item price + shipping, before discounts)
+  // Etsy Transaction Fee (percentage of item price + shipping, before discounts) — only applies to Etsy sales
   const transaction_base = sales_price + shipping_charged;
-  const transaction_fee = (transaction_base * (config.etsy_transaction_fee_percent || 6.5)) / 100;
+  const transaction_fee = payment_method === "etsy" ? (transaction_base * (config.etsy_transaction_fee_percent || 6.5)) / 100 : 0;
   
   // Payment Processing Fee (percentage + fixed, applied to total charged to customer)
   const payment_base = gross_revenue + sales_tax; // includes tax for processing
