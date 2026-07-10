@@ -9,7 +9,14 @@ Deno.serve(async (req) => {
     }
     const user = await base44.auth.me();
 
-    if (!user || user.role !== 'admin') {
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Re-verify admin role from the database — don't trust the role
+    // from the auth token, which could be stale or tampered with.
+    const userRecords = await base44.asServiceRole.entities.User.filter({ id: user.id });
+    if (!userRecords[0] || userRecords[0].role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 

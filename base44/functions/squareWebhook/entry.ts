@@ -95,8 +95,15 @@ Deno.serve(async (req) => {
       };
     }
 
-    // Update subscription if there's data to update
+    // Idempotency: skip if the subscription's status already matches the
+    // target status — prevents duplicate processing on webhook retries or
+    // replayed signed payloads.
     if (Object.keys(updateData).length > 0) {
+      if (updateData.status && subscription.status === updateData.status) {
+        console.log(`Subscription ${subscription.id} already ${updateData.status}, skipping duplicate webhook`);
+        return Response.json({ success: true }, { status: 200 });
+      }
+
       await base44.asServiceRole.entities.Subscription.update(subscription.id, updateData);
       console.log(`Updated subscription ${subscription.id}:`, updateData);
     }
