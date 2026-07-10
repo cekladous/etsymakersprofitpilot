@@ -224,7 +224,7 @@ export default function DataTable({
                       onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
                       style={{ userSelect: 'none' }}
                     >
-                      {col.render ? col.render(row) : row[col.accessor]}
+                      {col.render ? col.render(row, rowIndex) : row[col.accessor]}
                     </TableCell>
                   );
                 })}
