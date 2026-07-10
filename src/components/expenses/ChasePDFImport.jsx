@@ -70,9 +70,9 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             items: {
               type: 'object',
               properties: {
-                date: { type: 'string' },
-                description: { type: 'string' },
-                amount: { type: 'number' },
+                date: { type: 'string', description: 'Transaction date in YYYY-MM-DD format (e.g., 2025-07-15). Always include the full 4-digit year.' },
+                description: { type: 'string', description: 'Transaction description or merchant name' },
+                amount: { type: 'number', description: 'Transaction amount as a numeric value (positive for debits/charges, negative for credits/refunds)' },
               },
               required: ['date', 'description', 'amount'],
             },
@@ -120,7 +120,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
             owner_user_id: currentUser.id,
             date: formatDateSafe(t.date),
             description: t.description,
-            amount: t.amount,
+            amount: Number(t.amount) || 0,
             category_name: t.category,
             vendor: 'Chase Bank',
             payment_source: 'Bank Account',
@@ -183,14 +183,59 @@ export default function ChasePDFImport({ open, onOpenChange }) {
 
   const parseDateSafe = (dateStr) => {
     if (!dateStr) return null;
-    const formats = ['MM/dd/yyyy', 'yyyy-MM-dd', 'MMM d, yyyy', 'MMM dd, yyyy', 'd-MMM-yyyy', 'MM-dd-yyyy', 'dd/MM/yyyy', 'M/d/yyyy', 'M/d/yy', 'MMMM d, yyyy', 'MMM d yyyy', 'MMM dd yyyy', 'd MMM yyyy', 'dd MMM yyyy', 'MM/dd/yy'];
+    const str = String(dateStr).trim();
+    const formats = ['MM/dd/yyyy', 'yyyy-MM-dd', 'MMM d, yyyy', 'MMM dd, yyyy', 'd-MMM-yyyy', 'MM-dd-yyyy', 'dd/MM/yyyy', 'M/d/yyyy', 'M/d/yy', 'MMMM d, yyyy', 'MMM d yyyy', 'MMM dd yyyy', 'd MMM yyyy', 'dd MMM yyyy', 'MM/dd/yy', 'yyyy/MM/dd', 'M.d.yyyy', 'MMM. d, yyyy', 'MMM. d yyyy', 'd MMM. yyyy', 'MMM d, yy', 'MMM dd, yy'];
     for (const fmt of formats) {
       try {
-        const d = parse(String(dateStr), fmt, new Date());
+        const d = parse(str, fmt, new Date());
         if (d instanceof Date && !isNaN(d.getTime())) return d;
       } catch (e) { /* try next */ }
     }
-    const native = new Date(dateStr);
+    // Regex fallback: MM/DD or MM/DD/YYYY
+    const slashMatch = str.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+    if (slashMatch) {
+      let month = parseInt(slashMatch[1]);
+      let day = parseInt(slashMatch[2]);
+      let year = slashMatch[3] ? parseInt(slashMatch[3]) : new Date().getFullYear();
+      if (year < 100) year += year >= 50 ? 1900 : 2000;
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const d = new Date(year, month - 1, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    // Regex fallback: YYYY-MM-DD
+    const isoMatch = str.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      const d = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]));
+      if (!isNaN(d.getTime())) return d;
+    }
+    // Regex fallback: Month name DD, YYYY (e.g., "Jul 15, 2025" or "July 15 2025")
+    const monthNameMatch = str.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{2,4})/i);
+    if (monthNameMatch) {
+      const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      const monthIdx = months[monthNameMatch[1].toLowerCase().substring(0,3)];
+      const day = parseInt(monthNameMatch[2]);
+      let year = parseInt(monthNameMatch[3]);
+      if (year < 100) year += year >= 50 ? 1900 : 2000;
+      if (monthIdx !== undefined) {
+        const d = new Date(year, monthIdx, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    // Regex fallback: DD-Mon-YYYY (e.g., "15-Jul-2025")
+    const dmonMatch = str.match(/(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*-?(\d{2,4})/i);
+    if (dmonMatch) {
+      const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      const monthIdx = months[dmonMatch[2].toLowerCase().substring(0,3)];
+      const day = parseInt(dmonMatch[1]);
+      let year = parseInt(dmonMatch[3]);
+      if (year < 100) year += year >= 50 ? 1900 : 2000;
+      if (monthIdx !== undefined) {
+        const d = new Date(year, monthIdx, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    const native = new Date(str);
     return (native instanceof Date && !isNaN(native.getTime())) ? native : null;
   };
 
@@ -236,7 +281,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
     },
     { 
         header: 'Amount', 
-        render: (row) => `$${row.amount.toFixed(2)}` 
+        render: (row) => `$${Number(row.amount || 0).toFixed(2)}`
     },
     {
         header: 'Category',

@@ -43,7 +43,9 @@ export default function DataTable({
 
   const getCellKey = (rowIndex, colIndex) => `${rowIndex}-${colIndex}`;
 
-  const handleCellMouseDown = (rowIndex, colIndex) => {
+  const handleCellMouseDown = (e, rowIndex, colIndex) => {
+    // Don't start cell selection when clicking on interactive elements (checkbox, button, input, select)
+    if (e.target.closest('button, input, select, textarea, [role="checkbox"], [role="button"], a')) return;
     setIsSelecting(true);
     setSelectionStart({ row: rowIndex, col: colIndex });
     setSelectedCells(new Set([getCellKey(rowIndex, colIndex)]));
@@ -220,7 +222,7 @@ export default function DataTable({
                     <TableCell
                       key={colIndex}
                       className={`${col.cellClassName || ""} ${isSelected ? 'bg-blue-100' : ''}`}
-                      onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
+                      onMouseDown={(e) => handleCellMouseDown(e, rowIndex, colIndex)}
                       onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
                       style={{ userSelect: 'none' }}
                     >
