@@ -66,9 +66,17 @@ Deno.serve(async (req) => {
       notes: `Auto-created from invoice ${invoice.invoice_number || ''}`
     });
 
+    // Fix created_by_id: asServiceRole sets it to the service role, but the
+    // platform's implicit RLS filters by created_by_id, making the record
+    // invisible to the owning user. Update it to the real owner's user ID.
+    await base44.asServiceRole.entities.CustomSale.update(customSale.id, {
+      created_by_id: invoice.owner_user_id
+    });
+
     // Link the custom sale back to the invoice to prevent duplicates
     await base44.asServiceRole.entities.Invoice.update(invoice.id, {
-      custom_sale_id: customSale.id
+      custom_sale_id: customSale.id,
+      created_by_id: invoice.owner_user_id
     });
 
     return Response.json({
