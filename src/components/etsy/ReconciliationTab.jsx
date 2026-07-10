@@ -53,8 +53,39 @@ export default function ReconciliationTab({ user }) {
     queryKey: ["unmatched-statement-lines", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const all = await base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }, "-transaction_date", 1000);
-      return all.filter(line => !line.matched);
+      const [allLines, allTransfers] = await Promise.all([
+        base44.entities.EtsyStatementLine.filter({ owner_user_id: user.id }, "-transaction_date", 1000),
+        base44.entities.Transfer.filter({ owner_user_id: user.id, type: "etsy_deposit" }, "-date", 1000),
+      ]);
+
+      const unmatched = allLines.filter(line => !line.matched);
+      const stillUnmatched = [];
+
+      for (const line of unmatched) {
+        // Auto-match deposit lines to existing Transfer records by date + amount.
+        // Both originate from the same Etsy Payment Account CSV but were never linked.
+        if (line.type === "Deposit" || (line.description || "").toLowerCase().includes("sent to your bank")) {
+          const lineAmount = line.amount || parseAmountFromDescription(line.description);
+          const match = allTransfers.find(t => {
+            if (!t.date || !line.transaction_date) return false;
+            const dateClose = Math.abs(new Date(t.date) - new Date(line.transaction_date)) <= 7 * 24 * 60 * 60 * 1000;
+            const amountClose = Math.abs((t.amount || 0) - lineAmount) < 0.50;
+            return dateClose && amountClose;
+          });
+          if (match) {
+            base44.entities.EtsyStatementLine.update(line.id, {
+              matched: true,
+              matched_entity_id: match.id,
+              matched_entity_type: "Transfer",
+              resolution_status: "auto_matched",
+              category: "deposit",
+            }).catch(() => {});
+            continue; // skip — don't include in unmatched list
+          }
+        }
+        stillUnmatched.push(line);
+      }
+      return stillUnmatched;
     },
   });
 
