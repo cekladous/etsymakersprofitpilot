@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, Download, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Trash2, ChevronDown, ChevronRight, Check } from "lucide-react";
 import DataTable from "@/components/ui/DataTable";
 import DepositMatcher from "@/components/reconciliation/DepositMatcher";
 import StatementSummary from "@/components/etsy/StatementSummary";
@@ -108,6 +108,35 @@ export default function ReconciliationTab({ user }) {
         }
       }
       return stillUnmatched;
+    },
+  });
+
+  const bulkResolveMutation = useMutation({
+    mutationFn: async (items) => {
+      const promises = items.map(async (item) => {
+        if (item.source === "New Import") {
+          await base44.entities.EtsyStatementLine.update(item.id, {
+            matched: true,
+            resolution_status: "approved_for_exclusion",
+            category: item.type === "Payment" ? "sale" : "unmatched",
+            resolution_notes: "Marked as resolved — redundant payment line",
+            resolved_at: new Date().toISOString(),
+          });
+        } else {
+          await base44.entities.EtsyLedgerEntry.update(item.id, {
+            status: "Matched",
+            matched_category: "resolved",
+            notes: "Marked as resolved — redundant payment line",
+          });
+        }
+      });
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unmatched-statement-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["unmatched-ledger-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
+      setSelectedIds([]);
     },
   });
 
@@ -358,19 +387,31 @@ export default function ReconciliationTab({ user }) {
                   <p className="text-sm font-medium text-emerald-900">
                     {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
                   </p>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
-                        bulkDeleteMutation.mutate(selectedIds);
-                      }
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Selected
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkResolveMutation.mutate(selectedIds)}
+                      disabled={bulkResolveMutation.isPending}
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Mark as Resolved
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
+                          bulkDeleteMutation.mutate(selectedIds);
+                        }
+                      }}
+                      disabled={bulkDeleteMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Selected
+                    </Button>
+                  </div>
                 </div>
               )}
               <DataTable columns={columns} data={allUnmatchedRows} emptyMessage="No unmatched rows" />
