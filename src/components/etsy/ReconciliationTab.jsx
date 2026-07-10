@@ -4,16 +4,37 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, Download, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import DataTable from "@/components/ui/DataTable";
 import DepositMatcher from "@/components/reconciliation/DepositMatcher";
 import StatementSummary from "@/components/etsy/StatementSummary";
 import { classifyEtsyLedgerEntry } from "@/components/shared/financialAggregator";
 import { format } from "date-fns";
 
+// Extract dollar amount from a description like "$73.11 sent to your bank account"
+const parseAmountFromDescription = (desc) => {
+  if (!desc) return 0;
+  const match = desc.match(/\$?\s*([\d,]+\.\d{2})/);
+  if (match) return parseFloat(match[1].replace(/,/g, ""));
+  const match2 = desc.match(/\$?\s*([\d,]+)/);
+  if (match2) return parseFloat(match2[1].replace(/,/g, ""));
+  return 0;
+};
+
+// Short, human-readable reason for why a row is unmatched
+const simplifyError = (row) => {
+  const err = row.match_error || "";
+  if (err.startsWith("Unknown pattern")) {
+    if (row.type === "Deposit") return "Deposit not linked to statement";
+    if (row.type === "Payment") return "Payment not categorized";
+    return "Not categorized";
+  }
+  if (err === "Legacy unmatched entry") return "Legacy data — needs review";
+  return err || "Needs review";
+};
+
 export default function ReconciliationTab({ user }) {
   const [selectedIds, setSelectedIds] = useState([]);
-  const [showBreakdown, setShowBreakdown] = useState(true);
   const queryClient = useQueryClient();
 
   const { data: imports = [] } = useQuery({
@@ -25,7 +46,7 @@ export default function ReconciliationTab({ user }) {
   const { data: transfers = [] } = useQuery({
     queryKey: ["transfers", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.Transfer.filter({ owner_user_id: user.id, type: "etsy_deposit" }, "-date", 1000)
+    queryFn: () => base44.entities.Transfer.filter({ owner_user_id: user.id, type: "etsy_deposit" }, "-date", 1000),
   });
 
   const { data: unmatchedStatementLines = [] } = useQuery({
@@ -43,12 +64,10 @@ export default function ReconciliationTab({ user }) {
     queryFn: async () => {
       const all = await base44.entities.EtsyLedgerEntry.filter({ owner_user_id: user.id }, "-entry_date", 5000);
       const unmatched = all.filter(e => e.status === "Unmatched" || !e.matched_category);
-      // Auto-classify entries that the classifier can now recognize (e.g., deposits)
       const stillUnmatched = [];
       for (const entry of unmatched) {
         const classification = classifyEtsyLedgerEntry(entry);
         if (classification.status === "Matched" && classification.category) {
-          // Update the entry in the background so it doesn't show up next time
           base44.entities.EtsyLedgerEntry.update(entry.id, {
             matched_category: classification.category,
             status: "Matched",
@@ -80,16 +99,40 @@ export default function ReconciliationTab({ user }) {
     },
   });
 
-  const activeImports = imports.filter(imp => imp.status !== 'replaced');
-  const unmatchedFromImports = activeImports.reduce((sum, imp) => sum + (imp.unmatched_count || 0), 0);
-  const totalUnmatched = Math.max(unmatchedFromImports, unmatchedStatementLines.length + unmatchedLedgerEntries.length);
+  const activeImports = imports.filter(imp => imp.status !== "replaced");
 
-  // Reconciliation check: compare Etsy statement net (sales - fees - marketing - shipping)
-  // against actual bank deposits. Both are dollar amounts from the same source of truth.
-  const depositsTotal = transfers.reduce((sum, t) => sum + (t.amount || 0), 0);
-  const ordersTotal = activeImports.reduce((sum, imp) => sum + (imp.orders_count || 0), 0);
-  const feesCount = activeImports.reduce((sum, imp) => sum + (imp.fees_count || 0), 0);
-  const depositsCount = activeImports.reduce((sum, imp) => sum + (imp.deposits_count || 0), 0);
+  // Consolidate imports by statement_month — merges the partial (PENDING) and
+  // full (PASS) rows that the import process creates for the same month.
+  const consolidatedImports = useMemo(() => {
+    const byMonth = {};
+    activeImports.forEach(imp => {
+      const month = imp.statement_month;
+      if (!byMonth[month]) {
+        byMonth[month] = { ...imp };
+      } else {
+        const ex = byMonth[month];
+        ex.orders_count = (ex.orders_count || 0) + (imp.orders_count || 0);
+        ex.fees_count = (ex.fees_count || 0) + (imp.fees_count || 0);
+        ex.deposits_count = (ex.deposits_count || 0) + (imp.deposits_count || 0);
+        ex.unmatched_count = (ex.unmatched_count || 0) + (imp.unmatched_count || 0);
+        // Wider date range
+        if (imp.date_range_end && (!ex.date_range_end || imp.date_range_end > ex.date_range_end)) {
+          ex.date_range_end = imp.date_range_end;
+        }
+        if (imp.date_range_start && (!ex.date_range_start || imp.date_range_start < ex.date_range_start)) {
+          ex.date_range_start = imp.date_range_start;
+        }
+        // Most recent import time
+        if (imp.imported_at > ex.imported_at) ex.imported_at = imp.imported_at;
+        // Best status
+        if (imp.reconciliation_status === "PASS") ex.reconciliation_status = "PASS";
+      }
+    });
+    return Object.values(byMonth).sort((a, b) => b.statement_month.localeCompare(a.statement_month));
+  }, [imports]);
+
+  const unmatchedFromImports = consolidatedImports.reduce((sum, imp) => sum + (imp.unmatched_count || 0), 0);
+  const totalUnmatched = Math.max(unmatchedFromImports, unmatchedStatementLines.length + unmatchedLedgerEntries.length);
 
   const importMonthMap = {};
   imports.forEach(imp => { importMonthMap[imp.id] = imp.statement_month; });
@@ -100,40 +143,22 @@ export default function ReconciliationTab({ user }) {
       transaction_date: line.transaction_date,
       type: line.type,
       description: line.description,
-      amount: line.amount,
+      amount: line.amount || parseAmountFromDescription(line.description),
       match_error: line.match_error,
       import_month: importMonthMap[line.import_id] || "—",
-      source: "New Import"
+      source: "New Import",
     })),
     ...unmatchedLedgerEntries.map(entry => ({
       id: entry.id,
       transaction_date: entry.entry_date,
       type: entry.type,
       description: entry.title || entry.info,
-      amount: entry.amount || entry.net,
+      amount: entry.amount || entry.net || parseAmountFromDescription(entry.title),
       match_error: "Legacy unmatched entry",
-      source: "Legacy Data"
-    }))
+      import_month: "—",
+      source: "Legacy Data",
+    })),
   ];
-
-  const unmatchedBreakdown = React.useMemo(() => {
-    const breakdown = {};
-    allUnmatchedRows.forEach(row => {
-      const key = row.type || 'Unknown Type';
-      if (!breakdown[key]) {
-        breakdown[key] = { count: 0, examples: [] };
-      }
-      breakdown[key].count++;
-      if (breakdown[key].examples.length < 3) {
-        breakdown[key].examples.push({
-          description: row.description,
-          amount: row.amount,
-          date: row.transaction_date
-        });
-      }
-    });
-    return breakdown;
-  }, [allUnmatchedRows]);
 
   const columns = [
     {
@@ -142,11 +167,8 @@ export default function ReconciliationTab({ user }) {
           type="checkbox"
           checked={selectedIds.length === allUnmatchedRows.length && allUnmatchedRows.length > 0}
           onChange={() => {
-            if (selectedIds.length === allUnmatchedRows.length) {
-              setSelectedIds([]);
-            } else {
-              setSelectedIds(allUnmatchedRows);
-            }
+            if (selectedIds.length === allUnmatchedRows.length) setSelectedIds([]);
+            else setSelectedIds(allUnmatchedRows);
           }}
           className="w-4 h-4 rounded border-stone-300"
         />
@@ -157,11 +179,8 @@ export default function ReconciliationTab({ user }) {
           checked={selectedIds.some(item => item.id === row.id)}
           onChange={() => {
             const isSelected = selectedIds.some(item => item.id === row.id);
-            if (isSelected) {
-              setSelectedIds(selectedIds.filter(item => item.id !== row.id));
-            } else {
-              setSelectedIds([...selectedIds, row]);
-            }
+            if (isSelected) setSelectedIds(selectedIds.filter(item => item.id !== row.id));
+            else setSelectedIds([...selectedIds, row]);
           }}
           className="w-4 h-4 rounded border-stone-300"
         />
@@ -169,46 +188,36 @@ export default function ReconciliationTab({ user }) {
     },
     {
       header: "Date",
-      render: (row) => row.transaction_date || "—",
+      render: (row) => <span className="text-stone-600">{row.transaction_date || "—"}</span>,
     },
     {
       header: "Type",
-      render: (row) => row.type,
+      render: (row) => (
+        <Badge variant="outline" className="text-xs">
+          {row.type}
+        </Badge>
+      ),
     },
     {
       header: "Description",
       render: (row) => (
-        <div className="max-w-xs truncate">
-          {row.description}
-        </div>
+        <div className="max-w-xs truncate text-stone-700">{row.description}</div>
       ),
     },
     {
       header: "Amount",
       render: (row) => (
-        <span className="font-medium">
-          ${row.amount?.toFixed(2) || "0.00"}
-        </span>
+        <span className="font-semibold text-stone-900">${(row.amount || 0).toFixed(2)}</span>
       ),
     },
     {
-      header: "Statement",
-      render: (row) => row.import_month || "—",
+      header: "Month",
+      render: (row) => <span className="text-stone-500 text-sm">{row.import_month || "—"}</span>,
     },
     {
-      header: "Source",
+      header: "Reason",
       render: (row) => (
-        <Badge variant="outline" className="text-xs">
-          {row.source}
-        </Badge>
-      ),
-    },
-    {
-      header: "Error",
-      render: (row) => (
-        <span className="text-rose-600 text-sm">
-          {row.match_error || "Unknown"}
-        </span>
+        <span className="text-amber-600 text-sm">{simplifyError(row)}</span>
       ),
     },
   ];
@@ -219,36 +228,23 @@ export default function ReconciliationTab({ user }) {
       render: (row) => (
         <div>
           <p className="font-semibold text-stone-900">{row.statement_month}</p>
-          <p className="text-xs text-stone-500">
-            {row.date_range_start} to {row.date_range_end}
-          </p>
+          <p className="text-xs text-stone-500">{row.date_range_start} to {row.date_range_end}</p>
         </div>
       ),
     },
     {
       header: "Imported",
       render: (row) => (
-        <span className="text-sm text-stone-600">
-          {format(new Date(row.imported_at), "MMM d, yyyy HH:mm")}
-        </span>
+        <span className="text-sm text-stone-600">{format(new Date(row.imported_at), "MMM d, yyyy")}</span>
       ),
     },
-    {
-      header: "Orders",
-      render: (row) => row.orders_count || 0,
-    },
-    {
-      header: "Fees",
-      render: (row) => row.fees_count || 0,
-    },
-    {
-      header: "Deposits",
-      render: (row) => row.deposits_count || 0,
-    },
+    { header: "Orders", render: (row) => row.orders_count || 0 },
+    { header: "Fees", render: (row) => row.fees_count || 0 },
+    { header: "Deposits", render: (row) => row.deposits_count || 0 },
     {
       header: "Unmatched",
       render: (row) => (
-        <span className={row.unmatched_count > 0 ? "text-amber-600 font-semibold" : "text-stone-600"}>
+        <span className={row.unmatched_count > 0 ? "text-amber-600 font-semibold" : "text-stone-500"}>
           {row.unmatched_count || 0}
         </span>
       ),
@@ -258,15 +254,7 @@ export default function ReconciliationTab({ user }) {
       render: (row) => {
         const status = row.reconciliation_status || "PENDING";
         return (
-          <Badge
-            className={
-              status === "PASS"
-                ? "bg-emerald-100 text-emerald-800"
-                : status === "FAIL"
-                ? "bg-rose-100 text-rose-800"
-                : "bg-amber-100 text-amber-800"
-            }
-          >
+          <Badge className={status === "PASS" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
             {status}
           </Badge>
         );
@@ -276,177 +264,101 @@ export default function ReconciliationTab({ user }) {
 
   return (
     <div className="space-y-6">
-          <StatementSummary user={user} />
+      <StatementSummary user={user} />
 
-        <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-stone-900">Deposit Matching</h3>
-          <DepositMatcher user={user} />
-        </div>
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-stone-900">Deposit Matching</h3>
+        <DepositMatcher user={user} />
+      </div>
 
-        <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-stone-900">Statement Review</h3>
-      {totalUnmatched > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-6 h-6 text-amber-600" />
-              <div>
-                <p className="font-semibold text-amber-900">
-                  {totalUnmatched} rows need review
-                </p>
-                <p className="text-sm text-amber-700">
-                  These statement lines could not be automatically matched or categorized. See the detail table below.
-                </p>
-              </div>
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-stone-900">Statement Review</h3>
+
+        {totalUnmatched > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-900 text-sm">{totalUnmatched} rows need review</p>
+              <p className="text-sm text-amber-700">These lines could not be automatically matched. See the table below.</p>
             </div>
+          </div>
+        )}
+
+        {totalUnmatched === 0 && imports.length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-emerald-900 text-sm">All imports reconciled</p>
+              <p className="text-sm text-emerald-700">No unmatched rows found.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Import History — consolidated by month */}
+        <Card>
+          <CardHeader><CardTitle>Import History</CardTitle></CardHeader>
+          <CardContent>
+            {consolidatedImports.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-stone-600 mb-2">No imports yet</p>
+                <p className="text-sm text-stone-500">Import an Etsy statement CSV from the Orders tab</p>
+              </div>
+            ) : (
+              <DataTable columns={importColumns} data={consolidatedImports} emptyMessage="No statement imports yet" />
+            )}
           </CardContent>
         </Card>
-      )}
 
-      {totalUnmatched === 0 && imports.length > 0 && (
-        <Card className="border-emerald-200 bg-emerald-50">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-              <div>
-                <p className="font-semibold text-emerald-900">
-                  All imports reconciled
-                </p>
-                <p className="text-sm text-emerald-700">
-                  No unmatched rows found across all statement imports.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Import History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {imports.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-stone-600 mb-2">No imports yet</p>
-              <p className="text-sm text-stone-500">Import an Etsy statement CSV from the Orders tab</p>
-            </div>
-          ) : imports.filter(imp => imp.status !== 'replaced').length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-stone-600">No active imports</p>
-            </div>
-          ) : (
-            <DataTable
-              columns={importColumns}
-              data={imports.filter(imp => imp.status !== 'replaced')}
-              emptyMessage="No statement imports yet"
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {totalUnmatched > 0 && (
-        <>
-          {allUnmatchedRows.length === 0 ? (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-semibold text-amber-900">
-                      {totalUnmatched} unmatched rows detected during import
-                    </p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      Row-level details were not saved for these imports. Re-import the statement to see each unmatched row's date, type, amount, and reason here.
-                    </p>
-                  </div>
+        {/* Unmatched Rows Table */}
+        {totalUnmatched > 0 && allUnmatchedRows.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Unmatched Rows ({allUnmatchedRows.length})</span>
+                <Button variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export for Review
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedIds.length > 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+                  <p className="text-sm font-medium text-emerald-900">
+                    {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
+                  </p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
+                        bulkDeleteMutation.mutate(selectedIds);
+                      }
+                    }}
+                    disabled={bulkDeleteMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {Object.keys(unmatchedBreakdown).length > 0 && (
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center justify-between">
-                      <span>Unmatched Row Breakdown</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowBreakdown(!showBreakdown)}
-                      >
-                        {showBreakdown ? "Hide" : "Show"}
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  {showBreakdown && (
-                    <CardContent>
-                      <div className="space-y-3">
-                        {Object.entries(unmatchedBreakdown).map(([type, data]) => (
-                          <div key={type} className="bg-white rounded-lg border border-blue-200 p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-semibold text-stone-900">{type}</p>
-                              <Badge variant="outline">{data.count} rows</Badge>
-                            </div>
-                            <div className="space-y-1 text-sm text-stone-600">
-                              {data.examples.map((ex, idx) => (
-                                <div key={idx} className="flex justify-between">
-                                  <span className="truncate max-w-md">{ex.description}</span>
-                                  <span className="font-medium ml-2">${ex.amount?.toFixed(2)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
               )}
+              <DataTable columns={columns} data={allUnmatchedRows} emptyMessage="No unmatched rows" />
+            </CardContent>
+          </Card>
+        )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Unmatched Rows ({allUnmatchedRows.length})</span>
-                    <Button variant="outline" size="sm">
-                      <Download className="w-4 h-4 mr-2" />
-                      Export for Review
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {selectedIds.length > 0 && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-                      <p className="text-sm font-medium text-emerald-900">
-                        {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
-                      </p>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (window.confirm(`Delete ${selectedIds.length} unmatched row(s)?`)) {
-                            bulkDeleteMutation.mutate(selectedIds);
-                          }
-                        }}
-                        disabled={bulkDeleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Selected
-                      </Button>
-                    </div>
-                  )}
-                  <DataTable
-                    columns={columns}
-                    data={allUnmatchedRows}
-                    emptyMessage="No unmatched rows"
-                  />
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </>
-      )}
-        </div>
-        </div>
-        );
-        }
+        {totalUnmatched > 0 && allUnmatchedRows.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-900 text-sm">{totalUnmatched} unmatched rows detected during import</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Row-level details were not saved. Re-import the statement to see each row.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

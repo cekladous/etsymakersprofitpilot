@@ -4,12 +4,13 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, Link as LinkIcon, Unlink } from "lucide-react";
+import { AlertCircle, CheckCircle2, Link as LinkIcon, Unlink, ChevronDown, ChevronRight } from "lucide-react";
 import { format, parseISO, isWithinInterval, addDays, subDays } from "date-fns";
 
 export default function DepositMatcher({ user }) {
   const [selectedDeposit, setSelectedDeposit] = useState(null);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
+  const [showAllMatched, setShowAllMatched] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch Etsy deposits (Transfer records imported from Etsy Payment Account CSV)
@@ -242,38 +243,46 @@ export default function DepositMatcher({ user }) {
         </Card>
       )}
 
-      {/* Auto-matched statement deposits */}
+      {/* Auto-matched statement deposits — collapsed by default */}
       {statementMatches.size > 0 && (
         <Card className="border-emerald-200">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              Auto-Matched to Statement ({statementMatches.size})
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                Auto-Matched to Statement ({statementMatches.size})
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setShowAllMatched(!showAllMatched)}>
+                {showAllMatched ? "Collapse" : "Show all"}
+                {showAllMatched
+                  ? <ChevronDown className="w-4 h-4 ml-1" />
+                  : <ChevronRight className="w-4 h-4 ml-1" />}
+              </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {etsyDeposits.filter(d => statementMatches.has(d.id)).map((deposit) => {
-                const imp = statementMatches.get(deposit.id);
-                return (
-                  <div key={deposit.id} className="bg-stone-50 rounded-lg border p-4 flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-stone-900">
+          {showAllMatched && (
+            <CardContent>
+              <div className="space-y-2">
+                {etsyDeposits.filter(d => statementMatches.has(d.id)).map((deposit) => {
+                  const imp = statementMatches.get(deposit.id);
+                  return (
+                    <div key={deposit.id} className="bg-stone-50 rounded-lg border p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-stone-900 text-sm">
                           {format(parseISO(deposit.date), "MMM d, yyyy")}
                         </p>
-                        <Badge className="bg-emerald-100 text-emerald-800">matched</Badge>
+                        <Badge className="bg-emerald-100 text-emerald-800 text-xs">matched</Badge>
                       </div>
-                      <p className="text-sm text-stone-600">
-                        Deposit: ${deposit.amount.toFixed(2)} → Statement: {imp.statement_month}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-stone-600">${deposit.amount.toFixed(2)}</span>
+                        <span className="text-xs text-stone-400">→ {imp.statement_month}</span>
+                      </div>
                     </div>
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
         </Card>
       )}
 
