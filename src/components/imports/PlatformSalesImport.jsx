@@ -28,6 +28,70 @@ const getVal = (row, ...keys) => {
 };
 
 const PLATFORM_CONFIGS = {
+  square: {
+    title: "Import Square Transactions",
+    description:
+      "Upload your Square Transactions CSV export. Each sale will be imported as a custom sale. Transactions already captured in your Etsy orders are automatically skipped to prevent duplicates.",
+    parseRow: (row) => {
+      const transactionId = getVal(row, "Transaction ID", "TransactionID", "transaction_id");
+      const total = parseMoney(
+        getVal(row, "Total Collected", "Total", "total", "Gross Amount", "Amount")
+      );
+      const grossSales = parseMoney(
+        getVal(row, "Gross Sales", "GrossSales", "gross_sales", "gross_sale")
+      );
+      const tax = parseMoney(getVal(row, "Tax", "tax", "Sales Tax"));
+      const netSales = parseMoney(getVal(row, "Net Sales", "NetSales", "net_sales"));
+      const fee = parseMoney(
+        getVal(row, "Processing Fee", "ProcessingFee", "processing_fee", "Fee", "Fees")
+      );
+      const date = parseDate(getVal(row, "Date", "date", "Transaction Date"));
+      const customerName = getVal(row, "Customer", "Customer Name", "customer_name", "Buyer");
+      const tenderType = getVal(
+        row,
+        "Tender Type",
+        "Payment Method",
+        "Transaction Type",
+        "tender_type"
+      );
+      const status = getVal(row, "Status", "status");
+      const orderRef = getVal(row, "Order ID", "OrderID", "order_id");
+
+      // Skip non-sale transactions (refunds, voided)
+      const typeLower = String(tenderType || "").toLowerCase();
+      const statusLower = String(status || "").toLowerCase();
+      if (statusLower === "voided" || statusLower === "refunded") return null;
+      if (typeLower === "refund" || typeLower === "void") return null;
+
+      const saleAmount = total || grossSales || netSales;
+      if (!saleAmount) return null;
+
+      const noteParts = [`Imported from Square. Transaction: ${transactionId || "N/A"}`];
+      if (orderRef) noteParts.push(`Square Order: ${orderRef}`);
+      if (tenderType) noteParts.push(`Tender: ${tenderType}`);
+      if (fee) noteParts.push(`Processing Fee: $${fee.toFixed(2)}`);
+
+      // Use Square transaction ID in description for dedup
+      const desc =
+        transactionId || orderRef
+          ? `Square Transaction ${transactionId || orderRef}`
+          : `Square Sale ${date} $${saleAmount.toFixed(2)}`;
+
+      return {
+        date,
+        vendor: customerName || "Square Customer",
+        description: desc,
+        payment_source: "Square",
+        pre_tax_amount: grossSales ? grossSales - tax : saleAmount - tax,
+        sales_tax_collected: tax,
+        gross_sale: saleAmount,
+        shipping_or_postage_cost: 0,
+        notes: noteParts.join(" | "),
+      };
+    },
+    getUniqueKey: (row) =>
+      getVal(row, "Transaction ID", "TransactionID", "transaction_id", "Order ID", "OrderID"),
+  },
   shopify: {
     title: "Import Shopify Sales",
     description:
@@ -171,10 +235,25 @@ export default function PlatformSalesImport({ open, onOpenChange, platform }) {
   const config = PLATFORM_CONFIGS[platform];
 
   const handleImport = async (rows, parseRow, getUniqueKey) => {
-    const existingSales = await base44.entities.CustomSale.filter({
-      owner_user_id: user.id,
-    });
+    const [existingSales, existingEtsyOrders] = await Promise.all([
+      base44.entities.CustomSale.filter({ owner_user_id: user.id }),
+      // For Square imports, also cross-check against Etsy orders so in-person
+      // Square sales already captured via Etsy's Sold Orders Report aren't duplicated
+      platform === "square"
+        ? base44.entities.EtsyOrder.filter({ owner_user_id: user.id })
+        : Promise.resolve([]),
+    ]);
+
     const existingKeys = new Set(existingSales.map((s) => s.description));
+
+    // Build a date+amount lookup from Etsy orders to detect Square sales
+    // that were already imported through Etsy's Sold Orders Report
+    const etsyDateAmountKeys = new Set();
+    existingEtsyOrders.forEach((o) => {
+      if (o.sale_date && o.order_total) {
+        etsyDateAmountKeys.add(`${o.sale_date}|${Number(o.order_total).toFixed(2)}`);
+      }
+    });
 
     const toCreate = [];
     const skipped = [];
@@ -189,6 +268,14 @@ export default function PlatformSalesImport({ open, onOpenChange, platform }) {
       if (descKey && existingKeys.has(descKey)) {
         skipped.push({ row, reason: "Duplicate order already imported" });
         continue;
+      }
+      // Cross-check against Etsy orders by date + amount (Square in-person sales)
+      if (platform === "square" && parsed.date && parsed.gross_sale) {
+        const etsyKey = `${parsed.date}|${Number(parsed.gross_sale).toFixed(2)}`;
+        if (etsyDateAmountKeys.has(etsyKey)) {
+          skipped.push({ row, reason: "Already exists as an Etsy order" });
+          continue;
+        }
       }
       existingKeys.add(descKey);
       toCreate.push({ ...parsed, owner_user_id: user.id });

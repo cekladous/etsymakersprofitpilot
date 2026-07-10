@@ -140,6 +140,27 @@ export default function IntegrationsTool() {
             >
               {saving ? 'Saving...' : 'Save Square Settings'}
             </Button>
+
+            <div className="border-t border-stone-200 pt-4 space-y-3">
+              <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
+                <p className="font-semibold text-stone-700">Import Square transactions:</p>
+                <ol className="list-decimal list-inside space-y-1 text-stone-600 text-xs">
+                  <li>In Square Dashboard → <strong>Reports → Transactions → Export</strong></li>
+                  <li>Save the CSV file to your computer</li>
+                  <li>Click "Import Square Transactions" below and upload the file</li>
+                </ol>
+                <p className="text-xs text-emerald-700 bg-emerald-50 rounded px-2 py-1 mt-2">
+                  ✓ Sales already in your Etsy orders are automatically skipped
+                </p>
+              </div>
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => setImportPlatform('square')}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import Square Transactions
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
