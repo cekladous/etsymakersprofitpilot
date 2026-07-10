@@ -35,6 +35,7 @@ import RefundConflictWarning from "@/components/reconciliation/RefundConflictWar
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
+import { useToast } from "@/components/ui/use-toast";
 
 import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
 
@@ -43,6 +44,7 @@ const CATEGORIES = [...BUSINESS_EXPENSE_CATEGORIES, ...ETSY_FEE_CATEGORIES];
 export default function Expenses() {
   const { user, loading } = useAuth();
   const { canExportCSV } = useFeatureAccess();
+  const { toast } = useToast();
   const [importOpen, setImportOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -225,6 +227,12 @@ export default function Expenses() {
     }
 
     queryClient.invalidateQueries({ queryKey: ["expenses"] });
+
+    toast({
+      title: "Import Successful",
+      description: `${added} of ${rows.length} transactions imported${skipped > 0 ? `, ${skipped} skipped` : ""}.`,
+    });
+
     return { success: true, added, updated, skipped, skippedRecords };
   };
 
