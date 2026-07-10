@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw, CopyCheck } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw, CopyCheck, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +63,8 @@ export default function Expenses() {
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
   const [pdfImportOpen, setPdfImportOpen] = useState(false);
   const [deduping, setDeduping] = useState(false);
+  const [sortField, setSortField] = useState("date");
+  const [sortDirection, setSortDirection] = useState("desc");
 
   const queryClient = useQueryClient();
 
@@ -486,7 +488,7 @@ export default function Expenses() {
     });
     
     // Apply filters
-    return allExpenses.filter(expense => {
+    const filtered = allExpenses.filter(expense => {
       const matchesSearch = !search ||
         expense.description?.toLowerCase().includes(search.toLowerCase()) ||
         expense.vendor?.toLowerCase().includes(search.toLowerCase());
@@ -499,7 +501,41 @@ export default function Expenses() {
         expense.material_name === materialFilter;
       return matchesSearch && matchesCategory && matchesStatus && matchesMaterial;
     });
-  }, [expenses, businessExpenses, materialPurchases, etsyLedgerEntries, search, categoryFilter, statusFilter, materialFilter, dateRange]);
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let valA, valB;
+      switch (sortField) {
+        case "date":
+          valA = a.date ? new Date(a.date).getTime() : 0;
+          valB = b.date ? new Date(b.date).getTime() : 0;
+          break;
+        case "amount":
+          valA = a.amount || 0;
+          valB = b.amount || 0;
+          break;
+        case "description":
+          valA = (a.description || "").toLowerCase();
+          valB = (b.description || "").toLowerCase();
+          break;
+        case "category":
+          valA = (a.category || "").toLowerCase();
+          valB = (b.category || "").toLowerCase();
+          break;
+        case "status":
+          valA = a.is_categorized ? 1 : 0;
+          valB = b.is_categorized ? 1 : 0;
+          break;
+        default:
+          return 0;
+      }
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [expenses, businessExpenses, materialPurchases, etsyLedgerEntries, search, categoryFilter, statusFilter, materialFilter, dateRange, sortField, sortDirection]);
 
   // Calculate totals directly from filtered table data (single source of truth)
   const totals = useMemo(() => {
@@ -674,6 +710,31 @@ export default function Expenses() {
     }
   };
 
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const renderSortableHeader = (field, label) => (
+    <button
+      onClick={() => toggleSort(field)}
+      className="flex items-center gap-1 hover:text-stone-900 transition-colors"
+    >
+      {label}
+      {sortField === field ? (
+        sortDirection === "asc"
+          ? <ArrowUp className="w-3 h-3" />
+          : <ArrowDown className="w-3 h-3" />
+      ) : (
+        <ChevronsUpDown className="w-3 h-3 text-stone-300" />
+      )}
+    </button>
+  );
+
   const columns = [
     {
       header: () => (
@@ -694,7 +755,7 @@ export default function Expenses() {
       ),
     },
     {
-      header: "Date",
+      header: () => renderSortableHeader("date", "Date"),
       render: (row) => {
         const d = row.date ? new Date(row.date + "T00:00:00") : null;
           return (
@@ -705,7 +766,7 @@ export default function Expenses() {
       },
     },
     {
-      header: "Description",
+      header: () => renderSortableHeader("description", "Description"),
       render: (row) => (
         <div className="max-w-xs">
           <div className="flex items-center gap-1.5">
@@ -727,7 +788,7 @@ export default function Expenses() {
       ),
     },
     {
-      header: "Amount",
+      header: () => renderSortableHeader("amount", "Amount"),
       render: (row) => {
         const amount = row.amount || 0;
         const isReturn = row.type === "return";
@@ -740,7 +801,7 @@ export default function Expenses() {
       },
     },
     {
-      header: "Category",
+      header: () => renderSortableHeader("category", "Category"),
       render: (row) => {
         // Show category badge, only allow editing for legacy expenses
         if (row.source !== "legacy") {
@@ -771,7 +832,7 @@ export default function Expenses() {
       },
     },
     {
-      header: "Status",
+      header: () => renderSortableHeader("status", "Status"),
       render: (row) => (
         row.is_categorized ? (
           <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200">
