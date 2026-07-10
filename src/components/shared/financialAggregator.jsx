@@ -125,20 +125,11 @@ export function aggregateFinancials(data, dateRange) {
       return lineImport && lineImport.status !== 'replaced';
     });
 
-  // Build set of EtsyOrder IDs that are linked to statement lines (should be excluded from revenue calc)
-  const linkedOrderIds = new Set();
-  periodStatementLines.forEach(line => {
-    if (line.source_etsy_order_id) {
-      linkedOrderIds.add(line.source_etsy_order_id);
-    }
-  });
-
-  // Filter orders: exclude those linked to statement lines (to avoid double-counting)
+  // All Etsy orders in period — no deduplication. The EtsyOrder entity is the single
+  // source of truth for order-level revenue (matches the Etsy Sales tab exactly).
+  // Statement lines are only used for fees and for unlinked sales (no matching order).
   const deduplicationWarnings = [];
-  const dedupedEtsyOrders = periodEtsyOrders.filter(o => !linkedOrderIds.has(o.id));
-  if (linkedOrderIds.size > 0) {
-    deduplicationWarnings.push(`${linkedOrderIds.size} EtsyOrder records excluded (using EtsyStatementLine as canonical source)`);
-  }
+  const dedupedEtsyOrders = periodEtsyOrders;
 
   // Split: Etsy online orders vs Square in-person orders.
   // Etsy's Activity Summary never includes Square sales — keep them separate so
@@ -169,7 +160,7 @@ export function aggregateFinancials(data, dateRange) {
   // Net Sales = Gross Sales (order_total - refunds) - Sales Tax - CO Retail Delivery Fee
   // EXCLUDES Square in-person orders (Etsy's Activity Summary never includes them)
   const etsySalesFromOrders = etsyOnlineOrders.reduce((sum, o) => {
-    const gross = toNumber(o.order_total) - toNumber(o.refund_amount);
+    const gross = toNumber(o.order_total);
     const tax = toNumber(o.sales_tax);
     const expected = toNumber(o.order_value) + toNumber(o.shipping_charged) + tax - toNumber(o.discount_amount);
     const coFee = Math.max(0, toNumber(o.order_total) - expected);
@@ -188,7 +179,7 @@ export function aggregateFinancials(data, dateRange) {
 
   // Add sales from statement lines (for orders that were excluded due to deduplication)
   const etsySalesFromStatementLines = periodStatementLines
-    .filter(line => line.category === 'sale')
+    .filter(line => line.category === 'sale' && !line.source_etsy_order_id)
     .reduce((sum, line) => sum + toNumber(line.amount), 0);
 
   const etsySales = etsySalesFromOrders + etsySalesFromStatementLines;
@@ -205,7 +196,7 @@ export function aggregateFinancials(data, dateRange) {
 
   // 3) Total Etsy Sales (gross sales = order_total - refunds, matches Etsy statement)
   const totalEtsySales = etsyOnlineOrders.reduce((sum, o) =>
-    sum + toNumber(o.order_total) - toNumber(o.refund_amount), 0) + etsySalesFromStatementLines;
+    sum + toNumber(o.order_total), 0) + etsySalesFromStatementLines;
   
   // 4) Etsy Refunds - CANONICAL: from orders (per-order data is most reliable)
   const refundsFromOrders = etsyOnlineOrders.reduce((sum, o) => 
