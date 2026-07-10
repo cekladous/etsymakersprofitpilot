@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Pencil, Trash2, Calendar, Zap } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Zap, Wrench } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import CustomSaleDialog from "@/components/monthly/CustomSaleDialog";
 import QuickAddSaleDialog from "@/components/monthly/QuickAddSaleDialog";
@@ -19,6 +19,7 @@ export default function CustomSalesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [fixing, setFixing] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -240,7 +241,31 @@ export default function CustomSalesPage() {
           {isLoading ? (
             <div className="p-8 text-center text-stone-500">Loading...</div>
           ) : filteredSales.length === 0 ? (
-            <div className="p-8 text-center text-stone-500">No custom sales found</div>
+            <div className="p-8 text-center text-stone-500">
+              <p>No custom sales found</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                disabled={fixing}
+                onClick={async () => {
+                  setFixing(true);
+                  try {
+                    const res = await base44.functions.invoke('fixCustomSaleOwnership', {});
+                    if (res.data?.fixed || res.data?.recreated > 0) {
+                      queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
+                    }
+                  } catch (err) {
+                    console.error("Fix failed:", err);
+                  } finally {
+                    setFixing(false);
+                  }
+                }}
+              >
+                <Wrench className="w-4 h-4 mr-2" />
+                {fixing ? "Fixing..." : "Fix Missing Sales"}
+              </Button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

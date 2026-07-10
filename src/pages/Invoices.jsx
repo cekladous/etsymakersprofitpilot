@@ -42,11 +42,33 @@ export default function InvoicesPage() {
 
   const markAsPaidMutation = useMutation({
     mutationFn: async (invoice) => {
-      await base44.entities.Invoice.update(invoice.id, {
-        status: "Paid",
-        amount_paid: invoice.total || 0,
-        balance_due: 0,
-      });
+      if (!invoice.custom_sale_id) {
+        const saleDate = invoice.invoice_date || new Date().toISOString().split('T')[0];
+        const customSale = await base44.entities.CustomSale.create({
+          owner_user_id: user.id,
+          date: saleDate,
+          vendor: invoice.customer_name || '',
+          description: `${invoice.project_name || 'Invoice'} — ${invoice.invoice_number || ''}`,
+          payment_source: invoice.payment_method || 'Other',
+          pre_tax_amount: invoice.subtotal || 0,
+          sales_tax_collected: invoice.tax_amount || 0,
+          gross_sale: invoice.total || 0,
+          shipping_or_postage_cost: invoice.shipping_cost || 0,
+          notes: `Auto-created from invoice ${invoice.invoice_number || ''}`
+        });
+        await base44.entities.Invoice.update(invoice.id, {
+          status: "Paid",
+          amount_paid: invoice.total || 0,
+          balance_due: 0,
+          custom_sale_id: customSale.id,
+        });
+      } else {
+        await base44.entities.Invoice.update(invoice.id, {
+          status: "Paid",
+          amount_paid: invoice.total || 0,
+          balance_due: 0,
+        });
+      }
     },
     onSuccess: () => {
       toast({ 
@@ -54,6 +76,7 @@ export default function InvoicesPage() {
         description: "Invoice has been updated successfully." 
       });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
     },
   });
 
