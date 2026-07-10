@@ -52,31 +52,49 @@ export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) 
   const adjustMutation = useMutation({
     mutationFn: async (data) => {
       const change = parseFloat(data.quantityChange);
-      const newQuantity = (item.quantity_on_hand || 0) + change;
-      const newTotalValue = newQuantity * item.average_cost;
+      const avgCost = item.average_cost || 0;
+      let inventoryItemId = item.id;
+
+      if (!inventoryItemId) {
+        // No InventoryItem exists yet — create one with the adjusted quantity
+        const newItem = await base44.entities.InventoryItem.create({
+          owner_user_id: user.id,
+          material_name: item.material_name,
+          quantity_on_hand: change,
+          average_cost: avgCost,
+          total_value: change * avgCost,
+          last_updated: new Date().toISOString(),
+        });
+        inventoryItemId = newItem.id;
+      } else {
+        // Update existing item
+        const newQuantity = (item.quantity_on_hand || 0) + change;
+        await base44.entities.InventoryItem.update(item.id, {
+          quantity_on_hand: newQuantity,
+          total_value: newQuantity * avgCost,
+          last_updated: new Date().toISOString(),
+        });
+      }
 
       // Create transaction record
       await base44.entities.InventoryTransaction.create({
         owner_user_id: user.id,
-        inventory_item_id: item.id,
+        inventory_item_id: inventoryItemId,
         transaction_date: new Date().toISOString().split("T")[0],
         transaction_type: "adjustment",
         quantity_change: change,
-        unit_cost: item.average_cost,
+        unit_cost: avgCost,
         notes: data.notes,
-      });
-
-      // Update inventory item
-      await base44.entities.InventoryItem.update(item.id, {
-        quantity_on_hand: newQuantity,
-        total_value: newTotalValue,
-        last_updated: new Date().toISOString(),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
       onOpenChange(false);
+    },
+    onError: (error) => {
+      console.error("Inventory adjustment failed:", error);
     },
   });
 

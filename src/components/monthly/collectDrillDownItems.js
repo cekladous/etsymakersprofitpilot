@@ -9,15 +9,15 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-// Fee categories: maps categoryName to statement line / Fee entity filters
-// Priority: EtsyStatementLine → Fee entity → EtsyLedgerEntry
+// Fee categories: maps categoryName to data source filters
+// Priority: OrderFee → EtsyStatementLine → Fee entity → EtsyLedgerEntry
 const FEE_CATEGORY_CONFIG = {
-  'etsy_listing_fees': { sections: ['fees'], feeType: 'listing' },
-  'etsy_transaction_fees': { sections: ['fees'], feeType: 'transaction' },
-  'etsy_processing_fees': { sections: ['fees'], feeType: 'processing' },
-  'other_fees': { sections: ['fees'], feeType: 'other_fee' },
+  'etsy_listing_fees': { sections: ['fees'], feeType: 'listing', orderFeeField: 'listing_fees' },
+  'etsy_transaction_fees': { sections: ['fees'], feeType: 'transaction', orderFeeField: 'transaction_fees' },
+  'etsy_processing_fees': { sections: ['fees'], feeType: 'processing', orderFeeField: 'processing_fees' },
+  'other_fees': { sections: ['fees'], feeType: 'other_fee', orderFeeField: 'other_fees' },
   'fee_credits': { sections: ['fees', 'ads'], creditOnly: true, excludeFeeType: 'share_save_credit' },
-  'share_save_refunds_credits': { sections: ['fees'], feeType: 'share_save_credit' },
+  'share_save_refunds_credits': { sections: ['fees'], feeType: 'share_save_credit', orderFeeField: 'share_save_credit' },
   'etsy_ads': { sections: ['ads'], feeType: 'etsy_ads' },
   'etsy_offsite_ads_fees': { sections: ['ads'], feeType: 'offsite_ads' },
   'etsy_plus_subscription': { sections: ['ads'], feeType: 'etsy_plus_subscription' },
@@ -91,14 +91,35 @@ export function collectDrillDownItems(categoryName, rawData = {}) {
     materialPurchases = [],
     customSales = [],
     transfers = [],
+    orderFees = [],
   } = rawData;
 
   const hasStatementFees = statementLines.some(l => l.section === 'fees' || l.section === 'ads');
   const hasFeeRecords = fees.length > 0;
+  const hasOrderFees = orderFees.length > 0;
 
-  // ---- 1) Fee categories (statement lines → Fee entity → ledger) ----
+  // ---- 1) Fee categories (OrderFee → statement lines → Fee entity → ledger) ----
   const feeConfig = FEE_CATEGORY_CONFIG[categoryName];
   if (feeConfig) {
+    // Priority 1: OrderFee entity (per-order fee breakdown)
+    if (hasOrderFees && feeConfig.orderFeeField) {
+      const orderMap = new Map(etsyOrders.map(o => [o.order_id, o]));
+      const items = orderFees
+        .filter(f => toNum(f[feeConfig.orderFeeField]) !== 0)
+        .map(f => {
+          const order = orderMap.get(f.order_id);
+          return {
+            date: order?.sale_date || f.transaction_date || '',
+            description: `Order #${f.order_id}${order ? ' - ' + (order.buyer_username || order.buyer_full_name || 'Unknown') : ''}`,
+            vendor: "Etsy",
+            payment_source: "Order Fee Breakdown",
+            amount: Math.abs(toNum(f[feeConfig.orderFeeField])),
+          };
+        });
+      if (items.length > 0) return items;
+    }
+
+    // Priority 2: EtsyStatementLine
     if (hasStatementFees) {
       const lines = statementLines.filter(l => {
         if (!feeConfig.sections.includes(l.section)) return false;
