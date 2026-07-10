@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -44,8 +43,11 @@ export default function DataTable({
   const getCellKey = (rowIndex, colIndex) => `${rowIndex}-${colIndex}`;
 
   const handleCellMouseDown = (e, rowIndex, colIndex) => {
-    // Don't start cell selection when clicking on interactive elements (checkbox, button, input, select)
-    if (e.target.closest('button, input, select, textarea, [role="checkbox"], [role="button"], a')) return;
+    // Don't start cell selection when clicking on interactive elements (checkbox, button, input, select, dropdowns)
+    if (e.target.closest('button, input, select, textarea, [role="checkbox"], [role="button"], [role="combobox"], [role="listbox"], [role="option"], a, label, summary, [data-radix-select-trigger], [data-radix-collection-item]')) {
+      e.stopPropagation();
+      return;
+    }
     setIsSelecting(true);
     setSelectionStart({ row: rowIndex, col: colIndex });
     setSelectedCells(new Set([getCellKey(rowIndex, colIndex)]));
@@ -158,7 +160,7 @@ export default function DataTable({
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-        <Table>
+        <table className="w-full caption-bottom text-sm">
           <TableHeader>
             <TableRow className="bg-stone-50">
               {columns.map((col, i) => (
@@ -179,7 +181,7 @@ export default function DataTable({
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+        </table>
       </div>
     );
   }
@@ -194,10 +196,10 @@ export default function DataTable({
 
   return (
     <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-      <div className="overflow-x-auto" ref={scrollContainerRef}>
-        <Table>
+      <div className="overflow-auto max-h-[60vh]" ref={scrollContainerRef}>
+        <table className="w-full caption-bottom text-sm">
           <TableHeader>
-            <TableRow className="bg-stone-50 hover:bg-stone-50">
+            <TableRow className="bg-stone-50 hover:bg-stone-50 sticky top-0 z-10">
               {columns.map((col, i) => (
                 <TableHead
                   key={i}
@@ -233,7 +235,7 @@ export default function DataTable({
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+        </table>
       </div>
       {selectedCells.size > 0 && (
         <div className="bg-stone-50 border-t border-stone-100 px-6 py-3">
