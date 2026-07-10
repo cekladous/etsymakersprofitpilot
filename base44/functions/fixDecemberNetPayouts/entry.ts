@@ -20,8 +20,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    // Get all December 2025 orders
-    const decemberOrders = await base44.entities.EtsyOrder.filter({});
+    console.log(`[AUDIT] fixDecemberNetPayouts invoked by user ${user.id} (${user.email || 'no email'})`);
+
+    // Scope to the calling admin's own records — never modify other users' data
+    const decemberOrders = await base44.entities.EtsyOrder.filter({ owner_user_id: user.id });
     const decemberFiltered = decemberOrders.filter(o => 
       o.sale_date && o.sale_date.startsWith('2025-12')
     );
@@ -29,7 +31,7 @@ Deno.serve(async (req) => {
     console.log(`Found ${decemberFiltered.length} December orders`);
 
     // Get all order fees
-    const allOrderFees = await base44.entities.OrderFee.list();
+    const allOrderFees = await base44.entities.OrderFee.filter({ owner_user_id: user.id });
     const feeMap = {};
     allOrderFees.forEach(f => {
       feeMap[f.order_id] = f;

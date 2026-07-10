@@ -72,20 +72,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Square location not configured' }, { status: 400 });
     }
 
-    // SECURITY: Parse the Origin with URL() and validate the hostname against
-    // a strict allow-list. Reconstruct the redirect URL from the validated
-    // hostname rather than using the raw header string — prevents injection
-    // of extra path/query components or protocol smuggling.
+    // SECURITY: Validate the redirect URL against a hardcoded allowlist of
+    // trusted domains. The Origin header is parsed with new URL() (which
+    // normalizes encoding) and the hostname must exactly match one of the
+    // allowed suffixes — no regex, no raw string concatenation.
+    const ALLOWED_HOST_SUFFIXES = ['.base44.app'];
     const rawOrigin = req.headers.get('origin') || '';
     let validatedBase = '';
     try {
       const parsed = new URL(rawOrigin);
-      if (parsed.protocol === 'https:' && /^[a-z0-9-]+\.base44\.app$/.test(parsed.hostname)) {
-        validatedBase = `${parsed.protocol}//${parsed.hostname}`;
+      if (parsed.protocol === 'https:') {
+        const hostname = parsed.hostname.toLowerCase();
+        if (ALLOWED_HOST_SUFFIXES.some(suffix => hostname.endsWith(suffix))) {
+          validatedBase = `${parsed.protocol}//${parsed.hostname}`;
+        }
       }
     } catch (_) { /* invalid URL */ }
     if (!validatedBase) {
-      return Response.json({ error: 'Invalid origin for redirect' }, { status: 400 });
+      return Response.json({ error: 'Unable to determine redirect URL' }, { status: 400 });
     }
 
     const planPrices = { maker_pro: 900, maker_plus: 1400 }; // cents

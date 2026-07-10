@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export default function NameTagGenerator() {
   const [holeOffsetV, setHoleOffsetV] = useState(-0.5);
   const [holeOverlap, setHoleOverlap] = useState(0.05);
   const [warnings, setWarnings] = useState([]);
+  const [uploadingFont, setUploadingFont] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   
   const [fontOpen, setFontOpen] = useState(true);
@@ -68,7 +70,8 @@ export default function NameTagGenerator() {
         const parsed = JSON.parse(stored);
         setCustomFonts(parsed);
         parsed.forEach(font => {
-          const fontFace = new FontFace(font.name, `url(${font.data})`);
+          if (!font.fileUrl) return;
+          const fontFace = new FontFace(font.name, `url(${font.fileUrl})`);
           fontFace.load().then(loadedFont => {
             document.fonts.add(loadedFont);
           }).catch(err => console.error("Font reload failed:", err));
@@ -88,35 +91,40 @@ export default function NameTagGenerator() {
     }
   };
 
-  const handleFontUpload = (e) => {
+  const handleFontUpload = async (e) => {
     const file = e.target.files[0];
-    if (file && (file.name.endsWith(".ttf") || file.name.endsWith(".otf"))) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const fontName = file.name.replace(/\.(ttf|otf)$/, '').replace(/[^a-zA-Z0-9]/g, '');
-        const uniqueFontName = `Custom_${fontName}_${Date.now()}`;
-        
-        const fontFace = new FontFace(uniqueFontName, `url(${event.target.result})`);
-        fontFace.load().then((loadedFont) => {
-          document.fonts.add(loadedFont);
-          
-          const newFont = {
-            name: uniqueFontName,
-            displayName: file.name.replace(/\.(ttf|otf)$/, ''),
-            data: event.target.result,
-            uploadedAt: new Date().toISOString()
-          };
-          
-          const updatedFonts = [...customFonts, newFont];
-          setCustomFonts(updatedFonts);
-          localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
-          
-          setFontFamily(uniqueFontName);
-        }).catch((err) => {
-          console.error("Font loading failed:", err);
-        });
+    if (!file || (!file.name.endsWith(".ttf") && !file.name.endsWith(".otf"))) return;
+
+    setUploadingFont(true);
+    try {
+      // SECURITY: Upload the font file to server-side storage and keep only
+      // the resulting URL — never store raw base64 file data in localStorage.
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+      const fontName = file.name.replace(/\.(ttf|otf)$/, '').replace(/[^a-zA-Z0-9]/g, '');
+      const uniqueFontName = `Custom_${fontName}_${Date.now()}`;
+
+      const fontFace = new FontFace(uniqueFontName, `url(${file_url})`);
+      const loadedFont = await fontFace.load();
+      document.fonts.add(loadedFont);
+
+      const newFont = {
+        name: uniqueFontName,
+        displayName: file.name.replace(/\.(ttf|otf)$/, ''),
+        fileUrl: file_url,
+        uploadedAt: new Date().toISOString()
       };
-      reader.readAsDataURL(file);
+
+      const updatedFonts = [...customFonts, newFont];
+      setCustomFonts(updatedFonts);
+      localStorage.setItem('nametag-custom-fonts', JSON.stringify(updatedFonts));
+
+      setFontFamily(uniqueFontName);
+    } catch (err) {
+      console.error("Font upload failed:", err);
+    } finally {
+      setUploadingFont(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -435,9 +443,10 @@ export default function NameTagGenerator() {
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full"
                     size="sm"
+                    disabled={uploadingFont}
                   >
                     <Upload className="w-3 h-3 mr-2" />
-                    Upload TTF/OTF
+                    {uploadingFont ? "Uploading..." : "Upload TTF/OTF"}
                   </Button>
                 </div>
 

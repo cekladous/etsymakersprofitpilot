@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
+    console.log(`[AUDIT] resetMonthlyImports invoked by user ${user.id} (${user.email || 'no email'})`);
+
     // Get all Free tier subscriptions
     const freeSubscriptions = await base44.asServiceRole.entities.Subscription.filter({
       plan_id: 'free'
