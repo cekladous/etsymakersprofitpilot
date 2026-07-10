@@ -45,6 +45,7 @@ import DeleteAllDataDialog from "@/components/orders/DeleteAllDataDialog";
 import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 import ReconciliationTab from "@/components/etsy/ReconciliationTab";
+import LineItemDrillDown from "@/components/monthly/LineItemDrillDown";
 import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@/components/shared/netEarnings";
 import ChannelBadge from "@/components/orders/ChannelBadge";
 import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
@@ -72,6 +73,7 @@ export default function Orders() {
   const [selectedDepositIds, setSelectedDepositIds] = useState([]);
   const [selectedFeeOrderId, setSelectedFeeOrderId] = useState(null);
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
+  const [feeDrillDown, setFeeDrillDown] = useState({ open: false, title: "", items: [], expectedTotal: null });
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [depositForm, setDepositForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
@@ -482,6 +484,78 @@ export default function Orders() {
     return sum + (f.fee_type === 'share_save_credit' ? -Math.abs(amt) : Math.abs(amt));
   }, 0);
   const totalDeposits = etsyDeposits.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+  // Build drill-down items for a fee category from OrderFee + statement lines
+  const buildFeeItems = (categoryName) => {
+    const orderMap = new Map(etsyOnlyOrders.map(o => [o.order_id, o]));
+    const items = [];
+
+    // OrderFee-based categories
+    const orderFeeConfig = {
+      'etsy_listing_fees': 'listing_fees',
+      'etsy_transaction_fees': 'transaction_fees',
+      'etsy_processing_fees': 'processing_fees',
+      'share_save_refunds_credits': 'share_save_credit',
+      'other_fees': 'other_fees',
+    };
+
+    if (orderFeeConfig[categoryName]) {
+      const field = orderFeeConfig[categoryName];
+      relevantOrderFees.forEach(f => {
+        const val = f[field];
+        if (val && Math.abs(val) > 0) {
+          const order = orderMap.get(f.order_id);
+          items.push({
+            date: order?.sale_date || f.transaction_date || '',
+            description: `Order #${f.order_id}${order ? ' - ' + (order.buyer_username || order.buyer_full_name || 'Unknown') : ''}`,
+            vendor: "Etsy",
+            payment_source: "Order Fee Breakdown",
+            amount: Math.abs(val),
+          });
+        }
+      });
+    }
+
+    // Statement-line-based categories
+    const stmtConfig = {
+      'etsy_listing_fees': { section: 'fees', feeType: 'listing' },
+      'etsy_ads': { section: 'ads', feeType: 'etsy_ads' },
+      'other_fees': { section: 'ads', feeType: null, excludeTypes: ['etsy_ads', 'offsite_ads', 'etsy_plus_subscription'] },
+    };
+
+    if (stmtConfig[categoryName]) {
+      const cfg = stmtConfig[categoryName];
+      statementPeriodLines
+        .filter(l => {
+          if (l.section !== cfg.section) return false;
+          if (cfg.feeType) return l.fee_type === cfg.feeType;
+          if (cfg.excludeTypes) return !cfg.excludeTypes.includes(l.fee_type);
+          return true;
+        })
+        .forEach(l => {
+          const existing = items.find(i => i.description.includes(l.order_id || '__none__') && i.amount === Math.abs(l.amount || 0));
+          if (!existing) {
+            const order = l.order_id ? orderMap.get(l.order_id) : null;
+            items.push({
+              date: l.transaction_date || '',
+              description: l.order_id
+                ? `Order #${l.order_id}${order ? ' - ' + (order.buyer_username || order.buyer_full_name || 'Unknown') : ''} - ${l.description || l.fee_type}`
+                : (l.description || l.fee_type || ''),
+              vendor: "Etsy",
+              payment_source: "Statement Line",
+              amount: Math.abs(l.amount || 0),
+            });
+          }
+        });
+    }
+
+    return items;
+  };
+
+  const handleFeeCardClick = (categoryName, label, expectedTotal) => {
+    const items = buildFeeItems(categoryName).sort((a, b) => new Date(b.date) - new Date(a.date));
+    setFeeDrillDown({ open: true, title: label, items, expectedTotal });
+  };
 
   const feeTypeLabels = {
     listing: "Listing Fee",
@@ -1388,17 +1462,21 @@ export default function Orders() {
            {/* Charts */}
            <FeeBreakdownChart feeBreakdown={feeBreakdown} formatCurrency={formatCurrency} />
 
-           {/* Fee Breakdown by Category — sourced from EtsyStatementLine (authoritative, matches Reconciliation tab) */}
+           {/* Fee Breakdown by Category — sourced from OrderFee + EtsyStatementLine */}
            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
              {[
-               { label: "Listing Fees", value: feeBreakdown.listing },
-               { label: "Transaction Fees", value: feeBreakdown.transaction },
-               { label: "Processing Fees", value: feeBreakdown.processing },
-               { label: "Etsy Ads", value: feeBreakdown.etsy_ads },
-               { label: "Share & Save Credits", value: feeBreakdown.share_save, isCredit: true },
-               { label: "Other Fees", value: feeBreakdown.other },
+               { label: "Listing Fees", value: feeBreakdown.listing, category: "etsy_listing_fees" },
+               { label: "Transaction Fees", value: feeBreakdown.transaction, category: "etsy_transaction_fees" },
+               { label: "Processing Fees", value: feeBreakdown.processing, category: "etsy_processing_fees" },
+               { label: "Etsy Ads", value: feeBreakdown.etsy_ads, category: "etsy_ads" },
+               { label: "Share & Save Credits", value: feeBreakdown.share_save, category: "share_save_refunds_credits", isCredit: true },
+               { label: "Other Fees", value: feeBreakdown.other, category: "other_fees" },
              ].map((item, idx) => (
-               <Card key={idx}>
+               <Card
+                 key={idx}
+                 className={`cursor-pointer hover:shadow-md hover:border-emerald-300 transition-all ${item.value === 0 ? "opacity-50" : ""}`}
+                 onClick={() => handleFeeCardClick(item.category, item.label, item.isCredit ? -item.value : item.value)}
+               >
                  <CardContent className="p-4">
                    <p className="text-xs text-stone-500">{item.label}</p>
                    <p className={`text-lg font-bold ${item.isCredit ? "text-emerald-600" : "text-stone-900"}`}>
@@ -1410,7 +1488,20 @@ export default function Orders() {
            </div>
 
            {/* Summary Card */}
-           <Card>
+           <Card
+             className="cursor-pointer hover:shadow-md hover:border-emerald-300 transition-all"
+             onClick={() => {
+               const allItems = [
+                 ...buildFeeItems("etsy_listing_fees"),
+                 ...buildFeeItems("etsy_transaction_fees"),
+                 ...buildFeeItems("etsy_processing_fees"),
+                 ...buildFeeItems("etsy_ads"),
+                 ...buildFeeItems("share_save_refunds_credits"),
+                 ...buildFeeItems("other_fees"),
+               ].sort((a, b) => new Date(b.date) - new Date(a.date));
+               setFeeDrillDown({ open: true, title: "Total Fees & Charges", items: allItems, expectedTotal: totalFees });
+             }}
+           >
              <CardContent className="p-6">
                <div className="flex items-center gap-3">
                  <div className="p-3 bg-rose-100 rounded-lg">
@@ -1600,6 +1691,14 @@ export default function Orders() {
           onClose={() => setShowExportUpgrade(false)}
         />
       )}
+
+      <LineItemDrillDown
+        open={feeDrillDown.open}
+        onOpenChange={(open) => setFeeDrillDown(prev => ({ ...prev, open }))}
+        title={feeDrillDown.title}
+        items={feeDrillDown.items}
+        expectedTotal={feeDrillDown.expectedTotal}
+      />
 
       {/* Add Deposit Dialog */}
       <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
