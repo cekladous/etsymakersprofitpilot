@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw, CopyCheck, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Plus, Upload, Search, MoreHorizontal, Receipt, Trash2, Download, PieChart as PieChartIcon, Calendar, X, Filter, RefreshCw, CopyCheck, ArrowUp, ArrowDown, ChevronsUpDown, Copy } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, parse } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,7 @@ import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import CSVImporter from "@/components/shared/CSVImporter";
 import ChasePDFImport from "@/components/expenses/ChasePDFImport";
+import DuplicateReviewDialog, { findDuplicateGroups } from "@/components/expenses/DuplicateReviewDialog";
 import ExpenseFormDialog from "@/components/expenses/ExpenseFormDialog";
 import RefundConflictWarning from "@/components/reconciliation/RefundConflictWarning";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -65,6 +66,9 @@ export default function Expenses() {
   const [deduping, setDeduping] = useState(false);
   const [sortField, setSortField] = useState("date");
   const [sortDirection, setSortDirection] = useState("desc");
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateGroups, setDuplicateGroups] = useState([]);
+  const [deletingDuplicates, setDeletingDuplicates] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -311,34 +315,47 @@ export default function Expenses() {
   const handleRemoveDuplicates = async () => {
     setDeduping(true);
     try {
-      // Fetch all expenses fresh (not just the filtered view)
       const allExpenses = await base44.entities.Expense.filter({ owner_user_id: user.id }, "-date");
       const allBusinessExpenses = await base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, "-date", 1000);
 
-      const toDeleteExpense = [];
-      const toDeleteBusiness = [];
-      const seenExpense = new Set();
-      const seenBusiness = new Set();
+      const expenseGroups = findDuplicateGroups(allExpenses).map(g => ({ ...g, _entity: "Expense" }));
+      const businessGroups = findDuplicateGroups(allBusinessExpenses).map(g => ({ ...g, _entity: "BusinessExpense" }));
 
-      for (const e of allExpenses) {
-        const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`;
-        if (seenExpense.has(key)) {
-          toDeleteExpense.push(e.id);
-        } else {
-          seenExpense.add(key);
-        }
+      const allGroups = [...expenseGroups, ...businessGroups];
+
+      if (allGroups.length === 0) {
+        toast({
+          title: "No Duplicates Found",
+          description: "Your expense records are already clean.",
+        });
+      } else {
+        setDuplicateGroups(allGroups);
+        setDuplicateDialogOpen(true);
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to scan for duplicates: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setDeduping(false);
+    }
+  };
 
-      for (const e of allBusinessExpenses) {
-        const key = `${e.date}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`;
-        if (seenBusiness.has(key)) {
-          toDeleteBusiness.push(e.id);
-        } else {
-          seenBusiness.add(key);
-        }
-      }
+  const handleDeleteDuplicates = async (idsToDelete) => {
+    setDeletingDuplicates(true);
+    try {
+      // Build a map of id -> entity type from the duplicate groups
+      const idToEntity = {};
+      duplicateGroups.forEach(g => {
+        g.records.forEach(r => { idToEntity[r.id] = g._entity; });
+      });
 
-      // Delete duplicates in parallel batches
+      // Group ids by entity type
+      const expenseIds = idsToDelete.filter(id => idToEntity[id] === "Expense");
+      const businessIds = idsToDelete.filter(id => idToEntity[id] === "BusinessExpense");
+
       const deleteBatch = async (ids, entityName) => {
         for (let i = 0; i < ids.length; i += 10) {
           const chunk = ids.slice(i, i + 10);
@@ -346,27 +363,70 @@ export default function Expenses() {
         }
       };
 
-      await deleteBatch(toDeleteExpense, "Expense");
-      await deleteBatch(toDeleteBusiness, "BusinessExpense");
+      await deleteBatch(expenseIds, "Expense");
+      await deleteBatch(businessIds, "BusinessExpense");
 
-      const totalRemoved = toDeleteExpense.length + toDeleteBusiness.length;
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
 
       toast({
-        title: totalRemoved > 0 ? "Duplicates Removed" : "No Duplicates Found",
-        description: totalRemoved > 0
-          ? `Removed ${toDeleteExpense.length} duplicate expense(s) and ${toDeleteBusiness.length} duplicate business expense(s).`
-          : "Your expense records are already clean.",
+        title: "Duplicates Deleted",
+        description: `Removed ${idsToDelete.length} duplicate record(s).`,
       });
+
+      // Remove deleted records from groups; close dialog if no more duplicates
+      const remaining = duplicateGroups
+        .map(g => ({ ...g, records: g.records.filter(r => !idsToDelete.includes(r.id)) }))
+        .filter(g => g.records.length > 1);
+      setDuplicateGroups(remaining);
+      if (remaining.length === 0) {
+        setDuplicateDialogOpen(false);
+      }
     } catch (error) {
       toast({
         title: "Error",
-        description: `Failed to remove duplicates: ${error.message}`,
+        description: `Failed to delete duplicates: ${error.message}`,
         variant: "destructive",
       });
     } finally {
-      setDeduping(false);
+      setDeletingDuplicates(false);
+    }
+  };
+
+  const handleMarkRecurring = async (records, frequency = "Monthly") => {
+    setDeletingDuplicates(true);
+    try {
+      const entityName = duplicateGroups.find(g => g.records.some(r => r.id === records[0]?.id))?._entity;
+      if (!entityName) return;
+
+      for (let i = 0; i < records.length; i += 10) {
+        const chunk = records.slice(i, i + 10);
+        await Promise.all(chunk.map(r =>
+          base44.entities[entityName].update(r.id, { is_recurring: true, recurring_frequency: frequency })
+        ));
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
+
+      toast({
+        title: "Marked as Recurring",
+        description: `${records.length} record(s) marked as ${frequency} recurring. No records were deleted.`,
+      });
+
+      // Remove this group from the dialog
+      setDuplicateGroups(prev => prev.filter(g => g.records[0]?.id !== records[0]?.id));
+      if (duplicateGroups.length <= 1) {
+        setDuplicateDialogOpen(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to mark as recurring: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingDuplicates(false);
     }
   };
 
@@ -1015,8 +1075,8 @@ export default function Expenses() {
           <div className="h-6 w-px bg-stone-300 mx-1"></div>
           
           <Button variant="outline" onClick={handleRemoveDuplicates} size="sm" disabled={deduping}>
-            <CopyCheck className="w-4 h-4 mr-2" />
-            {deduping ? "Checking..." : "Remove Duplicates"}
+            <Copy className="w-4 h-4 mr-2" />
+            {deduping ? "Scanning..." : "Review Duplicates"}
           </Button>
           <Button variant="outline" onClick={exportCSV} size="sm">
             <Download className="w-4 h-4 mr-2" />
@@ -1327,6 +1387,15 @@ export default function Expenses() {
       />
 
       <ChasePDFImport open={pdfImportOpen} onOpenChange={setPdfImportOpen} />
+
+      <DuplicateReviewDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        duplicateGroups={duplicateGroups}
+        onDelete={handleDeleteDuplicates}
+        onMarkRecurring={handleMarkRecurring}
+        deleting={deletingDuplicates}
+      />
 
       {showExportUpgrade && (
         <UpgradeCTA
