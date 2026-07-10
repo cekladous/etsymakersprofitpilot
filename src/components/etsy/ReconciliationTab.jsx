@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, Download, Trash2, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Trash2, ChevronDown, ChevronRight, Check, Receipt } from "lucide-react";
 import DataTable from "@/components/ui/DataTable";
 import DepositMatcher from "@/components/reconciliation/DepositMatcher";
 import StatementSummary from "@/components/etsy/StatementSummary";
@@ -108,6 +108,49 @@ export default function ReconciliationTab({ user }) {
         }
       }
       return stillUnmatched;
+    },
+  });
+
+  const markAsExpenseMutation = useMutation({
+    mutationFn: async (items) => {
+      // Create a BusinessExpense for each selected row, then resolve the original line
+      const promises = items.map(async (item) => {
+        const expense = await base44.entities.BusinessExpense.create({
+          owner_user_id: user.id,
+          date: item.transaction_date,
+          category_group: "business_expenses",
+          category_name: "other",
+          amount: Math.abs(item.amount || 0),
+          description: `${item.type}: ${item.description}`,
+          payment_source: "Other",
+          notes: "Created from Reconciliation tab",
+        });
+        if (item.source === "New Import") {
+          await base44.entities.EtsyStatementLine.update(item.id, {
+            matched: true,
+            resolution_status: "manually_resolved",
+            category: "unmatched",
+            matched_entity_type: "BusinessExpense",
+            matched_entity_id: expense.id,
+            resolution_notes: "Marked as business expense",
+            resolved_at: new Date().toISOString(),
+          });
+        } else {
+          await base44.entities.EtsyLedgerEntry.update(item.id, {
+            status: "Matched",
+            matched_category: "business_expense",
+            notes: "Marked as business expense",
+          });
+        }
+      });
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unmatched-statement-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["unmatched-ledger-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["etsy-statement-imports"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      setSelectedIds([]);
     },
   });
 
@@ -388,6 +431,16 @@ export default function ReconciliationTab({ user }) {
                     {selectedIds.length} row{selectedIds.length !== 1 ? "s" : ""} selected
                   </p>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => markAsExpenseMutation.mutate(selectedIds)}
+                      disabled={markAsExpenseMutation.isPending}
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                    >
+                      <Receipt className="w-4 h-4 mr-2" />
+                      Mark as Expense
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
