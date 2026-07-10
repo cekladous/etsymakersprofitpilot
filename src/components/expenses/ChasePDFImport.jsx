@@ -43,7 +43,8 @@ export default function ChasePDFImport({ open, onOpenChange }) {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
+    const isPdf = selectedFile && (selectedFile.type === 'application/pdf' || selectedFile.name?.toLowerCase().endsWith('.pdf'));
+    if (isPdf) {
       setFile(selectedFile);
       setError(null);
       handleParse(selectedFile);
@@ -78,10 +79,16 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         },
       };
 
-      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({ 
-        file_url, 
-        json_schema: schema 
+      const extractPromise = base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url,
+        json_schema: schema
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF analysis timed out after 90 seconds. The file may be too large or image-based. Try using CSV import instead.')), 90000)
+      );
+
+      const result = await Promise.race([extractPromise, timeoutPromise]);
 
       if (result.status === 'success' && result.output?.transactions) {
         setTransactions(result.output.transactions.map(t => ({
@@ -93,7 +100,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
         throw new Error(result.details || 'Failed to extract transactions from PDF.');
       }
     } catch (e) {
-      setError(`Error parsing PDF: ${e.message}`);
+      setError(`Error parsing PDF: ${e.message || String(e)}`);
     } finally {
       setParsing(false);
     }
