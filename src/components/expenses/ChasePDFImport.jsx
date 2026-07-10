@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, Loader2, AlertCircle, CheckCircle2, Copy } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -24,6 +24,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
   const [userRules, setUserRules] = useState([]);
+  const [duplicateCount, setDuplicateCount] = useState(0);
   const parseSessionRef = useRef(0);
 
   // Fetch user's auto-categorization rules from Settings when dialog opens
@@ -95,16 +96,30 @@ export default function ChasePDFImport({ open, onOpenChange }) {
 
       if (parseSessionRef.current !== sessionId) return;
       if (result.status === 'success' && result.output?.transactions) {
-        setTransactions(result.output.transactions.map(t => {
+        // Fetch existing expenses to detect duplicates
+        const existingExpenses = await base44.entities.BusinessExpense.filter({ owner_user_id: user.id });
+        const existingKeys = new Set(existingExpenses.map(e => {
+          const d = parseDateSafe(e.date);
+          const dateStr = d ? format(d, 'yyyy-MM-dd') : e.date;
+          return `${dateStr}|${Math.abs(e.amount || 0).toFixed(2)}|${(e.description || '').substring(0, 40).trim().toLowerCase()}`;
+        }));
+
+        const parsed = result.output.transactions.map(t => {
           const desc = (t.description || '').toLowerCase();
-          // Auto-unselect credit card payments and internal transfers (not business expenses)
           const isCardPayment = desc.includes('payment thank you') || desc.includes('thank you-mobile') || desc.includes('thank you - mobile');
+          const formattedDate = formatDateSafe(t.date);
+          const dupKey = `${formattedDate}|${Math.abs(Number(t.amount) || 0).toFixed(2)}|${(t.description || '').substring(0, 40).trim().toLowerCase()}`;
+          const isDuplicate = existingKeys.has(dupKey);
           return {
             ...t,
-            include: !isCardPayment,
+            include: !isCardPayment && !isDuplicate,
             category: autoCategorize(t.description, userRules),
+            isDuplicate,
           };
-        }));
+        });
+        const dupCount = parsed.filter(t => t.isDuplicate).length;
+        setDuplicateCount(dupCount);
+        setTransactions(parsed);
       } else {
         throw new Error(result.details || 'Failed to extract transactions from PDF.');
       }
@@ -271,6 +286,7 @@ export default function ChasePDFImport({ open, onOpenChange }) {
     setTransactions([]);
     setError(null);
     setImporting(false);
+    setDuplicateCount(0);
   }
 
   const columns = [
@@ -315,6 +331,14 @@ export default function ChasePDFImport({ open, onOpenChange }) {
                 </SelectContent>
             </Select>
         )
+    },
+    {
+        header: '',
+        render: (row) => row.isDuplicate ? (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-1 whitespace-nowrap">
+                <Copy className="w-3 h-3" /> Duplicate
+            </span>
+        ) : null
     }
   ];
 
@@ -348,6 +372,15 @@ export default function ChasePDFImport({ open, onOpenChange }) {
           <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-lg p-4 flex items-center gap-2">
             <AlertCircle className="w-5 h-5" />
             <p>{error}</p>
+          </div>
+        )}
+
+        {duplicateCount > 0 && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm">
+              <span className="font-semibold">{duplicateCount}</span> {duplicateCount === 1 ? 'transaction was' : 'transactions were'} already imported from a previous upload and {duplicateCount === 1 ? 'has' : 'have'} been unselected.
+            </p>
           </div>
         )}
 
