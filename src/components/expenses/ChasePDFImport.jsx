@@ -92,11 +92,16 @@ export default function ChasePDFImport({ open, onOpenChange }) {
       const result = await Promise.race([extractPromise, timeoutPromise]);
 
       if (result.status === 'success' && result.output?.transactions) {
-        setTransactions(result.output.transactions.map(t => ({
-          ...t,
-          include: true,
-          category: autoCategorize(t.description, userRules),
-        })));
+        setTransactions(result.output.transactions.map(t => {
+          const desc = (t.description || '').toLowerCase();
+          // Auto-unselect credit card payments and internal transfers (not business expenses)
+          const isCardPayment = desc.includes('payment thank you') || desc.includes('thank you-mobile') || desc.includes('thank you - mobile');
+          return {
+            ...t,
+            include: !isCardPayment,
+            category: autoCategorize(t.description, userRules),
+          };
+        }));
       } else {
         throw new Error(result.details || 'Failed to extract transactions from PDF.');
       }
