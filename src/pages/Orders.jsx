@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+
 import {
   Tooltip,
   TooltipContent,
@@ -64,8 +64,6 @@ export default function Orders() {
   const [feeTypeFilter, setFeeTypeFilter] = useState("all");
   const [timeRange, setTimeRange] = useState("all");
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [customStartDate, setCustomStartDate] = useState(null);
-  const [customEndDate, setCustomEndDate] = useState(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -86,9 +84,8 @@ export default function Orders() {
     const startDateParam = params.get("startDate");
     const endDateParam = params.get("endDate");
     const rangeParam = params.get("range");
-    if (startDateParam && endDateParam) {
-      setCustomStartDate(parse(startDateParam, 'yyyy-MM-dd', new Date()));
-      setCustomEndDate(parse(endDateParam, 'yyyy-MM-dd', new Date()));
+    if (startDateParam && rangeParam) {
+      setSelectedDate(parse(startDateParam, 'yyyy-MM-dd', new Date()));
       if (rangeParam) setTimeRange(rangeParam);
     }
   }, []);
@@ -255,10 +252,7 @@ export default function Orders() {
     
     let start, end;
     
-    if (customStartDate && customEndDate) {
-      start = customStartDate;
-      end = customEndDate;
-    } else if (timeRange === "month") {
+    if (timeRange === "month") {
       start = startOfMonth(selectedDate);
       end = endOfMonth(selectedDate);
     } else if (timeRange === "quarter") {
@@ -269,7 +263,7 @@ export default function Orders() {
       end = endOfYear(selectedDate);
     }
     return start && end ? { start, end } : null;
-  }, [timeRange, selectedDate, customStartDate, customEndDate]);
+  }, [timeRange, selectedDate]);
 
   const filteredOrders = useMemo(() => {
     return etsyOrders.filter(order => {
@@ -572,9 +566,7 @@ export default function Orders() {
 
   const getPeriodLabel = () => {
     let label = timeRange === "all" ? "All Orders" : "";
-    if (customStartDate && customEndDate) {
-      label = `${format(customStartDate, "MMM d, yyyy")} - ${format(customEndDate, "MMM d, yyyy")}`;
-    } else if (timeRange === "month") {
+    if (timeRange === "month") {
       label = format(selectedDate, "MMMM yyyy");
     } else if (timeRange === "quarter") {
       const quarter = Math.floor(selectedDate.getMonth() / 3) + 1;
@@ -973,14 +965,12 @@ export default function Orders() {
             {["all", "month", "quarter", "year"].map((range) => (
               <Button
                 key={range}
-                variant={timeRange === range && !customStartDate ? "default" : "outline"}
+                variant={timeRange === range ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
                   setTimeRange(range);
-                  setCustomStartDate(null);
-                  setCustomEndDate(null);
                 }}
-                className={timeRange === range && !customStartDate ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                className={timeRange === range ? "bg-emerald-600 hover:bg-emerald-700" : ""}
               >
                 {range === "all" ? "All" : range.charAt(0).toUpperCase() + range.slice(1)}
               </Button>
@@ -1029,46 +1019,95 @@ export default function Orders() {
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Calendar className="w-4 h-4 mr-2" />
-                  {customStartDate && customEndDate 
-                    ? `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}`
-                    : format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
-                  }
+                  {format(selectedDate, timeRange === "year" ? "yyyy" : timeRange === "quarter" ? `QQQ yyyy` : "MMM yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-4" align="start">
-                <div className="space-y-4">
-                  <p className="text-sm text-stone-500">Select start and end dates</p>
-                  <CalendarComponent
-                    mode="range"
-                    selected={{ from: customStartDate, to: customEndDate }}
-                    onSelect={(range) => {
-                      setCustomStartDate(range?.from || null);
-                      setCustomEndDate(range?.to || null);
-                    }}
-                    numberOfMonths={1}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setCustomStartDate(null);
-                        setCustomEndDate(null);
-                        setDatePickerOpen(false);
-                      }}
-                      variant="outline"
-                      className="flex-1"
-                    >
-                      Clear
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => setDatePickerOpen(false)}
-                      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-                      disabled={!customStartDate || !customEndDate}
-                    >
-                      Apply
-                    </Button>
-                  </div>
+                <div className="space-y-3">
+                  {timeRange === "month" && (
+                    <>
+                      <p className="text-sm font-medium text-stone-700">Select Month</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 12 }, (_, i) => i).map((m) => (
+                          <Button
+                            key={m}
+                            variant={selectedDate.getMonth() === m ? "default" : "outline"}
+                            size="sm"
+                            className={selectedDate.getMonth() === m ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                            onClick={() => {
+                              setSelectedDate(new Date(selectedDate.getFullYear(), m, 1));
+                              setDatePickerOpen(false);
+                            }}
+                          >
+                            {format(new Date(2000, m, 1), "MMM")}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth(), 1))}>
+                          ← {selectedDate.getFullYear() - 1}
+                        </Button>
+                        <span className="font-semibold text-stone-900">{selectedDate.getFullYear()}</span>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth(), 1))}>
+                          {selectedDate.getFullYear() + 1} →
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                  {timeRange === "quarter" && (
+                    <>
+                      <p className="text-sm font-medium text-stone-700">Select Quarter</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[1, 2, 3, 4].map((q) => {
+                          const currentQuarter = Math.floor(selectedDate.getMonth() / 3) + 1;
+                          return (
+                            <Button
+                              key={q}
+                              variant={currentQuarter === q ? "default" : "outline"}
+                              size="sm"
+                              className={currentQuarter === q ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                              onClick={() => {
+                                setSelectedDate(new Date(selectedDate.getFullYear(), (q - 1) * 3, 1));
+                                setDatePickerOpen(false);
+                              }}
+                            >
+                              Q{q} {format(new Date(selectedDate.getFullYear(), (q - 1) * 3, 1), "MMM")}–{format(new Date(selectedDate.getFullYear(), (q - 1) * 3 + 2, 1), "MMM")}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth(), 1))}>
+                          ← {selectedDate.getFullYear() - 1}
+                        </Button>
+                        <span className="font-semibold text-stone-900">{selectedDate.getFullYear()}</span>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth(), 1))}>
+                          {selectedDate.getFullYear() + 1} →
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                  {timeRange === "year" && (
+                    <>
+                      <p className="text-sm font-medium text-stone-700">Select Year</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 7 }, (_, i) => selectedDate.getFullYear() - 3 + i).map((y) => (
+                          <Button
+                            key={y}
+                            variant={selectedDate.getFullYear() === y ? "default" : "outline"}
+                            size="sm"
+                            className={selectedDate.getFullYear() === y ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                            onClick={() => {
+                              setSelectedDate(new Date(y, selectedDate.getMonth(), 1));
+                              setDatePickerOpen(false);
+                            }}
+                          >
+                            {y}
+                          </Button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
