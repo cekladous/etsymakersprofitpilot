@@ -36,7 +36,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle, Eye, EyeOff, MapPin, Sparkles } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle, Eye, EyeOff, MapPin, Sparkles, Wand2 } from "lucide-react";
 import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
 import { US_STATES, getRateForState, NATIONAL_AVG_RATE } from "@/components/tools/electricityRates";
@@ -178,6 +178,8 @@ export default function SettingsTool() {
   const isVinylCutterBrand = (brand) => ["cricut", "silhouette", "brother", "sizzix", "uscutter", "graphtec", "roland"].includes(brand);
 
   const [newRule, setNewRule] = useState({ keyword: "", category: "other" });
+  const [learningRules, setLearningRules] = useState(false);
+  const [learnedCount, setLearnedCount] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -389,6 +391,43 @@ export default function SettingsTool() {
       ...prev,
       auto_categorization_rules: prev.auto_categorization_rules.filter((_, i) => i !== index),
     }));
+  };
+
+  const handleLearnFromExpenses = async () => {
+    if (!user) return;
+    setLearningRules(true);
+    setLearnedCount(null);
+    try {
+      const expenses = await base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, '-created_date', 10000);
+      const vendorMap = {};
+      for (const exp of expenses) {
+        if (!exp.category_name || exp.category_name === 'other' || exp.category_name === 'miscellaneous_expenses') continue;
+        const keyword = (exp.vendor || exp.description || '').trim();
+        if (!keyword) continue;
+        const key = keyword.toLowerCase();
+        if (!vendorMap[key]) vendorMap[key] = { keyword, category_counts: {}, total: 0 };
+        vendorMap[key].category_counts[exp.category_name] = (vendorMap[key].category_counts[exp.category_name] || 0) + 1;
+        vendorMap[key].total++;
+      }
+
+      const existingKeywords = new Set((settingsData.auto_categorization_rules || []).map(r => r.keyword?.toLowerCase()));
+      const newRules = [];
+      for (const { keyword, category_counts, total } of Object.values(vendorMap)) {
+        if (existingKeywords.has(keyword.toLowerCase())) continue;
+        const bestCategory = Object.entries(category_counts).sort((a, b) => b[1] - a[1])[0][0];
+        newRules.push({ keyword, category: bestCategory, _count: total });
+      }
+      newRules.sort((a, b) => b._count - a._count);
+      newRules.forEach(r => delete r._count);
+
+      const merged = [...settingsData.auto_categorization_rules, ...newRules];
+      setSettingsData(prev => ({ ...prev, auto_categorization_rules: merged }));
+      setLearnedCount(newRules.length);
+    } catch (err) {
+      alert("Failed to learn from expenses: " + (err?.message || ""));
+    } finally {
+      setLearningRules(false);
+    }
   };
 
   const openMachineForm = (machine = null) => {
@@ -1410,10 +1449,37 @@ export default function SettingsTool() {
 
           {/* Auto-categorization Rules */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <SettingsIcon className="w-4 h-4 text-amber-600" />
-              <h3 className="font-semibold text-stone-900">Auto-Categorization Rules</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SettingsIcon className="w-4 h-4 text-amber-600" />
+                <h3 className="font-semibold text-stone-900">Auto-Categorization Rules</h3>
+              </div>
+              <Button
+                onClick={handleLearnFromExpenses}
+                disabled={learningRules}
+                variant="outline"
+                size="sm"
+              >
+                {learningRules ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4 mr-2" />
+                )}
+                Learn from Expenses
+              </Button>
             </div>
+            <p className="text-sm text-stone-500">
+              Rules auto-categorize imported expenses by matching keywords in the vendor or description.
+              Click "Learn from Expenses" to scan your categorized expenses and generate rules automatically.
+            </p>
+            {learnedCount !== null && (
+              <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-700">
+                <Sparkles className="w-4 h-4" />
+                {learnedCount > 0
+                  ? `Generated ${learnedCount} new rule${learnedCount !== 1 ? 's' : ''} from your expenses. Save settings to apply.`
+                  : "No new rules found — your existing rules already cover all categorized vendors."}
+              </div>
+            )}
             {/* Add Rule */}
             <div className="flex gap-3">
             <Input
