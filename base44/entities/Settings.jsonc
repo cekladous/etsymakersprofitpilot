@@ -292,6 +292,20 @@
       "type": "boolean",
       "default": false,
       "description": "Enable/disable Raster Assistant tool visibility"
+    },
+    "location_state": {
+      "type": "string",
+      "description": "US state code for electricity rate lookup"
+    },
+    "auto_calc_overhead": {
+      "type": "boolean",
+      "default": true,
+      "description": "Auto-calculate electricity rate and monthly overhead from machines + location"
+    },
+    "monthly_machine_hours": {
+      "type": "number",
+      "default": 40,
+      "description": "Estimated monthly machine usage hours for overhead calculation"
     }
   },
   "required": [

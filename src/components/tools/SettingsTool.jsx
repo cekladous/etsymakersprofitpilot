@@ -36,9 +36,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle, Eye, EyeOff, MapPin, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
+import { US_STATES, getRateForState, NATIONAL_AVG_RATE } from "@/components/tools/electricityRates";
 
 export default function SettingsTool() { 
   const { user } = useAuth();
@@ -93,6 +94,9 @@ export default function SettingsTool() {
     tool_name_tags_enabled: false,
     tool_svg_enabled: false,
     tool_raster_enabled: false,
+    location_state: "",
+    auto_calc_overhead: true,
+    monthly_machine_hours: 40,
     });
 
   const [machineData, setMachineData] = useState({
@@ -110,18 +114,25 @@ export default function SettingsTool() {
   const machineBrands = [
     { value: "atomstack", label: "Atomstack" },
     { value: "boss", label: "Boss Laser" },
+    { value: "brother", label: "Brother" },
+    { value: "cricut", label: "Cricut" },
     { value: "creality", label: "Creality" },
     { value: "epilog", label: "Epilog" },
     { value: "fsl", label: "Full Spectrum Laser" },
     { value: "generic", label: "Generic/K40" },
     { value: "glowforge", label: "Glowforge" },
+    { value: "graphtec", label: "Graphtec" },
     { value: "laserpecker", label: "LaserPecker" },
     { value: "longer", label: "Longer" },
     { value: "monport", label: "Monport" },
     { value: "omtech", label: "OMTech" },
     { value: "ortur", label: "Ortur" },
+    { value: "roland", label: "Roland" },
+    { value: "silhouette", label: "Silhouette" },
+    { value: "sizzix", label: "Sizzix" },
     { value: "thunder", label: "Thunder Laser" },
     { value: "trotec", label: "Trotec" },
+    { value: "uscutter", label: "USCutter" },
     { value: "wecreat", label: "WeCreat" },
     { value: "xtool", label: "xTool" },
     { value: "other", label: "Other" },
@@ -144,8 +155,27 @@ export default function SettingsTool() {
     trotec: ["Speedy 100", "Speedy 300", "Speedy 400", "SP500", "Other"],
     wecreat: ["Vision", "Other"],
     xtool: ["D1", "D1 Pro", "M1", "P2", "P3", "S1", "F1", "F1 Ultra", "Other"],
+    brother: ["ScanNCut SDX85", "ScanNCut SDX125", "ScanNCut DX", "Other"],
+    cricut: ["Maker", "Maker 3", "Explore 3", "Explore Air 2", "Venture", "Joy", "Joy Xtra", "Other"],
+    graphtec: ["CE6000", "CE7000", "FC9000", "Other"],
+    roland: ["GR-540", "GX-24", "BN2-20", "BN2-20A", "Other"],
+    silhouette: ["Cameo 4", "Cameo 5", "Cameo Plus", "Cameo Pro", "Portrait 3", "Portrait 4", "Other"],
+    sizzix: ["Big Shot", "Vagabond 2", "Other"],
+    uscutter: ["MH Series", "SC2", "LM2", "Titan 3", "Other"],
     other: ["Custom"],
   };
+
+  const defaultWattage = {
+    cricut: { "Maker": 120, "Maker 3": 120, "Explore 3": 65, "Explore Air 2": 65, "Venture": 200, "Joy": 35, "Joy Xtra": 50 },
+    silhouette: { "Cameo 4": 65, "Cameo 5": 65, "Cameo Plus": 80, "Cameo Pro": 100, "Portrait 3": 35, "Portrait 4": 35 },
+    brother: { "ScanNCut SDX85": 50, "ScanNCut SDX125": 50, "ScanNCut DX": 50 },
+    sizzix: { "Big Shot": 0, "Vagabond 2": 0 },
+    uscutter: { "MH Series": 100, "SC2": 100, "LM2": 100, "Titan 3": 150 },
+    graphtec: { "CE6000": 100, "CE7000": 100, "FC9000": 200 },
+    roland: { "GR-540": 200, "GX-24": 100, "BN2-20": 100, "BN2-20A": 100 },
+  };
+
+  const isVinylCutterBrand = (brand) => ["cricut", "silhouette", "brother", "sizzix", "uscutter", "graphtec", "roland"].includes(brand);
 
   const [newRule, setNewRule] = useState({ keyword: "", category: "other" });
 
@@ -216,9 +246,32 @@ export default function SettingsTool() {
         tool_name_tags_enabled: s.tool_name_tags_enabled || false,
         tool_svg_enabled: s.tool_svg_enabled || false,
         tool_raster_enabled: s.tool_raster_enabled || false,
+        location_state: s.location_state || "",
+        auto_calc_overhead: s.auto_calc_overhead !== false,
+        monthly_machine_hours: s.monthly_machine_hours ?? 40,
         });
     }
   }, [settings]);
+
+  // Auto-calculate electricity rate and monthly overhead based on machines + location
+  useEffect(() => {
+    if (!settingsData.auto_calc_overhead) return;
+    const rate = settingsData.location_state
+      ? getRateForState(settingsData.location_state)
+      : NATIONAL_AVG_RATE;
+    const hours = settingsData.monthly_machine_hours || 40;
+    const totalDepreciation = machines.reduce((sum, m) => sum + (m.monthly_depreciation || 0), 0);
+    const totalElectricity = machines.reduce((sum, m) => {
+      const watts = m.wattage || 0;
+      return sum + (watts / 1000) * hours * rate;
+    }, 0);
+    const calculatedOverhead = Math.round((totalDepreciation + totalElectricity) * 100) / 100;
+    setSettingsData(prev => {
+      // Only update if values actually changed to avoid infinite loops
+      if (prev.electricity_rate === rate && prev.monthly_overhead === calculatedOverhead) return prev;
+      return { ...prev, electricity_rate: Math.round(rate * 10000) / 10000, monthly_overhead: calculatedOverhead };
+    });
+  }, [machines, settingsData.location_state, settingsData.auto_calc_overhead, settingsData.monthly_machine_hours]);
 
   const settingsMutation = useMutation({
     mutationFn: async (data) => {
@@ -453,31 +506,13 @@ export default function SettingsTool() {
           </div>
         </CardHeader>
         <CardContent className="space-y-8">
-          {/* Cost Settings */}
+          {/* Business Profile */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <CircleDollarSign className="w-4 h-4 text-emerald-600" />
-              <h3 className="font-semibold text-stone-900">Cost Settings</h3>
+              <h3 className="font-semibold text-stone-900">Business Profile</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label>Electricity Rate ($/kWh)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={settingsData.electricity_rate}
-                  onChange={(e) => setSettingsData({ ...settingsData, electricity_rate: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Monthly Overhead ($)</Label>
-                <Input
-                  type="number"
-                  step="1"
-                  value={settingsData.monthly_overhead}
-                  onChange={(e) => setSettingsData({ ...settingsData, monthly_overhead: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Business Name</Label>
                 <Input
@@ -486,14 +521,14 @@ export default function SettingsTool() {
                   placeholder="Your Shop Name"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Your Name</Label>
-              <Input
-                value={settingsData.user_name}
-                onChange={(e) => setSettingsData({ ...settingsData, user_name: e.target.value })}
-                placeholder="Your Name"
-              />
+              <div className="space-y-2">
+                <Label>Your Name</Label>
+                <Input
+                  value={settingsData.user_name}
+                  onChange={(e) => setSettingsData({ ...settingsData, user_name: e.target.value })}
+                  placeholder="Your Name"
+                />
+              </div>
             </div>
             <div className="space-y-2 pt-4">
               <Label>Business Logo for Quotes & Invoices</Label>
@@ -514,6 +549,167 @@ export default function SettingsTool() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="border-t border-stone-200"></div>
+
+          {/* Machines */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-violet-600" />
+                <h3 className="font-semibold text-stone-900">Machines</h3>
+              </div>
+              <Button onClick={() => openMachineForm()} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Machine
+              </Button>
+            </div>
+            {machines.length > 0 ? (
+              <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Power</TableHead>
+                  <TableHead>Hourly Rate</TableHead>
+                  <TableHead>Monthly Depr.</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {machines.map((machine) => (
+                  <TableRow key={machine.id}>
+                    <TableCell className="font-medium">{machine.name}</TableCell>
+                    <TableCell className="capitalize">{machine.type?.replace(/_/g, " ")}</TableCell>
+                    <TableCell>{machine.wattage}W</TableCell>
+                    <TableCell>${(machine.hourly_rate || 0).toFixed(2)}/hr</TableCell>
+                    <TableCell>${(machine.monthly_depreciation || 0).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openMachineForm(machine)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMachineMutation.mutate(machine.id)}
+                          className="text-rose-600 hover:text-rose-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-stone-400 text-sm">
+                No machines configured. Add your first machine to auto-calculate overhead costs.
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-stone-200"></div>
+
+          {/* Cost Settings */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CircleDollarSign className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-semibold text-stone-900">Cost Settings</h3>
+            </div>
+            <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-4 space-y-4">
+              <div className="flex items-center gap-2 text-sm text-emerald-700">
+                <Sparkles className="w-4 h-4" />
+                <span>Electricity rate and monthly overhead auto-calculate based on your machines and location.</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Auto-Calculate from Machines</Label>
+                <button
+                  onClick={() => setSettingsData({ ...settingsData, auto_calc_overhead: !settingsData.auto_calc_overhead })}
+                  className={`p-2 rounded-lg transition-colors ${
+                    settingsData.auto_calc_overhead
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "bg-stone-200 text-stone-400"
+                  }`}
+                >
+                  {settingsData.auto_calc_overhead ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                </button>
+              </div>
+              {settingsData.auto_calc_overhead && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-stone-500" /> Location (State)</Label>
+                    <Select
+                      value={settingsData.location_state}
+                      onValueChange={(v) => setSettingsData({ ...settingsData, location_state: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your state..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {US_STATES.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-stone-500">
+                      Electricity rate: ${settingsData.electricity_rate.toFixed(4)}/kWh
+                      {settingsData.location_state ? ` (${settingsData.location_state} avg)` : " (national avg)"}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Estimated Monthly Machine Hours</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={settingsData.monthly_machine_hours}
+                      onChange={(e) => setSettingsData({ ...settingsData, monthly_machine_hours: parseFloat(e.target.value) || 0 })}
+                    />
+                    <p className="text-xs text-stone-500">Hours per month your machines run</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Electricity Rate ($/kWh)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={settingsData.electricity_rate}
+                  onChange={(e) => setSettingsData({ ...settingsData, electricity_rate: parseFloat(e.target.value) || 0 })}
+                  disabled={settingsData.auto_calc_overhead}
+                  className={settingsData.auto_calc_overhead ? "bg-stone-50 text-stone-500" : ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Overhead ($)</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={settingsData.monthly_overhead}
+                  onChange={(e) => setSettingsData({ ...settingsData, monthly_overhead: parseFloat(e.target.value) || 0 })}
+                  disabled={settingsData.auto_calc_overhead}
+                  className={settingsData.auto_calc_overhead ? "bg-stone-50 text-stone-500" : ""}
+                />
+              </div>
+            </div>
+            {settingsData.auto_calc_overhead && machines.length > 0 && (
+              <div className="bg-stone-50 rounded-lg p-3 text-xs text-stone-600 space-y-1">
+                <div className="font-medium text-stone-700 mb-1">Overhead Breakdown:</div>
+                <div>Machine Depreciation: ${machines.reduce((s, m) => s + (m.monthly_depreciation || 0), 0).toFixed(2)}/mo</div>
+                <div>Electricity ({machines.reduce((s, m) => s + (m.wattage || 0), 0)}W × {settingsData.monthly_machine_hours || 0}h): ${machines.reduce((s, m) => s + ((m.wattage || 0) / 1000) * (settingsData.monthly_machine_hours || 0) * settingsData.electricity_rate, 0).toFixed(2)}/mo</div>
+                <div className="font-medium text-stone-700 pt-1 border-t border-stone-200">Total: ${settingsData.monthly_overhead.toFixed(2)}/mo</div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-stone-200"></div>
@@ -1140,70 +1336,6 @@ export default function SettingsTool() {
 
           <div className="border-t border-stone-200"></div>
 
-          {/* Machines */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-violet-600" />
-                <h3 className="font-semibold text-stone-900">Machines</h3>
-              </div>
-              <Button onClick={() => openMachineForm()} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Machine
-              </Button>
-            </div>
-            {machines.length > 0 ? (
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Power</TableHead>
-                  <TableHead>Hourly Rate</TableHead>
-                  <TableHead>Monthly Depr.</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {machines.map((machine) => (
-                  <TableRow key={machine.id}>
-                    <TableCell className="font-medium">{machine.name}</TableCell>
-                    <TableCell className="capitalize">{machine.type}</TableCell>
-                    <TableCell>{machine.wattage}W</TableCell>
-                    <TableCell>${(machine.hourly_rate || 0).toFixed(2)}/hr</TableCell>
-                    <TableCell>${(machine.monthly_depreciation || 0).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openMachineForm(machine)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMachineMutation.mutate(machine.id)}
-                          className="text-rose-600 hover:text-rose-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-stone-400 text-sm">
-                No machines configured. Add your first machine to track costs.
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-stone-200"></div>
-
           {/* Tools Visibility */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -1382,7 +1514,12 @@ export default function SettingsTool() {
                 <Label>Brand *</Label>
                 <Select
                   value={machineData.brand}
-                  onValueChange={(v) => setMachineData({ ...machineData, brand: v, model: "" })}
+                  onValueChange={(v) => setMachineData({
+                    ...machineData,
+                    brand: v,
+                    model: "",
+                    type: isVinylCutterBrand(v) ? "vinyl_cutter" : machineData.type,
+                  })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select brand..." />
@@ -1400,7 +1537,15 @@ export default function SettingsTool() {
                 <Label>Model *</Label>
                 <Select
                   value={machineData.model}
-                  onValueChange={(v) => setMachineData({ ...machineData, model: v, name: `${machineBrands.find(b => b.value === machineData.brand)?.label || ""} ${v}`.trim() })}
+                  onValueChange={(v) => {
+                    const dw = defaultWattage[machineData.brand]?.[v];
+                    setMachineData({
+                      ...machineData,
+                      model: v,
+                      name: `${machineBrands.find(b => b.value === machineData.brand)?.label || ""} ${v}`.trim(),
+                      ...(dw !== undefined && (!machineData.wattage || machineData.wattage === "0") ? { wattage: dw.toString() } : {}),
+                    });
+                  }}
                   disabled={!machineData.brand}
                 >
                   <SelectTrigger>
@@ -1434,6 +1579,7 @@ export default function SettingsTool() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="laser">Laser</SelectItem>
+                    <SelectItem value="vinyl_cutter">Vinyl Cutter</SelectItem>
                     <SelectItem value="cnc">CNC</SelectItem>
                     <SelectItem value="printer">3D Printer</SelectItem>
                     <SelectItem value="other">Other</SelectItem>

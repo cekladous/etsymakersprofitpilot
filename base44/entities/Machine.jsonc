@@ -12,16 +12,17 @@
     },
     "brand": {
       "type": "string",
-      "description": "Machine brand (e.g., xTool, Glowforge)"
+      "description": "Machine brand (e.g., xTool, Glowforge, Cricut)"
     },
     "model": {
       "type": "string",
-      "description": "Machine model (e.g., D1 Pro, Plus)"
+      "description": "Machine model (e.g., D1 Pro, Plus, Maker 3)"
     },
     "type": {
       "type": "string",
       "enum": [
         "laser",
+        "vinyl_cutter",
         "cnc",
         "printer",
         "other"
