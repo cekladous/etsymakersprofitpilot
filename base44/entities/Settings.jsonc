@@ -293,9 +293,14 @@
       "default": false,
       "description": "Enable/disable Raster Assistant tool visibility"
     },
+    "location_country": {
+      "type": "string",
+      "default": "US",
+      "description": "Country code for electricity rate lookup (US, CA, international code, or OTHER)"
+    },
     "location_state": {
       "type": "string",
-      "description": "US state code for electricity rate lookup"
+      "description": "State or province code for electricity rate lookup"
     },
     "auto_calc_overhead": {
       "type": "boolean",

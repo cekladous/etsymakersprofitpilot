@@ -39,7 +39,7 @@ import {
 import { Plus, Trash2, Save, Loader2, Zap, Settings as SettingsIcon, CircleDollarSign, History, ExternalLink, AlertTriangle, Eye, EyeOff, MapPin, Sparkles, Wand2 } from "lucide-react";
 import { format } from "date-fns";
 import { ALL_EXPENSE_CATEGORIES } from "@/components/shared/expenseCategories";
-import { US_STATES, getRateForState, NATIONAL_AVG_RATE } from "@/components/tools/electricityRates";
+import { US_STATES, CANADIAN_PROVINCES, INTERNATIONAL_RATES, COUNTRIES, getRateForLocation, getCurrencyForCountry } from "@/components/tools/electricityRates";
 
 export default function SettingsTool() { 
   const { user } = useAuth();
@@ -94,6 +94,7 @@ export default function SettingsTool() {
     tool_name_tags_enabled: false,
     tool_svg_enabled: false,
     tool_raster_enabled: false,
+    location_country: "US",
     location_state: "",
     auto_calc_overhead: true,
     monthly_machine_hours: 40,
@@ -248,6 +249,7 @@ export default function SettingsTool() {
         tool_name_tags_enabled: s.tool_name_tags_enabled || false,
         tool_svg_enabled: s.tool_svg_enabled || false,
         tool_raster_enabled: s.tool_raster_enabled || false,
+        location_country: s.location_country || "US",
         location_state: s.location_state || "",
         auto_calc_overhead: s.auto_calc_overhead !== false,
         monthly_machine_hours: s.monthly_machine_hours ?? 40,
@@ -258,9 +260,8 @@ export default function SettingsTool() {
   // Auto-calculate electricity rate and monthly overhead based on machines + location
   useEffect(() => {
     if (!settingsData.auto_calc_overhead) return;
-    const rate = settingsData.location_state
-      ? getRateForState(settingsData.location_state)
-      : NATIONAL_AVG_RATE;
+    const rate = getRateForLocation(settingsData.location_country, settingsData.location_state);
+    if (rate === null) return; // manual entry mode — don't override
     const hours = settingsData.monthly_machine_hours || 40;
     const totalDepreciation = machines.reduce((sum, m) => sum + (m.monthly_depreciation || 0), 0);
     const totalElectricity = machines.reduce((sum, m) => {
@@ -273,7 +274,7 @@ export default function SettingsTool() {
       if (prev.electricity_rate === rate && prev.monthly_overhead === calculatedOverhead) return prev;
       return { ...prev, electricity_rate: Math.round(rate * 10000) / 10000, monthly_overhead: calculatedOverhead };
     });
-  }, [machines, settingsData.location_state, settingsData.auto_calc_overhead, settingsData.monthly_machine_hours]);
+  }, [machines, settingsData.location_country, settingsData.location_state, settingsData.auto_calc_overhead, settingsData.monthly_machine_hours]);
 
   const settingsMutation = useMutation({
     mutationFn: async (data) => {
@@ -705,27 +706,56 @@ export default function SettingsTool() {
               {settingsData.auto_calc_overhead && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-stone-500" /> Location (State)</Label>
+                    <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-stone-500" /> Country</Label>
                     <Select
-                      value={settingsData.location_state}
-                      onValueChange={(v) => setSettingsData({ ...settingsData, location_state: v })}
+                      value={settingsData.location_country}
+                      onValueChange={(v) => setSettingsData({ ...settingsData, location_country: v, location_state: "" })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select your state..." />
+                        <SelectValue placeholder="Select your country..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {US_STATES.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
+                        {COUNTRIES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-stone-500">
-                      Electricity rate: ${settingsData.electricity_rate.toFixed(4)}/kWh
-                      {settingsData.location_state ? ` (${settingsData.location_state} avg)` : " (national avg)"}
-                    </p>
                   </div>
+                  {(settingsData.location_country === "US" || settingsData.location_country === "CA") ? (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-stone-500" />
+                        {settingsData.location_country === "US" ? " State" : " Province"}
+                      </Label>
+                      <Select
+                        value={settingsData.location_state}
+                        onValueChange={(v) => setSettingsData({ ...settingsData, location_state: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={settingsData.location_country === "US" ? "Select your state..." : "Select your province..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(settingsData.location_country === "US" ? US_STATES : CANADIAN_PROVINCES).map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : settingsData.location_country === "OTHER" ? (
+                    <div className="space-y-2">
+                      <Label>Electricity Rate (per kWh)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settingsData.electricity_rate}
+                        onChange={(e) => setSettingsData({ ...settingsData, electricity_rate: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-xs text-stone-500">Enter your local electricity rate per kWh</p>
+                    </div>
+                  ) : null}
                   <div className="space-y-2">
                     <Label>Estimated Monthly Machine Hours</Label>
                     <Input
