@@ -870,6 +870,7 @@ export default function Orders() {
     },
     {
       header: "Order #",
+      sortValue: (row) => row.order_id || "",
       render: (row) => (
         <button
           onClick={() => setSelectedIds([row.id])}
@@ -881,6 +882,7 @@ export default function Orders() {
     },
     {
       header: "Date",
+      sortValue: (row) => row.sale_date || "",
       render: (row) => (
         <span className="text-sm text-stone-600">
           {row.sale_date ? format(new Date(row.sale_date + "T00:00:00"), "MMM d, yyyy") : "—"}
@@ -889,6 +891,7 @@ export default function Orders() {
     },
     {
       header: "Buyer",
+      sortValue: (row) => row.buyer_username || row.buyer_full_name || "",
       render: (row) => (
         <div className="max-w-48">
           <p className="font-medium text-stone-900 truncate">{row.buyer_username || row.buyer_full_name || "-"}</p>
@@ -898,6 +901,7 @@ export default function Orders() {
     },
     {
       header: "Item Total",
+      sortValue: (row) => row.order_value || 0,
       render: (row) => (
         <span className="font-medium text-stone-900">
           {formatCurrency(row.order_value || 0)}
@@ -906,6 +910,7 @@ export default function Orders() {
     },
     {
       header: "Fees",
+      sortValue: (row) => findOrderFee(orderFees, row.order_id)?.total_fees || 0,
       render: (row) => {
         const fees = findOrderFee(orderFees, row.order_id);
         if (!fees || fees.total_fees === 0) {
@@ -959,6 +964,7 @@ export default function Orders() {
     },
     {
       header: "Order Profit",
+      sortValue: (row) => calculateNetEarnings(row, findOrderFee(orderFees, row.order_id)),
       render: (row) => {
         const fees = findOrderFee(orderFees, row.order_id);
         const netEarnings = calculateNetEarnings(row, fees);
@@ -971,6 +977,12 @@ export default function Orders() {
     },
     {
       header: "Status",
+      sortValue: (row) => {
+        const refund = row.refund_amount || 0;
+        const preTaxTotal = (row.order_total || 0) - (row.sales_tax || 0);
+        const isCanceled = refund > 0 && refund >= preTaxTotal - 0.01;
+        return isCanceled ? "Canceled" : (row.status || "completed");
+      },
       render: (row) => {
         // Detect fully refunded/canceled orders: refund covers the pre-tax sale amount
         const refund = row.refund_amount || 0;

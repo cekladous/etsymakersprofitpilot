@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
   TableBody,
   TableCell,
@@ -20,6 +21,33 @@ export default function DataTable({
   const [selectionStart, setSelectionStart] = useState(null);
   const [currentRow, setCurrentRow] = useState(null);
   const scrollContainerRef = React.useRef(null);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
+
+  const handleSort = (colIndex) => {
+    if (sortColumn === colIndex) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(colIndex);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedData = useMemo(() => {
+    if (sortColumn === null) return data;
+    const col = columns[sortColumn];
+    if (!col || !col.sortValue) return data;
+    return [...data].sort((a, b) => {
+      const aVal = col.sortValue(a);
+      const bVal = col.sortValue(b);
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      const aStr = String(aVal ?? '');
+      const bStr = String(bVal ?? '');
+      return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+    });
+  }, [data, sortColumn, sortDirection, columns]);
 
   const getNumericValue = (value) => {
     if (typeof value === 'number') return value;
@@ -200,18 +228,32 @@ export default function DataTable({
         <table className="w-full caption-bottom text-sm">
           <TableHeader>
             <TableRow className="bg-stone-50 hover:bg-stone-50 sticky top-0 z-10">
-              {columns.map((col, i) => (
-                <TableHead
-                  key={i}
-                  className={`text-stone-600 font-medium ${col.className || ""}`}
-                >
-                  {typeof col.header === 'function' ? col.header() : col.header}
-                </TableHead>
-              ))}
+              {columns.map((col, i) => {
+                const isSortable = !!col.sortValue;
+                const isSorted = sortColumn === i;
+                return (
+                  <TableHead
+                    key={i}
+                    className={`text-stone-600 font-medium ${col.className || ""} ${isSortable ? "cursor-pointer select-none hover:bg-stone-100" : ""}`}
+                    onClick={isSortable ? () => handleSort(i) : undefined}
+                  >
+                    <div className="inline-flex items-center gap-1">
+                      {typeof col.header === 'function' ? col.header() : col.header}
+                      {isSortable && (
+                        isSorted ? (
+                          sortDirection === 'asc'
+                            ? <ArrowUp className="w-3.5 h-3.5" />
+                            : <ArrowDown className="w-3.5 h-3.5" />
+                        ) : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                      )}
+                    </div>
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((row, rowIndex) => (
+            {sortedData.map((row, rowIndex) => (
               <TableRow
                 key={row.id || rowIndex}
                 onClick={() => onRowClick?.(row)}
