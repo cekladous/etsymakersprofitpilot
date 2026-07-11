@@ -47,6 +47,47 @@ Deno.serve(async (req) => {
       }
     });
 
+    // 1b. Find "fuzzy" EtsyOrder duplicates — same date + same buyer + same amount,
+    // but different order_ids (e.g. Etsy created two order records for one Square charge).
+    // Flag them with possible_duplicate=true rather than auto-deleting, since two real
+    // orders CAN legitimately share these fields — requires human review.
+    const etsyFuzzyMap = {};
+    etsyOrders.forEach((o) => {
+      if (!o.sale_date || !o.buyer_username || !o.order_value) return;
+      const oid = String(o.order_id || '').trim();
+      const key = `${o.sale_date}|${o.buyer_username}|${Number(o.order_value).toFixed(2)}`;
+      if (!etsyFuzzyMap[key]) etsyFuzzyMap[key] = [];
+      etsyFuzzyMap[key].push({ id: o.id, order_id: oid });
+    });
+
+    const fuzzyDupeIds = new Set();
+    const fuzzyDuplicateGroups = [];
+    Object.entries(etsyFuzzyMap).forEach(([key, orders]) => {
+      // Only flag if there are 2+ orders with DIFFERENT order_ids
+      const uniqueOrderIds = new Set(orders.map((o) => o.order_id));
+      if (orders.length <= 1 || uniqueOrderIds.size <= 1) return;
+      orders.forEach((o) => fuzzyDupeIds.add(o.id));
+      fuzzyDuplicateGroups.push({
+        key,
+        order_ids: orders.map((o) => o.order_id),
+        ids: orders.map((o) => o.id),
+        order_value: Number(orders[0] ? 0 : 0),
+        count: orders.length,
+      });
+    });
+
+    // Update possible_duplicate flag on all EtsyOrders
+    const flagUpdates = [];
+    for (const o of etsyOrders) {
+      const shouldFlag = fuzzyDupeIds.has(o.id);
+      if (!!o.possible_duplicate !== shouldFlag) {
+        flagUpdates.push(
+          base44.asServiceRole.entities.EtsyOrder.update(o.id, { possible_duplicate: shouldFlag })
+        );
+      }
+    }
+    if (flagUpdates.length > 0) await Promise.all(flagUpdates);
+
     // 2. Find CustomSales that near-match EtsyOrders (same date ± 1 day, amount within $5)
     // This catches Square in-person sales where Square's "Total Collected" differs from
     // Etsy's "Order Total" by a few dollars (e.g. $3 Square processing fee)
@@ -123,9 +164,12 @@ Deno.serve(async (req) => {
       return Response.json({
         duplicate_count: allDuplicates.length,
         etsy_order_duplicates: etsyOrderDuplicates.length,
+        fuzzy_etsy_duplicates_flagged: fuzzyDuplicateGroups.length,
         cross_entity_duplicates: crossEntityDuplicates.length,
         custom_sale_internal_duplicates: customSaleInternalDupes.length,
         duplicates: allDuplicates,
+        fuzzy_duplicate_groups: fuzzyDuplicateGroups,
+        flagged_orders_updated: flagUpdates.length,
       });
     }
 

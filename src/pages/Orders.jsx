@@ -49,6 +49,7 @@ import LineItemDrillDown from "@/components/monthly/LineItemDrillDown";
 import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@/components/shared/netEarnings";
 import ChannelBadge from "@/components/orders/ChannelBadge";
 import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
+import OrdersFilterPanel from "@/components/orders/OrdersFilterPanel";
 
 export default function Orders() {
   const { user, loading } = useAuth();
@@ -60,6 +61,19 @@ export default function Orders() {
   
   const [activeTab, setActiveTab] = useState(initialTab);
   const [search, setSearch] = useState("");
+  const [columnFilters, setColumnFilters] = useState({
+    orderNumber: "",
+    dateFrom: "",
+    dateTo: "",
+    buyer: "",
+    itemTotalMin: "",
+    itemTotalMax: "",
+    feesMin: "",
+    feesMax: "",
+    profitMin: "",
+    profitMax: "",
+    status: "",
+  });
   const [feeSearch, setFeeSearch] = useState("");
   const [feeTypeFilter, setFeeTypeFilter] = useState("all");
   const [timeRange, setTimeRange] = useState("all");
@@ -267,9 +281,40 @@ export default function Orders() {
 
   const filteredOrders = useMemo(() => {
     return etsyOrders.filter(order => {
-      const matchesSearch = !search || 
-        order.order_id?.toLowerCase().includes(search.toLowerCase()) ||
-        order.buyer_username?.toLowerCase().includes(search.toLowerCase());
+      const matchesOrderNumber = !columnFilters.orderNumber || 
+        order.order_id?.toLowerCase().includes(columnFilters.orderNumber.toLowerCase());
+      
+      const matchesBuyer = !columnFilters.buyer ||
+        order.buyer_username?.toLowerCase().includes(columnFilters.buyer.toLowerCase()) ||
+        order.buyer_full_name?.toLowerCase().includes(columnFilters.buyer.toLowerCase());
+      
+      const matchesDateFrom = !columnFilters.dateFrom ||
+        (order.sale_date && new Date(order.sale_date + "T00:00:00") >= new Date(columnFilters.dateFrom + "T00:00:00"));
+      
+      const matchesDateTo = !columnFilters.dateTo ||
+        (order.sale_date && new Date(order.sale_date + "T00:00:00") <= new Date(columnFilters.dateTo + "T23:59:59"));
+      
+      const itemTotal = order.order_value || 0;
+      const matchesItemMin = columnFilters.itemTotalMin === "" || itemTotal >= parseFloat(columnFilters.itemTotalMin);
+      const matchesItemMax = columnFilters.itemTotalMax === "" || itemTotal <= parseFloat(columnFilters.itemTotalMax);
+      
+      const orderFee = findOrderFee(orderFees, order.order_id);
+      const feeTotal = orderFee?.total_fees || 0;
+      const matchesFeesMin = columnFilters.feesMin === "" || feeTotal >= parseFloat(columnFilters.feesMin);
+      const matchesFeesMax = columnFilters.feesMax === "" || feeTotal <= parseFloat(columnFilters.feesMax);
+      
+      const profit = calculateNetEarnings(order, orderFee);
+      const matchesProfitMin = columnFilters.profitMin === "" || profit >= parseFloat(columnFilters.profitMin);
+      const matchesProfitMax = columnFilters.profitMax === "" || profit <= parseFloat(columnFilters.profitMax);
+      
+      let matchesStatus = true;
+      if (columnFilters.status) {
+        const refund = order.refund_amount || 0;
+        const preTaxTotal = (order.order_total || 0) - (order.sales_tax || 0);
+        const isCanceled = refund > 0 && refund >= preTaxTotal - 0.01;
+        const status = isCanceled ? "Canceled" : (order.status || "completed");
+        matchesStatus = status === columnFilters.status;
+      }
       
       let matchesDate = true;
       if (dateRange && order.sale_date) {
@@ -282,9 +327,11 @@ export default function Orders() {
         matchesCustomer = order.buyer_full_name === customerFilter;
       }
       
-      return matchesSearch && matchesDate && matchesCustomer;
+      return matchesOrderNumber && matchesBuyer && matchesDateFrom && matchesDateTo &&
+             matchesItemMin && matchesItemMax && matchesFeesMin && matchesFeesMax &&
+             matchesProfitMin && matchesProfitMax && matchesStatus && matchesDate && matchesCustomer;
     });
-  }, [etsyOrders, search, dateRange, customerFilter]);
+  }, [etsyOrders, columnFilters, dateRange, customerFilter, orderFees]);
 
   // Etsy-only orders: excludes Square/in-person orders (which Etsy's Activity
   // Summary never includes). Used for all Etsy-only KPIs. Square orders remain
@@ -358,7 +405,7 @@ export default function Orders() {
 
   // When search is active, scope statement lines to only the filtered orders
   // so KPI cards and reconciliation summary stay consistent with the table.
-  const isSearchActive = !!(search && search.trim());
+  const isSearchActive = Object.values(columnFilters).some(v => v !== "" && v !== null && v !== undefined);
   const statementPeriodLines = useMemo(() => {
     let lines = statementLines;
     if (dateRange) {
@@ -1191,19 +1238,26 @@ export default function Orders() {
             </div>
           )}
 
-                {/* Info: Internal profit view */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
-            <p className="text-xs text-blue-800">
-              <strong>Etsy-only KPIs:</strong> Revenue, Order Count, Fees, and Net Earnings exclude in-person Square sales (which Etsy's Activity Summary never includes). Square orders remain visible in the table below.
-            </p>
-            {squareOrderCount > 0 && (
-              <p className="text-xs text-blue-600">
-                <strong>Total Business Revenue (all channels):</strong> {formatCurrency(totalBusinessRevenue)} across {filteredOrders.length} orders ({squareOrderCount} in-person/Square).
-              </p>
-            )}
-            <p className="text-xs text-blue-800">
-              Revenue excludes sales tax. Etsy Fees and Marketing are shown separately to match Etsy's statement categories. For Etsy statement reconciliation, see the Reconciliation tab.
-            </p>
+          {/* Info: Internal profit view */}
+          <div className="bg-gradient-to-br from-sky-50 via-indigo-50/40 to-white border border-sky-200/50 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-sky-100 rounded-lg flex-shrink-0">
+                <Info className="w-4 h-4 text-sky-600" />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <p className="text-xs text-sky-900 leading-relaxed">
+                  <span className="font-semibold">Etsy-only KPIs:</span> Revenue, Order Count, Fees, and Net Earnings exclude in-person Square sales (which Etsy's Activity Summary never includes). Square orders remain visible in the table below.
+                </p>
+                {squareOrderCount > 0 && (
+                  <p className="text-xs text-indigo-700 leading-relaxed">
+                    <span className="font-semibold">Total Business Revenue (all channels):</span> {formatCurrency(totalBusinessRevenue)} across {filteredOrders.length} orders ({squareOrderCount} in-person/Square).
+                  </p>
+                )}
+                <p className="text-xs text-sky-700 leading-relaxed">
+                  Revenue excludes sales tax. Etsy Fees and Marketing are shown separately to match Etsy's statement categories. For Etsy statement reconciliation, see the Reconciliation tab.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Summary Cards */}
@@ -1213,11 +1267,11 @@ export default function Orders() {
             const el = document.getElementById('orders-table-section');
             if (el) window.scrollTo({ top: el.offsetTop - 80, behavior: 'smooth' });
           }}
-          className="cursor-pointer hover:shadow-md transition-shadow"
+          className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border-t-2 border-t-blue-400"
         >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
+              <div className="p-2.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
                 <ShoppingBag className="w-6 h-6 text-blue-600" />
               </div>
               <div>
@@ -1235,11 +1289,11 @@ export default function Orders() {
 
         <Card
           onClick={() => setActiveTab("reconciliation")}
-          className="cursor-pointer hover:shadow-md transition-shadow"
+          className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border-t-2 border-t-emerald-400"
         >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-100 rounded-lg">
+              <div className="p-2.5 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl">
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
@@ -1254,11 +1308,11 @@ export default function Orders() {
 
         <Card
           onClick={() => setActiveTab("fees_deposits")}
-          className="cursor-pointer hover:shadow-md transition-shadow"
+          className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border-t-2 border-t-rose-400"
         >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-rose-100 rounded-lg">
+              <div className="p-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl">
                 <CreditCard className="w-6 h-6 text-rose-600" />
               </div>
               <div>
@@ -1359,11 +1413,11 @@ export default function Orders() {
 
         <Card
           onClick={() => setActiveTab("fees_deposits")}
-          className="cursor-pointer hover:shadow-md transition-shadow"
+          className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border-t-2 border-t-amber-400"
         >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-100 rounded-lg">
+              <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl">
                 <CreditCard className="w-6 h-6 text-amber-600" />
               </div>
               <div>
@@ -1378,11 +1432,11 @@ export default function Orders() {
 
         <Card
           onClick={() => setActiveTab("reconciliation")}
-          className="cursor-pointer hover:shadow-md transition-shadow"
+          className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border-t-2 border-t-emerald-500"
         >
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-100 rounded-lg">
+              <div className="p-2.5 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl">
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
@@ -1401,15 +1455,17 @@ export default function Orders() {
 
           {/* Missing buyer info note */}
           {etsyOrders.length > 0 && etsyOrders.some(o => !o.buyer_username && !o.buyer_full_name) && (
-            <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
+            <div className="flex items-start gap-3 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/60 rounded-xl p-4">
+              <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
+                <Info className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="text-sm text-amber-900">
                 <p className="font-semibold mb-1">Buyer & item details not available</p>
-                <p>
+                <p className="text-amber-800 leading-relaxed">
                   The Etsy Monthly Statement doesn't include buyer names or item counts. Upload the optional{" "}
                   <button
                     onClick={() => setImportDialogOpen(true)}
-                    className="font-semibold text-blue-700 underline hover:text-blue-900"
+                    className="font-semibold text-amber-700 underline hover:text-amber-900"
                   >
                     Sold Orders Report
                   </button>{" "}
@@ -1419,16 +1475,16 @@ export default function Orders() {
             </div>
           )}
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <Input
-              placeholder="Search by order ID or buyer..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          {/* Column Filters */}
+          <OrdersFilterPanel
+            filters={columnFilters}
+            onChange={setColumnFilters}
+            onClear={() => setColumnFilters({
+              orderNumber: "", dateFrom: "", dateTo: "", buyer: "",
+              itemTotalMin: "", itemTotalMax: "", feesMin: "", feesMax: "",
+              profitMin: "", profitMax: "", status: "",
+            })}
+          />
 
           {/* Table */}
           {etsyOrders.length === 0 && !ordersLoading ? (
@@ -1450,17 +1506,19 @@ export default function Orders() {
               </Button>
             </div>
           ) : (
-            <DataTable
-              columns={columns}
-              data={filteredOrders}
-              isLoading={ordersLoading}
-              emptyMessage="No orders match your filters"
-            />
+            <div id="orders-table-section">
+              <DataTable
+                columns={columns}
+                data={filteredOrders}
+                isLoading={ordersLoading}
+                emptyMessage="No orders match your filters"
+              />
+            </div>
           )}
 
           {/* Reconciliation summary: bridges per-order profit and shop-level net earnings */}
           {filteredOrders.length > 0 && (
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+            <div className="bg-gradient-to-r from-stone-50 to-stone-100/50 border border-stone-200/60 rounded-xl p-4">
               {isSearchActive ? (
                 <p className="text-sm text-stone-700">
                   <span className="font-medium">Search filter active.</span>{" "}
@@ -1543,7 +1601,7 @@ export default function Orders() {
            >
              <CardContent className="p-6">
                <div className="flex items-center gap-3">
-                 <div className="p-3 bg-rose-100 rounded-lg">
+                 <div className="p-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl">
                    <CreditCard className="w-6 h-6 text-rose-600" />
                  </div>
                  <div>
@@ -1636,7 +1694,7 @@ export default function Orders() {
            <Card>
              <CardContent className="p-6">
                <div className="flex items-center gap-3">
-                 <div className="p-3 bg-emerald-100 rounded-lg">
+                 <div className="p-2.5 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl">
                    <DollarSign className="w-6 h-6 text-emerald-600" />
                  </div>
                  <div>
