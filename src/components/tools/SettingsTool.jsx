@@ -399,26 +399,48 @@ export default function SettingsTool() {
     setLearnedCount(null);
     try {
       const expenses = await base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, '-created_date', 10000);
-      const vendorMap = {};
+      const SKIP_CATEGORIES = ['other', 'miscellaneous_expenses'];
+      const STOP_WORDS = new Set(['the','a','an','and','or','of','for','to','in','on','at','by','with','from','payment','purchase','debit','credit','card','pos','visa','mastercard','txn','transaction','ref','reference','id','llc','inc','co','llp','corp','check','transfer','online','order']);
+
+      const keywordMap = {};
+      function addKeyword(text, category) {
+        const kw = text.trim().toLowerCase();
+        if (!kw || kw.length < 2) return;
+        if (!keywordMap[kw]) keywordMap[kw] = { keyword: kw, category_counts: {}, total: 0 };
+        keywordMap[kw].category_counts[category] = (keywordMap[kw].category_counts[category] || 0) + 1;
+        keywordMap[kw].total++;
+      }
+
       for (const exp of expenses) {
-        if (!exp.category_name || exp.category_name === 'other' || exp.category_name === 'miscellaneous_expenses') continue;
-        const keyword = (exp.vendor || exp.description || '').trim();
-        if (!keyword) continue;
-        const key = keyword.toLowerCase();
-        if (!vendorMap[key]) vendorMap[key] = { keyword, category_counts: {}, total: 0 };
-        vendorMap[key].category_counts[exp.category_name] = (vendorMap[key].category_counts[exp.category_name] || 0) + 1;
-        vendorMap[key].total++;
+        if (!exp.category_name || SKIP_CATEGORIES.includes(exp.category_name)) continue;
+        const vendor = (exp.vendor || '').trim();
+        const desc = (exp.description || '').trim();
+
+        if (vendor) {
+          addKeyword(vendor, exp.category_name);
+          const words = vendor.toLowerCase().split(/\s+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+          for (const w of words) addKeyword(w, exp.category_name);
+        }
+        if (desc) {
+          addKeyword(desc, exp.category_name);
+          const parts = desc.toLowerCase().split(/\s+/);
+          if (parts.length >= 2) {
+            const significant = parts.filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+            if (significant.length >= 2) addKeyword(significant.slice(0, 2).join(' '), exp.category_name);
+            if (significant.length >= 3) addKeyword(significant.slice(0, 3).join(' '), exp.category_name);
+          }
+        }
       }
 
       const existingKeywords = new Set((settingsData.auto_categorization_rules || []).map(r => r.keyword?.toLowerCase()));
       const newRules = [];
-      for (const { keyword, category_counts, total } of Object.values(vendorMap)) {
-        if (existingKeywords.has(keyword.toLowerCase())) continue;
+      for (const { keyword, category_counts, total } of Object.values(keywordMap)) {
+        if (existingKeywords.has(keyword)) continue;
         const bestCategory = Object.entries(category_counts).sort((a, b) => b[1] - a[1])[0][0];
-        newRules.push({ keyword, category: bestCategory, _count: total });
+        newRules.push({ keyword, category: bestCategory, _count: total, _purity: category_counts[bestCategory] / total });
       }
-      newRules.sort((a, b) => b._count - a._count);
-      newRules.forEach(r => delete r._count);
+      newRules.sort((a, b) => b._purity - a._purity || b._count - a._count);
+      newRules.forEach(r => { delete r._count; delete r._purity; });
 
       const merged = [...settingsData.auto_categorization_rules, ...newRules];
       setSettingsData(prev => ({ ...prev, auto_categorization_rules: merged }));
