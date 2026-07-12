@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PageHeader from "@/components/ui/PageHeader";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Download, Info } from "lucide-react";
+import {
+  format, startOfMonth, endOfMonth, startOfYear, endOfYear,
+  startOfQuarter, endOfQuarter, startOfDay, endOfDay,
+} from "date-fns";
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Download, Info, X } from "lucide-react";
 import DonutChart from "@/components/reports/DonutChart";
 import ProfitLossStatement from "@/components/reports/ProfitLossStatement";
 
@@ -16,6 +19,9 @@ export default function Reports() {
   const { user, loading } = useAuth();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [groupBy, setGroupBy] = useState("month");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data: etsyOrders = [] } = useQuery({
     queryKey: ["etsy-orders-reports", user?.id],
@@ -91,19 +97,67 @@ export default function Reports() {
     etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports,
   };
 
-  const monthlyData = useMemo(() => {
-    const months = [];
-    for (let month = 0; month < 12; month++) {
-      const date = new Date(selectedYear, month, 1);
-      const start = startOfMonth(date);
-      const end = endOfMonth(date);
+  const dataDeps = [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports];
 
-      const fd = aggregateFinancials(sharedData, { start, end });
+  const hasCustomRange = !!(dateFrom || dateTo);
+
+  const effectiveRange = useMemo(() => {
+    if (hasCustomRange) {
+      const start = dateFrom ? startOfDay(new Date(dateFrom + "T00:00:00")) : startOfYear(new Date(selectedYear, 0, 1));
+      const end = dateTo ? endOfDay(new Date(dateTo + "T23:59:59")) : endOfYear(new Date(selectedYear, 11, 31));
+      return { start, end };
+    }
+    return {
+      start: startOfYear(new Date(selectedYear, 0, 1)),
+      end: endOfYear(new Date(selectedYear, 11, 31)),
+    };
+  }, [dateFrom, dateTo, selectedYear, hasCustomRange]);
+
+  const periods = useMemo(() => {
+    const { start, end } = effectiveRange;
+    const result = [];
+
+    if (groupBy === "quarter") {
+      for (let q = 0; q < 4; q++) {
+        const qStart = startOfMonth(new Date(selectedYear, q * 3, 1));
+        const qEnd = endOfQuarter(qStart);
+        if (qStart <= end && qEnd >= start) {
+          const pStart = qStart < start ? start : qStart;
+          const pEnd = qEnd > end ? end : qEnd;
+          result.push({
+            label: `Q${q + 1}`,
+            labelFull: `Q${q + 1} (${format(qStart, "MMM")}–${format(endOfMonth(new Date(selectedYear, q * 3 + 2, 1)), "MMM")})`,
+            start: pStart,
+            end: pEnd,
+          });
+        }
+      }
+    } else {
+      for (let m = 0; m < 12; m++) {
+        const mStart = startOfMonth(new Date(selectedYear, m, 1));
+        const mEnd = endOfMonth(mStart);
+        if (mStart <= end && mEnd >= start) {
+          const pStart = mStart < start ? start : mStart;
+          const pEnd = mEnd > end ? end : mEnd;
+          result.push({
+            label: format(mStart, "MMM"),
+            labelFull: format(mStart, "MMMM"),
+            start: pStart,
+            end: pEnd,
+          });
+        }
+      }
+    }
+    return result;
+  }, [effectiveRange, groupBy, selectedYear]);
+
+  const periodData = useMemo(() => {
+    return periods.map(p => {
+      const fd = aggregateFinancials(sharedData, { start: p.start, end: p.end });
       const hasData = fd.totalRevenue > 0 || fd.totalExpenses > 0;
-
-      months.push({
-        month: format(date, "MMM"),
-        monthFull: format(date, "MMMM"),
+      return {
+        label: p.label,
+        labelFull: p.labelFull,
         etsySales: fd.revenue.netEtsySales || 0,
         customSales: fd.revenue.customRevenueTotal || 0,
         totalRevenue: fd.totalRevenue || 0,
@@ -114,16 +168,13 @@ export default function Reports() {
         netProfit: fd.netProfit || 0,
         profitMargin: fd.profitMargin || 0,
         hasData,
-      });
-    }
-    return months;
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports]);
+  }, [periods, ...dataDeps]);
 
-  const yearlyTotals = useMemo(() => {
-    const yearStart = startOfYear(new Date(selectedYear, 0, 1));
-    const yearEnd = endOfYear(new Date(selectedYear, 11, 31));
-    const fd = aggregateFinancials(sharedData, { start: yearStart, end: yearEnd });
+  const rangeTotals = useMemo(() => {
+    const fd = aggregateFinancials(sharedData, effectiveRange);
     return {
       etsySales: fd.revenue.netEtsySales || 0,
       customSales: fd.revenue.customRevenueTotal || 0,
@@ -136,50 +187,48 @@ export default function Reports() {
       profitMargin: fd.profitMargin || 0,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports]);
+  }, [effectiveRange, ...dataDeps]);
 
-  const yearlyDetail = useMemo(() => {
-    const yearStart = startOfYear(new Date(selectedYear, 0, 1));
-    const yearEnd = endOfYear(new Date(selectedYear, 11, 31));
-    return aggregateFinancials(sharedData, { start: yearStart, end: yearEnd });
+  const rangeDetail = useMemo(() => {
+    return aggregateFinancials(sharedData, effectiveRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear, etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports]);
+  }, [effectiveRange, ...dataDeps]);
 
   const expenseChartData = useMemo(() => {
-    if (!yearlyDetail) return [];
+    if (!rangeDetail) return [];
     const items = [
-      { name: "Materials & Supplies", value: yearlyDetail.productExpenses?.materialsSupplies || 0, color: "#3b82f6" },
-      { name: "Tools & Equipment", value: yearlyDetail.productExpenses?.toolsEquipment || 0, color: "#f59e0b" },
-      { name: "Listing Fees", value: yearlyDetail.sellingExpenses?.etsyListingFees || 0, color: "#fb923c" },
-      { name: "Transaction Fees", value: yearlyDetail.sellingExpenses?.etsyTransactionFees || 0, color: "#f97316" },
-      { name: "Processing Fees", value: yearlyDetail.sellingExpenses?.etsyProcessingFees || 0, color: "#ea580c" },
-      { name: "Other Fees", value: yearlyDetail.sellingExpenses?.otherFees || 0, color: "#c2410c" },
-      { name: "Etsy Ads", value: yearlyDetail.sellingExpenses?.etsyAds || 0, color: "#fbbf24" },
-      { name: "Offsite Ads", value: yearlyDetail.sellingExpenses?.etsyOffsiteAds || 0, color: "#d97706" },
-      { name: "Etsy Plus Subscription", value: yearlyDetail.sellingExpenses?.etsyPlusSubscription || 0, color: "#b45309" },
-      { name: "Shipping Labels", value: yearlyDetail.sellingExpenses?.etsyShipping || 0, color: "#eab308" },
-      { name: "Other Postage", value: yearlyDetail.sellingExpenses?.otherPostage || 0, color: "#facc15" },
-      { name: "Share & Save Credits", value: Math.abs(yearlyDetail.sellingExpenses?.shareSaveRefunds || 0), color: "#34d399" },
-      { name: "Fee Credits", value: yearlyDetail.sellingExpenses?.feeCredits || 0, color: "#6ee7b7" },
-      { name: "Advertising & Marketing", value: yearlyDetail.businessExpenses?.advertisingMarketing || 0, color: "#ec4899" },
-      { name: "Office Expenses", value: yearlyDetail.businessExpenses?.officeExpenses || 0, color: "#10b981" },
-      { name: "Gas / Mileage", value: yearlyDetail.businessExpenses?.gasMileage || 0, color: "#06b6d4" },
-      { name: "Utilities / Cell Phone", value: yearlyDetail.businessExpenses?.utilitiesCellPhone || 0, color: "#6366f1" },
-      { name: "Software / Subscriptions", value: yearlyDetail.businessExpenses?.softwareSubscriptions || 0, color: "#8b5cf6" },
-      { name: "Professional Services", value: yearlyDetail.businessExpenses?.professionalServices || 0, color: "#a855f7" },
-      { name: "Payment Processing Fees", value: yearlyDetail.businessExpenses?.paymentProcessingFees || 0, color: "#f43f5e" },
-      { name: "Insurance", value: yearlyDetail.businessExpenses?.insurance || 0, color: "#84cc16" },
-      { name: "Rent / Lease", value: yearlyDetail.businessExpenses?.rent || 0, color: "#d946ef" },
-      { name: "Shipping & Postage", value: yearlyDetail.businessExpenses?.shippingPostage || 0, color: "#ca8a04" },
-      { name: "Other", value: yearlyDetail.businessExpenses?.other || 0, color: "#78716c" },
-      { name: "Miscellaneous", value: yearlyDetail.businessExpenses?.miscellaneous || 0, color: "#a8a29e" },
+      { name: "Materials & Supplies", value: rangeDetail.productExpenses?.materialsSupplies || 0, color: "#3b82f6" },
+      { name: "Tools & Equipment", value: rangeDetail.productExpenses?.toolsEquipment || 0, color: "#f59e0b" },
+      { name: "Listing Fees", value: rangeDetail.sellingExpenses?.etsyListingFees || 0, color: "#fb923c" },
+      { name: "Transaction Fees", value: rangeDetail.sellingExpenses?.etsyTransactionFees || 0, color: "#f97316" },
+      { name: "Processing Fees", value: rangeDetail.sellingExpenses?.etsyProcessingFees || 0, color: "#ea580c" },
+      { name: "Other Fees", value: rangeDetail.sellingExpenses?.otherFees || 0, color: "#c2410c" },
+      { name: "Etsy Ads", value: rangeDetail.sellingExpenses?.etsyAds || 0, color: "#fbbf24" },
+      { name: "Offsite Ads", value: rangeDetail.sellingExpenses?.etsyOffsiteAds || 0, color: "#d97706" },
+      { name: "Etsy Plus Subscription", value: rangeDetail.sellingExpenses?.etsyPlusSubscription || 0, color: "#b45309" },
+      { name: "Shipping Labels", value: rangeDetail.sellingExpenses?.etsyShipping || 0, color: "#eab308" },
+      { name: "Other Postage", value: rangeDetail.sellingExpenses?.otherPostage || 0, color: "#facc15" },
+      { name: "Share & Save Credits", value: Math.abs(rangeDetail.sellingExpenses?.shareSaveRefunds || 0), color: "#34d399" },
+      { name: "Fee Credits", value: rangeDetail.sellingExpenses?.feeCredits || 0, color: "#6ee7b7" },
+      { name: "Advertising & Marketing", value: rangeDetail.businessExpenses?.advertisingMarketing || 0, color: "#ec4899" },
+      { name: "Office Expenses", value: rangeDetail.businessExpenses?.officeExpenses || 0, color: "#10b981" },
+      { name: "Gas / Mileage", value: rangeDetail.businessExpenses?.gasMileage || 0, color: "#06b6d4" },
+      { name: "Utilities / Cell Phone", value: rangeDetail.businessExpenses?.utilitiesCellPhone || 0, color: "#6366f1" },
+      { name: "Software / Subscriptions", value: rangeDetail.businessExpenses?.softwareSubscriptions || 0, color: "#8b5cf6" },
+      { name: "Professional Services", value: rangeDetail.businessExpenses?.professionalServices || 0, color: "#a855f7" },
+      { name: "Payment Processing Fees", value: rangeDetail.businessExpenses?.paymentProcessingFees || 0, color: "#f43f5e" },
+      { name: "Insurance", value: rangeDetail.businessExpenses?.insurance || 0, color: "#84cc16" },
+      { name: "Rent / Lease", value: rangeDetail.businessExpenses?.rent || 0, color: "#d946ef" },
+      { name: "Shipping & Postage", value: rangeDetail.businessExpenses?.shippingPostage || 0, color: "#ca8a04" },
+      { name: "Other", value: rangeDetail.businessExpenses?.other || 0, color: "#78716c" },
+      { name: "Miscellaneous", value: rangeDetail.businessExpenses?.miscellaneous || 0, color: "#a8a29e" },
     ];
     return items.filter(i => i.value > 0.01);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yearlyDetail]);
+  }, [rangeDetail]);
 
   const salesChartData = useMemo(() => {
-    if (!yearlyDetail?.revenue?.bySource) return [];
+    if (!rangeDetail?.revenue?.bySource) return [];
     const colors = {
       "Etsy": "#059669",
       "In-Person (Square)": "#0d9488",
@@ -190,11 +239,11 @@ export default function Reports() {
       "Instagram": "#e11d48",
       "Other": "#78716c",
     };
-    return Object.entries(yearlyDetail.revenue.bySource)
+    return Object.entries(rangeDetail.revenue.bySource)
       .filter(([_, value]) => value > 0.01)
       .map(([name, value]) => ({ name, value, color: colors[name] || "#78716c" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yearlyDetail]);
+  }, [rangeDetail]);
 
   const yearOptions = useMemo(() => {
     const years = new Set();
@@ -207,26 +256,30 @@ export default function Reports() {
     return Array.from(years).sort((a, b) => b - a);
   }, [etsyOrders, customSales, businessExpenses]);
 
+  const rangeLabel = hasCustomRange
+    ? `${dateFrom ? format(new Date(dateFrom + "T00:00:00"), "MMM d, yyyy") : "Start"} – ${dateTo ? format(new Date(dateTo + "T00:00:00"), "MMM d, yyyy") : "End"}`
+    : String(selectedYear);
+
   const exportReport = () => {
-    const rows = monthlyData.filter(m => m.hasData);
+    const rows = periodData.filter(m => m.hasData);
     const csv = [
-      ["Month", "Etsy Sales", "Custom Sales", "Total Revenue", "Total Expenses", "Net Profit", "Profit Margin %"],
+      ["Period", "Etsy Sales", "Custom Sales", "Total Revenue", "Total Expenses", "Net Profit", "Profit Margin %"],
       ...rows.map(m => [
-        m.monthFull, m.etsySales.toFixed(2), m.customSales.toFixed(2),
+        m.labelFull, m.etsySales.toFixed(2), m.customSales.toFixed(2),
         m.totalRevenue.toFixed(2), m.totalExpenses.toFixed(2), m.netProfit.toFixed(2),
         m.profitMargin ? m.profitMargin.toFixed(1) : "0",
       ]),
-      ["TOTAL", yearlyTotals.etsySales.toFixed(2), yearlyTotals.customSales.toFixed(2),
-        yearlyTotals.totalRevenue.toFixed(2), yearlyTotals.totalExpenses.toFixed(2),
-        yearlyTotals.netProfit.toFixed(2),
-        yearlyTotals.profitMargin ? yearlyTotals.profitMargin.toFixed(1) : "0"],
+      ["TOTAL", rangeTotals.etsySales.toFixed(2), rangeTotals.customSales.toFixed(2),
+        rangeTotals.totalRevenue.toFixed(2), rangeTotals.totalExpenses.toFixed(2),
+        rangeTotals.netProfit.toFixed(2),
+        rangeTotals.profitMargin ? rangeTotals.profitMargin.toFixed(1) : "0"],
     ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `monthly-report-${selectedYear}.csv`;
+    a.download = `report-${groupBy}-${rangeLabel.replace(/[^\w-]/g, "_")}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -236,10 +289,19 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" description="Monthly P&L Summary">
-        <div className="flex gap-2 items-center">
-          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+      <PageHeader title="Reports" description={`Financial Summary — ${rangeLabel}`}>
+        <div className="flex flex-wrap gap-2 items-center">
+          <Select value={groupBy} onValueChange={setGroupBy}>
             <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Monthly</SelectItem>
+              <SelectItem value="quarter">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+            <SelectTrigger className="w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -255,7 +317,48 @@ export default function Reports() {
         </div>
       </PageHeader>
 
-      {/* Yearly Summary Cards */}
+      {/* Date Range Filter */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="text-xs font-medium text-stone-500 mb-1 block">From Date</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-9 px-3 rounded-md border border-stone-200 text-sm bg-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-stone-500 mb-1 block">To Date</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-9 px-3 rounded-md border border-stone-200 text-sm bg-white"
+              />
+            </div>
+            {hasCustomRange && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setDateFrom(""); setDateTo(""); }}
+              >
+                <X className="w-4 h-4 mr-1" />
+                Clear Range
+              </Button>
+            )}
+            <p className="text-xs text-stone-400 ml-auto">
+              {hasCustomRange
+                ? `Showing ${groupBy === "quarter" ? "quarterly" : "monthly"} data for ${rangeLabel}. Partial periods are prorated to the date range.`
+                : `Showing ${groupBy === "quarter" ? "quarterly" : "monthly"} data for all of ${selectedYear}. Set a custom date range to narrow.`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
@@ -264,8 +367,8 @@ export default function Reports() {
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-stone-500">Total Revenue ({selectedYear})</p>
-                <p className="text-2xl font-bold text-stone-900">{formatCurrency(yearlyTotals.totalRevenue)}</p>
+                <p className="text-sm text-stone-500">Total Revenue</p>
+                <p className="text-2xl font-bold text-stone-900">{formatCurrency(rangeTotals.totalRevenue)}</p>
               </div>
             </div>
           </CardContent>
@@ -278,7 +381,7 @@ export default function Reports() {
               </div>
               <div>
                 <p className="text-sm text-stone-500">Total Expenses</p>
-                <p className="text-2xl font-bold text-stone-900">{formatCurrency(yearlyTotals.totalExpenses)}</p>
+                <p className="text-2xl font-bold text-stone-900">{formatCurrency(rangeTotals.totalExpenses)}</p>
               </div>
             </div>
           </CardContent>
@@ -286,12 +389,12 @@ export default function Reports() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${yearlyTotals.netProfit >= 0 ? "bg-emerald-100" : "bg-rose-100"}`}>
-                {yearlyTotals.netProfit >= 0 ? <TrendingUp className="w-6 h-6 text-emerald-600" /> : <TrendingDown className="w-6 h-6 text-rose-600" />}
+              <div className={`p-3 rounded-lg ${rangeTotals.netProfit >= 0 ? "bg-emerald-100" : "bg-rose-100"}`}>
+                {rangeTotals.netProfit >= 0 ? <TrendingUp className="w-6 h-6 text-emerald-600" /> : <TrendingDown className="w-6 h-6 text-rose-600" />}
               </div>
               <div>
                 <p className="text-sm text-stone-500">Net Profit</p>
-                <p className={`text-2xl font-bold ${yearlyTotals.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(yearlyTotals.netProfit)}</p>
+                <p className={`text-2xl font-bold ${rangeTotals.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(rangeTotals.netProfit)}</p>
               </div>
             </div>
           </CardContent>
@@ -304,23 +407,23 @@ export default function Reports() {
               </div>
               <div>
                 <p className="text-sm text-stone-500">Profit Margin</p>
-                <p className="text-2xl font-bold text-stone-900">{yearlyTotals.profitMargin ? yearlyTotals.profitMargin.toFixed(1) : "0"}%</p>
+                <p className="text-2xl font-bold text-stone-900">{rangeTotals.profitMargin ? rangeTotals.profitMargin.toFixed(1) : "0"}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Empty state instructions for new users */}
-      {yearlyTotals.totalRevenue === 0 && yearlyTotals.totalExpenses === 0 && (
+      {/* Empty state */}
+      {rangeTotals.totalRevenue === 0 && rangeTotals.totalExpenses === 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-blue-900">No data for {selectedYear}</p>
+              <p className="font-semibold text-blue-900">No data for {rangeLabel}</p>
               <p className="text-sm text-blue-700 mt-1">
-                Your monthly P&L summary will appear here once you import your Etsy statements and add expenses.
-                Use the year selector to view different years, and the Export CSV button to download your report.
+                Your financial summary will appear here once you import your Etsy statements and add expenses.
+                Use the year selector and date range filter to narrow results, and Export CSV to download.
               </p>
             </div>
           </div>
@@ -331,43 +434,43 @@ export default function Reports() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Expenses by Category</CardTitle>
+            <CardTitle className="text-base">Expenses by Category — {rangeLabel}</CardTitle>
           </CardHeader>
           <CardContent>
             {expenseChartData.length > 0 ? (
               <DonutChart data={expenseChartData} totalLabel="Total Expenses" />
             ) : (
-              <p className="text-sm text-stone-500 text-center py-8">No expense data for {selectedYear}</p>
+              <p className="text-sm text-stone-500 text-center py-8">No expense data for {rangeLabel}</p>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sales by Source</CardTitle>
+            <CardTitle className="text-base">Sales by Source — {rangeLabel}</CardTitle>
           </CardHeader>
           <CardContent>
             {salesChartData.length > 0 ? (
               <DonutChart data={salesChartData} totalLabel="Total Sales" />
             ) : (
-              <p className="text-sm text-stone-500 text-center py-8">No sales data for {selectedYear}</p>
+              <p className="text-sm text-stone-500 text-center py-8">No sales data for {rangeLabel}</p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <ProfitLossStatement data={yearlyDetail} year={selectedYear} />
+      <ProfitLossStatement data={rangeDetail} year={rangeLabel} />
 
-      {/* Monthly Table */}
+      {/* Period Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Monthly P&L Summary — {selectedYear}</CardTitle>
+          <CardTitle>{groupBy === "quarter" ? "Quarterly" : "Monthly"} P&L Summary — {rangeLabel}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stone-200">
-                  <th className="text-left py-3 px-2 font-semibold text-stone-700">Month</th>
+                  <th className="text-left py-3 px-2 font-semibold text-stone-700">{groupBy === "quarter" ? "Quarter" : "Month"}</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Etsy Sales</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Custom Sales</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Total Revenue</th>
@@ -377,9 +480,9 @@ export default function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {monthlyData.map((m, idx) => (
+                {periodData.map((m, idx) => (
                   <tr key={idx} className={`border-b border-stone-100 ${m.hasData ? "" : "opacity-40"}`}>
-                    <td className="py-3 px-2 font-medium text-stone-900">{m.month}</td>
+                    <td className="py-3 px-2 font-medium text-stone-900">{m.labelFull}</td>
                     <td className="text-right py-3 px-2 text-emerald-600">{m.hasData ? formatCurrency(m.etsySales) : "—"}</td>
                     <td className="text-right py-3 px-2 text-blue-600">{m.hasData ? formatCurrency(m.customSales) : "—"}</td>
                     <td className="text-right py-3 px-2 font-semibold text-stone-900">{m.hasData ? formatCurrency(m.totalRevenue) : "—"}</td>
@@ -390,12 +493,12 @@ export default function Reports() {
                 ))}
                 <tr className="border-t-2 border-stone-300 bg-stone-50 font-bold">
                   <td className="py-3 px-2 text-stone-900">TOTAL</td>
-                  <td className="text-right py-3 px-2 text-emerald-600">{formatCurrency(yearlyTotals.etsySales)}</td>
-                  <td className="text-right py-3 px-2 text-blue-600">{formatCurrency(yearlyTotals.customSales)}</td>
-                  <td className="text-right py-3 px-2 text-stone-900">{formatCurrency(yearlyTotals.totalRevenue)}</td>
-                  <td className="text-right py-3 px-2 text-stone-900">{formatCurrency(yearlyTotals.totalExpenses)}</td>
-                  <td className={`text-right py-3 px-2 ${yearlyTotals.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(yearlyTotals.netProfit)}</td>
-                  <td className="text-right py-3 px-2 text-stone-700">{yearlyTotals.profitMargin ? yearlyTotals.profitMargin.toFixed(1) : "0"}%</td>
+                  <td className="text-right py-3 px-2 text-emerald-600">{formatCurrency(rangeTotals.etsySales)}</td>
+                  <td className="text-right py-3 px-2 text-blue-600">{formatCurrency(rangeTotals.customSales)}</td>
+                  <td className="text-right py-3 px-2 text-stone-900">{formatCurrency(rangeTotals.totalRevenue)}</td>
+                  <td className="text-right py-3 px-2 text-stone-900">{formatCurrency(rangeTotals.totalExpenses)}</td>
+                  <td className={`text-right py-3 px-2 ${rangeTotals.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(rangeTotals.netProfit)}</td>
+                  <td className="text-right py-3 px-2 text-stone-700">{rangeTotals.profitMargin ? rangeTotals.profitMargin.toFixed(1) : "0"}%</td>
                 </tr>
               </tbody>
             </table>
