@@ -13,7 +13,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  BarChart3,
   Settings as SettingsIcon,
   FileText,
   FileCheck,
@@ -31,7 +30,6 @@ const navItems = [
         { name: "Products", icon: Package, page: "Products" },
         { name: "Inventory", icon: Layers, page: "Inventory" },
         { name: "Tools", icon: Wrench, page: "Tools" },
-        { name: "Reports", icon: BarChart3, page: "Reports" },
         { name: "Settings", icon: SettingsIcon, page: "Settings" },
       ];
 

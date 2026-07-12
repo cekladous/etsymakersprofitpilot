@@ -59,6 +59,7 @@ import ExpiredSubscriptionWarning from "@/components/subscriptions/ExpiredSubscr
 
 import ProductProfitabilityChart from "@/components/dashboard/ProductProfitabilityChart";
 import RevenueBySourceCard from "@/components/dashboard/RevenueBySourceCard";
+import ReportsTab from "@/components/dashboard/ReportsTab";
 
 // xlsx imported dynamically in handleExport
 
@@ -635,6 +636,10 @@ export default function Dashboard() {
             <BarChart3 className="w-4 h-4 mr-2" />
             Actuals
           </TabsTrigger>
+          <TabsTrigger value="reports">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Reports
+          </TabsTrigger>
 
         </TabsList>
 
@@ -848,6 +853,18 @@ export default function Dashboard() {
 
         </TabsContent>
 
+        <TabsContent value="reports" className="mt-6">
+          <ReportsTab
+            financialData={financialData}
+            sharedData={{
+              etsyOrders, customSales, businessExpenses, transfers,
+              materialPurchases, etsyLedgerEntries, orderFees, expenses,
+              fees, etsyStatementLines, etsyStatementImports,
+            }}
+            dateRange={dateRange}
+            periodLabel={getPeriodLabel()}
+          />
+        </TabsContent>
 
         </Tabs>
 

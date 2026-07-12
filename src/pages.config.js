@@ -8,7 +8,6 @@ import Inventory from './pages/Inventory';
 import Orders from './pages/Orders';
 import Production from './pages/Production';
 import Products from './pages/Products';
-import Reports from './pages/Reports';
 import PromoCodeManager from './pages/PromoCodeManager';
 import Quotes from './pages/Quotes';
 import Settings from './pages/Settings';
@@ -30,7 +29,6 @@ export const PAGES = {
   "Products": Products,
   "PromoCodeManager": PromoCodeManager,
   "Quotes": Quotes,
-  "Reports": Reports,
   "Settings": Settings,
   "Tools": Tools,
   "Welcome": Welcome,

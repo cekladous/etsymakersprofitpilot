@@ -4,7 +4,6 @@ import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import ModalCleanup from '@/lib/ModalCleanup'
 import { pagesConfig } from './pages.config'
-import Reports from './pages/Reports'
 import Quotes from './pages/Quotes'
 import Invoices from './pages/Invoices'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
@@ -62,11 +61,6 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
-      <Route path="/Reports" element={
-        <LayoutWrapper currentPageName="Reports">
-          <Reports />
-        </LayoutWrapper>
-      } />
       <Route path="/Quotes" element={
         <LayoutWrapper currentPageName="Quotes">
           <Quotes />
