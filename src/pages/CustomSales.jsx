@@ -348,11 +348,13 @@ export default function CustomSalesPage() {
                   setFixing(true);
                   try {
                     const res = await base44.functions.invoke('fixCustomSaleOwnership', {});
-                    if (res.data?.fixed || res.data?.recreated > 0) {
+                    if (res.data?.recreated > 0) {
                       queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
                     }
+                    alert(res.data?.message || `Fix complete: ${res.data?.recreated || 0} records recreated.`);
                   } catch (err) {
                     console.error("Fix failed:", err);
+                    alert("Fix failed: " + (err.message || "Unknown error"));
                   } finally {
                     setFixing(false);
                   }

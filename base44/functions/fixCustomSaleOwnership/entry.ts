@@ -6,42 +6,53 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Find all CustomSale records for this user where created_by_id doesn't match
-    const allSales = await base44.asServiceRole.entities.CustomSale.filter({
-      owner_user_id: user.id
-    });
+    // Fetch ALL CustomSale records using service role (bypasses RLS)
+    const allSales = await base44.asServiceRole.entities.CustomSale.filter({}, '-created_date', 5000);
 
-    const broken = allSales.filter(s => s.created_by_id && s.created_by_id !== user.id);
+    // Helper: get owner_user_id from either flattened or nested data structure
+    const getOwnerId = (s) => s.owner_user_id || (s.data && s.data.owner_user_id);
 
-    if (broken.length === 0) {
-      return Response.json({ message: 'No broken records found', fixed: 0 });
+    // Find records that belong to this user via owner_user_id
+    const userSales = allSales.filter(s => getOwnerId(s) === user.id);
+
+    if (userSales.length === 0) {
+      return Response.json({
+        message: 'No CustomSale records found for your account. If you expect sales here, they may need to be re-created from the original source (e.g., re-sync from Square or re-mark invoices as Paid).',
+        found: 0,
+        totalInDb: allSales.length,
+        fixed: 0
+      });
     }
 
-    // Save the data, delete old records, recreate with user-scoped SDK
-    const savedData = broken.map(s => ({
-      date: s.date,
-      vendor: s.vendor,
-      description: s.description,
-      payment_source: s.payment_source,
-      pre_tax_amount: s.pre_tax_amount,
-      sales_tax_collected: s.sales_tax_collected,
-      gross_sale: s.gross_sale,
-      shipping_or_postage_cost: s.shipping_or_postage_cost,
-      notes: s.notes,
+    // For every record that belongs to this user, delete and recreate
+    // using the user-scoped SDK so created_by_id is set correctly.
+    const extractField = (s, field) => s[field] || (s.data && s.data[field]);
+
+    const savedData = userSales.map(s => ({
+      date: extractField(s, 'date'),
+      vendor: extractField(s, 'vendor'),
+      description: extractField(s, 'description'),
+      payment_source: extractField(s, 'payment_source'),
+      pre_tax_amount: extractField(s, 'pre_tax_amount'),
+      sales_tax_collected: extractField(s, 'sales_tax_collected'),
+      gross_sale: extractField(s, 'gross_sale'),
+      shipping_or_postage_cost: extractField(s, 'shipping_or_postage_cost'),
+      notes: extractField(s, 'notes'),
       owner_user_id: user.id
     }));
 
-    // Delete old records
-    for (const s of broken) {
+    // Delete old records via service role
+    for (const s of userSales) {
       await base44.asServiceRole.entities.CustomSale.delete(s.id);
     }
 
-    // Recreate using user-scoped SDK (sets created_by_id to the user's ID)
+    // Recreate using user-scoped SDK (sets system created_by_id to the user's ID)
     const recreated = await base44.entities.CustomSale.bulkCreate(savedData);
 
     return Response.json({
-      message: 'Fixed CustomSale ownership',
-      deleted: broken.length,
+      message: `Fixed! ${recreated.length} CustomSale record(s) recreated under your account.`,
+      found: userSales.length,
+      deleted: userSales.length,
       recreated: recreated.length
     });
   } catch (error) {

@@ -328,38 +328,34 @@ export default function Reports() {
       )}
 
       {/* Donut Charts & P&L Statement */}
-      {(yearlyTotals.totalRevenue > 0 || yearlyTotals.totalExpenses > 0) && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Expenses by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {expenseChartData.length > 0 ? (
-                  <DonutChart data={expenseChartData} totalLabel="Total Expenses" />
-                ) : (
-                  <p className="text-sm text-stone-500 text-center py-8">No expense data for {selectedYear}</p>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Sales by Source</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {salesChartData.length > 0 ? (
-                  <DonutChart data={salesChartData} totalLabel="Total Sales" />
-                ) : (
-                  <p className="text-sm text-stone-500 text-center py-8">No sales data for {selectedYear}</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Expenses by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {expenseChartData.length > 0 ? (
+              <DonutChart data={expenseChartData} totalLabel="Total Expenses" />
+            ) : (
+              <p className="text-sm text-stone-500 text-center py-8">No expense data for {selectedYear}</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Sales by Source</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {salesChartData.length > 0 ? (
+              <DonutChart data={salesChartData} totalLabel="Total Sales" />
+            ) : (
+              <p className="text-sm text-stone-500 text-center py-8">No sales data for {selectedYear}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-          <ProfitLossStatement data={yearlyDetail} year={selectedYear} />
-        </>
-      )}
+      <ProfitLossStatement data={yearlyDetail} year={selectedYear} />
 
       {/* Monthly Table */}
       <Card>
