@@ -110,6 +110,27 @@ export default function CustomSalesPage() {
   const totalTax = filteredSales.reduce((sum, sale) => sum + (sale.sales_tax_collected || 0), 0);
   const totalShipping = filteredSales.reduce((sum, sale) => sum + (sale.shipping_or_postage_cost || 0), 0);
 
+  const handleFixSales = async () => {
+    setFixing(true);
+    try {
+      const invokePromise = base44.functions.invoke('fixCustomSaleOwnership', {});
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
+      );
+      const res = await Promise.race([invokePromise, timeoutPromise]);
+      const data = res.data || res;
+      if (data.recreated > 0) {
+        queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
+      }
+      alert(data.message || `Fix complete: ${data.recreated || 0} records recreated.`);
+    } catch (err) {
+      console.error("Fix failed:", err);
+      alert("Fix failed: " + (err.message || "Unknown error"));
+    } finally {
+      setFixing(false);
+    }
+  };
+
   const allTimeSales = customSales.reduce((sum, sale) => sum + (sale.gross_sale || 0), 0);
 
   // Running totals for Quick Add
@@ -344,21 +365,7 @@ export default function CustomSalesPage() {
                 size="sm"
                 className="mt-3"
                 disabled={fixing}
-                onClick={async () => {
-                  setFixing(true);
-                  try {
-                    const res = await base44.functions.invoke('fixCustomSaleOwnership', {});
-                    if (res.data?.recreated > 0) {
-                      queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
-                    }
-                    alert(res.data?.message || `Fix complete: ${res.data?.recreated || 0} records recreated.`);
-                  } catch (err) {
-                    console.error("Fix failed:", err);
-                    alert("Fix failed: " + (err.message || "Unknown error"));
-                  } finally {
-                    setFixing(false);
-                  }
-                }}
+                onClick={handleFixSales}
               >
                 <Wrench className="w-4 h-4 mr-2" />
                 {fixing ? "Fixing..." : "Fix Missing Sales"}

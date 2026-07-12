@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Fetch ALL CustomSale records using service role (bypasses RLS)
-    const allSales = await base44.asServiceRole.entities.CustomSale.filter({}, '-created_date', 5000);
+    const allSales = await base44.asServiceRole.entities.CustomSale.list('-created_date', 5000);
 
     // Helper: get owner_user_id from either flattened or nested data structure
     const getOwnerId = (s) => s.owner_user_id || (s.data && s.data.owner_user_id);
