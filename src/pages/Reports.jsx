@@ -5,23 +5,25 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import PageHeader from "@/components/ui/PageHeader";
 import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import {
   format, startOfMonth, endOfMonth, startOfYear, endOfYear,
-  startOfQuarter, endOfQuarter, startOfDay, endOfDay,
+  startOfQuarter, endOfQuarter, subMonths,
 } from "date-fns";
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Download, Info, X } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Download, Info, Calendar } from "lucide-react";
 import DonutChart from "@/components/reports/DonutChart";
 import ProfitLossStatement from "@/components/reports/ProfitLossStatement";
 
 export default function Reports() {
   const { user, loading } = useAuth();
-  const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [groupBy, setGroupBy] = useState("month");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [timeRange, setTimeRange] = useState("month");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [customStartDate, setCustomStartDate] = useState(null);
+  const [customEndDate, setCustomEndDate] = useState(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const { data: etsyOrders = [] } = useQuery({
     queryKey: ["etsy-orders-reports", user?.id],
@@ -99,57 +101,41 @@ export default function Reports() {
 
   const dataDeps = [etsyOrders, customSales, businessExpenses, transfers, materialPurchases, etsyLedgerEntries, orderFees, expenses, fees, etsyStatementLines, etsyStatementImports];
 
-  const hasCustomRange = !!(dateFrom || dateTo);
+  const hasCustomRange = !!(customStartDate && customEndDate);
 
+  // Compute effective date range from timeRange/selectedDate or custom dates
   const effectiveRange = useMemo(() => {
     if (hasCustomRange) {
-      const start = dateFrom ? startOfDay(new Date(dateFrom + "T00:00:00")) : startOfYear(new Date(selectedYear, 0, 1));
-      const end = dateTo ? endOfDay(new Date(dateTo + "T23:59:59")) : endOfYear(new Date(selectedYear, 11, 31));
-      return { start, end };
+      return { start: startOfMonth(customStartDate), end: endOfMonth(customEndDate) };
     }
-    return {
-      start: startOfYear(new Date(selectedYear, 0, 1)),
-      end: endOfYear(new Date(selectedYear, 11, 31)),
-    };
-  }, [dateFrom, dateTo, selectedYear, hasCustomRange]);
+    if (timeRange === "month") {
+      return { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
+    } else if (timeRange === "quarter") {
+      return { start: startOfQuarter(selectedDate), end: endOfQuarter(selectedDate) };
+    } else {
+      const yr = selectedDate.getFullYear();
+      return { start: new Date(yr, 0, 1), end: new Date(yr, 11, 31, 23, 59, 59) };
+    }
+  }, [timeRange, selectedDate, customStartDate, customEndDate, hasCustomRange]);
 
+  // Build period rows for the table — months within the selected range
   const periods = useMemo(() => {
     const { start, end } = effectiveRange;
     const result = [];
-
-    if (groupBy === "quarter") {
-      for (let q = 0; q < 4; q++) {
-        const qStart = startOfMonth(new Date(selectedYear, q * 3, 1));
-        const qEnd = endOfQuarter(qStart);
-        if (qStart <= end && qEnd >= start) {
-          const pStart = qStart < start ? start : qStart;
-          const pEnd = qEnd > end ? end : qEnd;
-          result.push({
-            label: `Q${q + 1}`,
-            labelFull: `Q${q + 1} (${format(qStart, "MMM")}–${format(endOfMonth(new Date(selectedYear, q * 3 + 2, 1)), "MMM")})`,
-            start: pStart,
-            end: pEnd,
-          });
-        }
-      }
-    } else {
-      for (let m = 0; m < 12; m++) {
-        const mStart = startOfMonth(new Date(selectedYear, m, 1));
-        const mEnd = endOfMonth(mStart);
-        if (mStart <= end && mEnd >= start) {
-          const pStart = mStart < start ? start : mStart;
-          const pEnd = mEnd > end ? end : mEnd;
-          result.push({
-            label: format(mStart, "MMM"),
-            labelFull: format(mStart, "MMMM"),
-            start: pStart,
-            end: pEnd,
-          });
-        }
-      }
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cursor <= end) {
+      const pStart = startOfMonth(cursor);
+      const pEnd = endOfMonth(cursor);
+      result.push({
+        label: format(pStart, "MMM"),
+        labelFull: format(pStart, "MMMM"),
+        start: pStart < start ? start : pStart,
+        end: pEnd > end ? end : pEnd,
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
     }
     return result;
-  }, [effectiveRange, groupBy, selectedYear]);
+  }, [effectiveRange]);
 
   const periodData = useMemo(() => {
     return periods.map(p => {
@@ -245,25 +231,24 @@ export default function Reports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeDetail]);
 
-  const yearOptions = useMemo(() => {
-    const years = new Set();
-    const currentYr = new Date().getFullYear();
-    years.add(currentYr);
-    years.add(currentYr - 1);
-    etsyOrders.forEach(o => { if (o.sale_date) years.add(new Date(o.sale_date).getFullYear()); });
-    customSales.forEach(s => { if (s.date) years.add(new Date(s.date).getFullYear()); });
-    businessExpenses.forEach(e => { if (e.date) years.add(new Date(e.date).getFullYear()); });
-    return Array.from(years).sort((a, b) => b - a);
-  }, [etsyOrders, customSales, businessExpenses]);
+  const getPeriodLabel = () => {
+    if (hasCustomRange) {
+      return `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d, yyyy")}`;
+    }
+    if (timeRange === "month") return format(selectedDate, "MMMM yyyy");
+    if (timeRange === "quarter") {
+      const q = Math.floor(selectedDate.getMonth() / 3) + 1;
+      return `Q${q} ${format(selectedDate, "yyyy")}`;
+    }
+    return format(selectedDate, "yyyy");
+  };
 
-  const rangeLabel = hasCustomRange
-    ? `${dateFrom ? format(new Date(dateFrom + "T00:00:00"), "MMM d, yyyy") : "Start"} – ${dateTo ? format(new Date(dateTo + "T00:00:00"), "MMM d, yyyy") : "End"}`
-    : String(selectedYear);
+  const rangeLabel = getPeriodLabel();
 
   const exportReport = () => {
     const rows = periodData.filter(m => m.hasData);
     const csv = [
-      ["Period", "Etsy Sales", "Custom Sales", "Total Revenue", "Total Expenses", "Net Profit", "Profit Margin %"],
+      ["Month", "Etsy Sales", "Custom Sales", "Total Revenue", "Total Expenses", "Net Profit", "Profit Margin %"],
       ...rows.map(m => [
         m.labelFull, m.etsySales.toFixed(2), m.customSales.toFixed(2),
         m.totalRevenue.toFixed(2), m.totalExpenses.toFixed(2), m.netProfit.toFixed(2),
@@ -279,7 +264,7 @@ export default function Reports() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `report-${groupBy}-${rangeLabel.replace(/[^\w-]/g, "_")}.csv`;
+    a.download = `report-${rangeLabel.replace(/[^\w-]/g, "_")}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -289,74 +274,107 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" description={`Financial Summary — ${rangeLabel}`}>
-        <div className="flex flex-wrap gap-2 items-center">
-          <Select value={groupBy} onValueChange={setGroupBy}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="month">Monthly</SelectItem>
-              <SelectItem value="quarter">Quarterly</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-            <SelectTrigger className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {yearOptions.map(year => (
-                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <PageHeader title="Reports" description={rangeLabel}>
+        <div className="flex gap-2 flex-wrap items-center">
+          <div className="flex gap-2 items-center">
+            {["month", "quarter", "year"].map((range) => (
+              <Button
+                key={range}
+                variant={timeRange === range && !hasCustomRange ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setTimeRange(range);
+                  setCustomStartDate(null);
+                  setCustomEndDate(null);
+                }}
+                className={timeRange === range && !hasCustomRange ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                {range.charAt(0).toUpperCase() + range.slice(1)}
+              </Button>
+            ))}
+
+            <div className="h-6 w-px bg-stone-300 mx-1"></div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (timeRange === "month") setSelectedDate(subMonths(selectedDate, 1));
+                else if (timeRange === "quarter") setSelectedDate(subMonths(selectedDate, 3));
+                else if (timeRange === "year") setSelectedDate(new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth()));
+              }}
+            >
+              ←
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (timeRange === "month") setSelectedDate(subMonths(selectedDate, -1));
+                else if (timeRange === "quarter") setSelectedDate(subMonths(selectedDate, -3));
+                else if (timeRange === "year") setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth()));
+              }}
+            >
+              →
+            </Button>
+          </div>
+
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Calendar className="w-4 h-4 mr-2" />
+                {hasCustomRange
+                  ? `${format(customStartDate, "MMM d")} - ${format(customEndDate, "MMM d")}`
+                  : format(selectedDate, timeRange === "year" ? "yyyy" : "MMM yyyy")
+                }
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" align="start">
+              <div className="space-y-4">
+                <p className="text-sm text-stone-500">Select start and end dates</p>
+                <CalendarComponent
+                  mode="range"
+                  selected={{ from: customStartDate || undefined, to: customEndDate || undefined }}
+                  onSelect={(range) => {
+                    setCustomStartDate(range?.from || null);
+                    setCustomEndDate(range?.to || null);
+                  }}
+                  numberOfMonths={1}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCustomStartDate(null);
+                      setCustomEndDate(null);
+                      setDatePickerOpen(false);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setDatePickerOpen(false)}
+                    className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                    disabled={!customStartDate || !customEndDate}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div className="h-6 w-px bg-stone-300 mx-2"></div>
+
           <Button variant="outline" size="sm" onClick={exportReport}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
         </div>
       </PageHeader>
-
-      {/* Date Range Filter */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="text-xs font-medium text-stone-500 mb-1 block">From Date</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9 px-3 rounded-md border border-stone-200 text-sm bg-white"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-stone-500 mb-1 block">To Date</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9 px-3 rounded-md border border-stone-200 text-sm bg-white"
-              />
-            </div>
-            {hasCustomRange && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
-              >
-                <X className="w-4 h-4 mr-1" />
-                Clear Range
-              </Button>
-            )}
-            <p className="text-xs text-stone-400 ml-auto">
-              {hasCustomRange
-                ? `Showing ${groupBy === "quarter" ? "quarterly" : "monthly"} data for ${rangeLabel}. Partial periods are prorated to the date range.`
-                : `Showing ${groupBy === "quarter" ? "quarterly" : "monthly"} data for all of ${selectedYear}. Set a custom date range to narrow.`}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -423,7 +441,7 @@ export default function Reports() {
               <p className="font-semibold text-blue-900">No data for {rangeLabel}</p>
               <p className="text-sm text-blue-700 mt-1">
                 Your financial summary will appear here once you import your Etsy statements and add expenses.
-                Use the year selector and date range filter to narrow results, and Export CSV to download.
+                Use the date selector to pick a different period, or set a custom date range.
               </p>
             </div>
           </div>
@@ -460,17 +478,17 @@ export default function Reports() {
 
       <ProfitLossStatement data={rangeDetail} year={rangeLabel} />
 
-      {/* Period Table */}
+      {/* Monthly Table */}
       <Card>
         <CardHeader>
-          <CardTitle>{groupBy === "quarter" ? "Quarterly" : "Monthly"} P&L Summary — {rangeLabel}</CardTitle>
+          <CardTitle>Monthly Breakdown — {rangeLabel}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stone-200">
-                  <th className="text-left py-3 px-2 font-semibold text-stone-700">{groupBy === "quarter" ? "Quarter" : "Month"}</th>
+                  <th className="text-left py-3 px-2 font-semibold text-stone-700">Month</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Etsy Sales</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Custom Sales</th>
                   <th className="text-right py-3 px-2 font-semibold text-stone-700">Total Revenue</th>
