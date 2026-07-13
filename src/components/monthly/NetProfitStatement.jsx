@@ -352,7 +352,24 @@ export default function NetProfitStatement({ financialData, dateRange }) {
               bgColor="bg-slate-50" 
             />
             <Row label="Deposits from Etsy" amount={cashflow.etsyDeposits || 0} categoryName="etsy_deposits" showPercentage={false} />
-            <Row label="Owner Transfers (Take Home)" amount={cashflow.ownerTransfers || 0} categoryName="owner_transfers" showPercentage={false} />
+            <div className="flex items-center gap-2 py-2 px-4">
+              <span className="text-sm cursor-pointer hover:underline" onClick={() => handleDrillDown("Owner Transfers (Take Home)", "owner_transfers", cashflow.ownerTransfers || 0)}>
+                Owner Transfers (Take Home)
+              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="w-3 h-3 text-stone-400" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">Money you've transferred out of your business account as personal income. Manually logged via the "Add Transfer" button above. Defaults to $0 until you enter transfers.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <div className="flex-1"></div>
+              <span className="text-sm min-w-[100px] text-right">{formatCurrency(cashflow.ownerTransfers || 0)}</span>
+              <span className="text-xs text-stone-500 min-w-[50px] text-right"></span>
+            </div>
           </div>
         </CardContent>
       </Card>
