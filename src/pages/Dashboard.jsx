@@ -14,8 +14,6 @@ import {
   Download,
   Plus,
   Calendar,
-  BarChart3,
-  Table as TableIcon,
   AlertCircle,
   Sparkles,
   Upload } from
@@ -626,21 +624,23 @@ export default function Dashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-stone-100">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="summary">
-            <TableIcon className="w-4 h-4 mr-2" />
-            Business Net Profit
+        <TabsList className="bg-stone-100 h-auto items-stretch">
+          <TabsTrigger value="overview" className="flex-col items-start py-2 h-auto">
+            <span className="text-sm font-semibold">Overview</span>
+            <span className="text-[10px] text-stone-500 font-normal">Revenue, fees & profit at a glance</span>
           </TabsTrigger>
-          <TabsTrigger value="budget">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Actuals
+          <TabsTrigger value="summary" className="flex-col items-start py-2 h-auto">
+            <span className="text-sm font-semibold">Net Profit</span>
+            <span className="text-[10px] text-stone-500 font-normal">Full income statement & cashflow</span>
           </TabsTrigger>
-          <TabsTrigger value="reports">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Reports
+          <TabsTrigger value="budget" className="flex-col items-start py-2 h-auto">
+            <span className="text-sm font-semibold">Budget vs Actual</span>
+            <span className="text-[10px] text-stone-500 font-normal">Track spending against your budget</span>
           </TabsTrigger>
-
+          <TabsTrigger value="reports" className="flex-col items-start py-2 h-auto">
+            <span className="text-sm font-semibold">Reports</span>
+            <span className="text-[10px] text-stone-500 font-normal">Period summaries & exportable charts</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8 mt-6">
@@ -691,7 +691,7 @@ export default function Dashboard() {
                 accentColor="rose" />
 
         </Link>
-        <div onClick={() => setActiveTab("summary")} className="cursor-pointer transition-transform hover:scale-105">
+        <div>
           <KPICard
                 title="Total Business Net Profit"
                 value={`$${metrics.periodProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -717,20 +717,19 @@ export default function Dashboard() {
       {/* All Time Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
-              onClick={() => setActiveTab("summary")}
-              className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white cursor-pointer transition-transform hover:scale-105">
+              className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white">
 
           <p className="text-emerald-100 text-sm font-medium mb-1">Deposits from Etsy</p>
           <p className="text-3xl font-bold">${financialData.cashflow.etsyDeposits.toLocaleString()}</p>
-          <p className="text-emerald-200 text-xs mt-1">{getPeriodLabel()} • Click for cashflow details</p>
+          <p className="text-emerald-200 text-xs mt-1">{getPeriodLabel()}</p>
         </div>
         <div
-              onClick={() => setActiveTab("budget")} className="bg-gray-800 text-white p-6 rounded-2xl from-violet-600 to-violet-700 cursor-pointer transition-transform hover:scale-105">
+              className="bg-gray-800 text-white p-6 rounded-2xl from-violet-600 to-violet-700">
 
 
           <p className="text-violet-100 text-sm font-medium mb-1">Actual Spending</p>
           <p className="text-3xl font-bold">${financialData.totalExpenses.toLocaleString()}</p>
-          <p className="text-violet-200 text-xs mt-1">Spent • Click to view breakdown</p>
+          <p className="text-violet-200 text-xs mt-1">Spent this period</p>
         </div>
       </div>
 
