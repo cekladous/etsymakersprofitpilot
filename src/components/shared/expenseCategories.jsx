@@ -34,6 +34,8 @@ export const FEE_CATEGORIES = [
   { value: "share_save_refunds_credits", label: "Share & Save Credits", group: "fees", isCredit: true },
   { value: "etsy_shipping", label: "Shipping Labels (Etsy)", group: "shipping" },
   { value: "other_postage_costs", label: "Other Postage", group: "shipping" },
+  { value: "etsy_plus_subscription", label: "Etsy Plus Subscription", group: "fees" },
+  { value: "fee_credits", label: "Fee Credits", group: "fees", isCredit: true },
 ];
 
 export const ALL_EXPENSE_CATEGORIES = [
@@ -79,6 +81,8 @@ export const CATEGORY_COLORS = {
   etsy_refund_return_fees: "bg-rose-100 text-rose-700",
   etsy_shipping: "bg-yellow-100 text-yellow-700",
   other_postage_costs: "bg-yellow-200 text-yellow-800",
+  etsy_plus_subscription: "bg-orange-100 text-orange-700",
+  fee_credits: "bg-emerald-100 text-emerald-700",
 };
 
 /**

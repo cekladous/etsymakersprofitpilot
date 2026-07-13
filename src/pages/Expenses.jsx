@@ -38,9 +38,18 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { calculateTotalExpenses } from "@/components/shared/expenseCalculator";
 import { useToast } from "@/components/ui/use-toast";
 
-import { BUSINESS_EXPENSE_CATEGORIES, ETSY_FEE_CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
+import { ALL_EXPENSE_CATEGORIES, CATEGORY_COLORS as categoryColors } from "@/components/shared/expenseCategories";
+import { collectDrillDownItems } from "@/components/monthly/collectDrillDownItems";
 
-const CATEGORIES = [...BUSINESS_EXPENSE_CATEGORIES, ...ETSY_FEE_CATEGORIES];
+const CATEGORIES = ALL_EXPENSE_CATEGORIES;
+
+// Fee categories sourced from Fee / OrderFee / EtsyStatementLine (not BusinessExpense)
+const FEE_CATEGORY_NAMES = [
+  "etsy_listing_fees", "etsy_transaction_fees", "etsy_processing_fees",
+  "other_fees", "fee_credits", "share_save_refunds_credits",
+  "etsy_ads", "etsy_offsite_ads_fees", "etsy_plus_subscription",
+  "etsy_shipping", "other_postage_costs",
+];
 
 export default function Expenses() {
   const { user, loading } = useAuth();
@@ -155,6 +164,12 @@ export default function Expenses() {
     queryKey: ["etsy-statement-imports", user?.id],
     enabled: !!user,
     queryFn: () => base44.entities.EtsyStatementImport.filter({ owner_user_id: user.id }),
+  });
+
+  const { data: fees = [] } = useQuery({
+    queryKey: ["fees", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Fee.filter({ owner_user_id: user.id }, "-transaction_date"),
   });
 
   const deleteMutation = useMutation({
@@ -514,9 +529,9 @@ export default function Expenses() {
       material_name: p.material_name,
     })));
     
-    // EtsyLedgerEntries (if matched to a category)
+    // EtsyLedgerEntries (if matched to a non-fee category — fee categories are sourced below)
     allExpenses.push(...etsyLedgerEntries
-      .filter(e => e.matched_category)
+      .filter(e => e.matched_category && !FEE_CATEGORY_NAMES.includes(e.matched_category))
       .map(e => ({
         id: e.id,
         date: e.entry_date,
@@ -528,6 +543,50 @@ export default function Expenses() {
         is_categorized: true,
         source: "ledger",
       })));
+
+    // Etsy fee records from Fee / OrderFee / EtsyStatementLine
+    // Uses same priority logic as financialAggregator via collectDrillDownItems
+    const activeStmtLines = etsyStatementLines.filter(line => {
+      if (!line.import_id) return false;
+      const imp = etsyStatementImports.find(i => i.id === line.import_id);
+      return imp && imp.status !== 'replaced';
+    });
+    const filterFeesByDate = (items, dateField) => {
+      if (!dateRange) return items;
+      return items.filter(item => {
+        const d = new Date(item[dateField]);
+        return d >= dateRange.start && d <= dateRange.end;
+      });
+    };
+    const periodOrders = dateRange
+      ? etsyOrders.filter(o => { const d = new Date(o.sale_date); return d >= dateRange.start && d <= dateRange.end; })
+      : etsyOrders;
+    const periodOrderIds = new Set(periodOrders.map(o => o.order_id));
+    const feeRawData = {
+      statementLines: filterFeesByDate(activeStmtLines, "transaction_date"),
+      fees: filterFeesByDate(fees, "transaction_date"),
+      orderFees: dateRange ? orderFees.filter(f => periodOrderIds.has(f.order_id)) : orderFees,
+      etsyOrders: periodOrders,
+      etsyLedgerEntries: filterFeesByDate(etsyLedgerEntries, "entry_date"),
+      businessExpenses: [],
+      expenses: [],
+      materialPurchases: [],
+    };
+    FEE_CATEGORY_NAMES.forEach(catName => {
+      const items = collectDrillDownItems(catName, feeRawData);
+      const isCredit = catName === "fee_credits" || catName === "share_save_refunds_credits";
+      allExpenses.push(...items.map(item => ({
+        id: `fee-${catName}-${item.date}-${(item.description || '').substring(0, 40)}`,
+        date: item.date,
+        description: item.description,
+        amount: isCredit ? -Math.abs(item.amount) : Math.abs(item.amount),
+        category: catName,
+        vendor: item.vendor || "Etsy",
+        payment_method: item.payment_source || "Etsy",
+        is_categorized: true,
+        source: "fee",
+      })));
+    });
     
     // Apply date range filter
     if (dateRange) {
@@ -595,7 +654,7 @@ export default function Expenses() {
     });
 
     return sorted;
-  }, [expenses, businessExpenses, materialPurchases, etsyLedgerEntries, search, categoryFilter, statusFilter, materialFilter, dateRange, sortField, sortDirection]);
+  }, [expenses, businessExpenses, materialPurchases, etsyLedgerEntries, fees, etsyStatementLines, etsyStatementImports, orderFees, etsyOrders, search, categoryFilter, statusFilter, materialFilter, dateRange, sortField, sortDirection]);
 
   // Calculate totals directly from filtered table data (single source of truth)
   const totals = useMemo(() => {
