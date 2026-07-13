@@ -227,13 +227,8 @@ export function aggregateFinancials(data, dateRange) {
     );
   }
   
-  // 5) Custom Sales A/B - use pre_tax_amount as revenue
-  const customSaleA = periodCustomSales
-    .filter(s => s.sale_type === "A")
-    .reduce((sum, s) => sum + toNumber(s.pre_tax_amount || s.gross_sale), 0);
-  
-  const customSaleB = periodCustomSales
-    .filter(s => s.sale_type === "B")
+  // 5) Custom Sales / Direct Revenue - sum ALL CustomSale records (pre_tax_amount as revenue)
+  const customSales = periodCustomSales
     .reduce((sum, s) => sum + toNumber(s.pre_tax_amount || s.gross_sale), 0);
   
   // Sales tax collected on Custom Sales (tracked separately, excluded from profit)
@@ -241,7 +236,7 @@ export function aggregateFinancials(data, dateRange) {
     sum + toNumber(s.sales_tax_collected), 0);
   
   // 6) Total Revenue (tax EXCLUDED — tax is collected for the buyer, not seller revenue)
-  const totalRevenue = (etsySales - etsyRefunds) + squareInPersonRevenue + customSaleA + customSaleB;
+  const totalRevenue = (etsySales - etsyRefunds) + squareInPersonRevenue + customSales;
 
   // 7) Revenue by Source breakdown (Etsy + Square in-person + each Custom Sales source)
   const SOURCE_KEYS = ["Squarespace", "Square", "In-Person/Cash", "Website", "Instagram", "Other"];
@@ -695,10 +690,9 @@ export function aggregateFinancials(data, dateRange) {
       squareInPersonRevenue, // Square in-person sales (excluded from Etsy figures)
       squareInPersonRefunds,
       squareInPersonOrderCount: squareInPersonOrders.length,
-      customSaleA,
-      customSaleB,
+      customSales,
       customSalesTaxCollected,
-      customRevenueTotal: customSaleA + customSaleB, // NEW: Total custom revenue (non-Etsy)
+      customRevenueTotal: customSales, // Total custom/direct revenue (non-Etsy)
       total: totalRevenue,
       bySource: revenueBySource, // NEW: Revenue broken down by sales source
     },

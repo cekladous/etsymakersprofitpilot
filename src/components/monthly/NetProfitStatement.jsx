@@ -207,15 +207,9 @@ export default function NetProfitStatement({ financialData, dateRange }) {
             categoryName="etsy_refunds"
           />
           <Row 
-            label="Custom Sales A" 
-            amount={revenue.customSaleA || 0} 
-            categoryName="custom_sale_a"
-            highlight="bg-green-50"
-          />
-          <Row 
-            label="Custom Sales B" 
-            amount={revenue.customSaleB || 0} 
-            categoryName="custom_sale_b"
+            label="Custom Sales / Direct Revenue" 
+            amount={revenue.customSales || 0} 
+            categoryName="custom_sales"
             highlight="bg-green-50"
           />
           <Row 

@@ -169,11 +169,9 @@ export function collectDrillDownItems(categoryName, rawData = {}) {
       }));
   }
 
-  // ---- 4) Revenue: Custom Sales ----
-  if (categoryName === 'custom_sale_a' || categoryName === 'custom_sale_b') {
-    const saleType = categoryName === 'custom_sale_a' ? 'A' : 'B';
+  // ---- 4) Revenue: Custom Sales / Direct Revenue ----
+  if (categoryName === 'custom_sales') {
     return customSales
-      .filter(s => s.sale_type === saleType)
       .map(s => ({
         date: s.date,
         description: s.description || s.vendor || 'Custom Sale',
