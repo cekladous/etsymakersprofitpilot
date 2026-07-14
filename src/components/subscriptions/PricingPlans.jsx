@@ -18,8 +18,8 @@ const PLANS = [
     popular: false
   },
   {
-    id: 'maker_pro',
-    name: 'Maker Pro',
+    id: 'maker_plus',
+    name: 'Maker Plus',
     price: 9,
     features: [
       'Unlimited Etsy imports',
@@ -34,11 +34,11 @@ const PLANS = [
     label: 'Founders Pricing'
   },
   {
-    id: 'maker_plus',
-    name: 'Maker Plus',
+    id: 'maker_pro',
+    name: 'Maker Pro',
     price: 14,
     features: [
-      'Everything in Maker Pro',
+      'Everything in Maker Plus',
       'Up to 2 users',
       'Locked months protection',
       'Priority imports',
