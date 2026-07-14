@@ -14,41 +14,47 @@ import { createPageUrl } from '@/utils';
 const FEATURE_MAP = {
   etsy_import: {
     title: 'Unlimited Imports',
-    description: 'You have used your 1 free statement import this month. Upgrade to Maker Pro for unlimited Etsy imports.',
-    plan: 'Maker Pro',
-    planId: 'maker_pro'
+    description: 'You have used your 1 free statement import this month. Upgrade to Maker Plus for unlimited Etsy imports.',
+    plan: 'Maker Plus',
+    planId: 'maker_plus'
   },
   csv_export: {
     title: 'CSV Export',
-    description: 'Export your data to CSV. Available in Maker Pro and Plus.',
-    plan: 'Maker Pro',
-    planId: 'maker_pro'
+    description: 'Export your data to CSV. Available in Maker Plus and Pro.',
+    plan: 'Maker Plus',
+    planId: 'maker_plus'
   },
   month_close: {
     title: 'Month Close & Audit Trail',
-    description: 'Lock months and maintain an audit trail. Available in Maker Pro and Plus.',
-    plan: 'Maker Pro',
-    planId: 'maker_pro'
+    description: 'Lock months and maintain an audit trail. Available in Maker Plus and Pro.',
+    plan: 'Maker Plus',
+    planId: 'maker_plus'
   },
   reconciliation: {
     title: 'Full Reconciliation',
-    description: 'Match your Etsy statement against orders and deposits, review unmatched rows, and reconcile every penny. Available in Maker Pro and Plus.',
-    plan: 'Maker Pro',
-    planId: 'maker_pro'
+    description: 'Match your Etsy statement against orders and deposits, review unmatched rows, and reconcile every penny. Available in Maker Plus and Pro.',
+    plan: 'Maker Plus',
+    planId: 'maker_plus'
+  },
+  pro_reports: {
+    title: 'Additional Etsy Reports',
+    description: 'Import Sold Orders, Payment Deposits, and Payment Account reports. Available in Maker Plus and Pro.',
+    plan: 'Maker Plus',
+    planId: 'maker_plus'
   },
   team_users: {
     title: 'Add Team Members',
-    description: 'Invite an accountant or team member. Maker Plus supports up to 2 users.',
-    plan: 'Maker Plus',
-    planId: 'maker_plus'
+    description: 'Invite an accountant or team member. Maker Pro supports up to 2 users.',
+    plan: 'Maker Pro',
+    planId: 'maker_pro'
   }
 };
 
 const DEFAULT_INFO = {
   title: 'Premium Feature',
   description: 'This feature is available on paid plans. Upgrade to unlock it.',
-  plan: 'Maker Pro',
-  planId: 'maker_pro'
+  plan: 'Maker Plus',
+  planId: 'maker_plus'
 };
 
 export default function UpgradeCTA({ open, onOpenChange, onClose, feature, currentPlan, inline }) {
