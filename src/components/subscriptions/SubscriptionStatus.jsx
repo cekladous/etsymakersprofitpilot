@@ -6,9 +6,9 @@ import { Check, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 const PLAN_CONFIG = {
-  free: { name: 'Free', price: 0 },
-  maker_pro: { name: 'Maker Pro', price: 9 },
-  maker_plus: { name: 'Maker Plus', price: 14 }
+  free: { name: 'Free', price: 0, monthly_imports: 1, reconciliation: false, month_close: false, csv_exports: false, locked_months: false, max_users: 1 },
+  maker_plus: { name: 'Maker Plus', price: 9, monthly_imports: -1, reconciliation: true, month_close: true, csv_exports: true, locked_months: false, max_users: 1 },
+  maker_pro: { name: 'Maker Pro', price: 14, monthly_imports: -1, reconciliation: true, month_close: true, csv_exports: true, locked_months: true, max_users: 2 }
 };
 
 const formatRenewalDate = (dateString) => {
