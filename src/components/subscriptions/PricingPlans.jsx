@@ -14,7 +14,7 @@ const PLANS = [
       'Dashboard preview',
       'Read-only access'
     ],
-    cta: 'Current Plan',
+    cta: 'Free',
     popular: false
   },
   {
@@ -51,6 +51,8 @@ const PLANS = [
   }
 ];
 
+const TIER_RANK = { free: 0, maker_plus: 1, maker_pro: 2 };
+
 export default function PricingPlans({ currentPlan, onSelectPlan }) {
   const [loading, setLoading] = useState(null);
 
@@ -70,14 +72,18 @@ export default function PricingPlans({ currentPlan, onSelectPlan }) {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        {PLANS.map((plan) => (
+        {PLANS.map((plan) => {
+            const currentId = currentPlan?.plan_id || 'free';
+            const isCurrent = plan.id === currentId;
+            const isUpgrade = (TIER_RANK[plan.id] ?? 0) > (TIER_RANK[currentId] ?? 0);
+            return (
           <Card 
             key={plan.id}
             className={`relative flex flex-col transition-all ${
-              plan.popular ? 'ring-2 ring-emerald-500 shadow-lg md:scale-105' : ''
-            } ${currentPlan?.plan_id === plan.id ? 'ring-2 ring-stone-400' : ''}`}
+                  plan.popular && isUpgrade ? 'ring-2 ring-emerald-500 shadow-lg md:scale-105' : ''
+                } ${isCurrent ? 'ring-2 ring-stone-400' : ''}`}
           >
-            {plan.popular && (
+            {plan.popular && isUpgrade && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                 <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                   <Zap className="w-3 h-3" />
@@ -104,23 +110,24 @@ export default function PricingPlans({ currentPlan, onSelectPlan }) {
                     <Check className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                     <span className="text-sm text-stone-700">{feature}</span>
                   </div>
-                ))}
+            ))}
               </div>
 
-              <Button
-                onClick={() => handleSelectPlan(plan.id)}
-                disabled={loading === plan.id || plan.id === currentPlan?.plan_id}
-                className={`w-full ${
-                  plan.popular
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-stone-600 hover:bg-stone-700'
-                } text-white`}
-              >
-                {loading === plan.id ? 'Processing...' : plan.cta}
-              </Button>
+                <Button
+                  onClick={() => handleSelectPlan(plan.id)}
+                  disabled={isCurrent || !isUpgrade}
+                  className={`w-full ${
+                    plan.popular && isUpgrade
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-stone-600 hover:bg-stone-700'
+                  } text-white disabled:opacity-60`}
+                >
+                  {isCurrent ? 'Current Plan' : !isUpgrade ? 'Included in your plan' : plan.cta}
+                </Button>
             </CardContent>
           </Card>
-        ))}
+            );
+          })}
       </div>
     </div>
   );
