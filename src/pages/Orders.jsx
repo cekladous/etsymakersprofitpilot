@@ -53,7 +53,7 @@ import OrdersFilterPanel from "@/components/orders/OrdersFilterPanel";
 
 export default function Orders() {
   const { user, loading } = useAuth();
-  const { canExportCSV } = useFeatureAccess();
+  const { canExportCSV, canViewReconciliation, planConfig } = useFeatureAccess();
   const urlParams = new URLSearchParams(window.location.search);
   const customerFilter = urlParams.get("customer");
   const tabParam = urlParams.get("tab");
@@ -1755,7 +1755,11 @@ export default function Orders() {
              </TabsContent>
 
              <TabsContent value="reconciliation" className="space-y-6">
-           <ReconciliationTab user={user} />
+          {canViewReconciliation() ? (
+            <ReconciliationTab user={user} />
+          ) : (
+            <UpgradeCTA inline feature="reconciliation" currentPlan={planConfig?.name || 'Free'} />
+          )}
          </TabsContent>
          <TabsContent value="duplicates" className="space-y-6">
             <Card>
@@ -1796,7 +1800,7 @@ export default function Orders() {
 
       {showExportUpgrade && (
         <UpgradeCTA
-          feature="CSV exports"
+          feature="csv_export"
           onClose={() => setShowExportUpgrade(false)}
         />
       )}
