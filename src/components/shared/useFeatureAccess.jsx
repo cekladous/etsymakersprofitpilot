@@ -22,8 +22,8 @@ const PLAN_CONFIG = {
       priority_support: false
     }
   },
-  maker_pro: {
-    name: 'Maker Pro',
+  maker_plus: {
+    name: 'Maker Plus',
     price: 9,
     features: {
       monthly_imports: -1,
@@ -35,8 +35,8 @@ const PLAN_CONFIG = {
       priority_support: false
     }
   },
-  maker_plus: {
-    name: 'Maker Plus',
+  maker_pro: {
+    name: 'Maker Pro',
     price: 14,
     features: {
       monthly_imports: -1,
