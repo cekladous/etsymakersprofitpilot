@@ -17,6 +17,7 @@ import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
   const [activeTab, setActiveTab] = useState("statement");
   const { canImportEtsy, planConfig } = useFeatureAccess();
+  const isFree = (planConfig?.name || 'Free') === 'Free';
 
   if (!canImportEtsy()) {
     return (
@@ -62,27 +63,27 @@ export default function UnifiedEtsyImportHub({ open, onOpenChange }) {
             </TabsContent>
 
             <TabsContent value="orders" className="mt-4">
-              <EtsySoldOrdersImport
-                open={true}
-                onOpenChange={() => {}}
-                embedded={true}
-              />
+          {isFree ? (
+            <UpgradeCTA inline feature="pro_reports" currentPlan="Free" />
+          ) : (
+            <EtsySoldOrdersImport open={true} onOpenChange={() => {}} embedded={true} />
+          )}
             </TabsContent>
 
             <TabsContent value="deposits" className="mt-4">
-              <EtsyPaymentDepositsImport
-                open={true}
-                onOpenChange={() => {}}
-                embedded={true}
-              />
+          {isFree ? (
+            <UpgradeCTA inline feature="pro_reports" currentPlan="Free" />
+          ) : (
+            <EtsyPaymentDepositsImport open={true} onOpenChange={() => {}} embedded={true} />
+          )}
             </TabsContent>
 
             <TabsContent value="payment_account" className="mt-4">
-              <EtsyPaymentAccountImport
-                open={true}
-                onOpenChange={() => {}}
-                embedded={true}
-              />
+          {isFree ? (
+            <UpgradeCTA inline feature="pro_reports" currentPlan="Free" />
+          ) : (
+            <EtsyPaymentAccountImport open={true} onOpenChange={() => {}} embedded={true} />
+          )}
             </TabsContent>
           </Tabs>
         </DialogContent>
