@@ -35,7 +35,16 @@ export default function PromoCodeManager() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('createPromoCode', data),
+    mutationFn: async (data) => {
+      // Create directly via the entity API (admin-only via RLS) — the backend
+      // function route is unavailable on the current platform plan (402).
+      return base44.entities.PromoCode.create({
+        ...data,
+        code: String(data.code || '').toUpperCase().trim(),
+        current_uses: 0,
+        is_active: true
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['promoCodes'] });
       setOpen(false);
