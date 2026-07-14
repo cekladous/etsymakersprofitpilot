@@ -65,38 +65,62 @@ export function useFeatureAccess() {
     enabled: !!user
   });
 
-  const activePlan = subscription?.plan_id || 'free';
-  const planConfig = PLAN_CONFIG[activePlan];
-  const isExpiredOrNoSub = !subscription || subscription.status === 'expired';
+  // Authoritative usage count: statement imports created this calendar month.
+  const { data: importsThisMonth = 0 } = useQuery({
+    queryKey: ['imports-this-month', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const imports = await base44.entities.EtsyStatementImport.filter({
+        owner_user_id: user.id
+      });
+      return imports.filter(i => i.created_date && new Date(i.created_date) >= monthStart).length;
+    },
+    enabled: !!user
+  });
+
+  const isAdmin = user?.role === 'admin';
+  // A paid plan only counts when the subscription is genuinely active (or in a Square trial).
+  const hasActivePaidSub = !!subscription &&
+    subscription.plan_id !== PLANS.FREE &&
+    ['active', 'trial'].includes(subscription.status);
+
+  const activePlan = hasActivePaidSub ? subscription.plan_id : 'free';
+  const planConfig = PLAN_CONFIG[activePlan] || PLAN_CONFIG.free;
 
   const hasFeature = (feature) => {
-    const config = isExpiredOrNoSub ? PLAN_CONFIG.free : planConfig;
-    return config.features[feature] ?? false;
+    if (isAdmin) return true;
+    return planConfig.features[feature] ?? false;
   };
 
   const canImportEtsy = () => {
+    if (isAdmin) return true;
     if (subscription && subscription.status === 'expired') return false;
-    if (activePlan === 'free' || !subscription) {
-      return (subscription?.imports_used_this_month || 0) < 1;
-    }
-    return true;
+    const limit = planConfig.features.monthly_imports;
+    if (limit === -1) return true;
+    return importsThisMonth < limit;
   };
 
   const canExportCSV = () => hasFeature('csv_exports');
   const canCloseMonth = () => hasFeature('month_close');
   const canLockMonths = () => hasFeature('locked_months');
-  const canAddUsers = () => hasFeature('max_users') > 1;
+  const canAddUsers = () => isAdmin || planConfig.features.max_users > 1;
+  const canViewReconciliation = () => hasFeature('reconciliation');
 
   return {
     subscription,
     planConfig,
+    importsThisMonth,
     hasFeature,
     canImportEtsy,
     canExportCSV,
     canCloseMonth,
     canLockMonths,
     canAddUsers,
-    isPaid: subscription?.plan_id !== PLANS.FREE && subscription?.status === 'active',
+    canViewReconciliation,
+    isPaid: hasActivePaidSub,
     isExpired: subscription?.status === 'expired',
     isGracePeriod: subscription?.status === 'payment_failed'
   };
