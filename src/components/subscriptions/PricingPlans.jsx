@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Zap } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 
 const PLANS = [
@@ -55,21 +54,10 @@ const PLANS = [
 export default function PricingPlans({ currentPlan, onSelectPlan }) {
   const [loading, setLoading] = useState(null);
 
-  const handleSelectPlan = async (planId) => {
+  const handleSelectPlan = (planId) => {
     if (planId === 'free' || planId === currentPlan?.plan_id) return;
-    
-    setLoading(planId);
-    try {
-      const response = await base44.functions.invoke('createSquareCheckout', { planId });
-      if (response.data?.checkoutUrl) {
-        window.location.href = createPageUrl(response.data.checkoutUrl);
-      }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      alert('Error starting checkout: ' + error.message);
-    } finally {
-      setLoading(null);
-    }
+    // Navigate straight to the in-app checkout — no backend function needed.
+    window.location.href = createPageUrl('Checkout') + '?plan=' + planId;
   };
 
   return (
