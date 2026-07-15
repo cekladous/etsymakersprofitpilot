@@ -83,9 +83,13 @@ export function useFeatureAccess() {
 
   const isAdmin = user?.role === 'admin';
   // A paid plan only counts when the subscription is genuinely active (or in a Square trial).
+  // A subscription period is valid if no end date is set (legacy/comped) or the end date is in the future.
+  const periodValid = !subscription?.current_period_end ||
+    new Date(subscription.current_period_end) >= new Date();
   const hasActivePaidSub = !!subscription &&
     subscription.plan_id !== PLANS.FREE &&
-    ['active', 'trial'].includes(subscription.status);
+    ['active', 'trial'].includes(subscription.status) &&
+    periodValid;
 
   const activePlan = hasActivePaidSub ? subscription.plan_id : 'free';
   const planConfig = PLAN_CONFIG[activePlan] || PLAN_CONFIG.free;
@@ -121,7 +125,7 @@ export function useFeatureAccess() {
     canAddUsers,
     canViewReconciliation,
     isPaid: hasActivePaidSub,
-    isExpired: subscription?.status === 'expired',
+    isExpired: subscription?.status === 'expired' || (!!subscription?.current_period_end && new Date(subscription.current_period_end) < new Date()),
     isGracePeriod: subscription?.status === 'payment_failed'
   };
 }
