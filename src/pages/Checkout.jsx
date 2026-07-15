@@ -4,12 +4,21 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, Loader2, Check, Lock } from 'lucide-react';
+import { AlertCircle, Loader2, Check, Lock, ExternalLink } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 
 const PLAN_INFO = {
-  maker_plus: { name: 'Maker Plus', price: 9 },
-  maker_pro: { name: 'Maker Pro', price: 14 }
+  maker_plus: { name: 'Maker Plus', monthly: 9, annual: 90 },
+  maker_pro: { name: 'Maker Pro', monthly: 14, annual: 140 }
+};
+
+// Square-hosted checkout links (create in Square Dashboard > Payment Links).
+// Paste the link URLs below to enable card payments for each plan/period.
+const PAYMENT_LINKS = {
+  maker_plus_monthly: '',
+  maker_plus_annual: '',
+  maker_pro_monthly: '',
+  maker_pro_annual: ''
 };
 
 export default function Checkout() {
@@ -21,6 +30,8 @@ export default function Checkout() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [period, setPeriod] = useState('annual');
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
 
   const urlPlan = searchParams.get('plan') || 'maker_plus';
   const planId = appliedPromo?.plan_id && PLAN_INFO[appliedPromo.plan_id]
@@ -28,6 +39,9 @@ export default function Checkout() {
     : (PLAN_INFO[urlPlan] ? urlPlan : 'maker_plus');
   const plan = PLAN_INFO[planId];
   const isFreePromo = !!appliedPromo && appliedPromo.discount_type === 'free';
+  const paymentLink = PAYMENT_LINKS[planId + '_' + period] || '';
+  const price = period === 'annual' ? plan.annual : plan.monthly;
+  const priceLabel = period === 'annual' ? '$' + plan.annual + '/year' : '$' + plan.monthly + '/month';
 
   const handleValidatePromo = async () => {
     if (!promoCode.trim()) return;
@@ -51,6 +65,12 @@ export default function Checkout() {
     }
   };
 
+  const yearFromNow = () => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+
   const handleRedeemFree = async () => {
     setLoading(true);
     setError('');
@@ -62,6 +82,8 @@ export default function Checkout() {
         plan_id: grantPlan,
         status: 'active',
         founders_pricing: true,
+        current_period_start: new Date().toISOString().slice(0, 10),
+        current_period_end: yearFromNow(),
         billing_notes: 'Promo code ' + appliedPromo.code + ' redeemed ' + new Date().toISOString().slice(0, 10)
       };
       if (existing[0]) {
@@ -69,7 +91,6 @@ export default function Checkout() {
       } else {
         await base44.entities.Subscription.create({ owner_user_id: user.id, ...payload });
       }
-      // Best-effort usage counter bump (admin-managed field; ignore failures).
       try {
         await base44.entities.PromoCode.update(appliedPromo.id, { current_uses: (appliedPromo.current_uses || 0) + 1 });
       } catch (e) { /* counter update requires admin; safe to skip */ }
@@ -81,6 +102,12 @@ export default function Checkout() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCardCheckout = () => {
+    if (!paymentLink) return;
+    window.open(paymentLink, '_blank', 'noopener');
+    setAwaitingPayment(true);
   };
 
   if (success) {
@@ -106,16 +133,46 @@ export default function Checkout() {
         <CardContent className="pt-6 space-y-4">
           <h2 className="text-lg font-bold text-stone-900 text-center">Complete Your Purchase</h2>
 
+          {!isFreePromo && (
+            <div className="flex rounded-lg border border-stone-200 p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setPeriod('monthly')}
+                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                  period === 'monthly' ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriod('annual')}
+                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                  period === 'annual' ? 'bg-emerald-600 text-white' : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                Annual <span className="text-xs opacity-90">(2 months free)</span>
+              </button>
+            </div>
+          )}
+
           <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-4">
             <p className="text-xs text-stone-500">Plan:</p>
             <p className="text-2xl font-bold text-stone-900">{plan.name}</p>
             {isFreePromo ? (
               <p className="text-emerald-700 font-semibold">
-                <span className="line-through text-stone-400 mr-2">${plan.price}/month</span>
+                <span className="line-through text-stone-400 mr-2">${plan.monthly}/month</span>
                 FREE with code {appliedPromo.code}
               </p>
             ) : (
-              <p className="text-emerald-700 font-semibold">${plan.price}/month</p>
+              <div>
+                <p className="text-emerald-700 font-semibold">{priceLabel}</p>
+                {period === 'annual' && (
+                  <p className="text-xs text-stone-500">
+                    ${plan.monthly}/mo billed yearly — save ${plan.monthly * 12 - plan.annual} vs monthly. Renews annually from your signup date.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -150,6 +207,22 @@ export default function Checkout() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
               Activate {plan.name} — Free
             </Button>
+          ) : paymentLink ? (
+            <div className="space-y-2">
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleCardCheckout}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Pay {priceLabel} — Secure Square Checkout
+              </Button>
+              <p className="text-xs text-stone-500 text-center">
+                Payment opens in a new tab on Square's secure checkout. Your card details never touch this app.
+              </p>
+              {awaitingPayment && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-800">
+                  Thanks! Once your payment is confirmed, your {plan.name} plan will be activated within 24 hours
+                  and your renewal date will be set to one year from today. Questions? Use the Contact link below.
+                </div>
+              )}
+            </div>
           ) : (
             <div className="rounded-lg bg-stone-50 border border-stone-200 p-4 text-center space-y-1">
               <p className="text-sm font-medium text-stone-700 flex items-center justify-center gap-1">
