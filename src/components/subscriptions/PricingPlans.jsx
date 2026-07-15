@@ -91,6 +91,8 @@ export default function PricingPlans({ currentPlan }) {
       const payload = {
         plan_id: downgradeTarget.id,
         status: 'active',
+        current_period_start: new Date().toISOString().slice(0, 10),
+        current_period_end: (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0, 10); })(),
         billing_notes: 'Downgraded from ' + currentName + ' to ' + downgradeTarget.name + ' on ' + new Date().toISOString().slice(0, 10)
       };
       if (existing[0]) {
@@ -145,6 +147,9 @@ export default function PricingPlans({ currentPlan }) {
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-stone-900">${plan.price}</span>
                   {plan.price > 0 && <span className="text-stone-600">/month</span>}
+                  {plan.price > 0 && (
+                    <p className="text-xs text-stone-500 mt-1">or ${plan.price * 10}/year (2 months free)</p>
+                  )}
                 </div>
               </CardHeader>
 
