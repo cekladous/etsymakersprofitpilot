@@ -15,14 +15,6 @@ export function AuthProvider({ children }) {
           const currentUser = await base44.auth.me();
           setUser(currentUser);
 
-          // Auto-setup new user
-          if (currentUser) {
-            try {
-              await base44.functions.invoke('setupNewUser', {});
-            } catch (err) {
-              console.warn('Setup already complete or error:', err.message);
-            }
-          }
         }
       } catch (error) {
         console.error('Auth error:', error);
