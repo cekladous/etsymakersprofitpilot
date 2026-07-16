@@ -395,22 +395,30 @@ export default function Dashboard() {
     return format(selectedDate, "MMMM yyyy");
   };
 
-  const handleExport = async (exportFormat) => {
+  const handleExport = () => {
+    // Generate the summary CSV entirely client-side (no backend function needed).
     try {
-      const response = await base44.functions.invoke('exportDashboardReport', {
-        format: exportFormat,
-        periodStart: format(periodStart, 'yyyy-MM-dd'),
-        periodEnd: format(periodEnd, 'yyyy-MM-dd'),
-        periodLabel: getPeriodLabel()
-      });
-
-      const blob = new Blob([response.data], {
-        type: exportFormat === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
+      const fd = financialData || {};
+      const n = (v) => (Number.isFinite(Number(v)) ? Number(v).toFixed(2) : '0.00');
+      const rows = [
+        ["Maker's Profit Pilot — Financial Summary"],
+        ['Period', getPeriodLabel()],
+        [''],
+        ['Total Revenue (excl. tax)', n(fd.totalRevenue)],
+        ['Etsy Sales (net)', n(fd.revenue?.netEtsySales)],
+        ['In-Person (Square)', n(fd.revenue?.squareInPersonRevenue)],
+        ['Custom / Direct Sales', n(fd.revenue?.customRevenueTotal)],
+        [''],
+        ['Total Expenses', n(fd.totalExpenses)],
+        ['Net Profit', n(fd.netProfit)],
+        ['Profit Margin (%)', n(fd.profitMargin)]
+      ];
+      const csv = rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `report_${format(selectedDate, "yyyy-MM")}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.download = `report_${format(selectedDate, 'yyyy-MM')}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -540,26 +548,17 @@ export default function Dashboard() {
           <div className="h-6 w-px bg-stone-300 mx-2"></div>
 
           <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => handleExport('pdf')}
-            disabled={financialData.hasUnmatchedEntries}
-            title={financialData.hasUnmatchedEntries ? "Reconcile unmatched entries before exporting" : ""}
-            className="gap-2">
-            <Download className="w-4 h-4" />
-            PDF Report
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => handleExport('xlsx')}
-            disabled={financialData.hasUnmatchedEntries}
-            title={financialData.hasUnmatchedEntries ? "Reconcile unmatched entries before exporting" : ""}
-            className="gap-2">
-            <Download className="w-4 h-4" />
-            Excel Report
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport()}
+                disabled={financialData.hasUnmatchedEntries}
+                title={financialData.hasUnmatchedEntries ? "Reconcile unmatched entries before exporting" : ""}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
           </div>
           </div>
           </PageHeader>
