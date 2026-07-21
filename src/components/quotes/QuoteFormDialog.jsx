@@ -268,6 +268,15 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
       }
     }
 
+    // Auto-recalculate total hours/minutes for this machine from per-unit engrave/cut time x quantity
+    if (field === 'engrave_minutes_per_unit' || field === 'cut_minutes_per_unit') {
+      const qty = parseFloat(formData.quantity) || 1;
+      const perUnitMins = (parseFloat(newMachines[index].engrave_minutes_per_unit) || 0) + (parseFloat(newMachines[index].cut_minutes_per_unit) || 0);
+      const totalMins = perUnitMins * qty;
+      newMachines[index].hours = Math.floor(totalMins / 60);
+      newMachines[index].minutes = Math.round(totalMins % 60);
+    }
+
     setFormData({ ...formData, machines: newMachines });
   };
 
@@ -980,6 +989,33 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                           />
                           <div className="text-xs text-stone-400 mt-1 text-center">min</div>
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs text-stone-600">Engrave/unit (min)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={machine.engrave_minutes_per_unit || ''}
+                          onChange={(e) => updateMachine(index, 'engrave_minutes_per_unit', e.target.value)}
+                          placeholder="0"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-stone-600">Cut/unit (min)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={machine.cut_minutes_per_unit || ''}
+                          onChange={(e) => updateMachine(index, 'cut_minutes_per_unit', e.target.value)}
+                          placeholder="0"
+                          className="mt-1"
+                        />
                       </div>
                     </div>
 
