@@ -214,6 +214,24 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
          }
       }
 
+    // Auto-calculate unit cost from sheet & yield calculator inputs
+    if (['use_sheet_calculator', 'sheet_cost', 'sheet_width', 'sheet_height', 'item_width', 'item_height'].includes(field)) {
+      const mat = newMaterials[index];
+      if (mat.use_sheet_calculator) {
+        const sw = parseFloat(mat.sheet_width) || 0;
+        const sh = parseFloat(mat.sheet_height) || 0;
+        const iw = parseFloat(mat.item_width) || 0;
+        const ih = parseFloat(mat.item_height) || 0;
+        const sheetCost = parseFloat(mat.sheet_cost) || 0;
+        const perRow = iw > 0 ? Math.floor(sw / iw) : 0;
+        const perCol = ih > 0 ? Math.floor(sh / ih) : 0;
+        const yieldPerSheet = perRow * perCol;
+        if (yieldPerSheet > 0) {
+          newMaterials[index].cost = Math.round((sheetCost / yieldPerSheet) * 100) / 100;
+        }
+      }
+    }
+
     setFormData({ ...formData, materials: newMaterials });
   };
 
@@ -740,6 +758,54 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                       placeholder="Where did you get this from?"
                       className="mt-1"
                     />
+                  </div>
+
+                  <div className="border-t border-stone-200 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => updateMaterial(index, 'use_sheet_calculator', !material.use_sheet_calculator)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {material.use_sheet_calculator ? 'Hide sheet & yield calculator' : 'Calculate unit cost from a sheet (yield calculator)'}
+                    </button>
+
+                    {material.use_sheet_calculator && (
+                      <div className="mt-2 space-y-2 p-2 bg-white rounded border border-stone-200">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs text-stone-600">Sheet Cost ({currencySymbol})</Label>
+                            <Input type="number" step="0.01" min="0" value={material.sheet_cost || ''} onChange={(e) => updateMaterial(index, 'sheet_cost', e.target.value)} placeholder="0.00" className="mt-1" />
+                          </div>
+                          <div></div>
+                          <div>
+                            <Label className="text-xs text-stone-600">Sheet Width (in)</Label>
+                            <Input type="number" step="0.01" min="0" value={material.sheet_width || ''} onChange={(e) => updateMaterial(index, 'sheet_width', e.target.value)} placeholder="18" className="mt-1" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-stone-600">Sheet Height (in)</Label>
+                            <Input type="number" step="0.01" min="0" value={material.sheet_height || ''} onChange={(e) => updateMaterial(index, 'sheet_height', e.target.value)} placeholder="24" className="mt-1" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-stone-600">Item Width (in)</Label>
+                            <Input type="number" step="0.01" min="0" value={material.item_width || ''} onChange={(e) => updateMaterial(index, 'item_width', e.target.value)} placeholder="4" className="mt-1" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-stone-600">Item Height (in)</Label>
+                            <Input type="number" step="0.01" min="0" value={material.item_height || ''} onChange={(e) => updateMaterial(index, 'item_height', e.target.value)} placeholder="4" className="mt-1" />
+                          </div>
+                        </div>
+                        <div className="text-xs text-stone-600">
+                          {(() => {
+                            const perRow = parseFloat(material.item_width) > 0 ? Math.floor((parseFloat(material.sheet_width) || 0) / parseFloat(material.item_width)) : 0;
+                            const perCol = parseFloat(material.item_height) > 0 ? Math.floor((parseFloat(material.sheet_height) || 0) / parseFloat(material.item_height)) : 0;
+                            const y = perRow * perCol;
+                            return y > 0
+                              ? `Yield: ${y} units/sheet → Unit cost: ${currencySymbol}${(parseFloat(material.cost) || 0).toFixed(2)}`
+                              : 'Enter sheet and item dimensions to calculate yield';
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="text-xs text-stone-500 text-right pt-1">
