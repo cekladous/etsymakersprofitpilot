@@ -17,7 +17,7 @@ export default function AILaborEstimator({
   const [size, setSize] = useState("");
   const [sizeUnit, setSizeUnit] = useState("inches");
   const [aiEstimate, setAiEstimate] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const generateEstimate = async () => {
     setIsLoading(true);
@@ -100,7 +100,7 @@ Respond with ONLY a JSON object, no explanation:`,
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-600" />
-            <CardTitle className="text-base text-blue-900">AI Labor & Machine Time Estimator</CardTitle>
+            <CardTitle className="text-sm text-blue-900">Not sure? Estimate time with AI</CardTitle>
           </div>
           {isExpanded ? <ChevronUp className="w-4 h-4 text-blue-500" /> : <ChevronDown className="w-4 h-4 text-blue-500" />}
         </div>
@@ -108,7 +108,7 @@ Respond with ONLY a JSON object, no explanation:`,
       {isExpanded && (
         <CardContent className="space-y-3">
           <p className="text-xs text-stone-600">
-            Automatically estimate labor hours and machine time based on your project details.
+            Optional: get a quick starting-point estimate for design, labor, and machine time based on your project details. You can always adjust the numbers above after applying.
           </p>
 
           {/* Size field */}
