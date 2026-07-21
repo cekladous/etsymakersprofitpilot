@@ -58,14 +58,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     status: "Draft",
     notes: "",
     materials: [],
-    design_hours: 0,
-    design_minutes: 0,
-    design_rate_type: "Custom",
-    design_rate: 0,
-    manual_labor_hours: 0,
-    manual_labor_minutes: 0,
-    manual_labor_type: "Standard Labor",
-    manual_labor_rate: 95,
+    quantity: 1,
+    overhead_manual_override: false,
     machines: [],
     shipping_cost: 0,
     overhead_per_item: 0,
@@ -119,6 +113,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
       setFormData({
         ...quote,
         materials: quote.materials || [],
+        quantity: quote.quantity || 1,
+        overhead_manual_override: quote.overhead_manual_override || false,
         labor_hours: quote.labor_hours || 0,
         labor_minutes: quote.labor_minutes || 0,
         labor_rate: quote.labor_rate || 50,
@@ -146,6 +142,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         status: "Draft",
         notes: "",
         materials: [],
+        quantity: 1,
+        overhead_manual_override: false,
         labor_hours: 0,
         labor_minutes: 0,
         labor_rate: 50,
@@ -166,7 +164,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const addMaterial = () => {
     setFormData({
       ...formData,
-      materials: [...formData.materials, { type: "Custom (Manual)", name: "", cost: 0 }],
+      materials: [...formData.materials, { type: "Custom (Manual)", name: "", quantity: formData.quantity || 1, cost: 0 }],
     });
   };
 
@@ -217,7 +215,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   };
 
   const getMaterialsTotal = () => {
-    return formData.materials.reduce((sum, m) => sum + (parseFloat(m.cost) || 0), 0);
+    return formData.materials.reduce((sum, m) => sum + (parseFloat(m.cost) || 0) * (parseFloat(m.quantity) || 1), 0);
   };
 
   // Machine functions
@@ -266,15 +264,44 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     return totalHours * (parseFloat(formData.labor_rate) || 0);
   };
 
+  const getTotalHoursUsed = () => {
+    const laborHrs = (parseFloat(formData.labor_hours) || 0) + (parseFloat(formData.labor_minutes) || 0) / 60;
+    const machineHrs = (formData.machines || []).reduce((sum, mach) => sum + (parseFloat(mach.hours) || 0) + (parseFloat(mach.minutes) || 0) / 60, 0);
+    return laborHrs + machineHrs;
+  };
+
+  const getAutoOverhead = () => {
+    const monthlyOverhead = parseFloat(feeConfig.monthly_overhead) || 0;
+    const monthlyMachineHours = parseFloat(feeConfig.monthly_machine_hours) || 40;
+    const hourlyOverheadRate = monthlyMachineHours > 0 ? monthlyOverhead / monthlyMachineHours : 0;
+    return hourlyOverheadRate * getTotalHoursUsed();
+  };
+
+  const getOverheadPerItem = () => {
+    if (formData.overhead_manual_override) {
+      return parseFloat(formData.overhead_per_item) || 0;
+    }
+    return getAutoOverhead();
+  };
+
+  const getShippingCost = () => {
+    return parseFloat(formData.shipping_cost) || 0;
+  };
+
   const getSuggestedPrice = () => {
-    const overhead = parseFloat(formData.overhead_per_item) || 0;
-    const totalCOGS = getMaterialsTotal() + getLaborTotal() + getMachinesTotal() + overhead;
+    const overhead = getOverheadPerItem();
+    const totalCOGS = getMaterialsTotal() + getLaborTotal() + getMachinesTotal() + overhead + getShippingCost();
     const margin = parseFloat(desiredMargin) || 0;
     return margin > 0 && margin < 100 ? totalCOGS / (1 - margin / 100) : totalCOGS;
   };
 
   const getGrandTotal = () => {
     return getSuggestedPrice();
+  };
+
+  const getPricePerUnit = () => {
+    const qty = parseFloat(formData.quantity) || 1;
+    return getGrandTotal() / (qty > 0 ? qty : 1);
   };
 
   const handleProductTemplateSelect = (productId) => {
@@ -297,13 +324,13 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
           const costPerSqInch = materialType.cost_per_sheet / sheetArea;
           cost = Math.round((product.area_per_unit * costPerSqInch) * 100) / 100;
         }
-        newMaterials.push({ type: materialType.name, name: materialType.name, cost });
+        newMaterials.push({ type: materialType.name, name: materialType.name, quantity: formData.quantity || 1, cost });
       }
     }
 
     // Add packaging cost as a material line
     if (product.packaging_cost && product.packaging_cost > 0) {
-      newMaterials.push({ type: "Custom (Manual)", name: "Packaging", cost: product.packaging_cost });
+      newMaterials.push({ type: "Custom (Manual)", name: "Packaging", quantity: 1, cost: product.packaging_cost });
     }
 
     // Pre-fill machine time from laser_minutes_per_unit
@@ -421,7 +448,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    saveMutation.mutate({ ...formData, total: getSuggestedPrice(), subtotal: getMaterialsTotal() + getLaborTotal() + getMachinesTotal() });
+    saveMutation.mutate({ ...formData, overhead_per_item: getOverheadPerItem(), total: getSuggestedPrice(), subtotal: getMaterialsTotal() + getLaborTotal() + getMachinesTotal() });
   };
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || "$";
@@ -492,6 +519,19 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                   onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
                   placeholder="e.g. Custom Acrylic Sign"
                   required
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs text-stone-600">Quantity (units in this quote)</Label>
+                <Input
+                  type="number"
+                  value={formData.quantity ?? 1}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  placeholder="e.g. 48"
+                  min="1"
+                  step="1"
                   className="mt-1"
                 />
               </div>
@@ -654,17 +694,34 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                     />
                   </div>
 
-                  <div>
-                    <Label className="text-xs text-stone-600">Cost ({currencySymbol})</Label>
-                    <Input
-                      type="number"
-                      value={material.cost}
-                      onChange={(e) => updateMaterial(index, "cost", e.target.value)}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      className="mt-1"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs text-stone-600">Qty</Label>
+                      <Input
+                        type="number"
+                        value={material.quantity ?? 1}
+                        onChange={(e) => updateMaterial(index, "quantity", e.target.value)}
+                        placeholder="1"
+                        step="1"
+                        min="0"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-stone-600">Unit Cost ({currencySymbol})</Label>
+                      <Input
+                        type="number"
+                        value={material.cost}
+                        onChange={(e) => updateMaterial(index, "cost", e.target.value)}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-xs text-stone-500 text-right pt-1">
+                    Line total: <span className="font-medium text-stone-700">{currencySymbol}{((parseFloat(material.cost) || 0) * (parseFloat(material.quantity) || 1)).toFixed(2)}</span>
                   </div>
                 </div>
               ))}
@@ -692,7 +749,12 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
             <CardContent className="space-y-6">
               {/* Design & Labor Service */}
               <div>
-                <div className="text-xs text-stone-500 font-medium mb-3">Design & Labor Service</div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-stone-500 font-medium">Design & Labor</div>
+                  <div className="text-sm text-stone-600">
+                    Total: <span className="font-semibold">{currencySymbol}{getLaborTotal().toFixed(2)}</span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Input
@@ -734,13 +796,17 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 materials={formData.materials}
                 machines={formData.machines}
                 onEstimate={(estimates) => {
+                  const totalLaborMinutes = (estimates.design_hours + estimates.labor_hours) * 60 + (estimates.design_minutes + estimates.labor_minutes);
+                  const newMachines = formData.machines.length > 0
+                    ? formData.machines.map((m, i) =>
+                        i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
+                      )
+                    : [{ machine_id: "", name: "", hours: estimates.machine_hours, minutes: estimates.machine_minutes, rate: 0 }];
                   setFormData({
                     ...formData,
-                    labor_hours: estimates.design_hours + estimates.labor_hours,
-                    labor_minutes: estimates.design_minutes + estimates.labor_minutes,
-                    machines: formData.machines.map((m, i) => 
-                      i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
-                    )
+                    labor_hours: Math.floor(totalLaborMinutes / 60),
+                    labor_minutes: totalLaborMinutes % 60,
+                    machines: newMachines
                   });
                 }}
               />
@@ -873,16 +939,43 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
             }}
           />
 
+          {/* Shipping */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Shipping</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label className="text-xs text-stone-600">Shipping Cost ({currencySymbol})</Label>
+                <Input
+                  type="number"
+                  value={formData.shipping_cost}
+                  onChange={(e) => setFormData({ ...formData, shipping_cost: e.target.value })}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="mt-1"
+                />
+                <div className="text-xs text-stone-400 mt-1">Enter what you expect to pay USPS/UPS/FedEx (e.g. from Shippo) for this order.</div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Cost Breakdown Panel */}
           <CostBreakdownPanel
             materialsTotal={getMaterialsTotal()}
             laborTotal={getLaborTotal()}
             machineTotal={getMachinesTotal()}
-            overheadPerItem={formData.overhead_per_item}
+            shippingCost={getShippingCost()}
+            overheadPerItem={getOverheadPerItem()}
+            overheadManualOverride={formData.overhead_manual_override}
+            onOverheadOverrideToggle={(checked) => setFormData({ ...formData, overhead_manual_override: checked, overhead_per_item: checked ? getOverheadPerItem() : formData.overhead_per_item })}
             onOverheadChange={(value) => setFormData({ ...formData, overhead_per_item: value })}
             desiredMargin={desiredMargin}
             onMarginChange={setDesiredMargin}
             currencySymbol={currencySymbol}
+            quantity={formData.quantity}
+            pricePerUnit={getPricePerUnit()}
           />
 
           {/* Grand Total */}
