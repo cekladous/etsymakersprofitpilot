@@ -89,6 +89,16 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     queryFn: () => base44.entities.Machine.list(),
   });
 
+  const { data: materialPurchases = [] } = useQuery({
+    queryKey: ['materialPurchases'],
+    queryFn: () => base44.entities.MaterialPurchase.list(),
+  });
+
+  const vendorOptions = [...new Set([
+    ...materialPurchases.map((p) => p.vendor),
+    ...(formData.materials || []).map((mat) => mat.vendor),
+  ].filter(Boolean))].sort();
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list(),
@@ -462,6 +472,9 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <datalist id="vendor-options-list">
+            {vendorOptions.map((v) => <option key={v} value={v} />)}
+          </datalist>
           {/* Customer & Project */}
           <Card>
             <CardHeader className="pb-4">
@@ -718,6 +731,17 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                       />
                     </div>
                   </div>
+                  <div>
+                    <Label className="text-xs text-stone-600">Vendor (optional)</Label>
+                    <Input
+                      list="vendor-options-list"
+                      value={material.vendor || ''}
+                      onChange={(e) => updateMaterial(index, 'vendor', e.target.value)}
+                      placeholder="Where did you get this from?"
+                      className="mt-1"
+                    />
+                  </div>
+
                   <div className="text-xs text-stone-500 text-right pt-1">
                     Line total: <span className="font-medium text-stone-700">{currencySymbol}{((parseFloat(material.cost) || 0) * (parseFloat(material.quantity) || 1)).toFixed(2)}</span>
                   </div>
