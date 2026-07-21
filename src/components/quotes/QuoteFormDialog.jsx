@@ -883,17 +883,30 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
                 projectName={formData.project_name}
                 materials={formData.materials}
                 machines={formData.machines}
+                machineDetails={formData.machines.map(fm => machines.find(am => am.id === fm.machine_id)).filter(Boolean)}
+                quantity={formData.quantity}
                 onEstimate={(estimates) => {
-                  const totalLaborMinutes = (estimates.design_hours + estimates.labor_hours) * 60 + (estimates.design_minutes + estimates.labor_minutes);
+                  const qty = parseFloat(formData.quantity) || 1;
+                  const totalLaborMinutes = (estimates.design_hours * 60 + estimates.design_minutes) +
+                    (estimates.labor_hours * 60 + estimates.labor_minutes) * qty;
+                  const machineMinutesTotal = ((parseFloat(estimates.engrave_minutes_per_unit) || 0) + (parseFloat(estimates.cut_minutes_per_unit) || 0)) * qty;
+                  const machineHours = Math.floor(machineMinutesTotal / 60);
+                  const machineMinutes = Math.round(machineMinutesTotal % 60);
                   const newMachines = formData.machines.length > 0
                     ? formData.machines.map((m, i) =>
-                        i === 0 ? { ...m, hours: estimates.machine_hours, minutes: estimates.machine_minutes } : m
+                        i === 0 ? {
+                          ...m,
+                          hours: machineHours,
+                          minutes: machineMinutes,
+                          engrave_minutes_per_unit: estimates.engrave_minutes_per_unit,
+                          cut_minutes_per_unit: estimates.cut_minutes_per_unit,
+                        } : m
                       )
-                    : [{ machine_id: "", name: "", hours: estimates.machine_hours, minutes: estimates.machine_minutes, rate: 0 }];
+                    : [{ machine_id: '', name: '', hours: machineHours, minutes: machineMinutes, rate: 0, engrave_minutes_per_unit: estimates.engrave_minutes_per_unit, cut_minutes_per_unit: estimates.cut_minutes_per_unit }];
                   setFormData({
                     ...formData,
                     labor_hours: Math.floor(totalLaborMinutes / 60),
-                    labor_minutes: totalLaborMinutes % 60,
+                    labor_minutes: Math.round(totalLaborMinutes % 60),
                     machines: newMachines
                   });
                 }}
