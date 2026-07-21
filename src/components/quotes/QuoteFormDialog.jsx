@@ -1002,6 +1002,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
       quote={quote}
       onConfirm={handleConfirmConversion}
       isPending={convertMutation.isPending}
+      total={getGrandTotal()}
     />
     </>
   );
