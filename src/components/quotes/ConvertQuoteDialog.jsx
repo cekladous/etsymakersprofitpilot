@@ -16,16 +16,13 @@ export default function ConvertQuoteDialog({
   quote,
   onConfirm,
   isPending,
+  total,
 }) {
   const [selectedChannel, setSelectedChannel] = useState("custom");
 
   if (!quote) return null;
 
-  const grandTotal =
-    (quote.materials?.reduce((sum, m) => sum + (parseFloat(m.cost) || 0), 0) || 0) +
-    (quote.design_hours || 0 + quote.design_minutes || 0 / 60) * (quote.design_rate || 0) +
-    (quote.manual_labor_hours || 0 + quote.manual_labor_minutes || 0 / 60) * (quote.manual_labor_rate || 0) +
-    (quote.machines?.reduce((sum, m) => sum + ((parseFloat(m.hours) || 0) + (parseFloat(m.minutes) || 0) / 60) * (parseFloat(m.rate) || 0), 0) || 0);
+  const grandTotal = parseFloat(total) || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
