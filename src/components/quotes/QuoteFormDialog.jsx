@@ -357,10 +357,6 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     });
   };
 
-  const calculateGrandTotal = () => {
-    return getMaterialsTotal() + getLaborTotal() + getMachinesTotal();
-  };
-
   // Calculate profit
   const profitInputs = {
     sales_price: getGrandTotal(),
@@ -400,7 +396,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
 
   const convertMutation = useMutation({
     mutationFn: async (channel = "custom") => {
-      const grandTotal = calculateGrandTotal();
+      const grandTotal = getGrandTotal();
       const order = await base44.entities.Order.create({
         owner_user_id: user.id,
         channel: channel,
@@ -420,6 +416,8 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
       await base44.entities.Quote.update(quote.id, {
         ...formData,
         status: "Accepted",
+        total: grandTotal,
+        overhead_per_item: getOverheadPerItem(),
         converted_to_order_id: order.id,
       });
 
