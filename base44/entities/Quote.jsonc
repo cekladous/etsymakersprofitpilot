@@ -74,6 +74,35 @@
           },
           "cost": {
             "type": "number"
+          },
+          "vendor": {
+            "type": "string",
+            "description": "Vendor/supplier this material was purchased from"
+          },
+          "use_sheet_calculator": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to auto-calculate unit cost from sheet size and yield"
+          },
+          "sheet_cost": {
+            "type": "number",
+            "description": "Cost of one full sheet of material"
+          },
+          "sheet_width": {
+            "type": "number",
+            "description": "Sheet width in inches"
+          },
+          "sheet_height": {
+            "type": "number",
+            "description": "Sheet height in inches"
+          },
+          "item_width": {
+            "type": "number",
+            "description": "Item width in inches"
+          },
+          "item_height": {
+            "type": "number",
+            "description": "Item height in inches"
           }
         }
       },
@@ -98,6 +127,14 @@
           },
           "rate": {
             "type": "number"
+          },
+          "engrave_minutes_per_unit": {
+            "type": "number",
+            "description": "Estimated engrave time per unit in minutes"
+          },
+          "cut_minutes_per_unit": {
+            "type": "number",
+            "description": "Estimated cut time per unit in minutes"
           }
         }
       },
