@@ -450,6 +450,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
         notes: `Converted from Quote #${formData.quote_number}\nCustomer: ${formData.customer_name}\nEmail: ${formData.customer_email}`,
       });
 
+let productionJob; try { productionJob = await base44.entities.Job.create({ owner_user_id: user.id, job_number: `JOB-${formData.quote_number}`, order_ids: [order.id], quantity: parseFloat(formData.quantity) || 1, material_cost: getMaterialsTotal(), machine_time_cost: getMachinesTotal(), overhead_cost: getOverheadPerItem() + getLaborTotal(), quoted_total_cost: grandTotal, status: "pending", notes: `Auto-created from Quote #${formData.quote_number}` }); await base44.entities.Order.update(order.id, { job_id: productionJob.id }); } catch (jobErr) { console.error("Failed to auto-create production job from quote:", jobErr); }
       await base44.entities.Quote.update(quote.id, {
         ...formData,
         status: "Accepted",
@@ -463,6 +464,7 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
       setShowConvertDialog(false);
       onOpenChange(false);
     },
