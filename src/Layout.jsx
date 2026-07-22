@@ -16,7 +16,8 @@ import {
   Settings as SettingsIcon,
   FileText,
   FileCheck,
-  Users
+  Users,
+    Factory
 } from "lucide-react";
 
 const navItems = [
@@ -29,6 +30,7 @@ const navItems = [
         { name: "Expenses", icon: Receipt, page: "Expenses" },
         { name: "Products", icon: Package, page: "Products" },
         { name: "Inventory", icon: Layers, page: "Inventory" },
+        { name: "Jobs", icon: Factory, page: "Production" },
         { name: "Tools", icon: Wrench, page: "Tools" },
         { name: "Settings", icon: SettingsIcon, page: "Settings" },
       ];
