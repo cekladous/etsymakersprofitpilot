@@ -45,7 +45,7 @@ export default function ProductionPage() {
     queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
   });
   const { data: quotesForSync = [] } = useQuery({ queryKey: ["quotes-for-jobs", user?.id], enabled: !!user, queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }) }); const syncJobsMutation = useMutation({ mutationFn: async () => { const existingOrderIds = new Set(jobs.flatMap((j) => j.order_ids || [])); const missing = quotesForSync.filter((q) => q.converted_to_order_id && !existingOrderIds.has(q.converted_to_order_id)); let created = 0; for (const q of missing) { const materialCost = (q.materials || []).reduce((s, m) => s + ((m.cost || 0) * (m.quantity || 1)), 0); await base44.entities.Job.create({ owner_user_id: user.id, job_number: "JOB-" + q.quote_number, order_ids: [q.converted_to_order_id], quantity: parseFloat(q.quantity) || 1, material_cost: materialCost, machine_time_cost: 0, overhead_cost: (q.overhead_per_item || 0) * (parseFloat(q.quantity) || 1), quoted_total_cost: q.total || 0, status: "pending", notes: "Auto-created from Quote #" + q.quote_number + " (synced)" }); created++; } return created; }, onSuccess: (created) => { queryClient.invalidateQueries({ queryKey: ["jobs"] }); alert(created > 0 ? ("Created " + created + " missing job(s) from converted quotes.") : "All converted quotes already have jobs - nothing to sync."); }, onError: (err) => { alert("Sync failed: " + (err?.message || String(err))); } });
-  
+
 
   const { data: products = [] } = useQuery({
     queryKey: ["products", user?.id],
@@ -262,6 +262,7 @@ export default function ProductionPage() {
             <Plus className="w-4 h-4 mr-2" />
             Create Job
           </Button>
+          <Button variant="outline" size="sm" className="ml-2" onClick={() => syncJobsMutation.mutate()} disabled={syncJobsMutation.isPending}>{syncJobsMutation.isPending ? "Syncing..." : "Sync from Quotes"}</Button>
         </div>
       </PageHeader>
 
