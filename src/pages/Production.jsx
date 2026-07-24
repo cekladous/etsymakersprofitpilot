@@ -17,6 +17,7 @@ import JobSpreadsheetView from "@/components/jobs/JobSpreadsheetView";
 import JobFormDialog from "@/components/jobs/JobFormDialog";
 import ProductionEntryDialog from "@/components/quotes/ProductionEntryDialog";
 import { format } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 import { Wrench, TrendingUp, DollarSign, Plus, Search, List, LayoutGrid, TableIcon, MoreHorizontal, CheckCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -31,6 +32,7 @@ export default function ProductionPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -44,7 +46,7 @@ export default function ProductionPage() {
     enabled: !!user,
     queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
   });
-  const { data: quotesForSync = [] } = useQuery({ queryKey: ["quotes-for-jobs", user?.id], enabled: !!user, queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }) }); const syncJobsMutation = useMutation({ mutationFn: async () => { const existingOrderIds = new Set(jobs.flatMap((j) => j.order_ids || [])); const missing = quotesForSync.filter((q) => q.converted_to_order_id && !existingOrderIds.has(q.converted_to_order_id)); let created = 0; for (const q of missing) { const materialCost = (q.materials || []).reduce((s, m) => s + ((m.cost || 0) * (m.quantity || 1)), 0); await base44.entities.Job.create({ owner_user_id: user.id, job_number: "JOB-" + q.quote_number, order_ids: [q.converted_to_order_id], quantity: parseFloat(q.quantity) || 1, material_cost: materialCost, machine_time_cost: 0, overhead_cost: (q.overhead_per_item || 0) * (parseFloat(q.quantity) || 1), quoted_total_cost: q.total || 0, status: "pending", notes: "Auto-created from Quote #" + q.quote_number + " (synced)" }); created++; } return created; }, onSuccess: (created) => { queryClient.invalidateQueries({ queryKey: ["jobs"] }); alert(created > 0 ? ("Created " + created + " missing job(s) from converted quotes.") : "All converted quotes already have jobs - nothing to sync."); }, onError: (err) => { alert("Sync failed: " + (err?.message || String(err))); } });
+  const { data: quotesForSync = [] } = useQuery({ queryKey: ["quotes-for-jobs", user?.id], enabled: !!user, queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }) }); const syncJobsMutation = useMutation({ mutationFn: async () => { const existingOrderIds = new Set(jobs.flatMap((j) => j.order_ids || [])); const missing = quotesForSync.filter((q) => q.converted_to_order_id && !existingOrderIds.has(q.converted_to_order_id)); let created = 0; for (const q of missing) { const materialCost = (q.materials || []).reduce((s, m) => s + ((m.cost || 0) * (m.quantity || 1)), 0); await base44.entities.Job.create({ owner_user_id: user.id, job_number: "JOB-" + q.quote_number, order_ids: [q.converted_to_order_id], quantity: parseFloat(q.quantity) || 1, material_cost: materialCost, machine_time_cost: 0, overhead_cost: (q.overhead_per_item || 0) * (parseFloat(q.quantity) || 1), quoted_total_cost: q.total || 0, status: "pending", notes: "Auto-created from Quote #" + q.quote_number + " (synced)" }); created++; } return created; }, onSuccess: (created) => { queryClient.invalidateQueries({ queryKey: ["jobs"] }); toast({ title: created > 0 ? "Jobs synced" : "Nothing to sync", description: created > 0 ? ("Created " + created + " missing job(s) from converted quotes.") : "All converted quotes already have jobs." }); }, onError: (err) => { toast({ variant: "destructive", title: "Sync failed", description: err?.message || String(err) }); } });
 
 
   const { data: products = [] } = useQuery({
