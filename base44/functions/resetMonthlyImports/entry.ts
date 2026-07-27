@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     let updated = 0;
     for (const subscription of freeSubscriptions) {
       await base44.asServiceRole.entities.Subscription.update(subscription.id, {
-        imports_used_this_month: 0
+        imports_used_this_month: 0, quotes_used_this_month: 0
       });
       updated++;
     }
