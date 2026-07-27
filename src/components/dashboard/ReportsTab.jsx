@@ -5,11 +5,13 @@ import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Download } from "lucide-react";
 import DonutChart from "@/components/reports/DonutChart";
+import { useSubscription, canExportCSV } from "@/lib/utils";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0);
 
 export default function ReportsTab({ financialData, sharedData, dateRange, periodLabel }) {
+  const { subscriptions } = useSubscription();
   const monthlyData = useMemo(() => {
     if (!dateRange?.start || !dateRange?.end) return [];
     const result = [];
@@ -113,10 +115,7 @@ export default function ReportsTab({ financialData, sharedData, dateRange, perio
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={exportCSV}>
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        {canExportCSV(subscriptions) ? (<Button variant="outline" size="sm" onClick={exportCSV}><Download className="w-4 h-4 mr-2" />Export CSV</Button>) : (<Button variant="outline" size="sm" className="opacity-70" onClick={() => alert("CSV export is available on the Pro plan. Upgrade in Settings > Subscription.")}><Download className="w-4 h-4 mr-2" />Export CSV <span className="ml-2 text-xs bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">Pro</span></Button>)}
       </div>
 
       {/* Donut Charts */}
