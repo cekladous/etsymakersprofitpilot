@@ -55,6 +55,11 @@
       "default": 0,
       "description": "Etsy imports used in current month (Free tier tracking)"
     },
+    "quotes_used_this_month": {
+      "type": "number",
+      "default": 0,
+      "description": "Quotes created in current billing month (Free tier tracking)"
+    },
     "active_users": {
       "type": "number",
       "default": 1,
