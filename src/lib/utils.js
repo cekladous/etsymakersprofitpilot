@@ -5,7 +5,11 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 } 
 
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 
+export function useSubscription() { const { user } = useAuth(); const { data: subscriptions, isLoading, refetch } = useQuery({ queryKey: ["subscriptions", user && user.id], queryFn: async function() { if (!user || !user.id) return []; return await base44.entities.Subscription.filter({ owner_user_id: user.id }); }, enabled: !!(user && user.id) }); return { subscriptions: subscriptions || [], isLoading, refetch }; }
 export const isIframe = window.self !== window.top;
 
 
