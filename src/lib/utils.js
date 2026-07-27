@@ -13,7 +13,7 @@ export function useSubscription() { const { user } = useAuth(); const { data: su
 export const isIframe = window.self !== window.top;
 
 
-export const SUBSCRIPTION_TIER_LIMITS = { free: { quotesPerMonth: 5, reportMonths: 3, csvExport: false, aiEstimator: false }, maker_pro: { quotesPerMonth: Infinity, reportMonths: 12, csvExport: false, aiEstimator: false }, maker_plus: { quotesPerMonth: Infinity, reportMonths: Infinity, csvExport: true, aiEstimator: true } };
+export const SUBSCRIPTION_TIER_LIMITS = { free: { quotesPerMonth: 5, reportMonths: 3, csvExport: false, aiEstimator: false }, maker_plus: { quotesPerMonth: Infinity, reportMonths: 12, csvExport: false, aiEstimator: false }, maker_pro: { quotesPerMonth: Infinity, reportMonths: Infinity, csvExport: true, aiEstimator: true } };
 export function getActiveSubscription(subscriptions) { if (!Array.isArray(subscriptions) || subscriptions.length === 0) return null; return subscriptions.find(function(s) { return s.status === "active" || s.status === "trial"; }) || null; }
 export function getSubscriptionTier(subscriptions) { const sub = getActiveSubscription(subscriptions); return (sub && SUBSCRIPTION_TIER_LIMITS[sub.plan_id]) ? sub.plan_id : "free"; }
 export function getTierLimits(subscriptions) { return SUBSCRIPTION_TIER_LIMITS[getSubscriptionTier(subscriptions)] || SUBSCRIPTION_TIER_LIMITS.free; }
