@@ -5,17 +5,19 @@ import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Download } from "lucide-react";
 import DonutChart from "@/components/reports/DonutChart";
-import { useSubscription, canExportCSV } from "@/lib/utils";
+import { useSubscription, canExportCSV, getReportMonthLimit } from "@/lib/utils";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0);
 
 export default function ReportsTab({ financialData, sharedData, dateRange, periodLabel }) {
   const { subscriptions } = useSubscription();
+  const reportMonthLimit = getReportMonthLimit(subscriptions);
+  const reportCutoffDate = reportMonthLimit === Infinity ? null : (function() { const d = new Date(); d.setMonth(d.getMonth() - reportMonthLimit); d.setDate(1); return d; })();
   const monthlyData = useMemo(() => {
     if (!dateRange?.start || !dateRange?.end) return [];
     const result = [];
-    const cursor = new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1);
+    const effectiveStart = (reportCutoffDate && reportCutoffDate > dateRange.start) ? reportCutoffDate : dateRange.start; const cursor = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
     while (cursor <= dateRange.end) {
       const mStart = startOfMonth(cursor);
       const mEnd = endOfMonth(cursor);
@@ -34,7 +36,7 @@ export default function ReportsTab({ financialData, sharedData, dateRange, perio
       cursor.setMonth(cursor.getMonth() + 1);
     }
     return result;
-  }, [sharedData, dateRange]);
+  }, [sharedData, dateRange, reportCutoffDate]);
 
   const expenseChartData = useMemo(() => {
     if (!financialData) return [];
@@ -117,6 +119,12 @@ export default function ReportsTab({ financialData, sharedData, dateRange, perio
       <div className="flex justify-end">
         {canExportCSV(subscriptions) ? (<Button variant="outline" size="sm" onClick={exportCSV}><Download className="w-4 h-4 mr-2" />Export CSV</Button>) : (<Button variant="outline" size="sm" className="opacity-70" onClick={() => alert("CSV export is available on the Pro plan. Upgrade in Settings > Subscription.")}><Download className="w-4 h-4 mr-2" />Export CSV <span className="ml-2 text-xs bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">Pro</span></Button>)}
       </div>
+
+      {reportMonthLimit !== Infinity && (
+        <div className="text-xs text-stone-500 bg-stone-100 border border-stone-200 rounded-md px-3 py-2">
+          Showing last {reportMonthLimit} months. Upgrade to Maker or Pro for more history.
+        </div>
+      )}
 
       {/* Donut Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
