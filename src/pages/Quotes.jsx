@@ -126,7 +126,7 @@ const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = 
 
   const confirmDelete = () => {
     if (quoteToDelete) {
-      deleteMutation.mutate(quoteToDelete.id);
+            deleteMutation.mutate(quoteToDelete);
       setQuoteToDelete(null);
     }
   };
