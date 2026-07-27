@@ -18,7 +18,7 @@ import JobFormDialog from "@/components/jobs/JobFormDialog";
 import ProductionEntryDialog from "@/components/quotes/ProductionEntryDialog";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
-import { Wrench, TrendingUp, DollarSign, Plus, Search, List, LayoutGrid, TableIcon, MoreHorizontal, CheckCircle } from "lucide-react";
+import { Wrench, TrendingUp, DollarSign, Plus, Search, List, LayoutGrid, TableIcon, MoreHorizontal, Trash2, CheckCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ProductionPage() {
@@ -69,7 +69,7 @@ export default function ProductionPage() {
     },
   });
   const deleteJobMutation = useMutation({ mutationFn: (id) => base44.entities.Job.delete(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["jobs"] }); toast({ title: "Job deleted" }); }, onError: (err) => { toast({ title: "Delete failed", description: err?.message || String(err), variant: "destructive" }); } });
-  
+
 
   const getProductName = (productId) => {
     const product = products.find(p => p.id === productId);
