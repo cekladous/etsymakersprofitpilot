@@ -212,6 +212,8 @@ export default function ProductionPage() {
                 Mark Complete
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem onClick={() => { if (window.confirm("Delete job " + (row.job_number || "") + "? This cannot be undone.")) { deleteJobMutation.mutate(row.id); } }} className="text-rose-600"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
+            
           </DropdownMenuContent>
         </DropdownMenu>
       ),
