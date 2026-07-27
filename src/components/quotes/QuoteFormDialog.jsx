@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useSubscription, canCreateQuote } from "@/lib/utils";
+import { useSubscription, canCreateQuote, canUseAI } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -893,6 +893,7 @@ if (!quote && !canCreateQuote(subscriptions, existingQuotesForLimit)) { alert("Y
                 </div>
               </div>
 
+              {canUseAI(subscriptions) ? (
               <AILaborEstimator
                 projectName={formData.project_name}
                 materials={formData.materials}
@@ -925,6 +926,12 @@ if (!quote && !canCreateQuote(subscriptions, existingQuotesForLimit)) { alert("Y
                   });
                 }}
               />
+              ) : (
+              <div className="p-4 bg-stone-100 rounded-lg border border-stone-200">
+                <p className="text-sm text-stone-600 font-medium">AI Estimator</p>
+                <p className="text-xs text-stone-500 mt-1">Available on the Pro plan. Upgrade in Settings &gt; Subscription to auto-estimate labor and machine time.</p>
+              </div>
+              )}
 
               {/* Machines Used */}
               <div>
