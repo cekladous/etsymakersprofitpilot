@@ -38,12 +38,8 @@ export default function QuotesPage() {
     queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }, "-created_date"),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Quote.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quotes"] });
-    },
-  });
+const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = typeof quote === "string" ? quote : quote.id; const orderId = typeof quote === "object" && quote ? quote.converted_to_order_id : null; if (orderId) { try { const linkedJobs = await base44.entities.Job.filter({ owner_user_id: user.id }); const jobsToDelete = linkedJobs.filter((j) => Array.isArray(j.order_ids) && j.order_ids.includes(orderId)); await Promise.all(jobsToDelete.map((j) => base44.entities.Job.delete(j.id))); } catch (jobDeleteErr) { console.error("Failed to delete linked job(s) for quote:", jobDeleteErr); } } await base44.entities.Quote.delete(qid); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["quotes"] }); queryClient.invalidateQueries({ queryKey: ["jobs"] }); }, });
+
 
   const duplicateMutation = useMutation({
     mutationFn: async (quote) => {
