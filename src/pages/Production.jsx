@@ -68,6 +68,8 @@ export default function ProductionPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
+  const deleteJobMutation = useMutation({ mutationFn: (id) => base44.entities.Job.delete(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["jobs"] }); toast({ title: "Job deleted" }); }, onError: (err) => { toast({ title: "Delete failed", description: err?.message || String(err), variant: "destructive" }); } });
+  
 
   const getProductName = (productId) => {
     const product = products.find(p => p.id === productId);
