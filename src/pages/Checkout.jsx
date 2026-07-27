@@ -8,8 +8,8 @@ import { AlertCircle, Loader2, Check, Lock, ExternalLink } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 
 const PLAN_INFO = {
-  maker_plus: { name: 'Maker Plus', monthly: 9, annual: 90 },
-  maker_pro: { name: 'Maker Pro', monthly: 14, annual: 140 }
+  maker_pro: { name: 'Maker Pro', monthly: 9, annual: 90 },
+  maker_plus: { name: 'Maker Plus', monthly: 14, annual: 140 }
 };
 
 // Square-hosted checkout links (create in Square Dashboard > Payment Links).
