@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useSubscription, canCreateQuote } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ const generateQuoteNumber = () => {
 
 export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const { user } = useAuth();
+const { subscriptions } = useSubscription(); const { data: existingQuotesForLimit } = useQuery({ queryKey: ["quotes-limit-check", user && user.id], queryFn: async function() { if (!user || !user.id) return []; return await base44.entities.Quote.filter({ owner_user_id: user.id }); }, enabled: !!(user && user.id) });
   const [currency, setCurrency] = useState("USD");
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -485,6 +487,7 @@ let productionJob; try { productionJob = await base44.entities.Job.create({ owne
 
   const handleSubmit = (e) => {
     e.preventDefault();
+if (!quote && !canCreateQuote(subscriptions, existingQuotesForLimit)) { alert("You have reached the Free plan limit of 5 quotes this month. Please upgrade to Maker or Pro in Settings > Subscription for unlimited quotes."); return; }
     saveMutation.mutate({ ...formData, overhead_per_item: getOverheadPerItem(), total: getSuggestedPrice(), subtotal: getMaterialsTotal() + getLaborTotal() + getMachinesTotal() });
   };
 
