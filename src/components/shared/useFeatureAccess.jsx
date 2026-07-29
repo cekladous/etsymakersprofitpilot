@@ -19,7 +19,11 @@ const PLAN_CONFIG = {
       csv_exports: false,
       locked_months: false,
       max_users: 1,
-      priority_support: false
+      priority_support: false,
+        quotesPerMonth: 5,
+        reportMonths: 3,
+        aiEstimator: false,
+        reportCsvExport: false
     }
   },
   maker_plus: {
@@ -32,7 +36,11 @@ const PLAN_CONFIG = {
       csv_exports: true,
       locked_months: false,
       max_users: 1,
-      priority_support: false
+      priority_support: false,
+        quotesPerMonth: -1,
+        reportMonths: 12,
+        aiEstimator: false,
+        reportCsvExport: false
     }
   },
   maker_pro: {
@@ -45,7 +53,11 @@ const PLAN_CONFIG = {
       csv_exports: true,
       locked_months: true,
       max_users: 2,
-      priority_support: true
+      priority_support: true,
+        quotesPerMonth: -1,
+        reportMonths: -1,
+        aiEstimator: true,
+        reportCsvExport: true
     }
   }
 };
@@ -81,6 +93,34 @@ export function useFeatureAccess() {
     enabled: !!user
   });
 
+  // Authoritative usage count: quotes created this calendar month
+  const { data: quotesThisMonth = 0 } = useQuery({
+    queryKey: ['quotes-this-month', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const quotes = await base44.entities.Quote.filter({ owner_user_id: user.id });
+      return quotes.filter(q => q.created_date && new Date(q.created_date) >= monthStart).length;
+    },
+    enabled: !!user
+  });
+
+  // Authoritative usage count: quotes created this calendar month
+  const { data: quotesThisMonth = 0 } = useQuery({
+    queryKey: ['quotes-this-month', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const quotes = await base44.entities.Quote.filter({ owner_user_id: user.id });
+      return quotes.filter(q => q.created_date && new Date(q.created_date) >= monthStart).length;
+    },
+    enabled: !!user
+  });
+
   const isAdmin = user?.role === 'admin';
   // A paid plan only counts when the subscription is genuinely active (or in a Square trial).
   // A subscription period is valid if no end date is set (legacy/comped) or the end date is in the future.
@@ -111,6 +151,14 @@ export function useFeatureAccess() {
   const canCloseMonth = () => hasFeature('month_close');
   const canLockMonths = () => hasFeature('locked_months');
   const canAddUsers = () => isAdmin || planConfig.features.max_users > 1;
+  const canCreateQuote = () => {
+    if (isAdmin) return true;
+    const limit = planConfig.features.quotesPerMonth;
+    if (limit === -1) return true;
+    return quotesThisMonth < limit;
+  };
+  const canUseAI = () => hasFeature('aiEstimator');
+  const canExportReportCSV = () => hasFeature('reportCsvExport');
   const canViewReconciliation = () => hasFeature('reconciliation');
 
   return {
@@ -126,6 +174,16 @@ export function useFeatureAccess() {
     canViewReconciliation,
     isPaid: hasActivePaidSub,
     isExpired: subscription?.status === 'expired' || (!!subscription?.current_period_end && new Date(subscription.current_period_end) < new Date()),
-    isGracePeriod: subscription?.status === 'payment_failed'
+    isGracePeriod: subscription?.status === 'payment_failed',
+    quotesPerMonth: planConfig.features.quotesPerMonth,
+    reportMonths: planConfig.features.reportMonths,
+    aiEstimator: hasFeature('aiEstimator'),
+    reportCsvExport: hasFeature('reportCsvExport'),
+    canCreateQuote,
+    canUseAI,
+    canExportReportCSV,
+    quotesThisMonth,
+    quotesUsedThisMonth: quotesThisMonth,
+    importsUsedThisMonth: importsThisMonth
   };
 }
