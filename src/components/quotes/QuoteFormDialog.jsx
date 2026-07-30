@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useSubscription, canCreateQuote, canUseAI } from "@/lib/utils";
+import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 import {
   Dialog,
   DialogContent,
@@ -41,7 +41,7 @@ const generateQuoteNumber = () => {
 
 export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const { user } = useAuth();
-const { subscriptions } = useSubscription(); const { data: existingQuotesForLimit } = useQuery({ queryKey: ["quotes-limit-check", user && user.id], queryFn: async function() { if (!user || !user.id) return []; return await base44.entities.Quote.filter({ owner_user_id: user.id }); }, enabled: !!(user && user.id) });
+const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   const [currency, setCurrency] = useState("USD");
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -487,7 +487,7 @@ let productionJob; try { productionJob = await base44.entities.Job.create({ owne
 
   const handleSubmit = (e) => {
     e.preventDefault();
-if (!quote && !canCreateQuote(subscriptions, existingQuotesForLimit)) { alert("You have reached the Free plan limit of 5 quotes this month. Please upgrade to Maker or Pro in Settings > Subscription for unlimited quotes."); return; }
+if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { alert("You have reached the Free plan limit of 5 quotes this month. Please upgrade to Maker or Pro in Settings > Subscription for unlimited quotes."); return; }
     saveMutation.mutate({ ...formData, overhead_per_item: getOverheadPerItem(), total: getSuggestedPrice(), subtotal: getMaterialsTotal() + getLaborTotal() + getMachinesTotal() });
   };
 
@@ -893,7 +893,7 @@ if (!quote && !canCreateQuote(subscriptions, existingQuotesForLimit)) { alert("Y
                 </div>
               </div>
 
-              {canUseAI(subscriptions) ? (
+              {aiEstimator ? (
               <AILaborEstimator
                 projectName={formData.project_name}
                 materials={formData.materials}
