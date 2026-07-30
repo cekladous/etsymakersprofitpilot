@@ -107,20 +107,6 @@ export function useFeatureAccess() {
     enabled: !!user
   });
 
-  // Authoritative usage count: quotes created this calendar month
-  const { data: quotesThisMonth = 0 } = useQuery({
-    queryKey: ['quotes-this-month', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 0;
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-      const quotes = await base44.entities.Quote.filter({ owner_user_id: user.id });
-      return quotes.filter(q => q.created_date && new Date(q.created_date) >= monthStart).length;
-    },
-    enabled: !!user
-  });
-
   const isAdmin = user?.role === 'admin';
   // A paid plan only counts when the subscription is genuinely active (or in a Square trial).
   // A subscription period is valid if no end date is set (legacy/comped) or the end date is in the future.
