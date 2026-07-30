@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { useFeatureAccess } from '@/components/shared/useFeatureAccess';
 
 const PLAN_CONFIG = {
   free: { name: 'Free', price: 0, monthly_imports: 1, reconciliation: false, month_close: false, csv_exports: false, locked_months: false, max_users: 1 },
@@ -26,6 +27,7 @@ export default function SubscriptionStatus({ subscription }) {
   const planConfig = PLAN_CONFIG[subscription.plan_id];
   const isExpired = subscription.status === 'expired';
   const isGracePeriod = subscription.status === 'payment_failed';
+  const { quotesUsedThisMonth, quotesPerMonth, importsThisMonth } = useFeatureAccess();
 
   return (
     <div className="space-y-4">
@@ -82,6 +84,23 @@ export default function SubscriptionStatus({ subscription }) {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Usage This Month */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Usage This Month</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-stone-600">Quotes used this month</span>
+            <span className="font-medium text-stone-800">{quotesPerMonth === -1 ? `${quotesUsedThisMonth} / Unlimited` : `${quotesUsedThisMonth} / ${quotesPerMonth}`}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-stone-600">Imports used this month</span>
+            <span className="font-medium text-stone-800">{planConfig?.monthly_imports === -1 ? `${importsThisMonth} / Unlimited` : `${importsThisMonth} / ${planConfig?.monthly_imports}`}</span>
+          </div>
         </CardContent>
       </Card>
 
