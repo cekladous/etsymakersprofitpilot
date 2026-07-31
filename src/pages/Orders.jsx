@@ -433,30 +433,30 @@ export default function Orders() {
 
   const marketingTotal = statementPeriodLines
     .filter(l => l.section === 'ads')
-    .reduce((sum, l) => sum + Math.abs(l.amount || 0), 0);
+    .reduce((sum, l) => sum + -(l.amount || 0), 0);
 
   const shippingFeesTotal = statementPeriodLines
     .filter(l => l.section === 'shipping')
-    .reduce((sum, l) => sum + Math.abs(l.amount || 0), 0);
+    .reduce((sum, l) => sum + -(l.amount || 0), 0);
 
   const totalFees = etsyFees + marketingTotal + shippingFeesTotal;
   // Fee breakdown: use OrderFee (per-order split) for listing/transaction/processing/share_save/other,
   // and statement lines for shop-level items (etsy_ads, offsite_ads, shipping, postage).
   const feeBreakdown = {
     listing: relevantOrderFees.reduce((s, f) => s + (f.listing_fees || 0), 0)
-      || statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === 'listing').reduce((s, l) => s + Math.abs(l.amount || 0), 0),
+      || statementPeriodLines.filter(l => l.section === 'fees' && l.fee_type === 'listing').reduce((s, l) => s + -(l.amount || 0), 0),
     transaction: relevantOrderFees.reduce((s, f) => s + (f.transaction_fees || 0), 0),
     processing: relevantOrderFees.reduce((s, f) => s + (f.processing_fees || 0), 0),
-    etsy_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "etsy_ads").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    offsite_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "offsite_ads").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    shipping: statementPeriodLines.filter(l => l.section === 'shipping' && l.fee_type === "shipping_label").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
-    other_postage: statementPeriodLines.filter(l => l.section === 'shipping' && l.fee_type === "other_postage").reduce((s, l) => s + Math.abs(l.amount || 0), 0),
+    etsy_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "etsy_ads").reduce((s, l) => s + -(l.amount || 0), 0),
+    offsite_ads: statementPeriodLines.filter(l => l.section === 'ads' && l.fee_type === "offsite_ads").reduce((s, l) => s + -(l.amount || 0), 0),
+    shipping: statementPeriodLines.filter(l => l.section === 'shipping' && l.fee_type === "shipping_label").reduce((s, l) => s + -(l.amount || 0), 0),
+    other_postage: statementPeriodLines.filter(l => l.section === 'shipping' && l.fee_type === "other_postage").reduce((s, l) => s + -(l.amount || 0), 0),
     share_save: relevantOrderFees.reduce((s, f) => s + (f.share_save_credit || 0), 0),
     etsy_plus_subscription: statementPeriodLines
       .filter(l => l.section === 'ads' && l.fee_type === 'etsy_plus_subscription')
-      .reduce((s, l) => s + Math.abs(l.amount || 0), 0),
+      .reduce((s, l) => s + -(l.amount || 0), 0),
     other: relevantOrderFees.reduce((s, f) => s + (f.other_fees || 0), 0)
-      + statementPeriodLines.filter(l => l.section === 'ads' && !["etsy_ads","offsite_ads","etsy_plus_subscription"].includes(l.fee_type)).reduce((s, l) => s + Math.abs(l.amount || 0), 0),
+      + statementPeriodLines.filter(l => l.section === 'ads' && !["etsy_ads","offsite_ads","etsy_plus_subscription"].includes(l.fee_type)).reduce((s, l) => s + -(l.amount || 0), 0),
   };
 
   // Total Net Earnings (internal profit): item revenue + shipping - discounts - refunds - Etsy Fees - Marketing
