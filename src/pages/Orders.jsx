@@ -1256,19 +1256,13 @@ export default function Orders() {
               <div className="p-2 bg-sky-100 rounded-lg flex-shrink-0">
                 <Info className="w-4 h-4 text-sky-600" />
               </div>
-              <div className="space-y-1.5 flex-1">
-                <p className="text-xs text-sky-900 leading-relaxed">
-                  <span className="font-semibold">Etsy-only KPIs:</span> Revenue, Order Count, Fees, and Net Earnings exclude in-person Square sales (which Etsy's Activity Summary never includes). Square orders remain visible in the table below.
-                </p>
-                {squareOrderCount > 0 && (
-                  <p className="text-xs text-indigo-700 leading-relaxed">
-                    <span className="font-semibold">Total Business Revenue (all channels):</span> {formatCurrency(totalBusinessRevenue)} across {filteredOrders.length} orders ({squareOrderCount} in-person/Square).
-                  </p>
-                )}
-                <p className="text-xs text-sky-700 leading-relaxed">
-                  Revenue excludes sales tax. Etsy Fees and Marketing are shown separately to match Etsy's statement categories. For Etsy statement reconciliation, see the Reconciliation tab.
-                </p>
-              </div>
+            <div className="flex-1">
+              <p className="text-xs text-sky-800 leading-relaxed">
+                {squareOrderCount > 0
+                  ? <>Etsy-only totals (excludes {squareOrderCount} in-person/Square sale{squareOrderCount !== 1 ? 's' : ''} and sales tax). All-channel revenue: {formatCurrency(totalBusinessRevenue)}.</>
+                  : <>Etsy-only totals (sales tax excluded).</>}
+              </p>
+            </div>
             </div>
           </div>
 
