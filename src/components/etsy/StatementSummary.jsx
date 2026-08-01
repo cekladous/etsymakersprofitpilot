@@ -210,7 +210,10 @@ export default function StatementSummary({ user }) {
                 </div>
                 <div className="divide-y divide-stone-100">
                   <SummaryRow label="Gross Sales" value={summary.grossSales} sublabel={`${summary.salesCount} transactions`} positive />
-                  <SummaryRow label="Sales Tax (remitted by Etsy)" value={-(summary.salesTax + summary.coRetailDeliveryFee)} sublabel="Excluded from net sales" />
+                  <SummaryRow label="Sales Tax (remitted by Etsy)" value={-summary.salesTax} sublabel="Excluded from net sales" />
+                  {summary.coRetailDeliveryFee > 0 && (
+                    <SummaryRow label="CO Retail Delivery Fee" value={-summary.coRetailDeliveryFee} sublabel="Excluded from net sales" />
+                  )}
                   <SummaryRow label="Net Sales" value={summary.netSales} sublabel="Excludes sales tax" bold positive />
                   <SummaryRow label="Fees" value={-summary.feesTotal} sublabel={`${summary.feeCount} fee lines`} />
                   <SummaryRow label="Marketing" value={-summary.marketingTotal} sublabel={`${summary.marketingCount} marketing lines`} />
@@ -226,6 +229,15 @@ export default function StatementSummary({ user }) {
                 <div className="divide-y divide-stone-100">
                   <SummaryRow label="Total Deposits" value={summary.depositsTotal} sublabel={`${deposits.length} deposits`} positive />
                   <SummaryRow label="Difference (Imported Net - Deposits)" value={summary.difference} sublabel={Math.abs(summary.difference) < 0.01 ? "Reconciled" : Math.abs(summary.difference) < 50 ? "Normal payout timing" : "Needs review"} bold highlight={Math.abs(summary.difference) < 0.01} />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 overflow-hidden">
+                <div className="bg-stone-50 px-4 py-2 border-b border-stone-200">
+                  <p className="text-sm font-semibold text-stone-700">Tax (Remitted by Etsy)</p>
+                </div>
+                <div className="divide-y divide-stone-100">
+                  <SummaryRow label="Sales Tax Collected" value={summary.taxTotal} sublabel="Not seller revenue — remitted by Etsy" />
                 </div>
               </div>
 
