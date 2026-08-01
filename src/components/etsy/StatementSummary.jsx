@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
 
 export default function StatementSummary({ user }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
@@ -55,15 +56,16 @@ export default function StatementSummary({ user }) {
 
   const summary = useMemo(() => {
     const lines = statementLines;
+    const etsyOnlyOrders = orders.filter(o => !isSquareInPersonOrder(o)); // Exclude Square/in-person sales (not on Etsy statement)
 
     // Gross sales from EtsyOrder records (order_total includes item + shipping + tax + fees - discounts - refunds)
-    const grossSales = orders.reduce((s, o) => s + (o.order_total || 0) - (o.refund_amount || 0), 0);
-    const salesCount = orders.length;
+    const grossSales = etsyOnlyOrders.reduce((s, o) => s + (o.order_total || 0) - (o.refund_amount || 0), 0);
+    const salesCount = etsyOnlyOrders.length;
 
     // Net sales: exclude sales tax and CO retail delivery fee (government-mandated, not seller revenue)
-    const salesTax = orders.reduce((s, o) => s + (o.sales_tax || 0), 0);
+    const salesTax = etsyOnlyOrders.reduce((s, o) => s + (o.sales_tax || 0), 0);
     // CO retail delivery fee = portion of order_total that is neither item, shipping, tax, nor discount
-    const coRetailDeliveryFee = orders.reduce((s, o) => {
+    const coRetailDeliveryFee = etsyOnlyOrders.reduce((s, o) => {
       const expected = (o.order_value || 0) + (o.shipping_charged || 0) + (o.sales_tax || 0) - (o.discount_amount || 0);
       return s + Math.max(0, (o.order_total || 0) - expected);
     }, 0);
@@ -103,11 +105,12 @@ export default function StatementSummary({ user }) {
   }, [statementLines, deposits, orders]);
 
   const internalProfit = useMemo(() => {
-    const revenue = orders.reduce((s, o) => s + (o.order_value || 0), 0);
-    const shipping = orders.reduce((s, o) => s + (o.shipping_charged || 0), 0);
-    const discounts = orders.reduce((s, o) => s + (o.discount_amount || 0), 0);
-    const refunds = orders.reduce((s, o) => s + (o.refund_amount || 0), 0);
-    const salesTax = orders.reduce((s, o) => s + (o.sales_tax || 0), 0);
+    const etsyOnlyOrders = orders.filter(o => !isSquareInPersonOrder(o)); // Exclude Square/in-person sales (not on Etsy statement)
+    const revenue = etsyOnlyOrders.reduce((s, o) => s + (o.order_value || 0), 0);
+    const shipping = etsyOnlyOrders.reduce((s, o) => s + (o.shipping_charged || 0), 0);
+    const discounts = etsyOnlyOrders.reduce((s, o) => s + (o.discount_amount || 0), 0);
+    const refunds = etsyOnlyOrders.reduce((s, o) => s + (o.refund_amount || 0), 0);
+    const salesTax = etsyOnlyOrders.reduce((s, o) => s + (o.sales_tax || 0), 0);
 
     const feeLines = statementLines.filter(l => l.section === 'fees');
     const etsyFees = Math.abs(feeLines.reduce((s, l) => s + (l.amount || 0), 0));
@@ -207,11 +210,8 @@ export default function StatementSummary({ user }) {
                 </div>
                 <div className="divide-y divide-stone-100">
                   <SummaryRow label="Gross Sales" value={summary.grossSales} sublabel={`${summary.salesCount} transactions`} positive />
-                  <SummaryRow label="Sales Tax (remitted by Etsy)" value={-summary.salesTax} sublabel="Excluded from net sales" />
-                  {summary.coRetailDeliveryFee > 0 && (
-                    <SummaryRow label="CO Retail Delivery Fee" value={-summary.coRetailDeliveryFee} sublabel="Excluded from net sales" />
-                  )}
-                  <SummaryRow label="Net Sales" value={summary.netSales} sublabel="Excludes tax & CO fee" bold positive />
+                  <SummaryRow label="Sales Tax (remitted by Etsy)" value={-(summary.salesTax + summary.coRetailDeliveryFee)} sublabel="Excluded from net sales" />
+                  <SummaryRow label="Net Sales" value={summary.netSales} sublabel="Excludes sales tax" bold positive />
                   <SummaryRow label="Fees" value={-summary.feesTotal} sublabel={`${summary.feeCount} fee lines`} />
                   <SummaryRow label="Marketing" value={-summary.marketingTotal} sublabel={`${summary.marketingCount} marketing lines`} />
                   <SummaryRow label="Shipping" value={-summary.shippingTotal} sublabel={`${summary.shippingCount} shipping lines`} />
@@ -226,15 +226,6 @@ export default function StatementSummary({ user }) {
                 <div className="divide-y divide-stone-100">
                   <SummaryRow label="Total Deposits" value={summary.depositsTotal} sublabel={`${deposits.length} deposits`} positive />
                   <SummaryRow label="Difference (Imported Net - Deposits)" value={summary.difference} sublabel={Math.abs(summary.difference) < 0.01 ? "Reconciled" : Math.abs(summary.difference) < 50 ? "Normal payout timing" : "Needs review"} bold highlight={Math.abs(summary.difference) < 0.01} />
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-stone-200 overflow-hidden">
-                <div className="bg-stone-50 px-4 py-2 border-b border-stone-200">
-                  <p className="text-sm font-semibold text-stone-700">Tax (Remitted by Etsy)</p>
-                </div>
-                <div className="divide-y divide-stone-100">
-                  <SummaryRow label="Sales Tax Collected" value={summary.taxTotal} sublabel="Not seller revenue — remitted by Etsy" />
                 </div>
               </div>
 
