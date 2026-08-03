@@ -128,16 +128,19 @@ const classifyStatementLine = (row) => {
   }
   
   if (titleL.includes('etsy ads') || titleL.includes('etsy ad')) {
-    return { category: 'fee', section: 'ads', fee_type: 'etsy_ads', order_id: orderId };
+    const isCredit = titleL.includes('credit');
+    return { category: 'fee', section: isCredit ? 'fees' : 'ads', fee_type: 'etsy_ads', order_id: orderId };
   }
   
   if (titleL.includes('offsite ads') || titleL.includes('offsite ad')) {
-    return { category: 'fee', section: 'ads', fee_type: 'offsite_ads', order_id: orderId };
+    const isCredit = titleL.includes('credit');
+    return { category: 'fee', section: isCredit ? 'fees' : 'ads', fee_type: 'offsite_ads', order_id: orderId };
   }
 
   // Etsy Plus / subscription fees appear under "Marketing" on Etsy's statement
   if (titleL.includes('etsy plus') || titleL.includes('subscription')) {
-    return { category: 'fee', section: 'ads', fee_type: 'etsy_plus_subscription', order_id: orderId };
+    const isCredit = titleL.includes('credit');
+    return { category: 'fee', section: isCredit ? 'fees' : 'ads', fee_type: 'etsy_plus_subscription', order_id: orderId };
   }
   
   if (titleL.includes('shipping label')) {
@@ -151,6 +154,10 @@ const classifyStatementLine = (row) => {
   if (titleL.includes('regulatory operating fee')) {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
+  if (typeL.includes('miscellaneous credit')) {
+    return { category: 'fee', section: 'fees', fee_type: 'misc_credit', order_id: orderId };
+  }
+
   
   if (typeL.includes('sale') && amount > 0) {
     return { category: 'sale', section: 'orders', fee_type: null, order_id: orderId };
