@@ -318,7 +318,7 @@ export default function Orders() {
       
       let matchesDate = true;
       if (dateRange && order.sale_date) {
-        const orderDate = new Date(order.sale_date);
+        const orderDate = new Date(order.sale_date+'T00:00:00');
         matchesDate = orderDate >= dateRange.start && orderDate <= dateRange.end;
       }
       
@@ -398,7 +398,7 @@ export default function Orders() {
   const periodFees = useMemo(() => {
     if (!dateRange) return activeFees;
     return activeFees.filter(f => {
-      const date = new Date(f.transaction_date);
+      const date = new Date(f.transaction_date+'T00:00:00');
       return date >= dateRange.start && date <= dateRange.end;
     });
   }, [activeFees, dateRange]);
@@ -411,7 +411,7 @@ export default function Orders() {
     if (dateRange) {
       lines = lines.filter(l => {
         if (!l.transaction_date) return false;
-        const d = new Date(l.transaction_date);
+        const d = new Date(l.transaction_date+'T00:00:00');
         return d >= dateRange.start && d <= dateRange.end;
       });
     }
@@ -490,7 +490,7 @@ export default function Orders() {
 
     if (timeRange !== "all" && dateRange) {
       filtered = filtered.filter(f => {
-        const date = new Date(f.transaction_date);
+        const date = new Date(f.transaction_date+'T00:00:00');
         return date >= dateRange.start && date <= dateRange.end;
       });
     }
@@ -511,7 +511,7 @@ export default function Orders() {
 
     if (timeRange !== "all" && dateRange) {
       deposits = deposits.filter(d => {
-        const date = new Date(d.date);
+        const date = new Date(d.date+'T00:00:00');
         return date >= dateRange.start && date <= dateRange.end;
       });
     }
