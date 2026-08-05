@@ -81,7 +81,7 @@ export default function ProfitCalculatorWidget() {
             <span className="font-semibold text-emerald-900">Your Profit</span>
             <div className="text-right">
               <p className={`text-2xl font-bold ${result.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                {formatCurrency(result.profit)}
+                {formatCurrency(result.profit,true)}
               </p>
               <p className="text-xs text-emerald-700">
                 {formatPercent(result.profit_margin)} margin
