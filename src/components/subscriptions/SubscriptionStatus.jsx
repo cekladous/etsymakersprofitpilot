@@ -22,12 +22,13 @@ const formatRenewalDate = (dateString) => {
 };
 
 export default function SubscriptionStatus({ subscription }) {
+  const { quotesUsedThisMonth, quotesPerMonth, importsThisMonth } = useFeatureAccess();
+
   if (!subscription) return null;
 
   const planConfig = PLAN_CONFIG[subscription.plan_id];
   const isExpired = subscription.status === 'expired';
   const isGracePeriod = subscription.status === 'payment_failed';
-  const { quotesUsedThisMonth, quotesPerMonth, importsThisMonth } = useFeatureAccess();
 
   return (
     <div className="space-y-4">

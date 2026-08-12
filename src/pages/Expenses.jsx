@@ -1029,8 +1029,9 @@ export default function Expenses() {
       {/* Helper Text */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-900">
-          <strong>💳 Business Expenses Only:</strong> Import your credit card/bank statement for non-Etsy business expenses. 
-          For Etsy fees, ads, and shipping labels, use the <strong>Etsy Activity</strong> page.
+          <strong>💡 All Expenses in One Place:</strong> This page shows your non-Etsy business expenses (imported from bank/credit card statements) 
+          <em> and</em> your Etsy fees, ads, and shipping labels (auto-imported from your Etsy Monthly Statement). 
+          Use the filters above to narrow down by category or period.
         </p>
       </div>
 

@@ -155,11 +155,11 @@ const classifyStatementLine = (row) => {
     return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
   if (typeL.includes('miscellaneous credit')) {
-    return { category: 'fee', section: 'fees', fee_type: 'misc_credit', order_id: orderId };
+    return { category: 'fee', section: 'fees', fee_type: 'other_fee', order_id: orderId };
   }
 
-  
-  if (typeL.includes('sale') && amount > 0) {
+  // "Payment" type with positive amount = card payment received from a buyer (revenue)
+  if ((typeL.includes('payment') || typeL.includes('sale')) && amount > 0) {
     return { category: 'sale', section: 'orders', fee_type: null, order_id: orderId };
   }
   
