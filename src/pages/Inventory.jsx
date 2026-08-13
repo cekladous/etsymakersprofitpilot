@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, PackageCheck } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, PackageCheck, ChevronDown } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -34,6 +34,7 @@ export default function Inventory() {
   const [sortOrder, setSortOrder] = useState("none"); // none | az | za
   const [showImport, setShowImport] = useState(false);
   const [allocatingPurchase, setAllocatingPurchase] = useState(null);
+  const [expandedSupplier, setExpandedSupplier] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -276,6 +277,33 @@ export default function Inventory() {
     .filter((p) => allocatedPurchaseIds.has(p.id))
     .reduce((sum, p) => sum + (p.amount || 0), 0);
   const unallocatedTotal = purchaseHistoryTotal - allocatedTotal;
+
+  // Group purchase history by supplier (totals per supplier, not per material)
+  const supplierTotals = (() => {
+    const map = new Map();
+    for (const p of combinedPurchaseHistory) {
+      const key = p.vendor || "Unknown vendor";
+      const entry = map.get(key) || {
+        vendor: key,
+        total: 0,
+        allocated: 0,
+        unallocated: 0,
+        count: 0,
+        lastDate: null,
+        purchases: [],
+      };
+      entry.total += p.amount || 0;
+      entry.count += 1;
+      if (allocatedPurchaseIds.has(p.id)) entry.allocated += p.amount || 0;
+      else entry.unallocated += p.amount || 0;
+      if (!entry.lastDate || new Date(p.date || "") > new Date(entry.lastDate)) {
+        entry.lastDate = p.date;
+      }
+      entry.purchases.push(p);
+      map.set(key, entry);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  })();
 
   const inventoryColumns = [
     {
@@ -759,71 +787,94 @@ export default function Inventory() {
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Receipts logged via the Maker Assistant or "Log Purchase" are tagged <span className="font-medium text-stone-600">Purchase</span>;
-                  expenses categorized as materials are tagged <span className="font-medium text-stone-600">Expense</span>.
-                  Use <span className="font-medium text-stone-600">Allocate</span> to link an item to inventory stock.
+                  Grouped by supplier showing total spent. Click a supplier to expand and see the individual purchases, then use <span className="font-medium text-stone-600">Allocate</span> to link an item to inventory stock.
                 </p>
-                <div className="space-y-3">
-                  {combinedPurchaseHistory.slice(0, 50).map((purchase) => (
-                    <div
-                      key={`${purchase.source}-${purchase.id}`}
-                      className="flex items-center justify-between p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-stone-900">{purchase.material_name}</p>
-                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purchase.source === "purchase" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600"}`}>
-                            {purchase.source === "purchase" ? "Purchase" : "Expense"}
-                          </span>
-                          {allocatedPurchaseIds.has(purchase.id) ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
-                              <PackageCheck className="w-3 h-3" />
-                              Allocated
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
-                              Unallocated
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-stone-500">
-                          {purchase.date} • {purchase.vendor}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-semibold text-stone-900">
-                            {formatCurrency(purchase.amount)}
-                          </p>
-                          {purchase.quantity != null && (
-                            <p className="text-sm text-stone-500">
-                              Qty: {purchase.quantity}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          variant={allocatedPurchaseIds.has(purchase.id) ? "ghost" : "outline"}
-                          size="sm"
-                          onClick={() => setAllocatingPurchase(purchase)}
-                          className={allocatedPurchaseIds.has(purchase.id) ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
+                <div className="space-y-2">
+                  {supplierTotals.map((s) => {
+                    const isOpen = expandedSupplier === s.vendor;
+                    return (
+                      <div key={s.vendor} className="border border-stone-200 rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSupplier(isOpen ? null : s.vendor)}
+                          className="w-full flex items-center justify-between p-4 bg-stone-50 hover:bg-stone-100 transition-colors text-left"
                         >
-                          {allocatedPurchaseIds.has(purchase.id) ? "Re-allocate" : "Allocate"}
-                        </Button>
-                        {purchase.source === "purchase" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingPurchase(materialPurchases.find(p => p.id === purchase.id));
-                              setPurchaseFormOpen(true);
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+                            <div className="min-w-0">
+                              <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
+                              <p className="text-sm text-stone-500">
+                                {s.count} purchase{s.count !== 1 ? "s" : ""}
+                                {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
+                              <p className="text-xs text-stone-500">
+                                <span className="text-emerald-600">{formatCurrency(s.allocated)}</span> / <span className="text-amber-600">{formatCurrency(s.unallocated)}</span>
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                        {isOpen && (
+                          <div className="divide-y divide-stone-100">
+                            {s.purchases.map((purchase) => (
+                              <div
+                                key={`${purchase.source}-${purchase.id}`}
+                                className="flex items-center justify-between p-4 bg-white hover:bg-stone-50 transition-colors"
+                              >
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium text-stone-900">{purchase.material_name}</p>
+                                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purchase.source === "purchase" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600"}`}>
+                                      {purchase.source === "purchase" ? "Purchase" : "Expense"}
+                                    </span>
+                                    {allocatedPurchaseIds.has(purchase.id) ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
+                                        <PackageCheck className="w-3 h-3" />
+                                        Allocated
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+                                        Unallocated
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-stone-500">
+                                    {purchase.date} • {formatCurrency(purchase.amount)}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant={allocatedPurchaseIds.has(purchase.id) ? "ghost" : "outline"}
+                                    size="sm"
+                                    onClick={() => setAllocatingPurchase(purchase)}
+                                    className={allocatedPurchaseIds.has(purchase.id) ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
+                                  >
+                                    {allocatedPurchaseIds.has(purchase.id) ? "Re-allocate" : "Allocate"}
+                                  </Button>
+                                  {purchase.source === "purchase" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingPurchase(materialPurchases.find(p => p.id === purchase.id));
+                                        setPurchaseFormOpen(true);
+                                      }}
+                                    >
+                                      Edit
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 </>
               )}
