@@ -199,8 +199,12 @@ export default function Inventory() {
     .filter((e) => e.inventory_flag)
     .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-  const combinedPurchaseHistory = [
-    ...materialPurchases.map((p) => ({
+  // Purchase History shows only true MaterialPurchase logs (inventory restocks).
+  // BusinessExpense records categorized as "materials_supplies" are NOT mixed in —
+  // they belong on the Expenses page. If a material expense was allocated to inventory,
+  // a MaterialPurchase record exists for it and will show here on its own.
+  const combinedPurchaseHistory = materialPurchases
+    .map((p) => ({
       id: p.id,
       source: "purchase",
       date: p.purchase_date,
@@ -209,18 +213,8 @@ export default function Inventory() {
       amount: p.total_cost,
       quantity: p.quantity,
       goes_to_inventory: true,
-    })),
-    ...materialExpenses.map((e) => ({
-      id: e.id,
-      source: "expense",
-      date: e.date,
-      material_name: e.description,
-      vendor: e.vendor || "Unknown vendor",
-      amount: e.amount,
-      quantity: null,
-      goes_to_inventory: e.inventory_flag || false,
-    })),
-  ].sort((a, b) => new Date(b.date || "") - new Date(a.date || ""));
+    }))
+    .sort((a, b) => new Date(b.date || "") - new Date(a.date || ""));
 
   const inventoryColumns = [
     {
