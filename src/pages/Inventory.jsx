@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, Sparkles } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -14,7 +14,6 @@ import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
 import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
 import BulkInventoryImportTool from "@/components/inventory/BulkInventoryImportTool";
-import InventoryAssistantChat from "@/components/inventory/InventoryAssistantChat";
 
 export default function Inventory() {
   const { user, loading } = useAuth();
@@ -59,6 +58,19 @@ export default function Inventory() {
     mutationFn: (id) => base44.entities.MaterialType.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
+    },
+  });
+
+  const deleteInventoryMutation = useMutation({
+    mutationFn: async (row) => {
+      if (row.inventoryItemId) {
+        await base44.entities.InventoryItem.delete(row.inventoryItemId);
+      }
+      await base44.entities.MaterialType.delete(row.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
     },
   });
 
@@ -246,6 +258,18 @@ export default function Inventory() {
           >
             Adjust
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (window.confirm(`Delete "${row.material_name}" and its inventory record? This cannot be undone.`)) {
+                deleteInventoryMutation.mutate(row);
+              }
+            }}
+            className="text-rose-600"
+          >
+            Delete
+          </Button>
         </div>
       ),
     },
@@ -431,10 +455,6 @@ export default function Inventory() {
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="types">Material Types</TabsTrigger>
           <TabsTrigger value="history">Purchase History</TabsTrigger>
-          <TabsTrigger value="assistant" className="gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
-            AI Assistant
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="inventory" className="mt-6 space-y-6">
@@ -559,10 +579,6 @@ export default function Inventory() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="assistant" className="mt-6">
-          <InventoryAssistantChat />
         </TabsContent>
       </Tabs>
 

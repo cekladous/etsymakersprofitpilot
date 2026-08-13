@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import Footer from "@/components/Footer";
+import MakerAssistantWidget from "@/components/MakerAssistantWidget";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -127,6 +128,7 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       <Footer />
+      <MakerAssistantWidget />
       </div>
       </AuthProvider>
       );
