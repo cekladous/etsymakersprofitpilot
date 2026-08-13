@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, PackageCheck } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -14,6 +14,7 @@ import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
 import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
 import BulkInventoryImportTool from "@/components/inventory/BulkInventoryImportTool";
+import AllocatePurchaseDialog from "@/components/inventory/AllocatePurchaseDialog";
 
 export default function Inventory() {
   const { user, loading } = useAuth();
@@ -27,6 +28,7 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
   const [showImport, setShowImport] = useState(false);
+  const [allocatingPurchase, setAllocatingPurchase] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -53,6 +55,17 @@ export default function Inventory() {
     enabled: !!user,
     queryFn: () => base44.entities.BusinessExpense.filter({ owner_user_id: user.id, category_name: "materials_supplies" }, "-date", 200),
   });
+
+  const { data: inventoryTransactions = [] } = useQuery({
+    queryKey: ["inventory-transactions", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.InventoryTransaction.filter({ owner_user_id: user.id, transaction_type: "purchase" }, "-transaction_date", 500),
+  });
+
+  // Set of source purchase IDs that have already been allocated to inventory
+  const allocatedPurchaseIds = new Set(
+    inventoryTransactions.map((t) => t.reference_id).filter(Boolean)
+  );
 
   const deleteTypeMutation = useMutation({
     mutationFn: (id) => base44.entities.MaterialType.delete(id),
@@ -539,9 +552,14 @@ export default function Inventory() {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-stone-900">{purchase.material_name}</p>
-                          {purchase.goes_to_inventory && (
-                            <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                              Inventory
+                          {allocatedPurchaseIds.has(purchase.id) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
+                              <PackageCheck className="w-3 h-3" />
+                              Allocated
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+                              Unallocated
                             </span>
                           )}
                         </div>
@@ -560,6 +578,14 @@ export default function Inventory() {
                             </p>
                           )}
                         </div>
+                        <Button
+                          variant={allocatedPurchaseIds.has(purchase.id) ? "ghost" : "outline"}
+                          size="sm"
+                          onClick={() => setAllocatingPurchase(purchase)}
+                          className={allocatedPurchaseIds.has(purchase.id) ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
+                        >
+                          {allocatedPurchaseIds.has(purchase.id) ? "Re-allocate" : "Allocate"}
+                        </Button>
                         {purchase.source === "purchase" && (
                           <Button
                             variant="ghost"
@@ -605,6 +631,12 @@ export default function Inventory() {
         open={adjustmentDialogOpen}
         onOpenChange={setAdjustmentDialogOpen}
         item={selectedItem}
+      />
+
+      <AllocatePurchaseDialog
+        open={!!allocatingPurchase}
+        onOpenChange={(open) => { if (!open) setAllocatingPurchase(null); }}
+        purchase={allocatingPurchase}
       />
     </div>
   );
