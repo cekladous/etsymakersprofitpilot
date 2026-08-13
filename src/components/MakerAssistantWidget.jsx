@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, X, Send, Loader2, CheckCircle, AlertCircle, ChevronDown, MessageSquare } from "lucide-react";
+import { Sparkles, X, Send, Loader2, CheckCircle, AlertCircle, ChevronDown, MessageSquare, Minus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const AGENT_NAME = "maker_assistant";
@@ -81,6 +81,7 @@ export default function MakerAssistantWidget() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -182,15 +183,18 @@ export default function MakerAssistantWidget() {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-sm">Maker Assistant</h3>
-              <p className="text-xs text-emerald-100 truncate">Help with materials, sales, quotes, expenses & more</p>
+              {!minimized && <p className="text-xs text-emerald-100 truncate">Help with materials, sales, quotes, expenses & more</p>}
             </div>
-            <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+            <button onClick={() => setMinimized((m) => !m)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors" title={minimized ? "Expand" : "Minimize"}>
+              <Minus className="w-4 h-4" />
+            </button>
+            <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors" title="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50/50">
+          <div className={`flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50/50 ${minimized ? "hidden" : ""}`}>
             {messages.length === 0 && (
               <div className="text-center py-6">
                 <div className="p-3 bg-emerald-100 rounded-full w-fit mx-auto mb-3">
@@ -248,7 +252,7 @@ export default function MakerAssistantWidget() {
           </div>
 
           {/* Input */}
-          <div className="border-t border-stone-200 p-3">
+          <div className={`border-t border-stone-200 p-3 ${minimized ? "hidden" : ""}`}>
             <div className="flex gap-2 items-end">
               <Textarea
                 value={input}
