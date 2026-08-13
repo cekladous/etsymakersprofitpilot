@@ -19,7 +19,6 @@ Deno.serve(async (req) => {
       return Response.json({
         message: 'No CustomSale records found for your account. If you expect sales here, they may need to be re-created from the original source (e.g., re-sync from Square or re-mark invoices as Paid).',
         found: 0,
-        totalInDb: allSales.length,
         fixed: 0
       });
     }
