@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -66,6 +66,26 @@ export default function Inventory() {
   const allocatedPurchaseIds = new Set(
     inventoryTransactions.map((t) => t.reference_id).filter(Boolean)
   );
+
+  // Live-update when the assistant (or any source) changes inventory data
+  useEffect(() => {
+    if (!user?.id) return;
+    const unsubs = [
+      base44.entities.MaterialType.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ["materialTypes", user.id] });
+      }),
+      base44.entities.InventoryItem.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ["inventory-items", user.id] });
+      }),
+      base44.entities.MaterialPurchase.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ["material-purchases", user.id] });
+      }),
+      base44.entities.InventoryTransaction.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ["inventory-transactions", user.id] });
+      }),
+    ];
+    return () => unsubs.forEach((u) => u && u());
+  }, [user?.id]);
 
   const deleteTypeMutation = useMutation({
     mutationFn: (id) => base44.entities.MaterialType.delete(id),
