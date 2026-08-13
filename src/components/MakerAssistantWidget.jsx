@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, X, Send, Loader2, CheckCircle, AlertCircle, ChevronDown, MessageSquare, Minus } from "lucide-react";
+import { Sparkles, X, Send, Loader2, CheckCircle, AlertCircle, ChevronDown, MessageSquare, Minus, Paperclip, ImageIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const AGENT_NAME = "maker_assistant";
@@ -86,7 +86,33 @@ export default function MakerAssistantWidget() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !conversationId || sending || uploading) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const conv = await base44.agents.getConversation(conversationId);
+      await base44.agents.addMessage(conv, {
+        role: "user",
+        content: "Please log the items on this receipt photo — extract vendor, purchase date, and each line item, then update inventory stock.",
+        file_urls: [file_url],
+      });
+      setTimeout(() => {
+        queryClient.invalidateQueries();
+      }, 3000);
+    } catch (err) {
+      console.error("Failed to upload receipt", err);
+      alert("Could not upload receipt: " + (err?.message || err));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -253,6 +279,13 @@ export default function MakerAssistantWidget() {
 
           {/* Input */}
           <div className={`border-t border-stone-200 p-3 ${minimized ? "hidden" : ""}`}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             <div className="flex gap-2 items-end">
               <Textarea
                 value={input}
@@ -263,6 +296,17 @@ export default function MakerAssistantWidget() {
                 className="resize-none text-sm min-h-[44px] max-h-32"
               />
               <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || sending}
+                className="h-10 w-10 shrink-0 border-stone-300 text-stone-600 hover:bg-stone-100"
+                title="Upload receipt photo"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </Button>
+              <Button
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
                 size="icon"
@@ -271,6 +315,11 @@ export default function MakerAssistantWidget() {
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
+            {uploading && (
+              <p className="text-xs text-stone-500 mt-1.5 flex items-center gap-1">
+                <ImageIcon className="w-3 h-3" /> Uploading receipt…
+              </p>
+            )}
           </div>
         </div>
       )}
