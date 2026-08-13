@@ -374,11 +374,11 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   const chargeUnmatchedTotal = chargeTotal - chargeMatchedTotal;
 
-  // Group purchase history by supplier (totals per supplier, not per material)
+  // Group materials & supplies credit card charges by supplier (totals only)
   const supplierTotals = (() => {
     const map = new Map();
-    for (const p of combinedPurchaseHistory) {
-      const key = p.vendor || "Unknown vendor";
+    for (const e of materialExpenses) {
+      const key = e.vendor || "Unknown vendor";
       const entry = map.get(key) || {
         vendor: key,
         total: 0,
@@ -386,16 +386,14 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
         unallocated: 0,
         count: 0,
         lastDate: null,
-        purchases: [],
       };
-      entry.total += p.amount || 0;
+      entry.total += e.amount || 0;
       entry.count += 1;
-      if (isItemAllocated(p)) entry.allocated += p.amount || 0;
-      else entry.unallocated += p.amount || 0;
-      if (!entry.lastDate || new Date(p.date || "") > new Date(entry.lastDate)) {
-        entry.lastDate = p.date;
+      if (expenseMatches[e.id]) entry.allocated += e.amount || 0;
+      else entry.unallocated += e.amount || 0;
+      if (!entry.lastDate || new Date(e.date || "") > new Date(entry.lastDate)) {
+        entry.lastDate = e.date;
       }
-      entry.purchases.push(p);
       map.set(key, entry);
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
@@ -807,18 +805,18 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
         <TabsContent value="history" className="mt-6">
           <Card>
             <CardContent className="p-6">
-              {combinedPurchaseHistory.length === 0 ? (
+              {materialExpenses.length === 0 ? (
                 <EmptyState
                   icon={Package}
-                  title="No purchase history"
-                  description="Your material purchases will appear here."
+                  title="No materials & supplies charges"
+                  description="Your Materials & Supplies expenses will appear here, grouped by supplier."
                 />
               ) : (
                 <>
                 {/* Reconciliation summary: credit card charges matched to receipts via AI */}
                 <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                   <p className="text-xs text-stone-500">
-                    Credit card charges (Materials & Supplies) are auto-matched to your Maker Assistant receipts by total using AI.
+                    Materials & Supplies credit card charges, auto-matched to your Maker Assistant receipts by total using AI.
                   </p>
                   <Button
                     variant="outline"
@@ -846,105 +844,26 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Grouped by supplier showing total spent. Click a supplier to expand. Charges matched to a receipt are marked <span className="font-medium text-emerald-700">Allocated</span>; use <span className="font-medium text-stone-600">Allocate</span> to link a receipt to inventory stock.
+                  Total spent per supplier from Materials & Supplies expenses. <span className="text-emerald-600">Allocated</span> = matched to a receipt; <span className="text-amber-600">Unmatched</span> = no matching receipt yet.
                 </p>
                 <div className="space-y-2">
-                  {supplierTotals.map((s) => {
-                    const isOpen = expandedSupplier === s.vendor;
-                    return (
-                      <div key={s.vendor} className="border border-stone-200 rounded-lg overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedSupplier(isOpen ? null : s.vendor)}
-                          className="w-full flex items-center justify-between p-4 bg-stone-50 hover:bg-stone-100 transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
-                            <div className="min-w-0">
-                              <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
-                              <p className="text-sm text-stone-500">
-                                {s.count} purchase{s.count !== 1 ? "s" : ""}
-                                {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            <div className="text-right">
-                              <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
-                              <p className="text-xs text-stone-500">
-                                <span className="text-emerald-600">{formatCurrency(s.allocated)}</span> / <span className="text-amber-600">{formatCurrency(s.unallocated)}</span>
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                        {isOpen && (
-                          <div className="divide-y divide-stone-100">
-                            {s.purchases.map((purchase) => {
-                              const allocated = isItemAllocated(purchase);
-                              const match = purchase.source === "expense" ? expenseMatches[purchase.id] : null;
-                              const matchedPurchase = match ? materialPurchases.find((p) => p.id === match.purchase_id) : null;
-                              return (
-                              <div
-                                key={`${purchase.source}-${purchase.id}`}
-                                className="flex items-center justify-between p-4 bg-white hover:bg-stone-50 transition-colors"
-                              >
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="font-medium text-stone-900">{purchase.material_name}</p>
-                                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purchase.source === "purchase" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600"}`}>
-                                      {purchase.source === "purchase" ? "Receipt" : "Card Charge"}
-                                    </span>
-                                    {allocated ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
-                                        <PackageCheck className="w-3 h-3" />
-                                        {purchase.source === "expense" ? "Allocated" : "In Inventory"}
-                                      </span>
-                                    ) : (
-                                      <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
-                                        {purchase.source === "expense" ? "Unmatched" : "Unallocated"}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-stone-500">
-                                    {purchase.date} • {formatCurrency(purchase.amount)}
-                                    {match && matchedPurchase ? ` • matched receipt: ${matchedPurchase.material_name} (${matchedPurchase.purchase_date})` : ""}
-                                  </p>
-                                  {match?.note ? (
-                                    <p className="text-xs text-emerald-600 mt-0.5">{match.note}</p>
-                                  ) : null}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {purchase.source === "purchase" && (
-                                    <>
-                                    <Button
-                                      variant={allocated ? "ghost" : "outline"}
-                                      size="sm"
-                                      onClick={() => setAllocatingPurchase(purchase)}
-                                      className={allocated ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
-                                    >
-                                      {allocated ? "Re-allocate" : "Allocate"}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingPurchase(materialPurchases.find(p => p.id === purchase.id));
-                                        setPurchaseFormOpen(true);
-                                      }}
-                                    >
-                                      Edit
-                                    </Button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                  {supplierTotals.map((s) => (
+                    <div key={s.vendor} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
+                        <p className="text-sm text-stone-500">
+                          {s.count} charge{s.count !== 1 ? "s" : ""}
+                          {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
+                        <p className="text-xs text-stone-500">
+                          <span className="text-emerald-600">{formatCurrency(s.allocated)}</span> allocated / <span className="text-amber-600">{formatCurrency(s.unallocated)}</span> unmatched
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 </>
               )}
