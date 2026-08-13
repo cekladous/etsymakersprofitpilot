@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, Sparkles } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -14,6 +14,7 @@ import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
 import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
 import BulkInventoryImportTool from "@/components/inventory/BulkInventoryImportTool";
+import InventoryAssistantChat from "@/components/inventory/InventoryAssistantChat";
 
 export default function Inventory() {
   const { user, loading } = useAuth();
@@ -430,6 +431,10 @@ export default function Inventory() {
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="types">Material Types</TabsTrigger>
           <TabsTrigger value="history">Purchase History</TabsTrigger>
+          <TabsTrigger value="assistant" className="gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            AI Assistant
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="inventory" className="mt-6 space-y-6">
@@ -556,6 +561,10 @@ export default function Inventory() {
           </Card>
         </TabsContent>
       </Tabs>
+
+        <TabsContent value="assistant" className="mt-6">
+          <InventoryAssistantChat />
+        </TabsContent>
 
       <MaterialTypeDialog
         open={typeFormOpen}
