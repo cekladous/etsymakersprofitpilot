@@ -10,7 +10,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Package, Trash2, Upload } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Package, Trash2, Upload, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -49,6 +60,22 @@ export default function Products() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
     },
+  });
+
+  const [deletingAll, setDeletingAll] = useState(false);
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      setDeletingAll(true);
+      const all = await base44.entities.Product.filter({ owner_user_id: user.id });
+      for (const p of all) {
+        await base44.entities.Product.delete(p.id);
+      }
+    },
+    onSuccess: () => {
+      setDeletingAll(false);
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: () => setDeletingAll(false),
   });
 
   const filteredProducts = products.filter(p =>
@@ -175,6 +202,39 @@ export default function Products() {
           Add Product
         </Button>
       </PageHeader>
+
+      {products.length > 0 && (
+        <div className="flex justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="text-rose-600 hover:bg-rose-50 hover:text-rose-700" disabled={deletingAll}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deletingAll ? "Deleting..." : "Delete All Products"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  Delete all {products.length} products?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently removes every product in your catalog. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-rose-600 hover:bg-rose-700"
+                  onClick={() => deleteAllMutation.mutate()}
+                >
+                  Delete All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
 
       {showImport && <BulkProductImportTool />}
 
