@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { FileText, CheckCircle2, Download, Edit } from "lucide-react";
+import { FileText, CheckCircle2, Download, Edit, FileCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,71 @@ export default function InvoicesPage() {
     enabled: !!user,
     queryFn: () => base44.entities.Invoice.filter({ owner_user_id: user.id }, "-created_date"),
   });
+
+  const { data: acceptedQuotes = [] } = useQuery({
+    queryKey: ["accepted-quotes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id, status: "Accepted" }, "-created_date"),
+  });
+
+  const convertToInvoiceMutation = useMutation({
+    mutationFn: async (quoteId) => {
+      const currentUser = await base44.auth.me();
+      const quote = await base44.entities.Quote.get(quoteId);
+      if (!quote) throw new Error('Quote not found');
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+      const random = Math.floor(1000 + Math.random() * 9000);
+      const invoiceNumber = `INV-${dateStr}-${random}`;
+      const invoice = await base44.entities.Invoice.create({
+        owner_user_id: currentUser.id,
+        invoice_number: invoiceNumber,
+        quote_id: quote.id,
+        project_name: quote.project_name,
+        customer_id: quote.customer_id || '',
+        customer_name: quote.customer_name,
+        customer_email: quote.customer_email || '',
+        customer_phone: quote.customer_phone || '',
+        customer_state: quote.customer_state || '',
+        invoice_date: now.toISOString().split('T')[0],
+        due_date: quote.due_date || '',
+        status: 'Sent',
+        materials: quote.materials || [],
+        machines: quote.machines || [],
+        labor_hours: quote.labor_hours || 0,
+        labor_minutes: quote.labor_minutes || 0,
+        labor_rate: quote.labor_rate || 0,
+        shipping_cost: quote.shipping_cost || 0,
+        payment_method: quote.payment_method || '',
+        line_items: quote.line_items || [],
+        subtotal: quote.subtotal || 0,
+        tax_rate: quote.tax_rate || 0,
+        tax_amount: quote.tax_amount || 0,
+        total: quote.total || 0,
+        amount_paid: 0,
+        balance_due: quote.total || 0,
+        notes: quote.notes || ''
+      });
+      await base44.entities.Quote.update(quote.id, { status: 'Invoiced' });
+      return { invoice };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["accepted-quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      toast({
+        title: "Invoice Created",
+        description: `Invoice ${result.invoice.invoice_number} created from accepted quote.`,
+      });
+    },
+    onError: (err) => {
+      toast({ title: "Conversion failed", description: err?.message || String(err), variant: "destructive" });
+    },
+  });
+
+  const handleConvertQuote = (quote) => {
+    convertToInvoiceMutation.mutate(quote.id);
+  };
 
   const markAsPaidMutation = useMutation({
     mutationFn: async (invoice) => {
@@ -294,6 +359,45 @@ export default function InvoicesPage() {
         title="Invoices"
         description="Track invoices and monitor payment status"
       />
+
+      {acceptedQuotes.length > 0 && (
+        <Card className="mb-6 border-amber-200 bg-amber-50/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <FileText className="w-5 h-5 text-amber-600" />
+              <h3 className="font-semibold text-stone-900">Accepted Quotes Ready to Invoice</h3>
+              <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+                {acceptedQuotes.length}
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              {acceptedQuotes.map((quote) => (
+                <div key={quote.id} className="flex items-center justify-between gap-4 bg-white rounded-lg border border-stone-200 p-3">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <span className="font-mono text-sm font-medium text-stone-700 shrink-0">{quote.quote_number}</span>
+                    <div className="min-w-0">
+                      <div className="font-medium text-stone-900 truncate">{quote.project_name || "Untitled"}</div>
+                      <div className="text-xs text-stone-500">{quote.customer_name || "No customer"}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="font-semibold text-stone-900">${(quote.total || 0).toFixed(2)}</span>
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      disabled={convertToInvoiceMutation.isPending}
+                      onClick={() => handleConvertQuote(quote)}
+                    >
+                      <FileCheck className="w-3 h-3 mr-1" />
+                      Convert
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">

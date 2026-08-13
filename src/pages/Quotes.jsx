@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import QuoteFormDialog from "@/components/quotes/QuoteFormDialog";
+import { exportQuoteToPDF } from "@/components/quotes/exportQuoteToPDF";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -37,6 +38,19 @@ export default function QuotesPage() {
     enabled: !!user,
     queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }, "-created_date"),
   });
+
+  const { data: settings } = useQuery({
+    queryKey: ["settings", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const all = await base44.entities.Settings.filter({ owner_user_id: user.id });
+      return all[0];
+    },
+  });
+
+  const handleDownload = (quote) => {
+    exportQuoteToPDF(quote, settings?.business_name || "Your Business");
+  };
 
 const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = typeof quote === "string" ? quote : quote.id; const orderId = typeof quote === "object" && quote ? quote.converted_to_order_id : null; if (orderId) { try { const linkedJobs = await base44.entities.Job.filter({ owner_user_id: user.id }); const jobsToDelete = linkedJobs.filter((j) => Array.isArray(j.order_ids) && j.order_ids.includes(orderId)); await Promise.all(jobsToDelete.map((j) => base44.entities.Job.delete(j.id))); } catch (jobDeleteErr) { console.error("Failed to delete linked job(s) for quote:", jobDeleteErr); } } await base44.entities.Quote.delete(qid); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["quotes"] }); queryClient.invalidateQueries({ queryKey: ["jobs"] }); }, });
 
@@ -202,6 +216,14 @@ const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = 
       label: "",
       render: (quote) => (
         <div className="flex gap-2 justify-end" onMouseDown={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleDownload(quote)}
+            title="Download PDF"
+          >
+            <Download className="w-3 h-3" />
+          </Button>
           <Button
             size="sm"
             variant="outline"
