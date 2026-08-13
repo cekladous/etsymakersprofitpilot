@@ -92,10 +92,10 @@ export default function MakerAssistantWidget() {
     let cancelled = false;
     (async () => {
       try {
-        const convs = base44.agents.listConversations({ agent_name: AGENT_NAME }) || [];
-        let conv = convs[0];
+        const convs = await base44.agents.listConversations({ agent_name: AGENT_NAME });
+        let conv = (convs || [])[0];
         if (!conv) {
-          conv = base44.agents.createConversation({
+          conv = await base44.agents.createConversation({
             agent_name: AGENT_NAME,
             metadata: { name: "Maker Assistant" },
           });
@@ -125,19 +125,20 @@ export default function MakerAssistantWidget() {
     if (open) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || !conversationId || sending) return;
     setSending(true);
     const content = input.trim();
     setInput("");
     try {
-      const conv = base44.agents.getConversation(conversationId);
-      base44.agents.addMessage(conv, { role: "user", content });
+      const conv = await base44.agents.getConversation(conversationId);
+      await base44.agents.addMessage(conv, { role: "user", content });
       setTimeout(() => {
         queryClient.invalidateQueries();
       }, 3000);
     } catch (err) {
       console.error("Failed to send message", err);
+      alert("Could not send message: " + (err?.message || err));
     } finally {
       setSending(false);
     }
