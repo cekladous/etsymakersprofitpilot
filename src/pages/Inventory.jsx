@@ -71,21 +71,49 @@ export default function Inventory() {
   );
 
   // AI receipt matching: match credit card charges (material expenses) to
-  // receipts (MaterialPurchase records logged via the Maker Assistant) by
-  // total amount / vendor / date. Falls back to a deterministic exact match.
+  // uploaded receipts (MaterialPurchase records from the Maker Assistant).
+  // Credit card charges import with vendor = "Chase Bank"; the real merchant
+  // is in the description, so we match the charge description against the
+  // receipt vendor. Multi-line receipts are grouped by vendor + purchase date
+  // and matched to a charge by the receipt's line-item total.
+  const receiptGroups = (() => {
+    const map = new Map();
+    for (const p of materialPurchases) {
+      const key = `${(p.vendor || "unknown").toLowerCase()}|${p.purchase_date || ""}`;
+      const g = map.get(key) || {
+        key,
+        vendor: p.vendor || "unknown",
+        date: p.purchase_date || "",
+        total: 0,
+        purchase_ids: [],
+      };
+      g.total += p.total_cost || 0;
+      g.purchase_ids.push(p.id);
+      map.set(key, g);
+    }
+    return Array.from(map.values());
+  })();
+
+  const merchantMatches = (charge, receiptVendor) => {
+    const desc = (charge.description || "").toLowerCase();
+    const v = (receiptVendor || "").toLowerCase().trim();
+    if (!v) return false;
+    return desc.includes(v);
+  };
+
   const deterministicMatch = () => {
     const map = {};
     const used = new Set();
     for (const e of materialExpenses) {
-      const m = materialPurchases.find(
-        (p) =>
-          !used.has(p.id) &&
-          Math.abs((p.total_cost || 0) - (e.amount || 0)) < 0.01 &&
-          (p.vendor || "").toLowerCase() === (e.vendor || "").toLowerCase()
+      const g = receiptGroups.find(
+        (rg) =>
+          !used.has(rg.key) &&
+          merchantMatches(e, rg.vendor) &&
+          Math.abs(rg.total - (e.amount || 0)) < 0.01
       );
-      if (m) {
-        map[e.id] = { purchase_id: m.id, note: "Matched by amount + vendor" };
-        used.add(m.id);
+      if (g) {
+        map[e.id] = { purchase_ids: g.purchase_ids, note: "Matched by receipt total + merchant" };
+        used.add(g.key);
       }
     }
     return map;
@@ -100,30 +128,31 @@ export default function Inventory() {
     try {
       const expenses = materialExpenses.map((e) => ({
         id: e.id,
-        vendor: e.vendor || "",
+        merchant: e.description || e.vendor || "",
         amount: e.amount,
         date: e.date,
-        description: e.description || "",
       }));
-      const purchases = materialPurchases.map((p) => ({
-        id: p.id,
-        material_name: p.material_name,
-        vendor: p.vendor || "",
-        total_cost: p.total_cost,
-        date: p.purchase_date,
+      const receipts = receiptGroups.map((g) => ({
+        key: g.key,
+        vendor: g.vendor,
+        date: g.date,
+        total: Math.round(g.total * 100) / 100,
+        line_count: g.purchase_ids.length,
       }));
       const prompt = `You are reconciling a maker's business credit card charges against material purchase receipts.
-Match each credit card charge to at most one receipt, and each receipt to at most one charge.
-Only match when the total amount is equal (within $0.01) and the vendor/date are compatible.
-If there is no confident match for a charge, exclude it from the results.
+Each "receipt" groups line items from the same vendor on the same date; its "total" is the sum of those line items and should equal the matching charge.
+The charge's real merchant is in the "merchant" field (card bank name plus the store), so match it to the receipt vendor when they refer to the same store (e.g. "SP HOUSTON ACRYLIC ..." matches vendor "Houston Acrylic").
+Match each charge to at most one receipt, and each receipt to at most one charge.
+Match when the merchant refers to the receipt vendor AND the charge amount equals the receipt total (within $0.01). If totals differ, do NOT match.
+If there is no confident match for a charge, exclude it.
 
 CREDIT CARD CHARGES:
 ${JSON.stringify(expenses)}
 
-RECEIPTS (material purchases):
-${JSON.stringify(purchases)}
+RECEIPTS (grouped by vendor + date):
+${JSON.stringify(receipts)}
 
-Return JSON with a "matches" array. Each match has expense_id, purchase_id, and a short note explaining why.`;
+Return JSON with a "matches" array. Each match has expense_id, receipt_key, and a short note.`;
       const res = await base44.integrations.Core.InvokeLLM({
         prompt,
         response_json_schema: {
@@ -135,7 +164,7 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                 type: "object",
                 properties: {
                   expense_id: { type: "string" },
-                  purchase_id: { type: "string" },
+                  receipt_key: { type: "string" },
                   note: { type: "string" },
                 },
               },
@@ -146,8 +175,11 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
       const aiMatches = Array.isArray(res?.matches) ? res.matches : [];
       const map = { ...deterministicMatch() };
       aiMatches.forEach((m) => {
-        if (m.expense_id && m.purchase_id) {
-          map[m.expense_id] = { purchase_id: m.purchase_id, note: m.note || "AI matched by total" };
+        if (m.expense_id && m.receipt_key) {
+          const g = receiptGroups.find((rg) => rg.key === m.receipt_key);
+          if (g) {
+            map[m.expense_id] = { purchase_ids: g.purchase_ids, note: m.note || "AI matched by receipt total + merchant" };
+          }
         }
       });
       setExpenseMatches(map);
@@ -373,6 +405,13 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
     .filter((e) => expenseMatches[e.id])
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   const chargeUnmatchedTotal = chargeTotal - chargeMatchedTotal;
+
+  // Uploaded receipts (MaterialPurchase) allocated to inventory stock —
+  // i.e. those with a linked InventoryTransaction from the Maker Assistant.
+  const uploadedReceiptsTotal = materialPurchases.reduce((sum, p) => sum + (p.total_cost || 0), 0);
+  const receiptsAllocatedTotal = materialPurchases
+    .filter((p) => allocatedPurchaseIds.has(p.id))
+    .reduce((sum, p) => sum + (p.total_cost || 0), 0);
 
   // One total row per supplier: combines receipts (MaterialPurchase) and
   // Materials & Supplies credit card charges (BusinessExpense).
@@ -823,14 +862,19 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                     {matchingLoading ? "Matching…" : "Re-match with AI"}
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                   <div className="p-3 rounded-lg bg-stone-100 border border-stone-200">
                     <p className="text-xs text-stone-500">Credit Card Charges</p>
                     <p className="text-lg font-bold text-stone-900">{formatCurrency(chargeTotal)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                    <p className="text-xs text-emerald-700">Allocated to Receipts</p>
-                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(chargeMatchedTotal)}</p>
+                    <p className="text-xs text-emerald-700">Receipts Allocated to Stock</p>
+                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(receiptsAllocatedTotal)}</p>
+                    <p className="text-xs text-emerald-600">of {formatCurrency(uploadedReceiptsTotal)} uploaded</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <p className="text-xs text-blue-700">Charges Allocated to Receipts</p>
+                    <p className="text-lg font-bold text-blue-700">{formatCurrency(chargeMatchedTotal)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
                     <p className="text-xs text-amber-700">Unmatched Charges</p>
