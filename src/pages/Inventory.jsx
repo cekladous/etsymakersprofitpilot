@@ -96,14 +96,33 @@ export default function Inventory() {
 
   const deleteInventoryMutation = useMutation({
     mutationFn: async (row) => {
+      const materialName = row.material_name;
+      // Delete the inventory item record
       if (row.inventoryItemId) {
         await base44.entities.InventoryItem.delete(row.inventoryItemId);
       }
+      // Delete orphaned purchase records tied to this material
+      const relatedPurchases = materialPurchases.filter(
+        (p) => p.material_name === materialName
+      );
+      await Promise.all(
+        relatedPurchases.map((p) => base44.entities.MaterialPurchase.delete(p.id))
+      );
+      // Delete orphaned inventory transactions tied to this material's inventory item
+      const relatedTxns = inventoryTransactions.filter(
+        (t) => t.inventory_item_id === row.inventoryItemId
+      );
+      await Promise.all(
+        relatedTxns.map((t) => base44.entities.InventoryTransaction.delete(t.id))
+      );
+      // Finally delete the material type itself
       await base44.entities.MaterialType.delete(row.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+      queryClient.invalidateQueries({ queryKey: ["material-purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
     },
   });
 
