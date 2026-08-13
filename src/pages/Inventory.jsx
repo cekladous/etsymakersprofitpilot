@@ -174,8 +174,23 @@ export default function Inventory() {
   });
 
   const filteredInventory = mergedInventory.filter(item => {
-    const matchesSearch = !search ||
-      item.material_name?.toLowerCase().includes(search.toLowerCase());
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q ||
+      [
+        item.material_name,
+        item.thickness,
+        item.category,
+        item.supplier,
+        item.width != null ? String(item.width) : "",
+        item.height != null ? String(item.height) : "",
+        item.cost_per_sheet != null ? String(item.cost_per_sheet) : "",
+        item.quantity_on_hand != null ? String(item.quantity_on_hand) : "",
+        item.average_cost != null ? String(item.average_cost) : "",
+        item.total_value != null ? String(item.total_value) : "",
+        item.low_stock_threshold != null ? String(item.low_stock_threshold) : "",
+        item.last_purchase_date ? new Date(item.last_purchase_date).toLocaleDateString("en-US") : "",
+        item.last_purchase_date ? new Date(item.last_purchase_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "",
+      ].some((field) => field?.toString().toLowerCase().includes(q));
     const matchesStock = stockFilter === "all" ||
       (stockFilter === "low" && item.quantity_on_hand <= item.low_stock_threshold && item.quantity_on_hand > 0) ||
       (stockFilter === "out" && item.quantity_on_hand === 0);
@@ -551,7 +566,7 @@ export default function Inventory() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <Input
-                placeholder="Search materials..."
+                placeholder="Search any column: name, thickness, supplier, cost, qty…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
