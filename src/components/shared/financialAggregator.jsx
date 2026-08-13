@@ -183,8 +183,10 @@ export function aggregateFinancials(data, dateRange) {
   const squareInPersonRefunds = squareInPersonOrders.reduce((sum, o) => sum + toNumber(o.refund_amount), 0);
 
   // Add sales from statement lines (for orders that were excluded due to deduplication)
+  // Only count actual Sale-type lines — "Payment"/"Card Payment" lines in the orders
+  // section are payment processing entries, not sales revenue.
   const etsySalesFromStatementLines = periodStatementLines
-    .filter(line => line.category === 'sale' && !line.source_etsy_order_id)
+    .filter(line => line.category === 'sale' && line.type === 'Sale' && !line.source_etsy_order_id)
     .reduce((sum, line) => sum + toNumber(line.amount), 0);
 
   const etsySales = etsySalesFromOrders + etsySalesFromStatementLines;
@@ -231,9 +233,12 @@ export function aggregateFinancials(data, dateRange) {
     })
     .reduce((sum, e) => sum + Math.abs(toNumber(e.net)), 0);
 
-  // Use order refunds as canonical (per-order, more reliable). Fall back to statement
-  // lines when orders show 0 (the refunded order may only exist in the statement).
-  const etsyRefunds = refundsFromOrders > 0 ? refundsFromOrders : refundsFromStatementLines;
+  // Statement lines are the authoritative source for monthly refund activity.
+  // Order refund_amount is a LIFETIME field — it may include refunds that posted in
+  // a different month than the sale (e.g., sold in April, refunded in May).
+  // Prefer statement-line refunds when available; fall back to order data only when
+  // no statement data exists for the period.
+  const etsyRefunds = refundsFromStatementLines > 0 ? refundsFromStatementLines : refundsFromOrders;
   const refundDifference = Math.abs(refundsFromOrders - etsyRefundsFromLedger);
   const refundDifferencePercent = refundsFromOrders > 0 ? (refundDifference / refundsFromOrders) * 100 : 0;
   if (refundDifference > 0.01 && refundDifferencePercent > 5) {
