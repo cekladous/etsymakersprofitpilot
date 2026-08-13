@@ -838,14 +838,13 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Each Materials & Supplies line item. Credit card charges matched to an uploaded receipt are marked “Allocated.”
+                  Each Materials & Supplies credit card charge. Charges matched to an uploaded receipt are marked “Allocated.”
                 </p>
                 <div className="space-y-2">
-                  {combinedPurchaseHistory.map((p) => {
+                  {combinedPurchaseHistory.filter((p) => p.source === "expense").map((p) => {
                     const allocated = isItemAllocated(p);
-                    const isCharge = p.source === "expense";
                     return (
-                      <div key={`${p.source}-${p.id}`} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
+                      <div key={`expense-${p.id}`} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium text-stone-900 truncate">{p.material_name || p.vendor || "—"}</p>
@@ -856,7 +855,7 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs flex-shrink-0">
-                                {isCharge ? "Unmatched" : "Not allocated"}
+                                Unmatched
                               </Badge>
                             )}
                           </div>
@@ -864,7 +863,7 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                             {p.date ? new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
                             {" • "}
                             {p.vendor || "Unknown vendor"}
-                            {isCharge ? " • Credit card charge" : " • Receipt"}
+                            {" • Credit card charge"}
                           </p>
                         </div>
                         <div className="text-right flex-shrink-0">
