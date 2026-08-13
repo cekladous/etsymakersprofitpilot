@@ -203,9 +203,21 @@ export function aggregateFinancials(data, dateRange) {
   const totalEtsySales = etsyOnlineOrders.reduce((sum, o) =>
     sum + toNumber(o.order_total), 0) + etsySalesFromStatementLines;
   
-  // 4) Etsy Refunds - CANONICAL: from orders (per-order data is most reliable)
+  // 4) Etsy Refunds - from orders (canonical) with statement-line fallback
   const refundsFromOrders = etsyOnlineOrders.reduce((sum, o) => 
     sum + toNumber(o.refund_amount || 0), 0);
+
+  // Statement-line refunds: "Refund for Order" type lines in the refunds section.
+  // Used when the refunded order isn't in EtsyOrder data (only exists in the statement).
+  const refundsFromStatementLines = periodStatementLines
+    .filter(l => l.section === 'refunds' && l.type === 'Refund')
+    .reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0);
+
+  // Sales tax credit from refunds (e.g., "Refund to buyer for sales tax").
+  // This is a credit TO the seller (they get back the tax they remitted), increasing net sales.
+  const salesTaxCreditFromRefunds = periodStatementLines
+    .filter(l => l.section === 'refunds' && l.type === 'Tax' && toNumber(l.amount) > 0)
+    .reduce((sum, l) => sum + toNumber(l.amount), 0);
 
   const etsyRefundsFromLedger = periodLedgerEntries
     .filter(e => {
@@ -219,9 +231,9 @@ export function aggregateFinancials(data, dateRange) {
     })
     .reduce((sum, e) => sum + Math.abs(toNumber(e.net)), 0);
 
-  // ALWAYS use order refunds as canonical (they're per-order, more reliable)
-  // But warn if ledger refunds differ significantly
-  const etsyRefunds = refundsFromOrders;
+  // Use order refunds as canonical (per-order, more reliable). Fall back to statement
+  // lines when orders show 0 (the refunded order may only exist in the statement).
+  const etsyRefunds = refundsFromOrders > 0 ? refundsFromOrders : refundsFromStatementLines;
   const refundDifference = Math.abs(refundsFromOrders - etsyRefundsFromLedger);
   const refundDifferencePercent = refundsFromOrders > 0 ? (refundDifference / refundsFromOrders) * 100 : 0;
   if (refundDifference > 0.01 && refundDifferencePercent > 5) {
@@ -240,7 +252,7 @@ export function aggregateFinancials(data, dateRange) {
     sum + toNumber(s.sales_tax_collected), 0);
   
   // 6) Total Revenue (tax EXCLUDED — tax is collected for the buyer, not seller revenue)
-  const totalRevenue = (etsySales - etsyRefunds) + squareInPersonRevenue + customSales;
+  const totalRevenue = (etsySales - etsyRefunds + salesTaxCreditFromRefunds) + squareInPersonRevenue + customSales;
 
   // 7) Revenue by Source breakdown (Etsy + Square in-person + each Custom Sales source)
   const SOURCE_KEYS = ["Squarespace", "Square", "In-Person/Cash", "Website", "Instagram", "Other"];
@@ -251,7 +263,7 @@ export function aggregateFinancials(data, dateRange) {
     customRevenueBySource[source] += toNumber(s.pre_tax_amount || s.gross_sale);
   });
   const revenueBySource = {
-    Etsy: etsySales - etsyRefunds,
+    Etsy: etsySales - etsyRefunds + salesTaxCreditFromRefunds,
     "In-Person (Square)": squareInPersonRevenue,
     ...customRevenueBySource,
   };
@@ -693,9 +705,10 @@ export function aggregateFinancials(data, dateRange) {
       etsySales,
       taxCollectedByEtsy,
       coRetailDeliveryFee,
+      salesTaxCreditFromRefunds, // Sales tax credited back from refunds (e.g., "Refund to buyer for sales tax")
       totalEtsySales,
       etsyRefunds,
-      netEtsySales: etsySales - etsyRefunds, // CRITICAL: Net after refunds, tax excluded
+      netEtsySales: etsySales - etsyRefunds + salesTaxCreditFromRefunds, // CRITICAL: Net after refunds, tax excluded, plus tax credits
       squareInPersonRevenue, // Square in-person sales (excluded from Etsy figures)
       squareInPersonRefunds,
       squareInPersonOrderCount: squareInPersonOrders.length,
