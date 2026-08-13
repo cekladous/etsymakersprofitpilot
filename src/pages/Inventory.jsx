@@ -315,18 +315,17 @@ export default function Inventory() {
                 Reorder
               </a>
             </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setEditingType(materialTypes.find(t => t.id === row.id));
-                setTypeFormOpen(true);
-              }}
-            >
-              Add Link
-            </Button>
-          )}
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setEditingType(materialTypes.find(t => t.id === row.id));
+              setTypeFormOpen(true);
+            }}
+          >
+            Edit
+          </Button>
           <Button
             variant="ghost"
             size="sm"
