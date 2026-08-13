@@ -145,6 +145,12 @@ export default function Inventory() {
       reorder_url: materialType.reorder_url || "",
       image_url: materialType.image_url || "",
       inventoryItemId: inventoryItem?.id,
+      last_purchase_date: (() => {
+        const purchases = materialPurchases
+          .filter((p) => p.material_name === materialType.name && p.purchase_date)
+          .sort((a, b) => new Date(b.purchase_date) - new Date(a.purchase_date));
+        return purchases[0]?.purchase_date || null;
+      })(),
     };
   });
 
@@ -257,6 +263,16 @@ export default function Inventory() {
     {
       header: "Total Value",
       render: (row) => <span className="font-semibold">{formatCurrency(row.total_value)}</span>,
+    },
+    {
+      header: "Last Purchased",
+      render: (row) => (
+        <span className="text-stone-600">
+          {row.last_purchase_date
+            ? new Date(row.last_purchase_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "-"}
+        </span>
+      ),
     },
     {
       header: "Supplier",
