@@ -142,12 +142,6 @@ export default function Expenses() {
     queryFn: () => base44.entities.BusinessExpense.filter({ owner_user_id: user.id }, "-date", 1000),
   });
 
-  const { data: materialPurchases = [] } = useQuery({
-    queryKey: ["material-purchases", user?.id],
-    enabled: !!user,
-    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }, "-purchase_date", 1000),
-  });
-
   const { data: etsyLedgerEntries = [] } = useQuery({
     queryKey: ["etsy-ledger-entries", user?.id],
     enabled: !!user,
@@ -470,23 +464,14 @@ export default function Expenses() {
   // Get unique materials for filter
   const uniqueMaterials = useMemo(() => {
     if (categoryFilter !== "materials_supplies") return [];
-    
     const materials = new Set();
-    
-    // From MaterialPurchases
-    materialPurchases.forEach(p => {
-      if (p.material_name) materials.add(p.material_name);
-    });
-    
-    // From BusinessExpenses
     businessExpenses
       .filter(e => e.category_name === "materials_supplies")
       .forEach(e => {
         if (e.vendor) materials.add(e.vendor);
       });
-    
     return Array.from(materials).sort();
-  }, [categoryFilter, materialPurchases, businessExpenses]);
+  }, [categoryFilter, businessExpenses]);
 
   const filteredExpenses = useMemo(() => {
     // Combine all expense sources for unified view
@@ -513,20 +498,6 @@ export default function Expenses() {
       material_name: e.vendor,
       is_recurring: e.is_recurring || false,
       recurring_frequency: e.recurring_frequency || null,
-    })));
-    
-    // MaterialPurchase (treated as materials_supplies category)
-    allExpenses.push(...materialPurchases.map(p => ({
-      id: p.id,
-      date: p.purchase_date,
-      description: p.material_name,
-      amount: p.total_cost,
-      category: "materials_supplies",
-      vendor: p.vendor,
-      payment_method: p.payment_method,
-      is_categorized: true,
-      source: "material",
-      material_name: p.material_name,
     })));
     
     // EtsyLedgerEntries (if matched to a non-fee category — fee categories are sourced below)
@@ -654,7 +625,7 @@ export default function Expenses() {
     });
 
     return sorted;
-  }, [expenses, businessExpenses, materialPurchases, etsyLedgerEntries, fees, etsyStatementLines, etsyStatementImports, orderFees, etsyOrders, search, categoryFilter, statusFilter, materialFilter, dateRange, sortField, sortDirection]);
+  }, [expenses, businessExpenses, etsyLedgerEntries, fees, etsyStatementLines, etsyStatementImports, orderFees, etsyOrders, search, categoryFilter, statusFilter, materialFilter, dateRange, sortField, sortDirection]);
 
   // Calculate totals directly from filtered table data (single source of truth)
   const totals = useMemo(() => {
