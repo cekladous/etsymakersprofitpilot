@@ -560,11 +560,11 @@ export default function Inventory() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
         <TabsContent value="assistant" className="mt-6">
           <InventoryAssistantChat />
         </TabsContent>
+      </Tabs>
 
       <MaterialTypeDialog
         open={typeFormOpen}
