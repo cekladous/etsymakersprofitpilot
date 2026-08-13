@@ -114,29 +114,16 @@
   ],
   "rls": {
     "create": {
-      "data.owner_user_id": "{{user.id}}"
+      "created_by_id": "{{user.id}}"
     },
     "read": {
-      "$or": [
-        {
-          "data.owner_user_id": "{{user.id}}"
-        },
-        {
-          "data.source_type": {
-            "$in": [
-              "Manufacturer",
-              "Community",
-              "Generic"
-            ]
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "update": {
-      "data.owner_user_id": "{{user.id}}"
+      "created_by_id": "{{user.id}}"
     },
     "delete": {
-      "data.owner_user_id": "{{user.id}}"
+      "created_by_id": "{{user.id}}"
     }
   }
 }
