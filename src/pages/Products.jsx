@@ -66,10 +66,7 @@ export default function Products() {
   const deleteAllMutation = useMutation({
     mutationFn: async () => {
       setDeletingAll(true);
-      const all = await base44.entities.Product.filter({ owner_user_id: user.id });
-      for (const p of all) {
-        await base44.entities.Product.delete(p.id);
-      }
+      await base44.entities.Product.deleteMany({ owner_user_id: user.id });
     },
     onSuccess: () => {
       setDeletingAll(false);
