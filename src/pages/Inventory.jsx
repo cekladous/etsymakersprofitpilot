@@ -373,6 +373,23 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   const chargeUnmatchedTotal = chargeTotal - chargeMatchedTotal;
 
+  // One total row per supplier: combines receipts (MaterialPurchase) and
+  // Materials & Supplies credit card charges (BusinessExpense).
+  const supplierTotals = (() => {
+    const map = new Map();
+    for (const p of combinedPurchaseHistory) {
+      const key = p.vendor || "Unknown vendor";
+      const entry = map.get(key) || { vendor: key, total: 0, count: 0, lastDate: null };
+      entry.total += p.amount || 0;
+      entry.count += 1;
+      if (!entry.lastDate || new Date(p.date || "") > new Date(entry.lastDate)) {
+        entry.lastDate = p.date;
+      }
+      map.set(key, entry);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  })();
+
 
 
   const inventoryColumns = [
@@ -820,70 +837,23 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Itemized purchase history: receipts logged via the Maker Assistant and Materials & Supplies credit card charges. <span className="text-emerald-600">Allocated</span> = matched/linked to inventory; <span className="text-amber-600">Unmatched</span> = not yet linked.
+                  Total spent per supplier (receipts + Materials & Supplies charges combined).
                 </p>
                 <div className="space-y-2">
-                  {combinedPurchaseHistory.map((purchase) => {
-                    const allocated = isItemAllocated(purchase);
-                    const match = purchase.source === "expense" ? expenseMatches[purchase.id] : null;
-                    const matchedPurchase = match ? materialPurchases.find((p) => p.id === match.purchase_id) : null;
-                    return (
-                      <div
-                        key={`${purchase.source}-${purchase.id}`}
-                        className="flex items-center justify-between p-4 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors gap-3"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-stone-900 truncate">{purchase.material_name || "(no description)"}</p>
-                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purchase.source === "purchase" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600"}`}>
-                              {purchase.source === "purchase" ? "Receipt" : "Card Charge"}
-                            </span>
-                            {allocated ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
-                                <PackageCheck className="w-3 h-3" />
-                                {purchase.source === "expense" ? "Allocated" : "In Inventory"}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
-                                {purchase.source === "expense" ? "Unmatched" : "Unallocated"}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-stone-500">
-                            {purchase.date} • {purchase.vendor} • {formatCurrency(purchase.amount)}
-                            {match && matchedPurchase ? ` • matched receipt: ${matchedPurchase.material_name} (${matchedPurchase.purchase_date})` : ""}
-                          </p>
-                          {match?.note ? (
-                            <p className="text-xs text-emerald-600 mt-0.5">{match.note}</p>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {purchase.source === "purchase" && (
-                            <>
-                              <Button
-                                variant={allocated ? "ghost" : "outline"}
-                                size="sm"
-                                onClick={() => setAllocatingPurchase(purchase)}
-                                className={allocated ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
-                              >
-                                {allocated ? "Re-allocate" : "Allocate"}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingPurchase(materialPurchases.find((p) => p.id === purchase.id));
-                                  setPurchaseFormOpen(true);
-                                }}
-                              >
-                                Edit
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                  {supplierTotals.map((s) => (
+                    <div key={s.vendor} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
+                        <p className="text-sm text-stone-500">
+                          {s.count} purchase{s.count !== 1 ? "s" : ""}
+                          {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 </>
               )}
