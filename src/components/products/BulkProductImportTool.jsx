@@ -81,8 +81,16 @@ export default function BulkProductImportTool() {
     );
 
     const lowerHeaders = headers.map((h) => h.toLowerCase());
-    const isMeta = lowerHeaders.includes("id") && lowerHeaders.includes("title");
-    return { format: isMeta ? "meta" : "template", headers, dataRows };
+    const isEtsyListings =
+      lowerHeaders.includes("title") &&
+      lowerHeaders.includes("currency_code") &&
+      lowerHeaders.includes("quantity");
+    const isMeta = !isEtsyListings && lowerHeaders.includes("id") && lowerHeaders.includes("title");
+    return {
+      format: isEtsyListings ? "etsy_listings" : isMeta ? "meta" : "template",
+      headers,
+      dataRows,
+    };
   };
 
   const buildProductsFromTemplate = (headers, dataRows) => {
@@ -99,6 +107,46 @@ export default function BulkProductImportTool() {
       packaging_cost: parseFloat(get(row, "Packaging Cost")) || 0,
       active: true,
     }));
+  };
+
+  const buildProductsFromEtsyListings = (headers, dataRows) => {
+    const get = (row, name) => {
+      const idx = headers.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+      return idx >= 0 ? String(row[idx] || "").trim() : "";
+    };
+    // Build a short SKU slug from a title
+    const slugFromTitle = (title, idx) => {
+      const slug =
+        title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 40) || `etsy`;
+      return `${slug}-${String(idx + 1).padStart(3, "0")}`;
+    };
+    return dataRows
+      .map((row, idx) => {
+        const title = get(row, "title");
+        const rawSku = get(row, "sku");
+        const sku = rawSku || slugFromTitle(title, idx);
+        const description = get(row, "description");
+        const materials = get(row, "materials");
+        const tags = get(row, "tags");
+        const salePrice = parsePrice(get(row, "price"));
+        // Compose a concise notes block (description can be very long)
+        const notesParts = [];
+        if (description) notesParts.push(description.slice(0, 500));
+        if (materials) notesParts.push(`Materials: ${materials}`);
+        if (tags) notesParts.push(`Tags: ${tags}`);
+        return {
+          sku,
+          name: title,
+          sale_price: salePrice,
+          notes: notesParts.join("\n\n"),
+          active: true,
+        };
+      })
+      .filter((p) => p.name);
   };
 
   const buildProductsFromMeta = (headers, dataRows) => {
@@ -125,9 +173,12 @@ export default function BulkProductImportTool() {
     mutationFn: async () => {
       const rawRows = await readRows(file);
       const { format, headers, dataRows } = detectFormat(rawRows);
-      const products = format === "meta"
-        ? buildProductsFromMeta(headers, dataRows)
-        : buildProductsFromTemplate(headers, dataRows);
+      const products =
+        format === "etsy_listings"
+          ? buildProductsFromEtsyListings(headers, dataRows)
+          : format === "meta"
+          ? buildProductsFromMeta(headers, dataRows)
+          : buildProductsFromTemplate(headers, dataRows);
 
       const created = { products: 0, errors: [], skipped: 0, format };
 
@@ -208,6 +259,11 @@ export default function BulkProductImportTool() {
             {file && (
               <div className="mt-2 text-xs text-stone-500">
                 <p>Selected: {file.name}</p>
+                {detectedFormat === "etsy_listings" && (
+                  <p className="mt-1 text-emerald-700 font-medium">
+                    ✓ Etsy Listings Download detected — will map title→Name, price→Sale Price, and auto-generate SKU when missing
+                  </p>
+                )}
                 {detectedFormat === "meta" && (
                   <p className="mt-1 text-emerald-700 font-medium">
                     ✓ Etsy/Meta catalog detected — will map id→SKU, title→Name, price→Sale Price, description→Notes
