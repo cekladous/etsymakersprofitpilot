@@ -143,8 +143,8 @@ export default function Inventory() {
 Each "receipt" groups line items from the same vendor on the same date; its "total" is the sum of those line items and should equal the matching charge.
 The charge's real merchant is in the "merchant" field (card bank name plus the store), so match it to the receipt vendor when they refer to the same store (e.g. "SP HOUSTON ACRYLIC ..." matches vendor "Houston Acrylic").
 Match each charge to at most one receipt, and each receipt to at most one charge.
-Match when the merchant refers to the receipt vendor AND the charge amount equals the receipt total (within $0.01). If totals differ, do NOT match.
-If there is no confident match for a charge, exclude it.
+Match when the merchant refers to the receipt vendor AND the charge date is within 7 days of the receipt date. Totals may differ (shipping/tax), so do not require an exact total — but mention the dollar difference in the note.
+If no receipt vendor matches the charge merchant, exclude the charge.
 
 CREDIT CARD CHARGES:
 ${JSON.stringify(expenses)}
