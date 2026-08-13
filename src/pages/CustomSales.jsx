@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Plus, Pencil, Trash2, Calendar, Zap, Wrench, Copy, AlertTriangle, Loader2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -234,31 +235,33 @@ export default function CustomSalesPage() {
             className="w-full md:w-64"
           />
 
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 rounded-md border border-stone-200 bg-white text-sm"
-          >
-            <option value="all">All Time</option>
-            <option value="year">This Year</option>
-            <option value="month">This Month</option>
-            <option value="week">Last 7 Days</option>
-            <option value="today">Today</option>
-          </select>
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-full md:w-40 min-h-[44px]">
+              <SelectValue placeholder="Date Range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="week">Last 7 Days</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 rounded-md border border-stone-200 bg-white text-sm"
-          >
-            <option value="date">Date</option>
-            <option value="gross_sale">Amount</option>
-            <option value="vendor">Vendor</option>
-          </select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full md:w-36 min-h-[44px]">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="gross_sale">Amount</SelectItem>
+              <SelectItem value="vendor">Vendor</SelectItem>
+            </SelectContent>
+          </Select>
 
           <button
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="px-3 py-2 rounded-md border border-stone-200 bg-white text-sm hover:bg-stone-50"
+            className="inline-flex items-center justify-center px-3 py-2 rounded-md border border-stone-200 bg-white text-sm hover:bg-stone-50 min-h-[44px] min-w-[44px]"
           >
             {sortOrder === "asc" ? "↑" : "↓"}
           </button>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/components/auth/AuthProvider";
@@ -22,6 +22,7 @@ import {
   Users,
   Factory,
   DollarSign,
+  ChevronLeft,
 } from "lucide-react";
 
 const navItems = [
@@ -53,6 +54,13 @@ const PULL_TO_REFRESH_PAGES = ["Dashboard", "Orders", "Expenses"];
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const ROOT_PAGES = new Set([...navItems.map((i) => i.page), "Welcome"]);
+  const isSubRoute = !ROOT_PAGES.has(currentPageName);
+  const pageTitle =
+    (navItems.find((i) => i.page === currentPageName)?.name) ||
+    (currentPageName === "Welcome" ? "Home" : currentPageName);
 
   const handlePullRefresh = async () => {
     await queryClient.invalidateQueries();
@@ -66,7 +74,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-stone-50">
+      <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
         <style>{`
           :root {
             --color-primary: #1a1a1a;
@@ -78,16 +86,28 @@ export default function Layout({ children, currentPageName }) {
         `}</style>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-stone-200 z-50 flex items-center px-4 safe-area-pt" style={{ paddingBottom: "0.5rem" }}>
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
-        >
-          <Menu className="w-6 h-6 text-stone-700" />
-        </button>
-        <Link to={createPageUrl("Welcome")} className="ml-4 font-semibold text-stone-900 text-lg hover:text-emerald-600 transition-colors truncate">
-          Etsy Maker's Profit Pilot
-        </Link>
+      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 z-50 flex items-center px-3 safe-area-pt" style={{ paddingBottom: "0.5rem" }}>
+        {isSubRoute ? (
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center min-h-[44px] px-2 py-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors text-stone-700 dark:text-stone-200"
+            aria-label="Back"
+          >
+            <ChevronLeft className="w-6 h-6" />
+            <span className="text-sm font-medium ml-0.5">Back</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="inline-flex items-center justify-center min-h-[44px] w-11 p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
+            aria-label="Menu"
+          >
+            <Menu className="w-6 h-6 text-stone-700 dark:text-stone-200" />
+          </button>
+        )}
+        <span className="ml-2 font-semibold text-stone-900 dark:text-stone-100 text-lg truncate">
+          {pageTitle}
+        </span>
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -100,19 +120,19 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-stone-200 z-50 transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col ${
+        className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 z-50 transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 flex-shrink-0 gap-2">
-          <Link to={createPageUrl("Welcome")} className="font-bold text-lg text-stone-900 tracking-tight hover:text-emerald-600 transition-colors flex-1 min-w-0">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0 gap-2">
+          <Link to={createPageUrl("Welcome")} className="font-bold text-lg text-stone-900 dark:text-stone-100 tracking-tight hover:text-emerald-600 transition-colors flex-1 min-w-0">
             Etsy Maker's Profit Pilot
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-stone-100 rounded-lg"
+            className="lg:hidden p-1 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg"
           >
-            <X className="w-5 h-5 text-stone-500" />
+            <X className="w-5 h-5 text-stone-500 dark:text-stone-400" />
           </button>
         </div>
 
@@ -124,15 +144,15 @@ export default function Layout({ children, currentPageName }) {
                 key={item.page}
                 to={createPageUrl(item.page)}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-xl text-sm font-medium transition-all duration-200 group ${
                   isActive
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                    : "text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100"
                 }`}
               >
                 <item.icon
                   className={`w-5 h-5 transition-colors ${
-                    isActive ? "text-emerald-600" : "text-stone-400 group-hover:text-stone-600"
+                    isActive ? "text-emerald-600 dark:text-emerald-400" : "text-stone-400 dark:text-stone-500 group-hover:text-stone-600 dark:group-hover:text-stone-300"
                   }`}
                 />
                 {item.name}
@@ -153,7 +173,7 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-40 safe-area-pb">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 z-40 safe-area-pb">
         <div className="flex items-stretch justify-around">
           {bottomTabs.map((tab) => {
             const isActive = currentPageName === tab.page;
@@ -161,8 +181,8 @@ export default function Layout({ children, currentPageName }) {
               <Link
                 key={tab.page}
                 to={createPageUrl(tab.page)}
-                className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 transition-colors ${
-                  isActive ? "text-emerald-600" : "text-stone-500 hover:text-stone-800"
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] flex-1 transition-colors ${
+                  isActive ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
                 }`}
               >
                 <tab.icon className="w-5 h-5" />
