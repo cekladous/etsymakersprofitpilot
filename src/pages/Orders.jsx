@@ -41,7 +41,6 @@ import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import UnifiedEtsyImportHub from "@/components/imports/UnifiedEtsyImportHub";
-import DeleteAllDataDialog from "@/components/orders/DeleteAllDataDialog";
 import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 import FeeBreakdownChart from "@/components/orders/FeeBreakdownChart";
 import ReconciliationTab from "@/components/etsy/ReconciliationTab";
@@ -87,7 +86,6 @@ export default function Orders() {
   const [showExportUpgrade, setShowExportUpgrade] = useState(false);
   const [feeDrillDown, setFeeDrillDown] = useState({ open: false, title: "", items: [], expectedTotal: null });
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [depositForm, setDepositForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
 
   const queryClient = useQueryClient();
@@ -1202,17 +1200,6 @@ export default function Orders() {
             <Upload className="w-4 h-4 mr-2" />
             Import Etsy Data
           </Button>
-          {etsyOrders.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-rose-600 border-rose-300 hover:bg-rose-50"
-              onClick={() => setDeleteAllOpen(true)}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete All Data
-            </Button>
-          )}
         </div>
       </PageHeader>
 
@@ -1794,11 +1781,6 @@ export default function Orders() {
       <UnifiedEtsyImportHub
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
-      />
-
-      <DeleteAllDataDialog
-        open={deleteAllOpen}
-        onOpenChange={setDeleteAllOpen}
       />
 
       <OrderDetailSheet 
