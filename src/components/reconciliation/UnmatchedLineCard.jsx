@@ -5,6 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle2, HelpCircle, Link2, X, Lightbulb } from 'lucide-react';
 import { format } from 'date-fns';
 import { classifyEtsyLedgerEntry } from '@/components/shared/financialAggregator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const CATEGORY_HELP = {
   sale: 'Payment for an item sold. Match to an EtsyOrder or mark as processed.',
@@ -211,19 +218,22 @@ export default function UnmatchedLineCard({
                 )}
 
                 {(resolutionMode === 'categorize') && (
-                  <select
-                    className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                  <Select
+                    value={notes || undefined}
+                    onValueChange={(v) => setNotes(v)}
                   >
-                    <option value="">Select category...</option>
-                    <option value="sale">Sale</option>
-                    <option value="refund">Refund</option>
-                    <option value="fee">Fee</option>
-                    <option value="deposit">Deposit</option>
-                    <option value="tax">Tax</option>
-                    <option value="shipping">Shipping</option>
-                  </select>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select category..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="refund">Refund</SelectItem>
+                      <SelectItem value="fee">Fee</SelectItem>
+                      <SelectItem value="deposit">Deposit</SelectItem>
+                      <SelectItem value="tax">Tax</SelectItem>
+                      <SelectItem value="shipping">Shipping</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
 
                 <textarea

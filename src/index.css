@@ -84,5 +84,32 @@
 
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* iOS safe-area helpers for native WebView deployment */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-pt {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .safe-area-pb {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+
+  /* Native-feeling touch targets: prevent text selection & callouts */
+  button,
+  a,
+  [role="tab"],
+  [role="button"],
+  [data-radix-collection-item] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 }

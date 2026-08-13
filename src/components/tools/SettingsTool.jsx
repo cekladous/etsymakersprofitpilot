@@ -49,6 +49,8 @@ export default function SettingsTool() {
   const [feeChangeLogOpen, setFeeChangeLogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   
   const [settingsData, setSettingsData] = useState({
     electricity_rate: 0,
@@ -484,40 +486,37 @@ export default function SettingsTool() {
     setMachineFormOpen(true);
   };
 
+  // Shared: deletes every business-data entity owned by the current user.
+  // Used by both "Reset App" and "Delete Account".
+  const wipeUserData = async () => {
+    const entitiesToDelete = [
+      'EtsyOrder', 'OrderFee', 'Fee', 'EtsyStatementImport', 'EtsyStatementLine',
+      'EtsyLedgerEntry', 'BusinessExpense', 'Expense', 'Order', 'Quote', 'Customer',
+      'Job', 'Product', 'MaterialType', 'MaterialSheet', 'MaterialUsage', 'MaterialPurchase',
+      'Machine', 'LaserSetting', 'CustomSale', 'Transfer', 'InventoryItem', 'InventoryTransaction',
+      'BudgetPlan', 'BudgetLine', 'FeeChangeLog', 'OrderImportBatch'
+    ];
+
+    for (const entityName of entitiesToDelete) {
+      try {
+        const records = await base44.entities[entityName].filter({ owner_user_id: user.id }, '-created_date', 10000);
+        if (records && records.length > 0) {
+          const batchSize = 50;
+          for (let i = 0; i < records.length; i += batchSize) {
+            const batch = records.slice(i, i + batchSize);
+            await Promise.all(batch.map(r => base44.entities[entityName].delete(r.id)));
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to delete ${entityName}:`, err);
+      }
+    }
+  };
+
   const handleResetApp = async () => {
     setResetting(true);
     try {
-      // Delete all entities - fetch ALL records with high limit
-      const entitiesToDelete = [
-        'EtsyOrder', 'OrderFee', 'Fee', 'EtsyStatementImport', 'EtsyStatementLine',
-        'EtsyLedgerEntry', 'BusinessExpense', 'Expense', 'Order', 'Quote', 'Customer',
-        'Job', 'Product', 'MaterialType', 'MaterialSheet', 'MaterialUsage', 'MaterialPurchase',
-        'Machine', 'LaserSetting', 'CustomSale', 'Transfer', 'InventoryItem', 'InventoryTransaction',
-        'BudgetPlan', 'BudgetLine', 'FeeChangeLog', 'OrderImportBatch'
-      ];
-
-      console.log('Starting app reset...');
-      
-      for (const entityName of entitiesToDelete) {
-        try {
-          console.log(`Deleting ${entityName}...`);
-          // Fetch only current user's records
-          const records = await base44.entities[entityName].filter({ owner_user_id: user.id }, '-created_date', 10000);
-          console.log(`Found ${records.length} ${entityName} records`);
-          
-          if (records && records.length > 0) {
-            // Delete in batches to avoid overwhelming the system
-            const batchSize = 50;
-            for (let i = 0; i < records.length; i += batchSize) {
-              const batch = records.slice(i, i + batchSize);
-              await Promise.all(batch.map(r => base44.entities[entityName].delete(r.id)));
-              console.log(`Deleted ${Math.min(i + batchSize, records.length)}/${records.length} ${entityName}`);
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to delete ${entityName}:`, err);
-        }
-      }
+      await wipeUserData();
 
       // Reset settings to defaults
       if (settings.length > 0) {
@@ -537,18 +536,38 @@ export default function SettingsTool() {
         });
       }
 
-      console.log('Reset complete, reloading...');
-      
-      // Clear all query cache
       queryClient.clear();
       setResetDialogOpen(false);
-      
-      // Force reload
       window.location.href = window.location.href;
     } catch (error) {
       console.error('Reset failed:', error);
       alert('Reset failed. Check console for details: ' + error.message);
       setResetting(false);
+    }
+  };
+
+  // iOS App Store 5.1.1(v) compliance: permanently removes all of the user's
+  // business data and signs them out. (The platform owns auth, so the account
+  // login record itself is removed by signing out; all app data is deleted here.)
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await wipeUserData();
+      if (settings.length > 0) {
+        await base44.entities.Settings.update(settings[0].id, {
+          owner_user_id: user.id,
+          business_name: "",
+          user_name: "",
+          auto_categorization_rules: [],
+        });
+      }
+      queryClient.clear();
+      setDeleteAccountDialogOpen(false);
+      await base44.auth.logout();
+    } catch (error) {
+      console.error('Delete account failed:', error);
+      alert('Could not delete account data: ' + error.message);
+      setDeletingAccount(false);
     }
   };
 
@@ -1587,8 +1606,8 @@ export default function SettingsTool() {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-3">
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Button
             variant="destructive"
             onClick={() => setResetDialogOpen(true)}
@@ -1596,7 +1615,16 @@ export default function SettingsTool() {
             <AlertTriangle className="w-4 h-4 mr-2" />
             Reset App
           </Button>
-          
+
+          <Button
+            variant="destructive"
+            className="bg-rose-700 hover:bg-rose-800"
+            onClick={() => setDeleteAccountDialogOpen(true)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Account
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => base44.auth.logout()}
@@ -1896,8 +1924,64 @@ export default function SettingsTool() {
                   Yes, Delete Everything
                 </Button>
               </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          </div>
-          );
-          }
+              </DialogContent>
+              </Dialog>
+
+              {/* Delete Account Confirmation Dialog (iOS 5.1.1(v)) */}
+              <Dialog open={deleteAccountDialogOpen} onOpenChange={setDeleteAccountDialogOpen}>
+              <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-rose-700">
+                  <Trash2 className="w-5 h-5" />
+                  Delete Account
+                </DialogTitle>
+                <DialogDescription>
+                  This permanently deletes all of your business data and signs you out.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-4">
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+                  <ul className="text-sm space-y-2 text-rose-900">
+                    <li>• All orders, sales, and customer records</li>
+                    <li>• All Etsy imports, fees, and reconciliation data</li>
+                    <li>• All expenses, quotes, and invoices</li>
+                    <li>• All products, inventory, and materials</li>
+                    <li>• All machines, jobs, and settings</li>
+                  </ul>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm text-amber-900 font-semibold">
+                    ⚠️ This action cannot be undone!
+                  </p>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Your data will be erased and you will be signed out. To use the app again, you'll need to log back in.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteAccountDialogOpen(false)}
+                  disabled={deletingAccount}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="bg-rose-700 hover:bg-rose-800"
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                >
+                  {deletingAccount && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Delete Account & Data
+                </Button>
+              </DialogFooter>
+              </DialogContent>
+              </Dialog>
+
+              </div>
+              );
+              }

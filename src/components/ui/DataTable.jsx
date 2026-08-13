@@ -73,6 +73,17 @@ export default function DataTable({
   const scrollContainerRef = React.useRef(null);
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
 
   const [columnFilters, setColumnFilters] = useState({}); // colIndex -> array of allowed values
 
@@ -298,6 +309,80 @@ export default function DataTable({
       currency: "USD",
     }).format(amount);
   };
+
+  // ---- Mobile card layout ----
+  const getHeaderLabel = (col) => (typeof col.header === "function" ? col.header() : col.header);
+
+  if (isMobile) {
+    if (isLoading) {
+      return (
+        <div className="space-y-3 md:hidden">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4">
+              <Skeleton className="h-5 w-3/4 mb-3" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (!data || data.length === 0) {
+      return (
+        <div className="bg-white rounded-2xl border border-stone-100 p-12 text-center md:hidden">
+          <p className="text-stone-500">{emptyMessage}</p>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3 md:hidden">
+        {sortedData.map((row, rowIndex) => {
+          const primary = columns[0];
+          const primaryContent = primary?.render ? primary.render(row, rowIndex) : row[primary?.accessor];
+          const rest = columns.slice(1);
+          const fields = rest.filter((c) => String(getHeaderLabel(c) ?? "").trim() !== "");
+          const actions = rest.filter((c) => String(getHeaderLabel(c) ?? "").trim() === "");
+          return (
+            <div
+              key={row.id || rowIndex}
+              onClick={() => onRowClick?.(row)}
+              className={`bg-white rounded-2xl border border-stone-100 p-4 ${onRowClick ? "cursor-pointer active:bg-stone-50" : ""}`}
+            >
+              {primaryContent != null && (
+                <div className="font-medium text-stone-900 text-sm mb-3 pb-3 border-b border-stone-100">
+                  {primaryContent}
+                </div>
+              )}
+              {fields.length > 0 && (
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  {fields.map((col, colIndex) => {
+                    const label = getHeaderLabel(col);
+                    const value = col.render ? col.render(row, rowIndex) : row[col.accessor];
+                    return (
+                      <div key={colIndex} className="flex flex-col">
+                        <dt className="text-[11px] uppercase tracking-wide text-stone-400 font-medium">{label}</dt>
+                        <dd className="text-stone-800">{value}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              )}
+              {actions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-stone-100">
+                  {actions.map((col, colIndex) => {
+                    const value = col.render ? col.render(row, rowIndex) : row[col.accessor];
+                    return <React.Fragment key={colIndex}>{value}</React.Fragment>;
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  // ---- End mobile card layout ----
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">

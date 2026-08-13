@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import Footer from "@/components/Footer";
 import MakerAssistantWidget from "@/components/MakerAssistantWidget";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -18,7 +20,8 @@ import {
   FileText,
   FileCheck,
   Users,
-    Factory
+  Factory,
+  DollarSign,
 } from "lucide-react";
 
 const navItems = [
@@ -36,8 +39,30 @@ const navItems = [
         { name: "Settings", icon: SettingsIcon, page: "Settings" },
       ];
 
+const bottomTabs = [
+  { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
+  { name: "Sales", icon: ShoppingBag, page: "Orders" },
+  { name: "Expenses", icon: Receipt, page: "Expenses" },
+  { name: "Tools", icon: Wrench, page: "Tools" },
+  { name: "Settings", icon: SettingsIcon, page: "Settings" },
+];
+
+// Pages that get native pull-to-refresh on mobile
+const PULL_TO_REFRESH_PAGES = ["Dashboard", "Orders", "Expenses"];
+
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handlePullRefresh = async () => {
+    await queryClient.invalidateQueries();
+  };
+
+  const wrappedChildren = PULL_TO_REFRESH_PAGES.includes(currentPageName) ? (
+    <PullToRefresh onRefresh={handlePullRefresh}>{children}</PullToRefresh>
+  ) : (
+    children
+  );
 
   return (
     <AuthProvider>
@@ -53,14 +78,14 @@ export default function Layout({ children, currentPageName }) {
         `}</style>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-stone-200 z-50 flex items-center px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-stone-200 z-50 flex items-center px-4 safe-area-pt" style={{ paddingBottom: "0.5rem" }}>
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
         >
           <Menu className="w-6 h-6 text-stone-700" />
         </button>
-        <Link to={createPageUrl("Welcome")} className="ml-4 font-semibold text-stone-900 text-lg hover:text-emerald-600 transition-colors">
+        <Link to={createPageUrl("Welcome")} className="ml-4 font-semibold text-stone-900 text-lg hover:text-emerald-600 transition-colors truncate">
           Etsy Maker's Profit Pilot
         </Link>
       </header>
@@ -122,10 +147,31 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main Content */}
       <main className="lg:pl-64 pt-16 lg:pt-0 min-h-screen">
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {children}
+        <div className="p-4 md:p-8 max-w-7xl mx-auto pb-24 md:pb-8">
+          {wrappedChildren}
         </div>
       </main>
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-40 safe-area-pb">
+        <div className="flex items-stretch justify-around">
+          {bottomTabs.map((tab) => {
+            const isActive = currentPageName === tab.page;
+            return (
+              <Link
+                key={tab.page}
+                to={createPageUrl(tab.page)}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 transition-colors ${
+                  isActive ? "text-emerald-600" : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                <tab.icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{tab.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       <Footer />
       <MakerAssistantWidget />
