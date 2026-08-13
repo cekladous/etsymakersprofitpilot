@@ -46,6 +46,10 @@
       "type": "string",
       "description": "Direct link to reorder this material"
     },
+    "image_url": {
+      "type": "string",
+      "description": "AI-generated product image URL for this material"
+    },
     "low_stock_threshold": {
       "type": "number",
       "default": 5,

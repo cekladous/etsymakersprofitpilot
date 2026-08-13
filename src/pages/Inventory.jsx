@@ -123,6 +123,7 @@ export default function Inventory() {
       category: materialType.category,
       supplier: materialType.supplier || "",
       reorder_url: materialType.reorder_url || "",
+      image_url: materialType.image_url || "",
       inventoryItemId: inventoryItem?.id,
     };
   });
@@ -180,11 +181,24 @@ export default function Inventory() {
     {
       header: "Material Name",
       render: (row) => (
-        <div>
-          <span className="font-medium text-stone-900">{row.material_name}</span>
-          {row.category && (
-            <span className="ml-2 text-xs text-stone-500 capitalize">({row.category})</span>
+        <div className="flex items-center gap-3">
+          {row.image_url ? (
+            <img
+              src={row.image_url}
+              alt={row.material_name}
+              className="w-10 h-10 rounded-lg object-cover border border-stone-200 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center flex-shrink-0">
+              <Package className="w-5 h-5 text-stone-400" />
+            </div>
           )}
+          <div>
+            <span className="font-medium text-stone-900">{row.material_name}</span>
+            {row.category && (
+              <span className="ml-2 text-xs text-stone-500 capitalize">({row.category})</span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -292,11 +306,24 @@ export default function Inventory() {
     {
       header: "Material",
       render: (row) => (
-        <div>
-          <span className="font-medium text-stone-900">{row.name}</span>
-          {row.thickness && (
-            <span className="text-stone-500 ml-2 text-sm">{row.thickness}</span>
+        <div className="flex items-center gap-3">
+          {row.image_url ? (
+            <img
+              src={row.image_url}
+              alt={row.name}
+              className="w-10 h-10 rounded-lg object-cover border border-stone-200 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center flex-shrink-0">
+              <Package className="w-5 h-5 text-stone-400" />
+            </div>
           )}
+          <div>
+            <span className="font-medium text-stone-900">{row.name}</span>
+            {row.thickness && (
+              <span className="text-stone-500 ml-2 text-sm">{row.thickness}</span>
+            )}
+          </div>
         </div>
       ),
     },
