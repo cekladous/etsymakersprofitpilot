@@ -331,10 +331,13 @@ export function aggregateFinancials(data, dateRange) {
     .reduce((sum, f) => sum + toNumber(f.amount), 0);
 
   // 1) Etsy Listing Fees — use OrderFee (per-order split), fall back to statement/Fee/ledger
+  // CRITICAL: Only count NEGATIVE amounts (actual fees). Credits (positive amounts) are
+  // handled separately by feeCredits. Using Math.abs on all lines would double-count
+  // credits (add via abs then subtract via feeCredits = net zero), making fees too high.
   const etsyListingFees = hasOrderFees
     ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.listing_fees), 0)
     : hasStatementFees
-    ? stmtFeeLines.filter(l => l.fee_type === 'listing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtFeeLines.filter(l => l.fee_type === 'listing' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('listing')
         : (() => {
@@ -347,7 +350,7 @@ export function aggregateFinancials(data, dateRange) {
   const etsyTransactionFees = hasOrderFees
     ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.transaction_fees), 0)
     : hasStatementFees
-    ? stmtFeeLines.filter(l => l.fee_type === 'transaction').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtFeeLines.filter(l => l.fee_type === 'transaction' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('transaction')
         : (() => {
@@ -360,7 +363,7 @@ export function aggregateFinancials(data, dateRange) {
   const etsyProcessingFees = hasOrderFees
     ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.processing_fees), 0)
     : hasStatementFees
-    ? stmtFeeLines.filter(l => l.fee_type === 'processing').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtFeeLines.filter(l => l.fee_type === 'processing' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('processing')
         : (() => {
@@ -394,10 +397,11 @@ export function aggregateFinancials(data, dateRange) {
           })());
 
   // 6) Other Fees (regulatory operating fees, etc.)
+  // CRITICAL: Only count negative amounts. Misc credits (positive) are handled by feeCredits.
   const otherFees = hasOrderFees
     ? periodOrderFees.reduce((sum, f) => sum + toNumber(f.other_fees), 0)
     : hasStatementFees
-    ? stmtFeeLines.filter(l => l.fee_type === 'other_fee').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtFeeLines.filter(l => l.fee_type === 'other_fee' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('other_fee')
         : (() => {
@@ -406,9 +410,10 @@ export function aggregateFinancials(data, dateRange) {
             return toNumber(toNumber(sumLedgerExpense(otherFeeRows)) + legacyOtherFees);
           })());
 
-  // 7) Etsy Ads — gross fees from statement lines (authoritative), fall back to Fee entity
+  // 7) Etsy Ads — gross fees from ads section only (negative amounts). Etsy Ads credits
+  // (e.g. "Credit for Etsy Ads fee") are in the fees section and captured by feeCredits.
   const etsyAds = hasStatementFees
-    ? stmtAdsLines.filter(l => l.fee_type === 'etsy_ads').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtAdsLines.filter(l => l.fee_type === 'etsy_ads' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('etsy_ads')
         : (() => {
@@ -425,7 +430,7 @@ export function aggregateFinancials(data, dateRange) {
 
   // 8) Etsy Offsite Ads
   const etsyOffsiteAds = hasStatementFees
-    ? stmtAdsLines.filter(l => l.fee_type === 'offsite_ads').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtAdsLines.filter(l => l.fee_type === 'offsite_ads' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (hasFeeRecords
         ? sumGrossFees('offsite_ads')
         : (() => {
@@ -444,9 +449,9 @@ export function aggregateFinancials(data, dateRange) {
   // 9b) Total Marketing — Etsy Ads + Offsite Ads + Etsy Plus subscription
   const totalMarketing = toNumber(etsyAds + etsyOffsiteAds + etsyPlusSubscription);
 
-  // 9) Etsy Shipping (shipping labels)
+  // 9) Etsy Shipping (shipping labels) — only negative amounts (charges, not refunds)
   const etsyShipping = hasStatementFees
-    ? stmtShippingLines.filter(l => l.fee_type === 'shipping_label').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtShippingLines.filter(l => l.fee_type === 'shipping_label' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (() => {
         const shippingFeesFromFees = periodFees.filter(f => f.fee_type === 'shipping_label').reduce((sum, f) => sum + Math.abs(toNumber(f.amount)), 0);
         const shippingRows = matchLedgerRows(["shipping label", "postage", "etsy shipping"]).filter(e => { const type = (e.type || "").toLowerCase(); return type.includes("shipping"); });
@@ -454,9 +459,9 @@ export function aggregateFinancials(data, dateRange) {
         return toNumber(shippingFeesFromFees || (toNumber(sumLedgerExpense(shippingRows)) + legacyShipping));
       })();
 
-  // 10) Other Postage Costs (from manual entries)
+  // 10) Other Postage Costs (from manual entries) — only negative amounts
   const otherPostage = hasStatementFees
-    ? stmtShippingLines.filter(l => l.fee_type === 'other_postage').reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
+    ? stmtShippingLines.filter(l => l.fee_type === 'other_postage' && toNumber(l.amount) < 0).reduce((sum, l) => sum + Math.abs(toNumber(l.amount)), 0)
     : (() => {
         const otherPostageFromBE = periodBusinessExpenses.filter(e => e.category_name === "other_postage_costs").reduce((sum, e) => sum + toNumber(e.amount), 0);
         const legacyOtherPostage = periodLegacyExpenses.filter(e => ["other_postage_costs"].includes(e.category)).reduce((sum, e) => sum + toNumber(e.amount), 0);
