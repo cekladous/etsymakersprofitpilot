@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, X, Send, Loader2, CheckCircle, AlertCircle, ChevronDown, MessageSquare, Minus, Paperclip, ImageIcon } from "lucide-react";
+import { Sparkles, X, Send, Loader2, CheckCircle, AlertCircle, ChevronDown, MessageSquare, Minus, Paperclip, ImageIcon, MessageCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const AGENT_NAME = "maker_assistant";
@@ -211,6 +211,16 @@ export default function MakerAssistantWidget() {
               <h3 className="font-semibold text-sm">Maker Assistant</h3>
               {!minimized && <p className="text-xs text-emerald-100 truncate">Help with materials, sales, quotes, expenses & more</p>}
             </div>
+            <a
+              href={base44.agents.getWhatsAppConnectURL(AGENT_NAME)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
+              title="Connect WhatsApp to send receipts from your phone"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">WhatsApp</span>
+            </a>
             <button onClick={() => setMinimized((m) => !m)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors" title={minimized ? "Expand" : "Minimize"}>
               <Minus className="w-4 h-4" />
             </button>

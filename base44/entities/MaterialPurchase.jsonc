@@ -35,6 +35,10 @@
       "type": "string",
       "description": "Payment method used"
     },
+    "receipt_image_url": {
+      "type": "string",
+      "description": "URL of the uploaded receipt photo, if one was attached"
+    },
     "notes": {
       "type": "string",
       "description": "Additional notes"
