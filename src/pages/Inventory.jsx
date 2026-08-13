@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -95,6 +95,8 @@ export default function Inventory() {
       total_value: inventoryItem?.total_value || 0,
       low_stock_threshold: materialType.low_stock_threshold || 5,
       category: materialType.category,
+      supplier: materialType.supplier || "",
+      reorder_url: materialType.reorder_url || "",
       inventoryItemId: inventoryItem?.id,
     };
   });
@@ -197,21 +199,53 @@ export default function Inventory() {
       render: (row) => <span className="font-semibold">{formatCurrency(row.total_value)}</span>,
     },
     {
+      header: "Supplier",
+      render: (row) => (
+        <span className="text-stone-600">{row.supplier || "-"}</span>
+      ),
+    },
+    {
       header: "",
       render: (row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            const item = row.inventoryItemId 
-              ? inventoryItems.find(i => i.id === row.inventoryItemId)
-              : { id: null, material_name: row.material_name, quantity_on_hand: 0, average_cost: row.average_cost };
-            setSelectedItem(item);
-            setAdjustmentDialogOpen(true);
-          }}
-        >
-          Adjust
-        </Button>
+        <div className="flex gap-2">
+          {row.reorder_url ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+              asChild
+            >
+              <a href={row.reorder_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Reorder
+              </a>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEditingType(materialTypes.find(t => t.id === row.id));
+                setTypeFormOpen(true);
+              }}
+            >
+              Add Link
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const item = row.inventoryItemId
+                ? inventoryItems.find(i => i.id === row.inventoryItemId)
+                : { id: null, material_name: row.material_name, quantity_on_hand: 0, average_cost: row.average_cost };
+              setSelectedItem(item);
+              setAdjustmentDialogOpen(true);
+            }}
+          >
+            Adjust
+          </Button>
+        </div>
       ),
     },
   ];

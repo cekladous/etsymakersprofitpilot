@@ -45,6 +45,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
     default_height: "",
     cost_per_sheet: "",
     supplier: "",
+    reorder_url: "",
     low_stock_threshold: 5,
     notes: "",
   });
@@ -84,6 +85,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
         default_height: materialType.default_height?.toString() || "",
         cost_per_sheet: materialType.cost_per_sheet?.toString() || "",
         supplier: materialType.supplier || "",
+        reorder_url: materialType.reorder_url || "",
         low_stock_threshold: materialType.low_stock_threshold || 5,
         notes: materialType.notes || "",
       });
@@ -96,6 +98,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
         default_height: "",
         cost_per_sheet: "",
         supplier: "",
+        reorder_url: "",
         low_stock_threshold: 5,
         notes: "",
       });
@@ -259,7 +262,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
               <Input
                 value={formData.supplier}
                 onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                placeholder="Woodpeckers"
+                placeholder="Houston Acrylic, Amazon, etc."
               />
             </div>
             <div className="space-y-2">
@@ -271,6 +274,16 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
                 onChange={(e) => setFormData({ ...formData, low_stock_threshold: parseInt(e.target.value) || 5 })}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Reorder Link</Label>
+            <Input
+              type="url"
+              value={formData.reorder_url}
+              onChange={(e) => setFormData({ ...formData, reorder_url: e.target.value })}
+              placeholder="https://www.houstonacrylic.com/..."
+            />
           </div>
 
           <div className="space-y-2">

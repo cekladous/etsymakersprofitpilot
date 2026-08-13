@@ -39,7 +39,12 @@
       "description": "Cost per full sheet"
     },
     "supplier": {
-      "type": "string"
+      "type": "string",
+      "description": "Vendor or supplier name (e.g., Houston Acrylic, Amazon)"
+    },
+    "reorder_url": {
+      "type": "string",
+      "description": "Direct link to reorder this material"
     },
     "low_stock_threshold": {
       "type": "number",
