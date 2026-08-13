@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, PackageCheck, ChevronDown } from "lucide-react";
+import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, PackageCheck, ChevronDown, Sparkles } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -30,6 +30,8 @@ export default function Inventory() {
   const [showImport, setShowImport] = useState(false);
   const [allocatingPurchase, setAllocatingPurchase] = useState(null);
   const [expandedSupplier, setExpandedSupplier] = useState(null);
+  const [expenseMatches, setExpenseMatches] = useState({});
+  const [matchingLoading, setMatchingLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -67,6 +69,111 @@ export default function Inventory() {
   const allocatedPurchaseIds = new Set(
     inventoryTransactions.map((t) => t.reference_id).filter(Boolean)
   );
+
+  // AI receipt matching: match credit card charges (material expenses) to
+  // receipts (MaterialPurchase records logged via the Maker Assistant) by
+  // total amount / vendor / date. Falls back to a deterministic exact match.
+  const deterministicMatch = () => {
+    const map = {};
+    const used = new Set();
+    for (const e of materialExpenses) {
+      const m = materialPurchases.find(
+        (p) =>
+          !used.has(p.id) &&
+          Math.abs((p.total_cost || 0) - (e.amount || 0)) < 0.01 &&
+          (p.vendor || "").toLowerCase() === (e.vendor || "").toLowerCase()
+      );
+      if (m) {
+        map[e.id] = { purchase_id: m.id, note: "Matched by amount + vendor" };
+        used.add(m.id);
+      }
+    }
+    return map;
+  };
+
+  const runAiMatching = async () => {
+    if (!materialExpenses.length || !materialPurchases.length) {
+      setExpenseMatches({});
+      return;
+    }
+    setMatchingLoading(true);
+    try {
+      const expenses = materialExpenses.map((e) => ({
+        id: e.id,
+        vendor: e.vendor || "",
+        amount: e.amount,
+        date: e.date,
+        description: e.description || "",
+      }));
+      const purchases = materialPurchases.map((p) => ({
+        id: p.id,
+        material_name: p.material_name,
+        vendor: p.vendor || "",
+        total_cost: p.total_cost,
+        date: p.purchase_date,
+      }));
+      const prompt = `You are reconciling a maker's business credit card charges against material purchase receipts.
+Match each credit card charge to at most one receipt, and each receipt to at most one charge.
+Only match when the total amount is equal (within $0.01) and the vendor/date are compatible.
+If there is no confident match for a charge, exclude it from the results.
+
+CREDIT CARD CHARGES:
+${JSON.stringify(expenses)}
+
+RECEIPTS (material purchases):
+${JSON.stringify(purchases)}
+
+Return JSON with a "matches" array. Each match has expense_id, purchase_id, and a short note explaining why.`;
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            matches: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  expense_id: { type: "string" },
+                  purchase_id: { type: "string" },
+                  note: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      });
+      const aiMatches = Array.isArray(res?.matches) ? res.matches : [];
+      const map = { ...deterministicMatch() };
+      aiMatches.forEach((m) => {
+        if (m.expense_id && m.purchase_id) {
+          map[m.expense_id] = { purchase_id: m.purchase_id, note: m.note || "AI matched by total" };
+        }
+      });
+      setExpenseMatches(map);
+    } catch (err) {
+      console.error("AI matching failed, using deterministic match", err);
+      setExpenseMatches(deterministicMatch());
+    } finally {
+      setMatchingLoading(false);
+    }
+  };
+
+  const didAutoMatch = useRef(false);
+  useEffect(() => {
+    if (didAutoMatch.current) return;
+    if (materialExpenses.length && materialPurchases.length) {
+      didAutoMatch.current = true;
+      runAiMatching();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materialExpenses, materialPurchases]);
+
+  // Whether a combined-history item is "allocated":
+  // - expense (credit card charge): matched to a receipt via AI
+  // - purchase (receipt): linked to inventory stock via InventoryTransaction
+  const isItemAllocated = (p) =>
+    p.source === "expense" ? !!expenseMatches[p.id] : allocatedPurchaseIds.has(p.id);
 
   // Live-update when the assistant (or any source) changes inventory data
   useEffect(() => {
@@ -247,9 +354,16 @@ export default function Inventory() {
     (sum, p) => sum + (p.amount || 0), 0
   );
   const allocatedTotal = combinedPurchaseHistory
-    .filter((p) => allocatedPurchaseIds.has(p.id))
+    .filter((p) => isItemAllocated(p))
     .reduce((sum, p) => sum + (p.amount || 0), 0);
   const unallocatedTotal = purchaseHistoryTotal - allocatedTotal;
+
+  // Credit card charge (material expense) reconciliation vs receipts
+  const chargeTotal = materialExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const chargeMatchedTotal = materialExpenses
+    .filter((e) => expenseMatches[e.id])
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const chargeUnmatchedTotal = chargeTotal - chargeMatchedTotal;
 
   // Group purchase history by supplier (totals per supplier, not per material)
   const supplierTotals = (() => {
@@ -267,7 +381,7 @@ export default function Inventory() {
       };
       entry.total += p.amount || 0;
       entry.count += 1;
-      if (allocatedPurchaseIds.has(p.id)) entry.allocated += p.amount || 0;
+      if (isItemAllocated(p)) entry.allocated += p.amount || 0;
       else entry.unallocated += p.amount || 0;
       if (!entry.lastDate || new Date(p.date || "") > new Date(entry.lastDate)) {
         entry.lastDate = p.date;
@@ -692,23 +806,38 @@ export default function Inventory() {
                 />
               ) : (
                 <>
-                {/* Allocation summary */}
+                {/* Reconciliation summary: credit card charges matched to receipts via AI */}
+                <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+                  <p className="text-xs text-stone-500">
+                    Credit card charges (Materials & Supplies) are auto-matched to your Maker Assistant receipts by total using AI.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={runAiMatching}
+                    disabled={matchingLoading}
+                    className="gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {matchingLoading ? "Matching…" : "Re-match with AI"}
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                   <div className="p-3 rounded-lg bg-stone-100 border border-stone-200">
-                    <p className="text-xs text-stone-500">Total Spent (Materials)</p>
-                    <p className="text-lg font-bold text-stone-900">{formatCurrency(purchaseHistoryTotal)}</p>
+                    <p className="text-xs text-stone-500">Credit Card Charges</p>
+                    <p className="text-lg font-bold text-stone-900">{formatCurrency(chargeTotal)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                    <p className="text-xs text-emerald-700">Allocated to Inventory</p>
-                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(allocatedTotal)}</p>
+                    <p className="text-xs text-emerald-700">Allocated (Receipt Matched)</p>
+                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(chargeMatchedTotal)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                    <p className="text-xs text-amber-700">Unallocated</p>
-                    <p className="text-lg font-bold text-amber-700">{formatCurrency(unallocatedTotal)}</p>
+                    <p className="text-xs text-amber-700">Unmatched Charges</p>
+                    <p className="text-lg font-bold text-amber-700">{formatCurrency(chargeUnmatchedTotal)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Grouped by supplier showing total spent. Click a supplier to expand and see the individual purchases, then use <span className="font-medium text-stone-600">Allocate</span> to link an item to inventory stock.
+                  Grouped by supplier showing total spent. Click a supplier to expand. Charges matched to a receipt are marked <span className="font-medium text-emerald-700">Allocated</span>; use <span className="font-medium text-stone-600">Allocate</span> to link a receipt to inventory stock.
                 </p>
                 <div className="space-y-2">
                   {supplierTotals.map((s) => {
@@ -741,7 +870,11 @@ export default function Inventory() {
                         </button>
                         {isOpen && (
                           <div className="divide-y divide-stone-100">
-                            {s.purchases.map((purchase) => (
+                            {s.purchases.map((purchase) => {
+                              const allocated = isItemAllocated(purchase);
+                              const match = purchase.source === "expense" ? expenseMatches[purchase.id] : null;
+                              const matchedPurchase = match ? materialPurchases.find((p) => p.id === match.purchase_id) : null;
+                              return (
                               <div
                                 key={`${purchase.source}-${purchase.id}`}
                                 className="flex items-center justify-between p-4 bg-white hover:bg-stone-50 transition-colors"
@@ -750,33 +883,38 @@ export default function Inventory() {
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <p className="font-medium text-stone-900">{purchase.material_name}</p>
                                     <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purchase.source === "purchase" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600"}`}>
-                                      {purchase.source === "purchase" ? "Purchase" : "Expense"}
+                                      {purchase.source === "purchase" ? "Receipt" : "Card Charge"}
                                     </span>
-                                    {allocatedPurchaseIds.has(purchase.id) ? (
+                                    {allocated ? (
                                       <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
                                         <PackageCheck className="w-3 h-3" />
-                                        Allocated
+                                        {purchase.source === "expense" ? "Allocated" : "In Inventory"}
                                       </span>
                                     ) : (
                                       <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
-                                        Unallocated
+                                        {purchase.source === "expense" ? "Unmatched" : "Unallocated"}
                                       </span>
                                     )}
                                   </div>
                                   <p className="text-sm text-stone-500">
                                     {purchase.date} • {formatCurrency(purchase.amount)}
+                                    {match && matchedPurchase ? ` • matched receipt: ${matchedPurchase.material_name} (${matchedPurchase.purchase_date})` : ""}
                                   </p>
+                                  {match?.note ? (
+                                    <p className="text-xs text-emerald-600 mt-0.5">{match.note}</p>
+                                  ) : null}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Button
-                                    variant={allocatedPurchaseIds.has(purchase.id) ? "ghost" : "outline"}
-                                    size="sm"
-                                    onClick={() => setAllocatingPurchase(purchase)}
-                                    className={allocatedPurchaseIds.has(purchase.id) ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
-                                  >
-                                    {allocatedPurchaseIds.has(purchase.id) ? "Re-allocate" : "Allocate"}
-                                  </Button>
                                   {purchase.source === "purchase" && (
+                                    <>
+                                    <Button
+                                      variant={allocated ? "ghost" : "outline"}
+                                      size="sm"
+                                      onClick={() => setAllocatingPurchase(purchase)}
+                                      className={allocated ? "" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}
+                                    >
+                                      {allocated ? "Re-allocate" : "Allocate"}
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -787,10 +925,12 @@ export default function Inventory() {
                                     >
                                       Edit
                                     </Button>
+                                    </>
                                   )}
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
