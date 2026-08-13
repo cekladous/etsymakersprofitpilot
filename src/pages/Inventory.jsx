@@ -374,7 +374,8 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
     .reduce((sum, e) => sum + (e.amount || 0), 0);
   const chargeUnmatchedTotal = chargeTotal - chargeMatchedTotal;
 
-  // Group materials & supplies credit card charges by supplier (totals only)
+  // Group materials & supplies credit card charges by supplier, keeping the
+  // individual charge records for an itemized breakdown.
   const supplierTotals = (() => {
     const map = new Map();
     for (const e of materialExpenses) {
@@ -386,6 +387,7 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
         unallocated: 0,
         count: 0,
         lastDate: null,
+        charges: [],
       };
       entry.total += e.amount || 0;
       entry.count += 1;
@@ -394,6 +396,7 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
       if (!entry.lastDate || new Date(e.date || "") > new Date(entry.lastDate)) {
         entry.lastDate = e.date;
       }
+      entry.charges.push(e);
       map.set(key, entry);
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
@@ -844,26 +847,73 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Total spent per supplier from Materials & Supplies expenses. <span className="text-emerald-600">Allocated</span> = matched to a receipt; <span className="text-amber-600">Unmatched</span> = no matching receipt yet.
+                  Total spent per supplier from Materials & Supplies expenses. Click a supplier to expand the itemized charges. <span className="text-emerald-600">Allocated</span> = matched to a receipt; <span className="text-amber-600">Unmatched</span> = no matching receipt yet.
                 </p>
                 <div className="space-y-2">
-                  {supplierTotals.map((s) => (
-                    <div key={s.vendor} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
-                        <p className="text-sm text-stone-500">
-                          {s.count} charge{s.count !== 1 ? "s" : ""}
-                          {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
-                        </p>
+                  {supplierTotals.map((s) => {
+                    const isOpen = expandedSupplier === s.vendor;
+                    return (
+                      <div key={s.vendor} className="border border-stone-200 rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSupplier(isOpen ? null : s.vendor)}
+                          className="w-full flex items-center justify-between p-4 bg-stone-50 hover:bg-stone-100 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+                            <div className="min-w-0">
+                              <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
+                              <p className="text-sm text-stone-500">
+                                {s.count} charge{s.count !== 1 ? "s" : ""}
+                                {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
+                            <p className="text-xs text-stone-500">
+                              <span className="text-emerald-600">{formatCurrency(s.allocated)}</span> allocated / <span className="text-amber-600">{formatCurrency(s.unallocated)}</span> unmatched
+                            </p>
+                          </div>
+                        </button>
+                        {isOpen && (
+                          <div className="divide-y divide-stone-100">
+                            {s.charges.map((c) => {
+                              const match = expenseMatches[c.id];
+                              const matchedPurchase = match ? materialPurchases.find((p) => p.id === match.purchase_id) : null;
+                              return (
+                                <div key={c.id} className="flex items-center justify-between p-4 bg-white hover:bg-stone-50 transition-colors">
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-medium text-stone-900">{c.description || "(no description)"}</p>
+                                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-stone-200 text-stone-600">Card Charge</span>
+                                      {match ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
+                                          <PackageCheck className="w-3 h-3" />
+                                          Allocated
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+                                          Unmatched
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-stone-500">
+                                      {c.date} • {formatCurrency(c.amount)}
+                                      {match && matchedPurchase ? ` • matched receipt: ${matchedPurchase.material_name} (${matchedPurchase.purchase_date})` : ""}
+                                    </p>
+                                    {match?.note ? (
+                                      <p className="text-xs text-emerald-600 mt-0.5">{match.note}</p>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
-                        <p className="text-xs text-stone-500">
-                          <span className="text-emerald-600">{formatCurrency(s.allocated)}</span> allocated / <span className="text-amber-600">{formatCurrency(s.unallocated)}</span> unmatched
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 </>
               )}
