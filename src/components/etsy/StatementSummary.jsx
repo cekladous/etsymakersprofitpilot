@@ -58,9 +58,21 @@ export default function StatementSummary({ user }) {
     const lines = statementLines;
     const etsyOnlyOrders = orders.filter(o => !isSquareInPersonOrder(o)); // Exclude Square/in-person sales (not on Etsy statement)
 
-    // Gross sales from EtsyOrder records (order_total includes item + shipping + tax + fees - discounts - refunds)
-    const grossSales = etsyOnlyOrders.reduce((s, o) => s + (o.order_total || 0) - (o.refund_amount || 0), 0);
+    // Gross sales from EtsyOrder records (order_total, before refunds)
+    const grossSalesBeforeRefunds = etsyOnlyOrders.reduce((s, o) => s + (o.order_total || 0), 0);
     const salesCount = etsyOnlyOrders.length;
+
+    // Refunds: prefer statement-line refunds (monthly, authoritative) over order
+    // refund_amount (lifetime — may include refunds posted in other months).
+    const orderRefunds = etsyOnlyOrders.reduce((s, o) => s + (o.refund_amount || 0), 0);
+    const stmtRefunds = lines
+      .filter(l => l.section === 'refunds' && l.type === 'Refund')
+      .reduce((s, l) => s + Math.abs(l.amount || 0), 0);
+    const salesTaxCreditFromRefunds = lines
+      .filter(l => l.section === 'refunds' && l.type === 'Tax' && (l.amount || 0) > 0)
+      .reduce((s, l) => s + l.amount, 0);
+    const periodRefunds = stmtRefunds > 0 ? stmtRefunds : orderRefunds;
+    const grossSales = grossSalesBeforeRefunds - periodRefunds;
 
     // Net sales: exclude sales tax and CO retail delivery fee (government-mandated, not seller revenue)
     const salesTax = etsyOnlyOrders.reduce((s, o) => s + (o.sales_tax || 0), 0);
@@ -69,7 +81,7 @@ export default function StatementSummary({ user }) {
       const expected = (o.order_value || 0) + (o.shipping_charged || 0) + (o.sales_tax || 0) - (o.discount_amount || 0);
       return s + Math.max(0, (o.order_total || 0) - expected);
     }, 0);
-    const netSales = grossSales - salesTax - coRetailDeliveryFee;
+    const netSales = grossSales - salesTax - coRetailDeliveryFee + salesTaxCreditFromRefunds;
 
     const feeLines = lines.filter(l => l.section === 'fees');
     const feesTotal = feeLines.reduce((s, l) => s + (l.amount || 0), 0);
@@ -109,7 +121,14 @@ export default function StatementSummary({ user }) {
     const revenue = etsyOnlyOrders.reduce((s, o) => s + (o.order_value || 0), 0);
     const shipping = etsyOnlyOrders.reduce((s, o) => s + (o.shipping_charged || 0), 0);
     const discounts = etsyOnlyOrders.reduce((s, o) => s + (o.discount_amount || 0), 0);
-    const refunds = etsyOnlyOrders.reduce((s, o) => s + (o.refund_amount || 0), 0);
+    const orderRefunds = etsyOnlyOrders.reduce((s, o) => s + (o.refund_amount || 0), 0);
+    const stmtRefunds = statementLines
+      .filter(l => l.section === 'refunds' && l.type === 'Refund')
+      .reduce((s, l) => s + Math.abs(l.amount || 0), 0);
+    const salesTaxCredit = statementLines
+      .filter(l => l.section === 'refunds' && l.type === 'Tax' && (l.amount || 0) > 0)
+      .reduce((s, l) => s + l.amount, 0);
+    const refunds = stmtRefunds > 0 ? stmtRefunds : orderRefunds;
     const salesTax = etsyOnlyOrders.reduce((s, o) => s + (o.sales_tax || 0), 0);
 
     const feeLines = statementLines.filter(l => l.section === 'fees');
@@ -126,7 +145,7 @@ export default function StatementSummary({ user }) {
       salesTax,
       etsyFees,
       marketing,
-      net: revenue + shipping - discounts - refunds - etsyFees - marketing,
+      net: revenue + shipping - discounts - refunds + salesTaxCredit - etsyFees - marketing,
     };
   }, [orders, statementLines]);
 

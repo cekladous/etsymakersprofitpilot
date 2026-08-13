@@ -356,6 +356,7 @@ export default function Orders() {
   // Discounts and refunds (used in internal profit view, matching Reconciliation tab)
   const totalDiscounts = etsyOnlyOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0);
   const totalRefunds = etsyOnlyOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
+  const totalSalesTax = etsyOnlyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
   // Item revenue (order_value only, used in internal profit view formula)
   const totalItemRevenue = etsyOnlyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
 
@@ -422,6 +423,18 @@ export default function Orders() {
     return lines;
   }, [statementLines, dateRange, isSearchActive, filteredOrders]);
 
+  // Statement-line refunds: authoritative monthly source (order refund_amount is
+  // lifetime — may include refunds posted in other months. Statement lines capture
+  // only refunds that actually posted in this period.)
+  const refundsFromStatementLines = statementPeriodLines
+    .filter(l => l.section === 'refunds' && l.type === 'Refund')
+    .reduce((s, l) => s + Math.abs(l.amount || 0), 0);
+  const salesTaxCreditFromRefunds = statementPeriodLines
+    .filter(l => l.section === 'refunds' && l.type === 'Tax' && (l.amount || 0) > 0)
+    .reduce((s, l) => s + l.amount, 0);
+  const periodRefunds = refundsFromStatementLines > 0 ? refundsFromStatementLines : totalRefunds;
+  const refundCorrection = totalRefunds - periodRefunds;
+
   // Etsy Fees: all lines in the 'fees' section (listing, transaction, processing, share_save, other)
   // Marketing: all lines in the 'ads' section (etsy ads, offsite ads, Etsy Plus)
   // Split by section to match Etsy's official statement categories
@@ -462,7 +475,11 @@ export default function Orders() {
   // Total Net Earnings (internal profit): item revenue + shipping - discounts - refunds - Etsy Fees - Marketing
   // Matches the Reconciliation tab's "Internal Profit View" exactly
   const totalNetEarnings = totalItemRevenue + totalShipping - totalDiscounts - totalRefunds - etsyFees - marketingTotal;
-  
+  // Corrected: replace lifetime order refunds with monthly statement refunds,
+  // add sales tax credits from refunds (e.g., "Refund to buyer for sales tax").
+  const totalRevenueCorrected = totalRevenue + refundCorrection + salesTaxCreditFromRefunds;
+  const totalNetEarningsCorrected = totalNetEarnings + refundCorrection + salesTaxCreditFromRefunds - totalSalesTax;
+
   // Sum of per-order profits (Order Profit column) — each order's net after
   // transaction + processing fees + Share & Save credit, but before shop-level costs.
   const sumOfOrderProfits = etsyOnlyOrders.reduce((sum, o) => {
@@ -471,9 +488,7 @@ export default function Orders() {
   }, 0);
   // Shop-level costs bridge the gap between sum-of-order-profits and totalNetEarnings:
   // listing fees, Etsy Ads, Offsite Ads, other shop fees not tied to individual orders.
-  const shopLevelCosts = sumOfOrderProfits - totalNetEarnings;
-
-  const totalSalesTax = etsyOnlyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
+  const shopLevelCosts = sumOfOrderProfits - totalNetEarningsCorrected;
 
   // Total Business view: all orders including Square/in-person
   const totalBusinessRevenue = filteredOrders.reduce((sum, o) => {
@@ -483,6 +498,7 @@ export default function Orders() {
     const coFee = Math.max(0, (o.order_total || 0) - expected);
     return sum + gross - tax - coFee;
   }, 0);
+  const totalBusinessRevenueCorrected = totalBusinessRevenue + refundCorrection + salesTaxCreditFromRefunds;
   const squareOrderCount = filteredOrders.length - etsyOnlyOrders.length;
 
   const filteredFees = useMemo(() => {
@@ -1259,7 +1275,7 @@ export default function Orders() {
             <div className="flex-1">
               <p className="text-xs text-sky-800 leading-relaxed">
                 {squareOrderCount > 0
-                  ? <>Etsy-only totals (excludes {squareOrderCount} in-person/Square sale{squareOrderCount !== 1 ? 's' : ''} and sales tax). All-channel revenue: {formatCurrency(totalBusinessRevenue)}.</>
+                  ? <>Etsy-only totals (excludes {squareOrderCount} in-person/Square sale{squareOrderCount !== 1 ? 's' : ''} and sales tax). All-channel revenue: {formatCurrency(totalBusinessRevenueCorrected)}.</>
                   : <>Etsy-only totals (sales tax excluded).</>}
               </p>
             </div>
@@ -1305,7 +1321,7 @@ export default function Orders() {
               <div>
                 <p className="text-sm text-stone-500">Revenue (excl. tax)</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {formatCurrency(totalRevenue)}
+                  {formatCurrency(totalRevenueCorrected)}
                 </p>
               </div>
             </div>
@@ -1449,7 +1465,7 @@ export default function Orders() {
                 <p className="text-sm text-stone-500">Etsy Net Earnings</p>
                 <p className="text-xs text-stone-400">Etsy-only profit (excludes non-Etsy expenses)</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {formatCurrency(totalNetEarnings)}
+                  {formatCurrency(totalNetEarningsCorrected)}
                 </p>
               </div>
             </div>
@@ -1542,7 +1558,7 @@ export default function Orders() {
                     <span className="font-semibold text-rose-600">{formatCurrency(shopLevelCosts)}</span>
                     {" = "}
                     <span className="font-medium">Etsy Net Earnings</span>{" "}
-                    <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarnings)}</span>
+                    <span className="font-semibold text-stone-900">{formatCurrency(totalNetEarningsCorrected)}</span>
                   </p>
                   <p className="text-xs text-stone-500 mt-1">
                     Per-order profit deducts transaction and processing fees only. Shop-level costs (listing fees, advertising, and subscriptions) are deducted here to arrive at total Etsy Net Earnings. This is Etsy-only profit (excludes in-person Square sales) — see the Dashboard for Total Business Net Profit (includes non-Etsy expenses).
