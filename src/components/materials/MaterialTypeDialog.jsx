@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Sparkles } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -125,6 +125,57 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
     },
   });
 
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const autoFillWithAI = async () => {
+    const { name, reorder_url } = formData;
+    if (!name && !reorder_url) return;
+
+    setAiLoading(true);
+    try {
+      const hasUrl = reorder_url && /^https?:\/\//i.test(reorder_url);
+      const prompt = hasUrl
+        ? `Visit this product/material page URL and extract the details for inventory tracking: ${reorder_url}. ${
+            name ? `The material is listed as "${name}" if visible. ` : ""
+          }Return the material name, category (one of: wood, acrylic, leather, paper, fabric, other), thickness (e.g. "1/8"), sheet width and height in inches, cost per sheet in USD, and the supplier/vendor name. If a field isn't found, return null for it.`
+        : `A maker is adding a material to inventory named "${name}". Based on the name, determine the best category (one of: wood, acrylic, leather, paper, fabric, other), a likely thickness (e.g. "1/8", "3mm"), typical sheet width and height in inches, and an estimated cost per sheet in USD. Return only what you can reasonably infer; null for anything uncertain.`;
+
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        add_context_from_internet: hasUrl,
+        model: "gemini_3_flash",
+        response_json_schema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            category: { type: "string", enum: ["wood", "acrylic", "leather", "paper", "fabric", "other"] },
+            thickness: { type: "string" },
+            default_width: { type: "number" },
+            default_height: { type: "number" },
+            cost_per_sheet: { type: "number" },
+            supplier: { type: "string" },
+          },
+        },
+      });
+
+      const extracted = res || {};
+      setFormData((prev) => ({
+        ...prev,
+        name: extracted.name || prev.name,
+        category: extracted.category || prev.category,
+        thickness: extracted.thickness || prev.thickness,
+        default_width: extracted.default_width != null ? String(extracted.default_width) : prev.default_width,
+        default_height: extracted.default_height != null ? String(extracted.default_height) : prev.default_height,
+        cost_per_sheet: extracted.cost_per_sheet != null ? String(extracted.cost_per_sheet) : prev.cost_per_sheet,
+        supplier: extracted.supplier || prev.supplier,
+      }));
+    } catch (err) {
+      console.error("AI auto-fill failed", err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     mutation.mutate(formData);
@@ -138,6 +189,25 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={autoFillWithAI}
+            disabled={aiLoading || (!formData.name && !formData.reorder_url)}
+            className="w-full gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+          >
+            {aiLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {aiLoading
+              ? "Extracting with AI..."
+              : formData.reorder_url
+              ? "Extract Details from Link"
+              : "Auto-Categorize with AI"}
+          </Button>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label>Material Name *</Label>
