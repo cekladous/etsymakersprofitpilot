@@ -18,14 +18,27 @@ import JobFormDialog from "@/components/jobs/JobFormDialog";
 import ProductionEntryDialog from "@/components/quotes/ProductionEntryDialog";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import { useSearchParams } from "react-router-dom";
 import { Wrench, TrendingUp, DollarSign, Plus, Search, List, LayoutGrid, TableIcon, MoreHorizontal, Trash2, CheckCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ProductionPage() {
   const { user, loading } = useAuth();
   const [viewMode, setViewMode] = useState("list"); // list, kanban, spreadsheet
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const jobIdParam = searchParams.get("jobId");
   const [productionEntryOpen, setProductionEntryOpen] = useState(false);
+
+  const openJobDetail = (job) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("jobId", job.id);
+    setSearchParams(next);
+  };
+  const closeJobDetail = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("jobId");
+    setSearchParams(next, { replace: true });
+  };
   const [jobForProduction, setJobForProduction] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
@@ -46,6 +59,7 @@ export default function ProductionPage() {
     enabled: !!user,
     queryFn: () => base44.entities.Job.filter({ owner_user_id: user.id }, "-created_date"),
   });
+  const selectedJob = jobIdParam ? jobs.find((j) => j.id === jobIdParam) || null : null;
   const { data: quotesForSync = [] } = useQuery({ queryKey: ["quotes-for-jobs", user?.id], enabled: !!user, queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id }) }); const syncJobsMutation = useMutation({ mutationFn: async () => { const existingOrderIds = new Set(jobs.flatMap((j) => j.order_ids || [])); const missing = quotesForSync.filter((q) => q.converted_to_order_id && !existingOrderIds.has(q.converted_to_order_id)); let created = 0; for (const q of missing) { const materialCost = (q.materials || []).reduce((s, m) => s + ((m.cost || 0) * (m.quantity || 1)), 0); await base44.entities.Job.create({ owner_user_id: user.id, job_number: "JOB-" + q.quote_number, order_ids: [q.converted_to_order_id], quantity: parseFloat(q.quantity) || 1, material_cost: materialCost, machine_time_cost: 0, overhead_cost: (q.overhead_per_item || 0) * (parseFloat(q.quantity) || 1), quoted_total_cost: q.total || 0, status: "pending", notes: "Auto-created from Quote #" + q.quote_number + " (synced)" }); created++; } return created; }, onSuccess: (created) => { queryClient.invalidateQueries({ queryKey: ["jobs"] }); toast({ title: created > 0 ? "Jobs synced" : "Nothing to sync", description: created > 0 ? ("Created " + created + " missing job(s) from converted quotes.") : "All converted quotes already have jobs." }); }, onError: (err) => { toast({ variant: "destructive", title: "Sync failed", description: err?.message || String(err) }); } });
 
 
@@ -191,7 +205,7 @@ export default function ProductionPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setSelectedJob(row)}>
+            <DropdownMenuItem onClick={() => openJobDetail(row)}>
               View Details
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => {
@@ -353,7 +367,7 @@ export default function ProductionPage() {
               columns={columns}
               data={filteredJobs}
               isLoading={loading}
-              onRowClick={(row) => setSelectedJob(row)}
+              onRowClick={(row) => openJobDetail(row)}
               emptyMessage="No jobs match your filters"
             />
           )}
@@ -367,7 +381,7 @@ export default function ProductionPage() {
                 setEditingJob(job);
                 setFormOpen(true);
               }}
-              onViewDetails={(job) => setSelectedJob(job)}
+              onViewDetails={(job) => openJobDetail(job)}
               onMarkComplete={markComplete}
             />
           )}
@@ -381,7 +395,7 @@ export default function ProductionPage() {
                 setEditingJob(job);
                 setFormOpen(true);
               }}
-              onViewDetails={(job) => setSelectedJob(job)}
+              onViewDetails={(job) => openJobDetail(job)}
               onMarkComplete={markComplete}
             />
           )}
@@ -401,7 +415,7 @@ export default function ProductionPage() {
       <JobDetailSheet
         job={selectedJob}
         open={!!selectedJob}
-        onOpenChange={(open) => !open && setSelectedJob(null)}
+        onOpenChange={(open) => !open && closeJobDetail()}
       />
 
       <ProductionEntryDialog

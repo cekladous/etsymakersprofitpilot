@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import {
@@ -11,13 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtSign, Phone, Building, MapPin, FileText, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import StatusBadge from "@/components/shared/StatusBadge";
 import OrderDetailSheet from "@/components/orders/OrderDetailSheet";
 
 export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const orderIdParam = searchParams.get("orderId");
   const { data: quotes = [] } = useQuery({
     queryKey: ["customer-quotes", customer?.id],
     queryFn: () => base44.entities.Quote.filter({ customer_name: customer?.name }),
@@ -34,6 +35,8 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
     },
     enabled: !!customer,
   });
+
+  const selectedOrder = orderIdParam ? orders.find((o) => o.id === orderIdParam) || null : null;
 
   if (!customer) return null;
 
@@ -175,7 +178,11 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
                   {orders.map((order) => (
                     <div
                       key={order.id}
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={() => {
+                        const next = new URLSearchParams(searchParams);
+                        next.set("orderId", order.id);
+                        setSearchParams(next);
+                      }}
                       className="flex items-center justify-between p-3 bg-stone-50 rounded-lg hover:bg-stone-100 cursor-pointer transition-colors"
                     >
                       <div>
@@ -201,7 +208,13 @@ export default function CustomerDetailSheet({ customer, open, onOpenChange }) {
     <OrderDetailSheet
       order={selectedOrder}
       open={!!selectedOrder}
-      onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          const next = new URLSearchParams(searchParams);
+          next.delete("orderId");
+          setSearchParams(next, { replace: true });
+        }
+      }}
     />
     </>
   );

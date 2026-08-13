@@ -88,6 +88,35 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         budget_amount: parseFloat(data.budget_amount || 0),
       });
     },
+    onMutate: async (data) => {
+      const gross_sale = parseFloat(data.pre_tax_amount || 0) + parseFloat(data.sales_tax_collected || 0);
+      const tempSale = {
+        id: "temp-" + Date.now(),
+        owner_user_id: user.id,
+        date: data.date,
+        vendor: data.vendor,
+        description: data.description,
+        payment_source: data.payment_source,
+        pre_tax_amount: parseFloat(data.pre_tax_amount || 0),
+        sales_tax_collected: parseFloat(data.sales_tax_collected || 0),
+        gross_sale,
+        shipping_or_postage_cost: parseFloat(data.shipping_or_postage_cost || 0),
+        notes: data.notes,
+        created_date: new Date().toISOString(),
+      };
+      await queryClient.cancelQueries({ queryKey: ["custom-sales"] });
+      const prevSales = queryClient.getQueriesData({ queryKey: ["custom-sales"] });
+      queryClient.setQueriesData({ queryKey: ["custom-sales"] }, (old) =>
+        Array.isArray(old) ? [tempSale, ...old] : old
+      );
+      return { prevSales };
+    },
+    onError: (error, _data, context) => {
+      if (context?.prevSales) {
+        context.prevSales.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      }
+      setErrorMessage(error?.message || "Failed to save sale. Please try again.");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custom-sales"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -105,9 +134,6 @@ export default function CustomSaleDialog({ open, onOpenChange }) {
         sales_source: "Other",
         notes: "",
       });
-    },
-    onError: (error) => {
-      setErrorMessage(error?.message || "Failed to save sale. Please try again.");
     },
   });
 

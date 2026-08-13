@@ -49,6 +49,7 @@ import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@
 import ChannelBadge from "@/components/orders/ChannelBadge";
 import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
 import OrdersFilterPanel from "@/components/orders/OrdersFilterPanel";
+import { useSearchParams } from "react-router-dom";
 
 export default function Orders() {
   const { user, loading } = useAuth();
@@ -89,6 +90,38 @@ export default function Orders() {
   const [depositForm, setDepositForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
 
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detailOrderId = searchParams.get("orderId");
+
+  const openOrderDetail = (id) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("orderId", id);
+    setSearchParams(next);
+    setSelectedIds([id]);
+  };
+  const closeOrderDetail = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("orderId");
+    setSearchParams(next, { replace: true });
+    setSelectedIds([]);
+  };
+
+  // Keep the OrderDetailSheet (URL-driven) in sync with single-row selection so
+  // native back gestures close the overlay instead of leaving the page.
+  useEffect(() => {
+    if (selectedIds.length === 1) {
+      if (searchParams.get("orderId") !== selectedIds[0]) {
+        const next = new URLSearchParams(searchParams);
+        next.set("orderId", selectedIds[0]);
+        setSearchParams(next);
+      }
+    } else if (searchParams.get("orderId")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("orderId");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds]);
 
   // Read date range from URL params (e.g., when navigating from Dashboard)
   useEffect(() => {
@@ -196,6 +229,7 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["order-fees"] });
       queryClient.invalidateQueries({ queryKey: ["fees"] });
       setSelectedIds([]);
+      closeOrderDetail();
     },
     onError: (error) => {
       console.error('Bulk delete failed:', error);
@@ -768,7 +802,7 @@ export default function Orders() {
                   onClick={() => {
                     const order = etsyOrders.find(o => o.order_id === row.order_id);
                     if (order) {
-                      setSelectedIds([order.id]);
+                      openOrderDetail(order.id);
                     }
                   }}
                   className="text-blue-600 hover:underline cursor-pointer"
@@ -887,7 +921,7 @@ export default function Orders() {
       sortValue: (row) => row.order_id || "",
       render: (row) => (
         <button
-          onClick={() => setSelectedIds([row.id])}
+          onClick={() => openOrderDetail(row.id)}
           className="font-medium text-blue-600 hover:underline"
         >
           #{row.order_id}
@@ -1783,11 +1817,11 @@ export default function Orders() {
         onOpenChange={setImportDialogOpen}
       />
 
-      <OrderDetailSheet 
-        order={filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])}
-      orderFees={findOrderFee(orderFees, filteredOrders.find(o => selectedIds[0] && o.id === selectedIds[0])?.order_id)}
-        open={selectedIds.length === 1 && !bulkDeleteMutation.isPending}
-        onOpenChange={() => setSelectedIds([])}
+      <OrderDetailSheet
+        order={etsyOrders.find(o => o.id === detailOrderId)}
+        orderFees={findOrderFee(orderFees, etsyOrders.find(o => o.id === detailOrderId)?.order_id)}
+        open={!!detailOrderId && !bulkDeleteMutation.isPending}
+        onOpenChange={(open) => !open && closeOrderDetail()}
       />
 
       {showExportUpgrade && (

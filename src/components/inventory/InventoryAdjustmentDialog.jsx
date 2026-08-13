@@ -87,14 +87,56 @@ export default function InventoryAdjustmentDialog({ open, onOpenChange, item }) 
         notes: data.notes,
       });
     },
+    onMutate: async (data) => {
+      const change = parseFloat(data.quantityChange);
+      const avgCost = item.average_cost || 0;
+      const newQuantity = (item.quantity_on_hand || 0) + change;
+      const newTotalValue = newQuantity * avgCost;
+      const nowISO = new Date().toISOString();
+
+      await queryClient.cancelQueries({ queryKey: ["inventory-items"] });
+      await queryClient.cancelQueries({ queryKey: ["inventory-transactions"] });
+
+      const prevItems = queryClient.getQueriesData({ queryKey: ["inventory-items"] });
+      if (item.id) {
+        queryClient.setQueriesData({ queryKey: ["inventory-items"] }, (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((inv) => inv.id === item.id ? { ...inv, quantity_on_hand: newQuantity, total_value: newTotalValue, last_updated: nowISO } : inv);
+        });
+      }
+
+      const tempTxn = {
+        id: "temp-" + Date.now(),
+        owner_user_id: user.id,
+        inventory_item_id: item.id,
+        transaction_date: nowISO.split("T")[0],
+        transaction_type: "adjustment",
+        quantity_change: change,
+        unit_cost: avgCost,
+        notes: data.notes,
+        created_date: nowISO,
+      };
+      const prevTxns = queryClient.getQueriesData({ queryKey: ["inventory-transactions"] });
+      queryClient.setQueriesData({ queryKey: ["inventory-transactions"] }, (old) =>
+        Array.isArray(old) ? [tempTxn, ...old] : old
+      );
+
+      return { prevItems, prevTxns };
+    },
+    onError: (error, _data, context) => {
+      if (context?.prevItems) {
+        context.prevItems.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      }
+      if (context?.prevTxns) {
+        context.prevTxns.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      }
+      console.error("Inventory adjustment failed:", error);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
       onOpenChange(false);
-    },
-    onError: (error) => {
-      console.error("Inventory adjustment failed:", error);
     },
   });
 

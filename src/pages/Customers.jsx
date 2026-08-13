@@ -12,13 +12,14 @@ import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
 import CustomerDetailSheet from "@/components/customers/CustomerDetailSheet";
 import CustomerGridView from "@/components/customers/CustomerGridView";
 import { format } from "date-fns";
+import { useSearchParams } from "react-router-dom";
 
 export default function CustomersPage() {
   const { user, loading } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [detailCustomer, setDetailCustomer] = useState(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detailCustomerId = searchParams.get("customerId");
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("name");
   const [sortDir, setSortDir] = useState("asc");
@@ -32,6 +33,8 @@ export default function CustomersPage() {
       owner_user_id: user.id,
     }, "-created_date", 10000),
   });
+
+  const detailCustomer = customers.find((c) => c.id === detailCustomerId) || null;
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Customer.delete(id),
@@ -51,8 +54,9 @@ export default function CustomersPage() {
   };
 
   const handleView = (customer) => {
-    setDetailCustomer(customer);
-    setDetailOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.set("customerId", customer.id);
+    setSearchParams(next);
   };
 
   const handleDelete = (id) => {
@@ -267,8 +271,14 @@ export default function CustomersPage() {
 
       <CustomerDetailSheet
         customer={detailCustomer}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
+        open={!!detailCustomerId}
+        onOpenChange={(open) => {
+          if (!open) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("customerId");
+            setSearchParams(next, { replace: true });
+          }
+        }}
       />
     </div>
   );

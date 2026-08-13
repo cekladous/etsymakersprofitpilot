@@ -181,6 +181,12 @@ export default function Layout({ children, currentPageName }) {
               <Link
                 key={tab.page}
                 to={createPageUrl(tab.page)}
+                onClick={(e) => {
+                  if (isActive) {
+                    e.preventDefault();
+                    navigate(createPageUrl(tab.page), { replace: true });
+                  }
+                }}
                 className={`flex flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] flex-1 transition-colors ${
                   isActive ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
                 }`}

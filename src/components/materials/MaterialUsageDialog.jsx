@@ -114,6 +114,64 @@ export default function MaterialUsageDialog({ open, onOpenChange, sheet, onClose
 
       return { costAllocated };
     },
+    onMutate: async (data) => {
+      if (!sheet) return {};
+      let areaUsed = 0;
+      let percentageUsed = 0;
+      if (usageType === "dimensions") {
+        const w = parseFloat(data.width_used) || 0;
+        const h = parseFloat(data.height_used) || 0;
+        areaUsed = w * h;
+        percentageUsed = (areaUsed / (sheet.total_area || 1)) * 100;
+      } else {
+        percentageUsed = parseFloat(data.percentage_used) || 0;
+        areaUsed = (percentageUsed / 100) * (sheet.total_area || 0);
+      }
+      const newRemainingArea = Math.max(0, (sheet.remaining_area || 0) - areaUsed);
+      const newRemainingPct = (newRemainingArea / (sheet.total_area || 1)) * 100;
+      const costPerArea = (sheet.cost || 0) / (sheet.total_area || 1);
+      const costAllocated = areaUsed * costPerArea;
+      const newRemainingValue = Math.max(0, (sheet.remaining_value || 0) - costAllocated);
+      const newStatus = newRemainingPct <= 0 ? "depleted" : newRemainingPct <= 20 ? "in_use" : "available";
+
+      await queryClient.cancelQueries({ queryKey: ["materialSheets"] });
+      await queryClient.cancelQueries({ queryKey: ["materialUsage"] });
+
+      const prevSheets = queryClient.getQueriesData({ queryKey: ["materialSheets"] });
+      queryClient.setQueriesData({ queryKey: ["materialSheets"] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((s) => s.id === sheet.id ? { ...s, remaining_area: newRemainingArea, remaining_percentage: newRemainingPct, remaining_value: newRemainingValue, status: newStatus } : s);
+      });
+
+      const prevUsage = queryClient.getQueriesData({ queryKey: ["materialUsage"] });
+      const tempUsage = {
+        id: "temp-" + Date.now(),
+        sheet_id: sheet.id,
+        job_id: data.job_id || null,
+        usage_type: usageType,
+        width_used: usageType === "dimensions" ? parseFloat(data.width_used) : null,
+        height_used: usageType === "dimensions" ? parseFloat(data.height_used) : null,
+        area_used: areaUsed,
+        percentage_used: percentageUsed,
+        cost_allocated: costAllocated,
+        usage_date: format(new Date(), "yyyy-MM-dd"),
+        notes: data.notes,
+        created_date: new Date().toISOString(),
+      };
+      queryClient.setQueriesData({ queryKey: ["materialUsage"] }, (old) =>
+        Array.isArray(old) ? [tempUsage, ...old] : old
+      );
+
+      return { prevSheets, prevUsage };
+    },
+    onError: (_err, _data, context) => {
+      if (context?.prevSheets) {
+        context.prevSheets.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      }
+      if (context?.prevUsage) {
+        context.prevUsage.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["materialSheets"] });
       queryClient.invalidateQueries({ queryKey: ["materialUsage"] });
