@@ -305,8 +305,10 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
     return matchesSearch && matchesStock;
   });
 
+  // Live inventory value = qty on hand × average cost (recomputed so the
+  // card always reflects current stock, even if stored total_value is stale)
   const totalInventoryValue = mergedInventory.reduce(
-    (sum, item) => sum + (item.total_value || 0),
+    (sum, item) => sum + (item.quantity_on_hand * item.average_cost || 0),
     0
   );
 
@@ -318,9 +320,16 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
     (item) => item.quantity_on_hand === 0
   );
 
-  const totalInvestedInInventory = materialExpenses
-    .filter((e) => e.inventory_flag)
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Total money invested in inventory materials:
+  //  - all logged receipts (MaterialPurchase) — the primary inventory log
+  //  - plus inventory-flagged credit card charges that have no matching receipt
+  //    (matched charges are excluded so the same purchase isn't counted twice)
+  const matchedExpenseIds = new Set(Object.keys(expenseMatches));
+  const totalInvestedInInventory =
+    materialPurchases.reduce((sum, p) => sum + (p.total_cost || 0), 0) +
+    materialExpenses
+      .filter((e) => e.inventory_flag && !matchedExpenseIds.has(e.id))
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
 
   // Purchase History combines two sources, clearly labeled:
   //  - "purchase": MaterialPurchase logs (from Log Purchase / Maker Assistant receipts)
