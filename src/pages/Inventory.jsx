@@ -4,7 +4,6 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSign, ExternalLink, PackageCheck, ChevronDown } from "lucide-react";
@@ -28,10 +27,6 @@ export default function Inventory() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
-  const [supplierFilter, setSupplierFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [thicknessFilter, setThicknessFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("none"); // none | az | za
   const [showImport, setShowImport] = useState(false);
   const [allocatingPurchase, setAllocatingPurchase] = useState(null);
   const [expandedSupplier, setExpandedSupplier] = useState(null);
@@ -179,11 +174,6 @@ export default function Inventory() {
     };
   });
 
-  // Unique values for per-column dropdown filters
-  const uniqueSuppliers = [...new Set(mergedInventory.map((i) => i.supplier).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const uniqueCategories = [...new Set(mergedInventory.map((i) => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const uniqueThicknesses = [...new Set(mergedInventory.map((i) => i.thickness).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-
   const filteredInventory = mergedInventory.filter(item => {
     const q = search.trim().toLowerCase();
     const matchesSearch = !q ||
@@ -205,25 +195,8 @@ export default function Inventory() {
     const matchesStock = stockFilter === "all" ||
       (stockFilter === "low" && item.quantity_on_hand <= item.low_stock_threshold && item.quantity_on_hand > 0) ||
       (stockFilter === "out" && item.quantity_on_hand === 0);
-    const matchesSupplier = supplierFilter === "all" || item.supplier === supplierFilter;
-    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
-    const matchesThickness = thicknessFilter === "all" || item.thickness === thicknessFilter;
-    return matchesSearch && matchesStock && matchesSupplier && matchesCategory && matchesThickness;
+    return matchesSearch && matchesStock;
   });
-
-  const sortedInventory = [...filteredInventory].sort((a, b) => {
-    if (sortOrder === "az") return (a.material_name || "").localeCompare(b.material_name || "");
-    if (sortOrder === "za") return (b.material_name || "").localeCompare(a.material_name || "");
-    return 0;
-  });
-
-  const hasColumnFilters = supplierFilter !== "all" || categoryFilter !== "all" || thicknessFilter !== "all" || sortOrder !== "none";
-  const clearColumnFilters = () => {
-    setSupplierFilter("all");
-    setCategoryFilter("all");
-    setThicknessFilter("all");
-    setSortOrder("none");
-  };
 
   const totalInventoryValue = mergedInventory.reduce(
     (sum, item) => sum + (item.total_value || 0),
@@ -308,6 +281,9 @@ export default function Inventory() {
   const inventoryColumns = [
     {
       header: "Material Name",
+      filterable: true,
+      filterValue: (row) => row.material_name,
+      sortValue: (row) => row.material_name,
       render: (row) => (
         <div className="flex items-center gap-3">
           {row.image_url ? (
@@ -321,17 +297,22 @@ export default function Inventory() {
               <Package className="w-5 h-5 text-stone-400" />
             </div>
           )}
-          <div>
-            <span className="font-medium text-stone-900">{row.material_name}</span>
-            {row.category && (
-              <span className="ml-2 text-xs text-stone-500 capitalize">({row.category})</span>
-            )}
-          </div>
+          <span className="font-medium text-stone-900">{row.material_name}</span>
         </div>
       ),
     },
     {
+      header: "Category",
+      filterable: true,
+      filterValue: (row) => row.category,
+      sortValue: (row) => row.category,
+      render: (row) => <span className="text-stone-700 capitalize">{row.category || "-"}</span>,
+    },
+    {
       header: "Thickness",
+      filterable: true,
+      filterValue: (row) => row.thickness,
+      sortValue: (row) => row.thickness,
       render: (row) => <span className="text-stone-700">{row.thickness || "-"}</span>,
     },
     {
@@ -378,6 +359,9 @@ export default function Inventory() {
     },
     {
       header: "Supplier",
+      filterable: true,
+      filterValue: (row) => row.supplier,
+      sortValue: (row) => row.supplier,
       render: (row) => (
         <span className="text-stone-600">{row.supplier || "-"}</span>
       ),
@@ -636,91 +620,28 @@ export default function Inventory() {
 
         <TabsContent value="inventory" className="mt-6 space-y-6">
           {/* Filters */}
-          <div className="space-y-3">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                <Input
-                  placeholder="Search any column: name, thickness, supplier, cost, qty…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <div className="flex gap-2">
-                {["all", "low", "out"].map((filter) => (
-                  <Button
-                    key={filter}
-                    variant={stockFilter === filter ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStockFilter(filter)}
-                    className={stockFilter === filter ? "bg-emerald-600" : ""}
-                  >
-                    {filter === "all" ? "All" : filter === "low" ? "Low Stock" : "Out of Stock"}
-                  </Button>
-                ))}
-              </div>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <Input
+                placeholder="Search any column: name, thickness, supplier, cost, qty…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            {/* Per-column dropdown filters + A-Z/Z-A sort */}
-            <div className="flex flex-col md:flex-row gap-3 md:items-center">
-              <div className="flex flex-wrap gap-3">
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[170px]">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {uniqueCategories.map((c) => (
-                      <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Supplier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Suppliers</SelectItem>
-                    {uniqueSuppliers.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={thicknessFilter} onValueChange={setThicknessFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Thickness" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Thicknesses</SelectItem>
-                    {uniqueThicknesses.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 md:ml-auto">
+            <div className="flex gap-2">
+              {["all", "low", "out"].map((filter) => (
                 <Button
-                  variant={sortOrder === "az" ? "default" : "outline"}
+                  key={filter}
+                  variant={stockFilter === filter ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSortOrder(sortOrder === "az" ? "none" : "az")}
-                  className={sortOrder === "az" ? "bg-emerald-600" : ""}
+                  onClick={() => setStockFilter(filter)}
+                  className={stockFilter === filter ? "bg-emerald-600" : ""}
                 >
-                  A–Z
+                  {filter === "all" ? "All" : filter === "low" ? "Low Stock" : "Out of Stock"}
                 </Button>
-                <Button
-                  variant={sortOrder === "za" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === "za" ? "none" : "za")}
-                  className={sortOrder === "za" ? "bg-emerald-600" : ""}
-                >
-                  Z–A
-                </Button>
-                {hasColumnFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearColumnFilters}>
-                    Clear
-                  </Button>
-                )}
-              </div>
+              ))}
             </div>
           </div>
 
@@ -735,7 +656,7 @@ export default function Inventory() {
           ) : (
             <DataTable
               columns={inventoryColumns}
-              data={sortedInventory}
+              data={filteredInventory}
               isLoading={inventoryLoading}
               emptyMessage="No inventory matches your filters"
             />

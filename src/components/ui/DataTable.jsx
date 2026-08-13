@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import {
   TableBody,
   TableCell,
@@ -8,6 +8,56 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+
+function ColumnFilterHeader({ label, values, selected, filtered, isSorted, sortDirection, onToggle, onClear, onSortAsc, onSortDesc }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex items-center gap-1 hover:bg-stone-100 rounded -mx-1 px-1 py-0.5">
+          <span>{label}</span>
+          {isSorted ? (
+            sortDirection === 'asc'
+              ? <ArrowUp className="w-3.5 h-3.5 text-stone-700" />
+              : <ArrowDown className="w-3.5 h-3.5 text-stone-700" />
+          ) : null}
+          <Filter className={`w-3.5 h-3.5 ${filtered ? "text-emerald-600" : "opacity-40"}`} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0" align="start">
+        <div className="p-1 border-b border-stone-100">
+          <button onClick={onSortAsc} className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-stone-100">
+            <ArrowUp className="w-3.5 h-3.5" /> Sort A to Z
+          </button>
+          <button onClick={onSortDesc} className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-stone-100">
+            <ArrowDown className="w-3.5 h-3.5" /> Sort Z to A
+          </button>
+        </div>
+        <div className="max-h-56 overflow-auto p-1">
+          {values.length === 0 ? (
+            <p className="text-xs text-stone-400 px-2 py-2">No values</p>
+          ) : values.map((v) => {
+            const checked = selected.includes(v);
+            return (
+              <label key={v} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-stone-100 cursor-pointer text-sm">
+                <Checkbox checked={checked} onCheckedChange={() => onToggle(v)} />
+                <span className="truncate capitalize">{v}</span>
+              </label>
+            );
+          })}
+        </div>
+        {filtered && (
+          <div className="p-1 border-t border-stone-100">
+            <button onClick={onClear} className="w-full text-xs text-stone-600 hover:text-stone-900 px-2 py-1 rounded hover:bg-stone-100">
+              Clear filter
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function DataTable({
   columns,
@@ -24,6 +74,8 @@ export default function DataTable({
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
 
+  const [columnFilters, setColumnFilters] = useState({}); // colIndex -> array of allowed values
+
   const handleSort = (colIndex) => {
     if (sortColumn === colIndex) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -33,11 +85,72 @@ export default function DataTable({
     }
   };
 
+  const setColumnSort = (colIndex, direction) => {
+    setSortColumn(colIndex);
+    setSortDirection(direction);
+  };
+
+  const getColumnValues = (colIndex) => {
+    const col = columns[colIndex];
+    if (!col || !col.filterValue) return [];
+    const vals = new Set();
+    data.forEach((row) => {
+      const v = col.filterValue(row);
+      if (v != null && v !== "") vals.add(String(v));
+    });
+    return Array.from(vals).sort((a, b) => a.localeCompare(b));
+  };
+
+  const selectedValues = (colIndex) => {
+    const f = columnFilters[colIndex];
+    return f && f.length > 0 ? f : getColumnValues(colIndex);
+  };
+
+  const isColumnFiltered = (colIndex) => {
+    const f = columnFilters[colIndex];
+    return !!f && f.length < getColumnValues(colIndex).length;
+  };
+
+  const toggleFilter = (colIndex, value) => {
+    setColumnFilters((prev) => {
+      const all = getColumnValues(colIndex);
+      const current = prev[colIndex] && prev[colIndex].length > 0 ? prev[colIndex] : all;
+      const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+      const updated = { ...prev };
+      if (next.length === 0 || next.length === all.length) {
+        delete updated[colIndex]; // no filter
+      } else {
+        updated[colIndex] = next;
+      }
+      return updated;
+    });
+  };
+
+  const clearFilter = (colIndex) =>
+    setColumnFilters((prev) => {
+      const updated = { ...prev };
+      delete updated[colIndex];
+      return updated;
+    });
+
+  const filteredData = useMemo(() => {
+    return data.filter((row) =>
+      columns.every((col, colIndex) => {
+        if (!col.filterable || !col.filterValue) return true;
+        const f = columnFilters[colIndex];
+        if (!f || f.length === 0) return true;
+        return f.includes(String(col.filterValue(row) ?? ""));
+      })
+    );
+  }, [data, columns, columnFilters]);
+
   const sortedData = useMemo(() => {
-    if (sortColumn === null) return data;
+    if (sortColumn === null) return filteredData;
     const col = columns[sortColumn];
-    if (!col || !col.sortValue) return data;
-    return [...data].sort((a, b) => {
+    if (!col || !col.sortValue) return filteredData;
+    return [...filteredData].sort((a, b) => {
       const aVal = col.sortValue(a);
       const bVal = col.sortValue(b);
       if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -47,7 +160,7 @@ export default function DataTable({
       const bStr = String(bVal ?? '');
       return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
     });
-  }, [data, sortColumn, sortDirection, columns]);
+  }, [filteredData, sortColumn, sortDirection, columns]);
 
   const getNumericValue = (value) => {
     if (typeof value === 'number') return value;
@@ -230,7 +343,27 @@ export default function DataTable({
             <TableRow className="bg-stone-50 hover:bg-stone-50 sticky top-0 z-10">
               {columns.map((col, i) => {
                 const isSortable = !!col.sortValue;
+                const isFilterable = !!col.filterable;
                 const isSorted = sortColumn === i;
+                const headerLabel = typeof col.header === 'function' ? col.header() : col.header;
+                if (isFilterable) {
+                  return (
+                    <TableHead key={i} className={`text-stone-600 font-medium ${col.className || ""}`}>
+                      <ColumnFilterHeader
+                        label={headerLabel}
+                        values={getColumnValues(i)}
+                        selected={selectedValues(i)}
+                        filtered={isColumnFiltered(i)}
+                        isSorted={isSorted}
+                        sortDirection={sortDirection}
+                        onToggle={(v) => toggleFilter(i, v)}
+                        onClear={() => clearFilter(i)}
+                        onSortAsc={() => setColumnSort(i, 'asc')}
+                        onSortDesc={() => setColumnSort(i, 'desc')}
+                      />
+                    </TableHead>
+                  );
+                }
                 return (
                   <TableHead
                     key={i}
@@ -238,7 +371,7 @@ export default function DataTable({
                     onClick={isSortable ? () => handleSort(i) : undefined}
                   >
                     <div className="inline-flex items-center gap-1">
-                      {typeof col.header === 'function' ? col.header() : col.header}
+                      {headerLabel}
                       {isSortable && (
                         isSorted ? (
                           sortDirection === 'asc'
