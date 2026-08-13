@@ -115,9 +115,15 @@ export default function MakerAssistantWidget() {
 
   useEffect(() => {
     if (!conversationId) return;
-    const unsubscribe = base44.agents.subscribeToConversation(conversationId, (data) => {
-      setMessages(data.messages || []);
-    });
+    let unsubscribe = () => {};
+    try {
+      const unsub = base44.agents?.subscribeToConversation?.(conversationId, (data) => {
+        setMessages(data.messages || []);
+      });
+      if (typeof unsub === "function") unsubscribe = unsub;
+    } catch (err) {
+      console.error("Failed to subscribe to conversation", err);
+    }
     return () => unsubscribe();
   }, [conversationId]);
 
