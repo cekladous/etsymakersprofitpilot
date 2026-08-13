@@ -214,12 +214,12 @@ export default function Inventory() {
     .filter((e) => e.inventory_flag)
     .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-  // Purchase History shows only true MaterialPurchase logs (inventory restocks).
-  // BusinessExpense records categorized as "materials_supplies" are NOT mixed in —
-  // they belong on the Expenses page. If a material expense was allocated to inventory,
-  // a MaterialPurchase record exists for it and will show here on its own.
-  const combinedPurchaseHistory = materialPurchases
-    .map((p) => ({
+  // Purchase History combines two sources, clearly labeled:
+  //  - "purchase": MaterialPurchase logs (from Log Purchase / Maker Assistant receipts)
+  //  - "expense": BusinessExpense records categorized as materials_supplies
+  // Allocation badge shows whether each item has been linked to inventory stock.
+  const combinedPurchaseHistory = [
+    ...materialPurchases.map((p) => ({
       id: p.id,
       source: "purchase",
       date: p.purchase_date,
@@ -228,8 +228,27 @@ export default function Inventory() {
       amount: p.total_cost,
       quantity: p.quantity,
       goes_to_inventory: true,
-    }))
-    .sort((a, b) => new Date(b.date || "") - new Date(a.date || ""));
+    })),
+    ...materialExpenses.map((e) => ({
+      id: e.id,
+      source: "expense",
+      date: e.date,
+      material_name: e.description,
+      vendor: e.vendor || "Unknown vendor",
+      amount: e.amount,
+      quantity: null,
+      goes_to_inventory: e.inventory_flag || false,
+    })),
+  ].sort((a, b) => new Date(b.date || "") - new Date(a.date || ""));
+
+  // Allocation summary across the combined history
+  const purchaseHistoryTotal = combinedPurchaseHistory.reduce(
+    (sum, p) => sum + (p.amount || 0), 0
+  );
+  const allocatedTotal = combinedPurchaseHistory
+    .filter((p) => allocatedPurchaseIds.has(p.id))
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const unallocatedTotal = purchaseHistoryTotal - allocatedTotal;
 
   const inventoryColumns = [
     {
@@ -633,6 +652,27 @@ export default function Inventory() {
                   description="Your material purchases will appear here."
                 />
               ) : (
+                <>
+                {/* Allocation summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                  <div className="p-3 rounded-lg bg-stone-100 border border-stone-200">
+                    <p className="text-xs text-stone-500">Total Spent (Materials)</p>
+                    <p className="text-lg font-bold text-stone-900">{formatCurrency(purchaseHistoryTotal)}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <p className="text-xs text-emerald-700">Allocated to Inventory</p>
+                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(allocatedTotal)}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <p className="text-xs text-amber-700">Unallocated</p>
+                    <p className="text-lg font-bold text-amber-700">{formatCurrency(unallocatedTotal)}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-stone-400 mb-4">
+                  Receipts logged via the Maker Assistant or "Log Purchase" are tagged <span className="font-medium text-stone-600">Purchase</span>;
+                  expenses categorized as materials are tagged <span className="font-medium text-stone-600">Expense</span>.
+                  Use <span className="font-medium text-stone-600">Allocate</span> to link an item to inventory stock.
+                </p>
                 <div className="space-y-3">
                   {combinedPurchaseHistory.slice(0, 50).map((purchase) => (
                     <div
@@ -640,8 +680,11 @@ export default function Inventory() {
                       className="flex items-center justify-between p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
                     >
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-stone-900">{purchase.material_name}</p>
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purchase.source === "purchase" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600"}`}>
+                            {purchase.source === "purchase" ? "Purchase" : "Expense"}
+                          </span>
                           {allocatedPurchaseIds.has(purchase.id) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
                               <PackageCheck className="w-3 h-3" />
@@ -692,6 +735,7 @@ export default function Inventory() {
                     </div>
                   ))}
                 </div>
+                </>
               )}
             </CardContent>
           </Card>
