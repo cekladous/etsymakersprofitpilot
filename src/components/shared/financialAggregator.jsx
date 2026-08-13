@@ -142,7 +142,11 @@ export function aggregateFinancials(data, dateRange) {
   // EtsyStatementLine is the authoritative source from imports (matches Etsy's
   // official statement). The Fee entity may contain stale/duplicated records, so
   // we use statement lines as the PRIMARY source when they exist for the period.
-  const stmtFeeLines = periodStatementLines.filter(l => l.section === 'fees');
+  // Exclude "Buyer Fee" type lines (e.g. Colorado Retail Delivery Fee) from seller fees —
+  // these are buyer-paid fees already captured as sales deductions in the revenue calc
+  // (coFee = order_total - item_value - shipping - sales_tax). Counting them as fees
+  // would double-count the deduction.
+  const stmtFeeLines = periodStatementLines.filter(l => l.section === 'fees' && l.type !== 'Buyer Fee');
   const stmtAdsLines = periodStatementLines.filter(l => l.section === 'ads');
   const stmtShippingLines = periodStatementLines.filter(l => l.section === 'shipping');
   const hasStatementFees = stmtFeeLines.length > 0 || stmtAdsLines.length > 0;
