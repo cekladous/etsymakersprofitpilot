@@ -10,6 +10,7 @@ import { Plus, Search, Package, TrendingDown, TrendingUp, Box, Upload, DollarSig
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/badge";
 import MaterialTypeDialog from "@/components/materials/MaterialTypeDialog";
 import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog";
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
@@ -828,7 +829,7 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                     <p className="text-lg font-bold text-stone-900">{formatCurrency(chargeTotal)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                    <p className="text-xs text-emerald-700">Allocated (Receipt Matched)</p>
+                    <p className="text-xs text-emerald-700">Allocated to Receipts</p>
                     <p className="text-lg font-bold text-emerald-700">{formatCurrency(chargeMatchedTotal)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -837,23 +838,41 @@ Return JSON with a "matches" array. Each match has expense_id, purchase_id, and 
                   </div>
                 </div>
                 <p className="text-xs text-stone-400 mb-4">
-                  Total spent per supplier (receipts + Materials & Supplies charges combined).
+                  Each Materials & Supplies line item. Credit card charges matched to an uploaded receipt are marked “Allocated.”
                 </p>
                 <div className="space-y-2">
-                  {supplierTotals.map((s) => (
-                    <div key={s.vendor} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-stone-900 truncate">{s.vendor}</p>
-                        <p className="text-sm text-stone-500">
-                          {s.count} purchase{s.count !== 1 ? "s" : ""}
-                          {s.lastDate ? ` • last ${new Date(s.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
-                        </p>
+                  {combinedPurchaseHistory.map((p) => {
+                    const allocated = isItemAllocated(p);
+                    const isCharge = p.source === "expense";
+                    return (
+                      <div key={`${p.source}-${p.id}`} className="border border-stone-200 rounded-lg p-4 bg-white flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-stone-900 truncate">{p.material_name || p.vendor || "—"}</p>
+                            {allocated ? (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs flex-shrink-0">
+                                <PackageCheck className="w-3 h-3 mr-1" />
+                                Allocated
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs flex-shrink-0">
+                                {isCharge ? "Unmatched" : "Not allocated"}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-stone-500">
+                            {p.date ? new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                            {" • "}
+                            {p.vendor || "Unknown vendor"}
+                            {isCharge ? " • Credit card charge" : " • Receipt"}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-semibold text-stone-900">{formatCurrency(p.amount)}</p>
+                        </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-semibold text-stone-900">{formatCurrency(s.total)}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 </>
               )}
