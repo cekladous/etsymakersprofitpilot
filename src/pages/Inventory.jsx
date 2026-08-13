@@ -101,18 +101,36 @@ export default function Inventory() {
     return desc.includes(v);
   };
 
+  // Deterministic match: a charge is matched to a receipt when the charge's
+  // merchant (from the description) refers to the receipt vendor AND the
+  // dates are within 7 days. Totals may differ (shipping/tax, partial
+  // charges), so the total is not required to match — the difference is
+  // noted. Each charge matches the closest receipt by date; each receipt is
+  // used at most once. This works for any user's data without hardcoding.
   const deterministicMatch = () => {
     const map = {};
     const used = new Set();
-    for (const e of materialExpenses) {
-      const g = receiptGroups.find(
-        (rg) =>
-          !used.has(rg.key) &&
-          merchantMatches(e, rg.vendor) &&
-          Math.abs(rg.total - (e.amount || 0)) < 0.01
-      );
-      if (g) {
-        map[e.id] = { purchase_ids: g.purchase_ids, note: "Matched by receipt total + merchant" };
+    const charges = [...materialExpenses].sort(
+      (a, b) => new Date(a.date || "") - new Date(b.date || "")
+    );
+    for (const e of charges) {
+      const candidates = receiptGroups
+        .filter((rg) => !used.has(rg.key) && merchantMatches(e, rg.vendor))
+        .map((rg) => ({
+          rg,
+          days:
+            Math.abs(new Date(e.date || "") - new Date(rg.date || "")) / 86400000,
+        }))
+        .filter((c) => c.days <= 7)
+        .sort((a, b) => a.days - b.days);
+      if (candidates.length) {
+        const g = candidates[0].rg;
+        const diff = Math.round((g.total - (e.amount || 0)) * 100) / 100;
+        const sign = diff >= 0 ? "+" : "";
+        map[e.id] = {
+          purchase_ids: g.purchase_ids,
+          note: `Matched by merchant + date (receipt $${g.total.toFixed(2)}, ${sign}${diff.toFixed(2)})`,
+        };
         used.add(g.key);
       }
     }
@@ -175,10 +193,10 @@ Return JSON with a "matches" array. Each match has expense_id, receipt_key, and 
       const aiMatches = Array.isArray(res?.matches) ? res.matches : [];
       const map = { ...deterministicMatch() };
       aiMatches.forEach((m) => {
-        if (m.expense_id && m.receipt_key) {
+        if (m.expense_id && m.receipt_key && !map[m.expense_id]) {
           const g = receiptGroups.find((rg) => rg.key === m.receipt_key);
           if (g) {
-            map[m.expense_id] = { purchase_ids: g.purchase_ids, note: m.note || "AI matched by receipt total + merchant" };
+            map[m.expense_id] = { purchase_ids: g.purchase_ids, note: m.note || "AI matched by merchant + date" };
           }
         }
       });
