@@ -187,6 +187,14 @@
     "custom_sale_id": {
       "type": "string",
       "description": "Reference to CustomSale created when invoice was marked Paid"
+    },
+    "square_invoice_id": {
+      "type": "string",
+      "description": "Square invoice ID once this invoice has been pushed to Square"
+    },
+    "square_customer_id": {
+      "type": "string",
+      "description": "Square customer ID used when this invoice was pushed to Square"
     }
   },
   "required": [

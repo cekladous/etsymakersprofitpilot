@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { FileText, CheckCircle2, Download, Edit, FileCheck } from "lucide-react";
+import { FileText, CheckCircle2, Download, Edit, FileCheck, Square } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export default function InvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [markingId, setMarkingId] = useState(null);
+  const [pushingId, setPushingId] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
@@ -226,6 +227,39 @@ export default function InvoicesPage() {
     });
   };
 
+  const pushToSquareMutation = useMutation({
+    mutationFn: async (invoice) => {
+      return base44.functions.invoke("pushInvoiceToSquare", {
+        invoiceId: invoice.id,
+        publish: false,
+      });
+    },
+    onSuccess: (res) => {
+      const data = res.data || res;
+      toast({
+        title: data.already_pushed ? "Already in Square" : "Sent to Square",
+        description: data.published
+          ? "Square invoice published and emailed to the customer."
+          : "Draft Square invoice created — review and send it from Square.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (err) => {
+      toast({
+        title: "Square push failed",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePushToSquare = (invoice) => {
+    setPushingId(invoice.id);
+    pushToSquareMutation.mutate(invoice, {
+      onSettled: () => setPushingId(null),
+    });
+  };
+
   const handleEdit = (invoice) => {
     setSelectedInvoice(invoice);
     setFormOpen(true);
@@ -329,6 +363,17 @@ export default function InvoicesPage() {
             onClick={() => handleEdit(inv)}
           >
             <Edit className="w-3 h-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pushingId === inv.id || !!inv.square_invoice_id}
+            onClick={() => handlePushToSquare(inv)}
+            className="gap-1.5"
+            title={inv.square_invoice_id ? "Already created in Square" : "Create this invoice in Square"}
+          >
+            <Square className="w-3.5 h-3.5" />
+            {pushingId === inv.id ? "Sending..." : inv.square_invoice_id ? "Sent" : "Square"}
           </Button>
           <Button
             size="sm"
