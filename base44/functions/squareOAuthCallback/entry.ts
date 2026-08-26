@@ -4,30 +4,41 @@ import { secrets } from "base44:runtime";
 const SQUARE_API = "https://connect.squareup.com";
 
 export default async function (req) {
-  const reqUrl = new URL(req.url);
-  const appOrigin = reqUrl.origin;
-  const redirect = (path) => Response.redirect(`${appOrigin}${path}`, 302);
-
   try {
-    const code = reqUrl.searchParams.get("code");
-    const state = reqUrl.searchParams.get("state");
-    const errorParam = reqUrl.searchParams.get("error");
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // The frontend callback page invokes this function with code + state in
+    // the SDK payload (a JSON body), so we read from the request body instead
+    // of the URL.
+    let body = {};
+    try {
+      const text = await req.text();
+      body = text ? JSON.parse(text) : {};
+    } catch {
+      body = {};
+    }
+
+    const code = body.code || new URL(req.url).searchParams.get("code");
+    const state = body.state || new URL(req.url).searchParams.get("state");
+    const errorParam = body.error || new URL(req.url).searchParams.get("error");
 
     if (errorParam) {
-      return redirect(`/Settings?square_error=${encodeURIComponent(errorParam)}`);
+      return Response.json({ error: errorParam }, { status: 400 });
     }
     if (!code || !state) {
-      return redirect(`/Settings?square_error=missing_params`);
+      return Response.json({ error: "missing_params" }, { status: 400 });
     }
-
-    const base44 = createClientFromRequest(req);
 
     const pending = await base44.asServiceRole.entities.SquareConnection.filter({
       oauth_state: state,
       status: "pending",
     });
     if (!pending || pending.length === 0) {
-      return redirect(`/Settings?square_error=invalid_state`);
+      return Response.json({ error: "invalid_state" }, { status: 400 });
     }
     const conn = pending[0];
 
@@ -46,8 +57,9 @@ export default async function (req) {
     });
     const tok = await tokenRes.json();
     if (!tok.access_token) {
-      return redirect(
-        `/Settings?square_error=${encodeURIComponent(tok.error || "token_exchange_failed")}`
+      return Response.json(
+        { error: tok.error || "token_exchange_failed" },
+        { status: 400 }
       );
     }
 
@@ -84,8 +96,8 @@ export default async function (req) {
       oauth_state: "",
     });
 
-    return redirect(`/Settings?square_connected=1`);
+    return Response.json({ connected: true, merchant_name: merchantName });
   } catch (error) {
-    return redirect(`/Settings?square_error=${encodeURIComponent(error.message)}`);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

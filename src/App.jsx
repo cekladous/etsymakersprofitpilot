@@ -6,6 +6,7 @@ import ModalCleanup from '@/lib/ModalCleanup'
 import { pagesConfig } from './pages.config'
 import Quotes from './pages/Quotes'
 import Invoices from './pages/Invoices'
+import SquareCallback from './pages/SquareCallback'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';

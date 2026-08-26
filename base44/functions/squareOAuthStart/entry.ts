@@ -48,9 +48,14 @@ export default async function (req) {
 
     const scope =
       "ORDERS_WRITE+ORDERS_READ+INVOICES_WRITE+INVOICES_READ+PAYMENTS_READ+PAYMENTS_WRITE+CUSTOMERS_READ+CUSTOMERS_WRITE+MERCHANT_PROFILE_READ";
+    // OAuth redirects back to a frontend page (not the function endpoint
+    // directly), because Base44 function URLs reject unauthenticated browser
+    // GET redirects. The page invokes squareOAuthCallback via the SDK.
+    const appOrigin = new URL(req.url).origin;
+    const redirectUri = `${appOrigin}/SquareCallback`;
     const url =
       `${SQUARE_API}/oauth2/authorize?client_id=${clientId}` +
-      `&scope=${scope}&session=false&state=${state}`;
+      `&scope=${scope}&session=false&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
     return Response.json({ url });
   } catch (error) {
