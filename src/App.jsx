@@ -83,6 +83,11 @@ const AuthenticatedApp = () => {
           <Invoices />
         </LayoutWrapper>
       } />
+      <Route path="/SquareCallback" element={
+        <LayoutWrapper currentPageName="SquareCallback">
+          <SquareCallback />
+        </LayoutWrapper>
+      } />
       <Route path="*" element={<PageNotFound />} />
       </Routes>
       </motion.div>
