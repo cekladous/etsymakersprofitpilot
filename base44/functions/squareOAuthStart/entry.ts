@@ -51,8 +51,7 @@ export default async function (req) {
     // OAuth redirects back to a frontend page (not the function endpoint
     // directly), because Base44 function URLs reject unauthenticated browser
     // GET redirects. The page invokes squareOAuthCallback via the SDK.
-    const appOrigin = new URL(req.url).origin;
-    const redirectUri = `${appOrigin}/SquareCallback`;
+    const redirectUri = "https://etsymakersprofitpilot.base44.app/SquareCallback";
     const url =
       `${SQUARE_API}/oauth2/authorize?client_id=${clientId}` +
       `&scope=${scope}&session=false&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
