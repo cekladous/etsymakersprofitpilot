@@ -53,6 +53,7 @@ export default async function (req) {
         client_secret: clientSecret,
         code,
         grant_type: "authorization_code",
+        redirect_uri: "https://etsymakersprofitpilot.base44.app/SquareCallback",
       }),
     });
     const tok = await tokenRes.json();
