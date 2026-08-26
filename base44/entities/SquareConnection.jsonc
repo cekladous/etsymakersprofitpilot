@@ -1,0 +1,71 @@
+{
+  "name": "SquareConnection",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User ID that owns this Square connection"
+    },
+    "merchant_id": {
+      "type": "string",
+      "description": "Square merchant ID this connection belongs to"
+    },
+    "merchant_name": {
+      "type": "string",
+      "description": "Square merchant / business name (for display)"
+    },
+    "access_token": {
+      "type": "string",
+      "description": "Square OAuth access token for this seller"
+    },
+    "refresh_token": {
+      "type": "string",
+      "description": "Square OAuth refresh token for this seller"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Access token expiry timestamp"
+    },
+    "scopes": {
+      "type": "string",
+      "description": "Comma-separated authorized scopes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "disconnected"
+      ],
+      "default": "pending",
+      "description": "Connection lifecycle status"
+    },
+    "oauth_state": {
+      "type": "string",
+      "description": "Random nonce used to verify the OAuth callback belongs to this user"
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the connection was activated"
+    }
+  },
+  "required": [
+    "owner_user_id"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_user_id": "{{user.id}}"
+    }
+  }
+}

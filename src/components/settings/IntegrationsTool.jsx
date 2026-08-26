@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { ShoppingBag, Square, Upload, Link2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PlatformSalesImport from '@/components/imports/PlatformSalesImport';
+import SquareConnectCard from '@/components/settings/SquareConnectCard';
 
 export default function IntegrationsTool() {
   const { user } = useAuth();
@@ -54,6 +55,10 @@ export default function IntegrationsTool() {
           Connect your sales channels and payment processors to import data into Profit Pilot.
           This is a bookkeeping tool — no checkout or customer-facing features.
         </p>
+      </div>
+
+      <div className="mb-6">
+        <SquareConnectCard />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

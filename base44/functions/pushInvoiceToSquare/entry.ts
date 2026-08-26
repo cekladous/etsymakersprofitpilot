@@ -1,74 +1,64 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-
-const SQUARE_VERSION = '2024-08-21';
-const SQUARE_API = 'https://connect.squareup.com';
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
+import { squareFetch, getUserSquareConnection } from "../../shared/squareOauth.ts";
 
 const toCents = (n) => Math.round(Number(n || 0) * 100);
 
-async function squareFetch(token, path, options = {}) {
-  const res = await fetch(`${SQUARE_API}${path}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Square-Version': SQUARE_VERSION,
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
-  const text = await res.text();
-  let body = null;
-  try { body = text ? JSON.parse(text) : null; } catch { body = { raw: text }; }
-  if (!res.ok) {
-    const err = (body && body.errors && body.errors[0]) || {};
-    throw new Error(err.detail || err.code || `Square API error (${res.status})`);
-  }
-  return body;
-}
-
-export default async function(req) {
+export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     const { invoiceId, publish } = await req.json();
-    if (!invoiceId) return Response.json({ error: 'Missing invoiceId' }, { status: 400 });
+    if (!invoiceId) return Response.json({ error: "Missing invoiceId" }, { status: 400 });
 
     let invoice;
     try {
       invoice = await base44.entities.Invoice.get(invoiceId);
     } catch {
-      return Response.json({ error: 'Invoice not found' }, { status: 404 });
+      return Response.json({ error: "Invoice not found" }, { status: 404 });
     }
     if (!invoice || invoice.owner_user_id !== user.id) {
-      return Response.json({ error: 'Invoice not found' }, { status: 404 });
+      return Response.json({ error: "Invoice not found" }, { status: 404 });
     }
 
     // Idempotent: already pushed
     if (invoice.square_invoice_id) {
       return Response.json({
-        message: 'Invoice already in Square',
+        message: "Invoice already in Square",
         square_invoice_id: invoice.square_invoice_id,
         square_customer_id: invoice.square_customer_id,
         already_pushed: true,
       });
     }
 
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('square');
+    // Use the SELLER'S OWN Square connection — never a shared/fallback account.
+    const conn = await getUserSquareConnection(base44, user.id);
+    if (!conn) {
+      return Response.json(
+        {
+          error:
+            "Connect your own Square account first (Settings → Integrations → Square Account).",
+          not_connected: true,
+        },
+        { status: 400 }
+      );
+    }
+    const accessToken = conn.access_token;
 
     // 1. Resolve an active location (orders/invoices are location-scoped)
-    const locRes = await squareFetch(accessToken, '/v2/locations');
+    const locRes = await squareFetch(accessToken, "/v2/locations");
     const locations = (locRes && locRes.locations) || [];
-    const location = locations.find((l) => l.status === 'ACTIVE') || locations[0];
-    if (!location) throw new Error('No Square locations found for your account');
+    const location = locations.find((l) => l.status === "ACTIVE") || locations[0];
+    if (!location) throw new Error("No Square locations found for your account");
     const locationId = location.id;
 
     // 2. Find or create the customer by email (fall back to name)
     let customerId = null;
-    const email = (invoice.customer_email || '').trim().toLowerCase();
+    const email = (invoice.customer_email || "").trim().toLowerCase();
     if (email) {
-      const searchRes = await squareFetch(accessToken, '/v2/customers/search', {
-        method: 'POST',
+      const searchRes = await squareFetch(accessToken, "/v2/customers/search", {
+        method: "POST",
         body: JSON.stringify({
           query: { filter: { email_address: { exact: email } } },
           limit: 1,
@@ -77,11 +67,11 @@ export default async function(req) {
       customerId = searchRes && searchRes.customers && searchRes.customers[0] && searchRes.customers[0].id;
     }
     if (!customerId) {
-      const nameParts = (invoice.customer_name || 'Customer').trim().split(/\s+/);
-      const givenName = nameParts[0] || '';
-      const familyName = nameParts.slice(1).join(' ') || '';
-      const createCust = await squareFetch(accessToken, '/v2/customers', {
-        method: 'POST',
+      const nameParts = (invoice.customer_name || "Customer").trim().split(/\s+/);
+      const givenName = nameParts[0] || "";
+      const familyName = nameParts.slice(1).join(" ") || "";
+      const createCust = await squareFetch(accessToken, "/v2/customers", {
+        method: "POST",
         body: JSON.stringify({
           idempotency_key: `cust-${invoice.id}`,
           given_name: givenName,
@@ -91,13 +81,13 @@ export default async function(req) {
       });
       customerId = createCust && createCust.customer && createCust.customer.id;
     }
-    if (!customerId) throw new Error('Failed to resolve a Square customer');
+    if (!customerId) throw new Error("Failed to resolve a Square customer");
 
     // 3. Build the Square order from the invoice line items (+ shipping + tax)
     let lineItems = (invoice.line_items || []).map((li) => ({
-      name: li.description || li.product_id || 'Item',
+      name: li.description || li.product_id || "Item",
       quantity: String(Number(li.quantity || 1)),
-      base_price_money: { amount: toCents(li.unit_price), currency: 'USD' },
+      base_price_money: { amount: toCents(li.unit_price), currency: "USD" },
     }));
     if (lineItems.length === 0) {
       // Quotes/invoices carry a total but no itemized lines (the total folds in
@@ -108,32 +98,32 @@ export default async function(req) {
         Number(invoice.total || 0) - Number(invoice.tax_amount || 0) - Number(invoice.shipping_cost || 0)
       );
       lineItems.push({
-        name: invoice.project_name || invoice.invoice_number || 'Invoice',
-        quantity: '1',
-        base_price_money: { amount: toCents(itemAmount), currency: 'USD' },
+        name: invoice.project_name || invoice.invoice_number || "Invoice",
+        quantity: "1",
+        base_price_money: { amount: toCents(itemAmount), currency: "USD" },
       });
     }
     if (Number(invoice.shipping_cost || 0) > 0) {
       lineItems.push({
-        name: 'Shipping',
-        quantity: '1',
-        base_price_money: { amount: toCents(invoice.shipping_cost), currency: 'USD' },
+        name: "Shipping",
+        quantity: "1",
+        base_price_money: { amount: toCents(invoice.shipping_cost), currency: "USD" },
       });
     }
     const taxes = [];
     if (Number(invoice.tax_amount || 0) > 0) {
       taxes.push({
-        name: 'Sales Tax',
+        name: "Sales Tax",
         percentage: String(Number(invoice.tax_rate || 0)),
-        scope: 'ORDER',
+        scope: "ORDER",
       });
     }
 
     // Unique per push so a retry (e.g. after a deleted/failed draft) always
     // builds a fresh OPEN order instead of reusing a stale, non-OPEN one.
     const pushNonce = Date.now();
-    const orderRes = await squareFetch(accessToken, '/v2/orders', {
-      method: 'POST',
+    const orderRes = await squareFetch(accessToken, "/v2/orders", {
+      method: "POST",
       body: JSON.stringify({
         idempotency_key: `order-${invoice.id}-${pushNonce}`,
         order: {
@@ -145,13 +135,13 @@ export default async function(req) {
       }),
     });
     const orderId = orderRes && orderRes.order && orderRes.order.id;
-    if (!orderId) throw new Error('Failed to create Square order');
+    if (!orderId) throw new Error("Failed to create Square order");
 
     // 4. Create the Square invoice (draft unless publish=true)
-    const todayStr = new Date().toISOString().split('T')[0];
-    const dueDate = (invoice.due_date && invoice.due_date >= todayStr) ? invoice.due_date : todayStr;
-    const invoiceRes = await squareFetch(accessToken, '/v2/invoices', {
-      method: 'POST',
+    const todayStr = new Date().toISOString().split("T")[0];
+    const dueDate = invoice.due_date && invoice.due_date >= todayStr ? invoice.due_date : todayStr;
+    const invoiceRes = await squareFetch(accessToken, "/v2/invoices", {
+      method: "POST",
       body: JSON.stringify({
         idempotency_key: `inv-${invoice.id}-${pushNonce}`,
         invoice: {
@@ -159,9 +149,9 @@ export default async function(req) {
           order_id: orderId,
           primary_recipient: { customer_id: customerId },
           payment_requests: [
-            { request_type: 'BALANCE', due_date: dueDate, tipping_enabled: false },
+            { request_type: "BALANCE", due_date: dueDate, tipping_enabled: false },
           ],
-          delivery_method: 'EMAIL',
+          delivery_method: "EMAIL",
           accepted_payment_methods: {
             card: true,
             square_gift_card: false,
@@ -175,13 +165,13 @@ export default async function(req) {
     });
     const squareInvoice = invoiceRes && invoiceRes.invoice;
     const squareInvoiceId = squareInvoice && squareInvoice.id;
-    if (!squareInvoiceId) throw new Error('Failed to create Square invoice');
+    if (!squareInvoiceId) throw new Error("Failed to create Square invoice");
 
     let publicUrl = null;
     let published = false;
     if (publish) {
       const pubRes = await squareFetch(accessToken, `/v2/invoices/${squareInvoiceId}/publish`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ idempotency_key: `pub-${invoice.id}-${pushNonce}` }),
       });
       publicUrl = (pubRes && pubRes.invoice && pubRes.invoice.public_url) || null;
@@ -195,7 +185,7 @@ export default async function(req) {
     });
 
     return Response.json({
-      message: published ? 'Square invoice created and published' : 'Square invoice created (draft)',
+      message: published ? "Square invoice created and published" : "Square invoice created (draft)",
       square_invoice_id: squareInvoiceId,
       square_customer_id: customerId,
       public_url: publicUrl,

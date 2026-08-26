@@ -47,6 +47,15 @@ export default function InvoicesPage() {
     queryFn: () => base44.entities.Quote.filter({ owner_user_id: user.id, status: "Accepted" }, "-created_date"),
   });
 
+  const { data: squareConnection } = useQuery({
+    queryKey: ["square-connection", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const conns = await base44.entities.SquareConnection.filter({ owner_user_id: user.id, status: "active" });
+      return conns && conns[0];
+    },
+  });
+
   const convertToInvoiceMutation = useMutation({
     mutationFn: async (quoteId) => {
       const currentUser = await base44.auth.me();
@@ -258,6 +267,14 @@ export default function InvoicesPage() {
   });
 
   const handlePushToSquare = (invoice) => {
+    if (!squareConnection) {
+      toast({
+        title: "Connect Square first",
+        description: "Go to Settings → Integrations → Square Account to connect your own Square account.",
+        variant: "destructive",
+      });
+      return;
+    }
     setPushingId(invoice.id);
     pushToSquareMutation.mutate(invoice, {
       onSettled: () => setPushingId(null),
