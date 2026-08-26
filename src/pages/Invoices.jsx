@@ -245,9 +245,13 @@ export default function InvoicesPage() {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
     onError: (err) => {
+      const detail =
+        err?.response?.data?.error ||
+        err?.message ||
+        String(err);
       toast({
         title: "Square push failed",
-        description: err?.message || String(err),
+        description: detail,
         variant: "destructive",
       });
     },

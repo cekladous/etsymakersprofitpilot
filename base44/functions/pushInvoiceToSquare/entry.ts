@@ -94,11 +94,23 @@ export default async function(req) {
     if (!customerId) throw new Error('Failed to resolve a Square customer');
 
     // 3. Build the Square order from the invoice line items (+ shipping + tax)
-    const lineItems = (invoice.line_items || []).map((li) => ({
+    let lineItems = (invoice.line_items || []).map((li) => ({
       name: li.description || li.product_id || 'Item',
       quantity: String(Number(li.quantity || 1)),
       base_price_money: { amount: toCents(li.unit_price), currency: 'USD' },
     }));
+    if (lineItems.length === 0) {
+      // Quotes/invoices often carry a total but no line items; synthesize one
+      // so the Square order reflects the actual amount (not just shipping).
+      const subtotal = Number(invoice.subtotal) > 0
+        ? Number(invoice.subtotal)
+        : Math.max(0, Number(invoice.total || 0) - Number(invoice.tax_amount || 0) - Number(invoice.shipping_cost || 0));
+      lineItems.push({
+        name: invoice.project_name || invoice.invoice_number || 'Invoice',
+        quantity: '1',
+        base_price_money: { amount: toCents(subtotal), currency: 'USD' },
+      });
+    }
     if (Number(invoice.shipping_cost || 0) > 0) {
       lineItems.push({
         name: 'Shipping',
@@ -111,7 +123,7 @@ export default async function(req) {
       taxes.push({
         name: 'Sales Tax',
         percentage: String(Number(invoice.tax_rate || 0)),
-        applied_money: { amount: toCents(invoice.tax_amount), currency: 'USD' },
+        scope: 'ORDER',
       });
     }
 
@@ -131,20 +143,29 @@ export default async function(req) {
     if (!orderId) throw new Error('Failed to create Square order');
 
     // 4. Create the Square invoice (draft unless publish=true)
-    const dueDate = invoice.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dueDate = (invoice.due_date && invoice.due_date >= todayStr) ? invoice.due_date : todayStr;
     const invoiceRes = await squareFetch(accessToken, '/v2/invoices', {
       method: 'POST',
       body: JSON.stringify({
         idempotency_key: `inv-${invoice.id}`,
-        location_id: locationId,
-        order_id: orderId,
-        primary_recipient: { customer_id: customerId },
-        payment_requests: [
-          { request_type: 'BALANCE', due_date: dueDate, tipping_enabled: false },
-        ],
-        delivery_method: 'EMAIL',
-        invoice_number: invoice.invoice_number,
-        title: invoice.project_name || undefined,
+        invoice: {
+          location_id: locationId,
+          order_id: orderId,
+          primary_recipient: { customer_id: customerId },
+          payment_requests: [
+            { request_type: 'BALANCE', due_date: dueDate, tipping_enabled: false },
+          ],
+          delivery_method: 'EMAIL',
+          accepted_payment_methods: {
+            card: true,
+            square_gift_card: false,
+            bank_account: false,
+            cash_app_pay: true,
+          },
+          invoice_number: invoice.invoice_number,
+          title: invoice.project_name || undefined,
+        },
       }),
     });
     const squareInvoice = invoiceRes && invoiceRes.invoice;
