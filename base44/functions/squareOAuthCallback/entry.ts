@@ -58,10 +58,15 @@ export default async function (req) {
     });
     const tok = await tokenRes.json();
     if (!tok.access_token) {
-      return Response.json(
-        { error: tok.error || "token_exchange_failed" },
-        { status: 400 }
-      );
+      // Return 200 with the real Square error in the body so the frontend
+      // (which throws on non-2xx and hides the message) can surface it.
+      return Response.json({
+        error: "token_exchange_failed",
+        square_error: tok.error || null,
+        square_message: tok.error_description || tok.message || null,
+        square_response: tok,
+        http_status: tokenRes.status,
+      }, { status: 200 });
     }
 
     const expiresAt = tok.expires_at
