@@ -100,15 +100,17 @@ export default async function(req) {
       base_price_money: { amount: toCents(li.unit_price), currency: 'USD' },
     }));
     if (lineItems.length === 0) {
-      // Quotes/invoices often carry a total but no line items; synthesize one
-      // so the Square order reflects the actual amount (not just shipping).
-      const subtotal = Number(invoice.subtotal) > 0
-        ? Number(invoice.subtotal)
-        : Math.max(0, Number(invoice.total || 0) - Number(invoice.tax_amount || 0) - Number(invoice.shipping_cost || 0));
+      // Quotes/invoices carry a total but no itemized lines (the total folds in
+      // labor/overhead/markup that isn't in `subtotal`). Use total − tax − shipping
+      // so the Square order totals exactly what the customer is charged.
+      const itemAmount = Math.max(
+        0,
+        Number(invoice.total || 0) - Number(invoice.tax_amount || 0) - Number(invoice.shipping_cost || 0)
+      );
       lineItems.push({
         name: invoice.project_name || invoice.invoice_number || 'Invoice',
         quantity: '1',
-        base_price_money: { amount: toCents(subtotal), currency: 'USD' },
+        base_price_money: { amount: toCents(itemAmount), currency: 'USD' },
       });
     }
     if (Number(invoice.shipping_cost || 0) > 0) {
