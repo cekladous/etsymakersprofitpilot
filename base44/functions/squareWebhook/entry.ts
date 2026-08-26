@@ -1,8 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+const SQUARE_VERSION = '2024-08-21';
+const SQUARE_API = 'https://connect.squareup.com';
+
+async function squareFetch(token, path, options = {}) {
+  const res = await fetch(`${SQUARE_API}${path}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Square-Version': SQUARE_VERSION,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = { raw: text }; }
+  if (!res.ok) {
+    const err = (body && body.errors && body.errors[0]) || {};
+    throw new Error(err.detail || err.code || `Square API error (${res.status})`);
+  }
+  return body;
+}
+
 Deno.serve(async (req) => {
   try {
-    // Only accept POST requests
     if (req.method !== 'POST') {
       return Response.json({ error: 'Method not allowed' }, { status: 405 });
     }
@@ -16,8 +38,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Webhook not configured' }, { status: 500 });
     }
 
-    // Verify webhook signature using standard HMAC-SHA256
-    // (Square uses HMAC-SHA256 — not a simple concatenated hash)
+    // Verify webhook signature using HMAC-SHA256
     const encoder = new TextEncoder();
     const keyData = encoder.encode(webhookSecret);
     const cryptoKey = await crypto.subtle.importKey(
@@ -33,19 +54,65 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    // Parse webhook payload
     const payload = JSON.parse(body);
-    const eventType = payload.type;
-    const squareSubscriptionId = payload.data?.object?.subscription?.id;
+    const eventType = payload.type || '';
 
+    const base44 = createClientFromRequest(req);
+
+    // ---- Invoice payment sync ----
+    // When Square marks an invoice PAID, reflect it in the app: mark the linked
+    // invoice Paid and (if no sale is linked yet) create a Custom Sale so the
+    // revenue shows up. Idempotent — a replay or already-paid invoice is skipped.
+    if (eventType.startsWith('invoice.')) {
+      const sqInv = payload.data?.object?.invoice || payload.data?.object;
+      const squareInvoiceId = sqInv?.id;
+      if (!squareInvoiceId) return Response.json({ success: true });
+
+      const { accessToken } = await base44.asServiceRole.connectors.getConnection('square');
+      const fresh = await squareFetch(accessToken, `/v2/invoices/${squareInvoiceId}`);
+      const inv = fresh && fresh.invoice;
+      if (!inv || inv.status !== 'PAID') return Response.json({ success: true });
+
+      const matches = await base44.asServiceRole.entities.Invoice.filter({ square_invoice_id: squareInvoiceId });
+      if (!matches || matches.length === 0) return Response.json({ success: true });
+      const appInv = matches[0];
+
+      if (appInv.status === 'Paid') return Response.json({ success: true });
+
+      const update = {
+        status: 'Paid',
+        amount_paid: Number(appInv.total || 0),
+        balance_due: 0,
+      };
+
+      if (!appInv.custom_sale_id) {
+        const saleDate = appInv.invoice_date || new Date().toISOString().split('T')[0];
+        const customSale = await base44.asServiceRole.entities.CustomSale.create({
+          owner_user_id: appInv.owner_user_id,
+          date: saleDate,
+          vendor: appInv.customer_name || '',
+          description: `${appInv.project_name || 'Invoice'} — ${appInv.invoice_number || ''}`,
+          payment_source: appInv.payment_method || 'Square',
+          pre_tax_amount: Number(appInv.subtotal || 0),
+          sales_tax_collected: Number(appInv.tax_amount || 0),
+          gross_sale: Number(appInv.total || 0),
+          shipping_or_postage_cost: Number(appInv.shipping_cost || 0),
+          notes: `Auto-created from Square-paid invoice ${appInv.invoice_number || ''}`,
+        });
+        update.custom_sale_id = customSale.id;
+      }
+
+      await base44.asServiceRole.entities.Invoice.update(appInv.id, update);
+      console.log(`Invoice ${appInv.id} marked Paid from Square webhook`);
+      return Response.json({ success: true });
+    }
+
+    // ---- Subscription sync (existing) ----
+    const squareSubscriptionId = payload.data?.object?.subscription?.id;
     if (!squareSubscriptionId) {
       return Response.json({ success: true }, { status: 200 });
     }
 
-    // Initialize Base44 SDK
-    const base44 = createClientFromRequest(req);
-
-    // Find subscription by square_subscription_id
     const subscriptions = await base44.asServiceRole.entities.Subscription.filter({
       square_subscription_id: squareSubscriptionId
     });
@@ -58,9 +125,7 @@ Deno.serve(async (req) => {
     const subscription = subscriptions[0];
     const squareData = payload.data?.object?.subscription;
 
-    // Handle different event types
     let updateData = {};
-
     if (eventType === 'subscription.created') {
       updateData = {
         status: 'active',
@@ -70,8 +135,6 @@ Deno.serve(async (req) => {
       };
     } else if (eventType === 'subscription.updated') {
       const squareStatus = squareData.state;
-
-      // Map Square status to app status
       if (squareStatus === 'ACTIVE') {
         updateData = {
           status: 'active',
@@ -80,13 +143,8 @@ Deno.serve(async (req) => {
           grace_period_end: null
         };
       } else if (squareStatus === 'CANCELED') {
-        updateData = {
-          status: 'canceled',
-          canceled_at: new Date().toISOString()
-        };
+        updateData = { status: 'canceled', canceled_at: new Date().toISOString() };
       }
-
-      // Handle payment failures
       if (squareData.payment_method?.card?.card_status === 'FAILED') {
         updateData = {
           status: 'payment_failed',
@@ -94,21 +152,14 @@ Deno.serve(async (req) => {
         };
       }
     } else if (eventType === 'subscription.deleted') {
-      updateData = {
-        status: 'canceled',
-        canceled_at: new Date().toISOString()
-      };
+      updateData = { status: 'canceled', canceled_at: new Date().toISOString() };
     }
 
-    // Idempotency: skip if the subscription's status already matches the
-    // target status — prevents duplicate processing on webhook retries or
-    // replayed signed payloads.
     if (Object.keys(updateData).length > 0) {
       if (updateData.status && subscription.status === updateData.status) {
         console.log(`Subscription ${subscription.id} already ${updateData.status}, skipping duplicate webhook`);
         return Response.json({ success: true }, { status: 200 });
       }
-
       await base44.asServiceRole.entities.Subscription.update(subscription.id, updateData);
       console.log(`Updated subscription ${subscription.id}:`, updateData);
     }

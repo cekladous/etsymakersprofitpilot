@@ -281,14 +281,14 @@ export default function InvoicesPage() {
   const columns = [
     {
       key: "invoice_number",
-      label: "Invoice #",
+      header: "Invoice #",
       render: (inv) => (
         <span className="font-mono text-sm font-medium">{inv.invoice_number}</span>
       ),
     },
     {
       key: "customer_name",
-      label: "Client",
+      header: "Client",
       render: (inv) => (
         <div>
           <div className="font-medium">{inv.customer_name}</div>
@@ -300,7 +300,7 @@ export default function InvoicesPage() {
     },
     {
       key: "status",
-      label: "Status",
+      header: "Status",
       render: (inv) => {
         const config = statusConfig[inv.status] || {};
         return (
@@ -312,7 +312,7 @@ export default function InvoicesPage() {
     },
     {
       key: "payment_status",
-      label: "Payment",
+      header: "Payment",
       render: (inv) => {
         const paymentStatus = inv.balance_due <= 0 ? "Paid" : inv.amount_paid > 0 ? "Partial" : "Unpaid";
         const config = paymentStatusConfig[paymentStatus] || {};
@@ -325,14 +325,14 @@ export default function InvoicesPage() {
     },
     {
       key: "total",
-      label: "Total",
+      header: "Total",
       render: (inv) => (
         <span className="font-semibold">${(inv.total || 0).toFixed(2)}</span>
       ),
     },
     {
       key: "balance_due",
-      label: "Balance Due",
+      header: "Balance Due",
       render: (inv) => (
         <span className={inv.balance_due > 0 ? "font-medium text-rose-600" : "text-stone-500"}>
           ${(inv.balance_due || 0).toFixed(2)}
@@ -341,17 +341,17 @@ export default function InvoicesPage() {
     },
     {
       key: "invoice_date",
-      label: "Date",
+      header: "Date",
       render: (inv) => inv.invoice_date ? format(new Date(inv.invoice_date), "MMM dd, yyyy") : "—",
     },
     {
       key: "due_date",
-      label: "Due Date",
+      header: "Due Date",
       render: (inv) => inv.due_date ? format(new Date(inv.due_date), "MMM dd, yyyy") : "—",
     },
     {
       key: "actions",
-      label: "",
+      header: "",
       render: (inv) => (
         <div className="flex gap-2 justify-end">
           <Button

@@ -32,6 +32,7 @@ export default function QuotesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [quoteFilter, setQuoteFilter] = useState("active");
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["quotes", user?.id],
@@ -169,17 +170,24 @@ const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = 
     convertToInvoiceMutation.mutate(quote.id);
   };
 
+  const visibleQuotes = quotes.filter((q) => {
+    const isConverted = q.status === "Invoiced" || q.status === "Paid";
+    if (quoteFilter === "converted") return isConverted;
+    if (quoteFilter === "active") return !isConverted;
+    return true;
+  });
+
   const columns = [
     {
       key: "quote_number",
-      label: "Quote #",
+      header: "Quote #",
       render: (quote) => (
         <span className="font-mono text-sm font-medium">{quote.quote_number}</span>
       ),
     },
     {
       key: "customer_name",
-      label: "Client",
+      header: "Client",
       render: (quote) => (
         <div>
           <div className="font-medium">{quote.customer_name}</div>
@@ -191,29 +199,29 @@ const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = 
     },
     {
       key: "status",
-      label: "Status",
+      header: "Status",
       render: (quote) => <StatusBadge status={quote.status} />,
     },
     {
       key: "total",
-      label: "Total",
+      header: "Total",
       render: (quote) => (
         <span className="font-semibold">${(quote.total || 0).toFixed(2)}</span>
       ),
     },
     {
       key: "due_date",
-      label: "Due Date",
+      header: "Due Date",
       render: (quote) => quote.due_date ? format(new Date(quote.due_date), "MMM dd, yyyy") : "—",
     },
     {
       key: "created_date",
-      label: "Created",
+      header: "Created",
       render: (quote) => format(new Date(quote.created_date), "MMM dd, yyyy"),
     },
     {
       key: "actions",
-      label: "",
+      header: "",
       render: (quote) => (
         <div className="flex gap-2 justify-end" onMouseDown={(e) => e.stopPropagation()}>
           <Button
@@ -283,19 +291,35 @@ const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = 
         </Button>
       </PageHeader>
 
+      <div className="flex items-center gap-2 mb-4">
+        {["active", "converted", "all"].map((f) => (
+          <Button
+            key={f}
+            size="sm"
+            variant={quoteFilter === f ? "default" : "outline"}
+            onClick={() => setQuoteFilter(f)}
+            className={quoteFilter === f ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+          >
+            {f === "active" ? "Active" : f === "converted" ? "Converted" : "All"}
+          </Button>
+        ))}
+      </div>
+
       <Card>
         <CardContent className="p-0">
-          {quotes.length === 0 ? (
+          {visibleQuotes.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-              <p className="text-stone-500 mb-4">No quotes yet</p>
-              <Button onClick={handleNew} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Create First Quote
-              </Button>
+              <p className="text-stone-500 mb-4">{quotes.length === 0 ? "No quotes yet" : "No quotes in this view"}</p>
+              {quotes.length === 0 && (
+                <Button onClick={handleNew} variant="outline">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Quote
+                </Button>
+              )}
             </div>
           ) : (
-            <DataTable data={quotes} columns={columns} />
+            <DataTable data={visibleQuotes} columns={columns} />
           )}
         </CardContent>
       </Card>
