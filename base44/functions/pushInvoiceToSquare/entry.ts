@@ -129,10 +129,13 @@ export default async function(req) {
       });
     }
 
+    // Unique per push so a retry (e.g. after a deleted/failed draft) always
+    // builds a fresh OPEN order instead of reusing a stale, non-OPEN one.
+    const pushNonce = Date.now();
     const orderRes = await squareFetch(accessToken, '/v2/orders', {
       method: 'POST',
       body: JSON.stringify({
-        idempotency_key: `order-${invoice.id}`,
+        idempotency_key: `order-${invoice.id}-${pushNonce}`,
         order: {
           location_id: locationId,
           customer_id: customerId,
@@ -150,7 +153,7 @@ export default async function(req) {
     const invoiceRes = await squareFetch(accessToken, '/v2/invoices', {
       method: 'POST',
       body: JSON.stringify({
-        idempotency_key: `inv-${invoice.id}`,
+        idempotency_key: `inv-${invoice.id}-${pushNonce}`,
         invoice: {
           location_id: locationId,
           order_id: orderId,
@@ -179,7 +182,7 @@ export default async function(req) {
     if (publish) {
       const pubRes = await squareFetch(accessToken, `/v2/invoices/${squareInvoiceId}/publish`, {
         method: 'POST',
-        body: JSON.stringify({ idempotency_key: `pub-${invoice.id}` }),
+        body: JSON.stringify({ idempotency_key: `pub-${invoice.id}-${pushNonce}` }),
       });
       publicUrl = (pubRes && pubRes.invoice && pubRes.invoice.public_url) || null;
       published = true;
