@@ -11,6 +11,7 @@ import { ShoppingBag, Square, Upload, Link2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PlatformSalesImport from '@/components/imports/PlatformSalesImport';
 import SquareConnectCard from '@/components/settings/SquareConnectCard';
+import EtsyConnectCard from '@/components/settings/EtsyConnectCard';
 
 export default function IntegrationsTool() {
   const { user } = useAuth();
@@ -61,42 +62,11 @@ export default function IntegrationsTool() {
         <SquareConnectCard />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Etsy */}
-        <Card className="border-stone-200">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ShoppingBag className="w-6 h-6 text-orange-600" />
-                <CardTitle className="text-lg">Etsy</CardTitle>
-              </div>
-              <Badge className="bg-emerald-100 text-emerald-800">
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Available
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-stone-600">
-              Import your Etsy sales data via CSV. No API connection needed — just download from Etsy and upload.
-            </p>
-            <div className="bg-stone-50 rounded-lg p-3 space-y-2 text-sm">
-              <p className="font-semibold text-stone-700">How to import:</p>
-              <ol className="list-decimal list-inside space-y-1 text-stone-600 text-xs">
-                <li>Go to Etsy → <strong>Finances → Payment Account → Download CSV</strong></li>
-                <li>Save the Monthly Statement CSV file</li>
-                <li>Go to the Etsy Sales page and click "Import Etsy Data"</li>
-              </ol>
-            </div>
-            <Link to="/Orders">
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                <Upload className="w-4 h-4 mr-2" />
-                Go to Etsy Sales Import
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+      <div className="mb-6">
+        <EtsyConnectCard />
+      </div>
 
+      <div className="grid md:grid-cols-2 gap-6">
         {/* Square */}
         <Card className="border-stone-200">
           <CardHeader className="pb-4">

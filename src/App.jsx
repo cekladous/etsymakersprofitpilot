@@ -7,6 +7,7 @@ import { pagesConfig } from './pages.config'
 import Quotes from './pages/Quotes'
 import Invoices from './pages/Invoices'
 import SquareCallback from './pages/SquareCallback'
+import EtsyCallback from './pages/EtsyCallback'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -86,6 +87,11 @@ const AuthenticatedApp = () => {
       <Route path="/SquareCallback" element={
         <LayoutWrapper currentPageName="SquareCallback">
           <SquareCallback />
+        </LayoutWrapper>
+      } />
+      <Route path="/EtsyCallback" element={
+        <LayoutWrapper currentPageName="EtsyCallback">
+          <EtsyCallback />
         </LayoutWrapper>
       } />
       <Route path="*" element={<PageNotFound />} />
