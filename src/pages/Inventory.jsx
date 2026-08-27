@@ -16,6 +16,7 @@ import MaterialPurchaseDialog from "@/components/monthly/MaterialPurchaseDialog"
 import InventoryAdjustmentDialog from "@/components/inventory/InventoryAdjustmentDialog";
 import BulkInventoryImportTool from "@/components/inventory/BulkInventoryImportTool";
 import AllocatePurchaseDialog from "@/components/inventory/AllocatePurchaseDialog";
+import EmailReceiptSync from "@/components/inventory/EmailReceiptSync";
 
 export default function Inventory() {
   const { user, loading } = useAuth();
@@ -697,6 +698,8 @@ Return JSON with a "matches" array. Each match has expense_id, receipt_key, and 
       </PageHeader>
 
       {showImport && <BulkInventoryImportTool />}
+
+      <EmailReceiptSync />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
