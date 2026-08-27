@@ -121,8 +121,6 @@ export default function SquareConnectCard() {
               <ShieldCheck className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
               <p className="text-sm text-emerald-800">
                 Linked to <strong>{connection.merchant_name || connection.merchant_id || "your Square account"}</strong>.
-                Invoices you push go to <strong>your</strong> Square only — never anyone else's. When a customer pays
-                the Square invoice, it's marked Paid here automatically.
               </p>
             </div>
             <Button variant="outline" className="w-full" onClick={handleDisconnect} disabled={disconnecting}>
