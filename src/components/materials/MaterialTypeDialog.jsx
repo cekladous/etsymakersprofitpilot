@@ -45,6 +45,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
     default_height: "",
     cost_per_sheet: "",
     supplier: "",
+    unit_of_measure: "",
     reorder_url: "",
     low_stock_threshold: 5,
     notes: "",
@@ -85,6 +86,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
         default_height: materialType.default_height?.toString() || "",
         cost_per_sheet: materialType.cost_per_sheet?.toString() || "",
         supplier: materialType.supplier || "",
+        unit_of_measure: materialType.unit_of_measure || "",
         reorder_url: materialType.reorder_url || "",
         low_stock_threshold: materialType.low_stock_threshold || 5,
         notes: materialType.notes || "",
@@ -326,13 +328,21 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Supplier</Label>
               <Input
                 value={formData.supplier}
                 onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
                 placeholder="Houston Acrylic, Amazon, etc."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              <Input
+                value={formData.unit_of_measure}
+                onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
+                placeholder="sheet, piece, oz…"
               />
             </div>
             <div className="space-y-2">

@@ -23,6 +23,7 @@ import AIPriceSuggester from "./AIPriceSuggester";
 import AILaborEstimator from "./AILaborEstimator";
 import CostBreakdownPanel from "./CostBreakdownPanel";
 import CustomerSearchSelect from "@/components/customers/CustomerSearchSelect";
+import MaterialInventoryPicker from "./MaterialInventoryPicker";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$" },
@@ -114,6 +115,7 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   const [pendingStatusChange, setPendingStatusChange] = useState(null);
   const [desiredMargin, setDesiredMargin] = useState(40);
   const [showAIPricer, setShowAIPricer] = useState(false);
+  const [showMaterialPicker, setShowMaterialPicker] = useState(false);
 
   useEffect(() => {
     if (quote) {
@@ -172,7 +174,22 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   const addMaterial = () => {
     setFormData({
       ...formData,
-      materials: [...formData.materials, { type: "Custom (Manual)", name: "", quantity: formData.quantity || 1, cost: 0 }],
+      materials: [...formData.materials, { type: "Custom (Manual)", name: "", quantity: formData.quantity || 1, cost: 0, unit: "", vendor: "", fromInventory: false }],
+    });
+  };
+
+  const addMaterialFromInventory = (item) => {
+    setFormData({
+      ...formData,
+      materials: [...formData.materials, {
+        type: item.name,
+        name: item.name,
+        quantity: formData.quantity || 1,
+        cost: item.average_cost || item.cost_per_sheet || 0,
+        vendor: item.supplier || "",
+        unit: item.unit_of_measure || "",
+        fromInventory: true,
+      }],
     });
   };
 
@@ -710,7 +727,14 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
                   </Button>
                   
                   <div>
-                    <Label className="text-xs text-stone-600">Material</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-stone-600">Material</Label>
+                      {material.fromInventory && (
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                          from Inventory
+                        </span>
+                      )}
+                    </div>
                     <Select
                       value={material.type}
                       onValueChange={(value) => updateMaterial(index, "type", value)}
@@ -739,7 +763,7 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
                       <Label className="text-xs text-stone-600">Qty</Label>
                       <Input
@@ -761,6 +785,15 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
                         placeholder="0.00"
                         step="0.01"
                         min="0"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-stone-600">Unit</Label>
+                      <Input
+                        value={material.unit || ""}
+                        onChange={(e) => updateMaterial(index, "unit", e.target.value)}
+                        placeholder="sheet, oz…"
                         className="mt-1"
                       />
                     </div>
@@ -833,7 +866,7 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
               <Button
                 type="button"
                 variant="outline"
-                onClick={addMaterial}
+                onClick={() => setShowMaterialPicker(true)}
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -1156,6 +1189,13 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
       onConfirm={handleConfirmConversion}
       isPending={convertMutation.isPending}
       total={getGrandTotal()}
+    />
+
+    <MaterialInventoryPicker
+      open={showMaterialPicker}
+      onOpenChange={setShowMaterialPicker}
+      onPick={addMaterialFromInventory}
+      onEnterManually={addMaterial}
     />
     </>
   );

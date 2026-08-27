@@ -42,6 +42,11 @@
       "type": "string",
       "description": "Vendor or supplier name (e.g., Houston Acrylic, Amazon)"
     },
+    "unit_of_measure": {
+      "type": "string",
+      "default": "",
+      "description": "Unit the material is sold/used in (e.g. sheet, piece, oz, ft)"
+    },
     "reorder_url": {
       "type": "string",
       "description": "Direct link to reorder this material"
