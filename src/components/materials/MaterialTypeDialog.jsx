@@ -128,17 +128,55 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
     onSuccess: async (result) => {
       queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
       onClose();
-      // Auto-generate a product image for newly added materials. When a
-      // reorder link is present the image is based on the actual product page.
+      // Auto-generate a product image for newly added materials. Done
+      // client-side so the image reliably lands on the material the current
+      // user owns (no service-role round-trip). When a reorder link is present
+      // the image matches the real product's color/texture/finish; otherwise
+      // it falls back to name/supplier/category.
       if (result?.id && !materialType) {
+        const saved = {
+          ...result,
+          name: result.name || formData.name,
+          supplier: result.supplier || formData.supplier,
+          category: result.category || formData.category,
+          reorder_url: result.reorder_url || formData.reorder_url,
+        };
+        toast({ title: "Generating product image…" });
         try {
-          await base44.functions.invoke("generateMaterialImage", {
-            material_type_id: result.id,
-            name: result.name || formData.name,
-            supplier: result.supplier || formData.supplier,
-            category: result.category || formData.category,
-            reorder_url: result.reorder_url || formData.reorder_url,
-          });
+          let visualDescription = "";
+          if (saved.reorder_url && /^https?:\/\//i.test(saved.reorder_url)) {
+            try {
+              const descRes = await base44.integrations.Core.InvokeLLM({
+                prompt: `Visit this product page URL: ${saved.reorder_url}\nThe product is a crafting/laser material called "${saved.name}". In one or two sentences, describe only its visible appearance for a product photo: color, texture, finish (matte/gloss), thickness look, and sheet form. Do not invent details; if the page is unavailable, return an empty description.`,
+                add_context_from_internet: true,
+                model: "gemini_3_flash",
+                response_json_schema: {
+                  type: "object",
+                  properties: { description: { type: "string" } },
+                },
+              });
+              visualDescription = (descRes?.description || "").trim();
+            } catch (_e) {
+              visualDescription = "";
+            }
+          }
+
+          const categoryDesc = saved.category || "crafting";
+          const supplierDesc = saved.supplier ? ` from ${saved.supplier}` : "";
+          const appearance = visualDescription ? ` It looks like: ${visualDescription}.` : "";
+          const prompt = `A clean, professional product photograph of a single sheet of ${saved.name}${supplierDesc}, a ${categoryDesc} material used for laser cutting and engraving.${appearance} Studio lighting, plain light background, top-down view, realistic texture and accurate color, no text, no watermark, no people.`;
+
+          const imgRes = await base44.integrations.Core.GenerateImage({ prompt });
+          const image_url = imgRes?.url || imgRes?.file_url;
+          if (!image_url) {
+            toast({
+              variant: "destructive",
+              title: "Image generation failed",
+              description: "Your material was saved, but no image was returned.",
+            });
+            return;
+          }
+          await base44.entities.MaterialType.update(saved.id, { image_url });
           queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
           toast({ title: "Material image generated" });
         } catch (e) {
