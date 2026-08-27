@@ -15,8 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, User, Package, Clock, ChevronDown, ChevronUp, Calculator, Info } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, Trash2, User, Package, Clock, Calculator, Info } from "lucide-react";
 import { calculateProfit, formatCurrency } from "@/components/shared/profitCalculator";
 import { Switch } from "@/components/ui/switch";
 import ConvertQuoteDialog from "./ConvertQuoteDialog";
@@ -43,11 +42,6 @@ export default function QuoteFormDialog({ open, onOpenChange, quote }) {
   const { user } = useAuth();
 const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   const [currency, setCurrency] = useState("USD");
-  const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [newCustomerData, setNewCustomerData] = useState({ name: "", email: "", phone: "", company: "" });
-  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
-  
   const [formData, setFormData] = useState({
     quote_number: generateQuoteNumber(),
     product_template_id: "",
@@ -56,6 +50,7 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
     customer_email: "",
     customer_phone: "",
     customer_state: "",
+    _customer_is_new: false,
     due_date: "",
     status: "Draft",
     notes: "",
@@ -150,6 +145,7 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
         customer_email: "",
         customer_phone: "",
         customer_state: "",
+    _customer_is_new: false,
         due_date: "",
         status: "Draft",
         notes: "",
@@ -418,12 +414,32 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   const profitResults = calculateProfit(profitInputs, feeConfig);
   const laborRevenue = getLaborTotal() + getMachinesTotal();
 
+  // If the user created a new customer inline, persist the Customer record
+  // now (when the quote is actually saved) so abandoned quotes don't leave
+  // orphan customers behind.
+  const ensureCustomerPersisted = async (data) => {
+    if (data._customer_is_new && data.customer_name) {
+      const created = await base44.entities.Customer.create({
+        name: data.customer_name,
+        email: data.customer_email || "",
+        phone: data.customer_phone || "",
+        owner_user_id: user.id,
+      });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      const { _customer_is_new, ...rest } = data;
+      return { ...rest, customer_id: created.id };
+    }
+    const { _customer_is_new, ...rest } = data;
+    return rest;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data) => {
+      const persisted = await ensureCustomerPersisted(data);
       if (quote) {
-        return base44.entities.Quote.update(quote.id, data);
+        return base44.entities.Quote.update(quote.id, persisted);
       } else {
-        return base44.entities.Quote.create({ ...data, owner_user_id: user.id });
+        return base44.entities.Quote.create({ ...persisted, owner_user_id: user.id });
       }
     },
     onSuccess: () => {
@@ -453,8 +469,9 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
       });
 
 let productionJob; try { productionJob = await base44.entities.Job.create({ owner_user_id: user.id, job_number: `JOB-${formData.quote_number}`, order_ids: [order.id], quantity: parseFloat(formData.quantity) || 1, material_cost: getMaterialsTotal(), machine_time_cost: getMachinesTotal(), overhead_cost: getOverheadPerItem() + getLaborTotal(), quoted_total_cost: grandTotal, status: "pending", notes: `Auto-created from Quote #${formData.quote_number}` }); await base44.entities.Order.update(order.id, { job_id: productionJob.id }); } catch (jobErr) { console.error("Failed to auto-create production job from quote:", jobErr); }
+      const persistedForm = await ensureCustomerPersisted(formData);
       await base44.entities.Quote.update(quote.id, {
-        ...formData,
+        ...persistedForm,
         status: "Accepted",
         total: grandTotal,
         overhead_per_item: getOverheadPerItem(),
@@ -590,61 +607,46 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
               </div>
 
               <div>
-                <Label className="text-xs text-stone-600">Select Customer (Optional)</Label>
+                <Label className="text-xs text-stone-600">Customer</Label>
                 <CustomerSearchSelect
-                  value={formData.customer_id}
+                  value={
+                    formData.customer_name || formData.customer_id
+                      ? {
+                          id: formData.customer_id || undefined,
+                          name: formData.customer_name,
+                          email: formData.customer_email,
+                          phone: formData.customer_phone,
+                          _isNew: !!formData._customer_is_new,
+                        }
+                      : null
+                  }
                   onChange={(customer) => {
                     if (customer) {
                       setFormData({
                         ...formData,
-                        customer_id: customer.id,
+                        customer_id: customer.id || null,
                         customer_name: customer.name,
                         customer_email: customer.email || "",
                         customer_phone: customer.phone || "",
+                        _customer_is_new: !!customer._isNew,
+                      });
+                    } else {
+                      setFormData({
+                        ...formData,
+                        customer_id: null,
+                        customer_name: "",
+                        customer_email: "",
+                        customer_phone: "",
+                        _customer_is_new: false,
                       });
                     }
                   }}
                   placeholder="Search existing customers..."
+                  deferCreateNewCustomer
                 />
               </div>
 
-              <Collapsible open={customerDetailsOpen} onOpenChange={setCustomerDetailsOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between py-2 px-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors">
-                    <span className="text-sm text-stone-600">
-                      {customerDetailsOpen ? "− Hide" : "+"} Customer Details
-                    </span>
-                    {customerDetailsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4 space-y-3">
-                  <div>
-                    <Label className="text-xs text-stone-600">Name</Label>
-                    <Input
-                      value={formData.customer_name}
-                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-stone-600">Email</Label>
-                    <Input
-                      type="email"
-                      value={formData.customer_email}
-                      onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-stone-600">Phone</Label>
-                    <Input
-                      value={formData.customer_phone}
-                      onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+
 
               <div>
                 <Label className="text-xs text-stone-600">Status</Label>
