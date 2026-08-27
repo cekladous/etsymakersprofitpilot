@@ -60,8 +60,9 @@ export default async function (req) {
     if (!tok.access_token) {
       // Return 200 with the real Square error in the body so the frontend
       // (which throws on non-2xx and hides the message) can surface it.
+      const detail = tok.error_description || tok.message || tok.error || "unknown";
       return Response.json({
-        error: "token_exchange_failed",
+        error: `token_exchange_failed: ${detail}`,
         square_error: tok.error || null,
         square_message: tok.error_description || tok.message || null,
         square_response: tok,

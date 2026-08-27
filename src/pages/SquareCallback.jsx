@@ -32,7 +32,12 @@ export default function SquareCallback() {
         const res = await base44.functions.invoke("squareOAuthCallback", { code, state });
         const data = res.data || res;
         if (data && data.error) {
-          navigate(`/Settings?square_error=${encodeURIComponent(data.error)}`, { replace: true });
+          const detail = [
+            data.error,
+            data.square_message && `Square: ${data.square_message}`,
+            data.square_error && `(${data.square_error})`,
+          ].filter(Boolean).join(" ");
+          navigate(`/Settings?square_error=${encodeURIComponent(detail)}`, { replace: true });
           return;
         }
         navigate(`/Settings?square_connected=1`, { replace: true });
