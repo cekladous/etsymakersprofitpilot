@@ -6,6 +6,7 @@ import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 
 import SettingsTool from "@/components/tools/SettingsTool";
 import IntegrationsTool from "@/components/settings/IntegrationsTool";
+import EmailReceiptSync from "@/components/inventory/EmailReceiptSync";
 import SubscriptionStatus from "@/components/subscriptions/SubscriptionStatus";
 import PricingPlans from "@/components/subscriptions/PricingPlans";
 
@@ -44,7 +45,8 @@ export default function Settings() {
           <SettingsTool />
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-6">
+        <TabsContent value="integrations" className="mt-6 space-y-6">
+          <EmailReceiptSync />
           <IntegrationsTool />
         </TabsContent>
 
