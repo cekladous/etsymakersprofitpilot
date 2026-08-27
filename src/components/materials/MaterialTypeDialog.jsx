@@ -55,13 +55,15 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
   const queryClient = useQueryClient();
 
   const { data: materialTypes = [] } = useQuery({
-    queryKey: ["materialTypes"],
-    queryFn: () => base44.entities.MaterialType.list(),
+    queryKey: ["materialTypes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }),
   });
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ["inventory-items"],
-    queryFn: () => base44.entities.InventoryItem.list(),
+    queryKey: ["inventory-items", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }),
   });
 
   const currentInventory = materialType 

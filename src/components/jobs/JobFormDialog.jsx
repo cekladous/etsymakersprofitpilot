@@ -172,7 +172,7 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
             if (product && product.default_material_id) {
               const { data: inventoryItems } = await queryClient.fetchQuery({
                 queryKey: ["inventory-items"],
-                queryFn: () => base44.entities.InventoryItem.list(),
+                queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }),
               });
               
               const materialType = await base44.entities.MaterialType.get(product.default_material_id);
@@ -226,7 +226,7 @@ export default function JobFormDialog({ open, onOpenChange, job, onClose }) {
           if (product && product.default_material_id) {
             const { data: inventoryItems } = await queryClient.fetchQuery({
               queryKey: ["inventory-items"],
-              queryFn: () => base44.entities.InventoryItem.list(),
+              queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }),
             });
             
             const materialType = await base44.entities.MaterialType.get(product.default_material_id);

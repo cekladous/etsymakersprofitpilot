@@ -79,8 +79,9 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   });
 
   const { data: materialTypes = [] } = useQuery({
-    queryKey: ["materialTypes"],
-    queryFn: () => base44.entities.MaterialType.list(),
+    queryKey: ["materialTypes", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialType.filter({ owner_user_id: user.id }),
   });
 
   const { data: machines = [] } = useQuery({
@@ -89,8 +90,9 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   });
 
   const { data: materialPurchases = [] } = useQuery({
-    queryKey: ['materialPurchases'],
-    queryFn: () => base44.entities.MaterialPurchase.list(),
+    queryKey: ['materialPurchases', user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }),
   });
 
   const vendorOptions = [...new Set([
@@ -99,8 +101,9 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   ].filter(Boolean))].sort();
 
   const { data: customers = [] } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list(),
+    queryKey: ["customers", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.Customer.filter({ owner_user_id: user.id }),
   });
 
   const { data: settings = [] } = useQuery({
