@@ -14,6 +14,10 @@
       ],
       "description": "Email provider"
     },
+    "connector_id": {
+      "type": "string",
+      "description": "Workspace connector ID this sync state tracks (supports multiple accounts per provider)"
+    },
     "last_sync_at": {
       "type": "string",
       "format": "date-time",

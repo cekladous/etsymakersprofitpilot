@@ -92,7 +92,7 @@ export default async function(req) {
 
     // Load sync state (per user + provider)
     const states = await base44.entities.EmailSyncState.filter(
-      { owner_user_id: user.id, provider }, "-last_sync_at", 1
+      { owner_user_id: user.id, provider, connector_id: connectorId }, "-last_sync_at", 1
     );
     let state = states[0];
     const sevenDaysAgoUnix = Math.floor(Date.now() / 1000) - 7 * 86400;
@@ -302,6 +302,7 @@ Return JSON with: is_receipt (boolean), vendor (string), purchase_date (YYYY-MM-
       await base44.entities.EmailSyncState.create({
         owner_user_id: user.id,
         provider,
+        connector_id: connectorId,
         last_sync_at: nowIso,
         processed_message_ids: mergedIds,
         last_status: "success",
