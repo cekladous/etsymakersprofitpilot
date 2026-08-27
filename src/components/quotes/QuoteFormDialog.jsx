@@ -95,6 +95,12 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
     queryFn: () => base44.entities.MaterialPurchase.filter({ owner_user_id: user.id }),
   });
 
+  const { data: inventoryItems = [] } = useQuery({
+    queryKey: ["inventory-items", user?.id],
+    enabled: !!user,
+    queryFn: () => base44.entities.InventoryItem.filter({ owner_user_id: user.id }),
+  });
+
   const vendorOptions = [...new Set([
     ...materialPurchases.map((p) => p.vendor),
     ...(formData.materials || []).map((mat) => mat.vendor),
@@ -200,6 +206,26 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
   const updateMaterial = (index, field, value) => {
     const newMaterials = [...formData.materials];
     newMaterials[index][field] = value;
+
+    // When a material type is picked from the dropdown, auto-populate cost and
+    // details from inventory (matched MaterialType + InventoryItem average cost).
+    if (field === "type") {
+      if (value && value !== "Custom (Manual)") {
+        const mt = materialTypes.find((m) => m.name === value);
+        if (mt) {
+          const inv = inventoryItems.find((i) => i.material_name === mt.name);
+          newMaterials[index].name = mt.name;
+          newMaterials[index].cost = inv?.average_cost || mt.cost_per_sheet || 0;
+          newMaterials[index].unit = mt.unit_of_measure || "";
+          newMaterials[index].vendor = mt.supplier || "";
+          newMaterials[index].fromInventory = true;
+        } else {
+          newMaterials[index].fromInventory = false;
+        }
+      } else {
+        newMaterials[index].fromInventory = false;
+      }
+    }
 
     // Auto-populate machine based on material (default to xTool P3)
       if (field === "type" || field === "name") {
