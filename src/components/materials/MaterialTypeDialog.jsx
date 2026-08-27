@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,7 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
   const [openNameCombo, setOpenNameCombo] = useState(false);
 
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: materialTypes = [] } = useQuery({
     queryKey: ["materialTypes", user?.id],
@@ -123,9 +125,30 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
       }
       return base44.entities.MaterialType.create({ ...payload, owner_user_id: user.id });
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
       queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
       onClose();
+      // Auto-generate a product image for newly added materials. When a
+      // reorder link is present the image is based on the actual product page.
+      if (result?.id && !materialType) {
+        try {
+          await base44.functions.invoke("generateMaterialImage", {
+            material_type_id: result.id,
+            name: result.name || formData.name,
+            supplier: result.supplier || formData.supplier,
+            category: result.category || formData.category,
+            reorder_url: result.reorder_url || formData.reorder_url,
+          });
+          queryClient.invalidateQueries({ queryKey: ["materialTypes"] });
+          toast({ title: "Material image generated" });
+        } catch (e) {
+          toast({
+            variant: "destructive",
+            title: "Image generation failed",
+            description: "Your material was saved, but we couldn't generate an image.",
+          });
+        }
+      }
     },
   });
 
