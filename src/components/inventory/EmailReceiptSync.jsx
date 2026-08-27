@@ -9,7 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Mail, Plus, RefreshCw, Trash2, CheckCircle2, XCircle, Link2, Link2Off, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
 const CONNECTORS = [
-  { provider: "gmail", name: "Gmail", connectorId: "6a90536b527c34d0e2918006" },
+  { provider: "gmail", name: "Gmail #1", connectorId: "6a90536b527c34d0e2918006" },
+  { provider: "gmail", name: "Gmail #2", connectorId: "6a905af2b42218b7bcc16641" },
+  { provider: "gmail", name: "Gmail #3", connectorId: "6a905aff4d2d942c728645ba" },
   { provider: "outlook", name: "Outlook", connectorId: "6a9053754cf3bedc66182209" },
 ];
 
@@ -21,7 +23,7 @@ export default function EmailReceiptSync() {
   const { toast } = useToast();
   const autoSynced = useRef(false);
 
-  const [status, setStatus] = useState({}); // { provider: {connected, lastSync, syncing} }
+  const [status, setStatus] = useState({}); // keyed by connectorId
   const [showSuppliers, setShowSuppliers] = useState(false);
   const [newSupplier, setNewSupplier] = useState({ name: "", match_value: "" });
 
@@ -34,19 +36,19 @@ export default function EmailReceiptSync() {
   const { data: syncStates = [] } = useQuery({
     queryKey: ["email-sync-states", user?.id],
     enabled: !!user,
-    queryFn: () => base44.entities.EmailSyncState.filter({ owner_user_id: user.id }, "-last_sync_at", 10),
+    queryFn: () => base44.entities.EmailSyncState.filter({ owner_user_id: user.id }, "-last_sync_at", 50),
   });
 
-  // Probe each provider's connection status (dryRun) on mount.
-  const probeProvider = async (provider, connectorId) => {
+  const probeProvider = async (connectorId) => {
+    const c = CONNECTORS.find((x) => x.connectorId === connectorId);
     try {
       const res = await base44.functions.invoke("syncReceiptsFromEmail", {
-        provider, connectorId, dryRun: true,
+        provider: c.provider, connectorId, dryRun: true,
       });
-      const st = (syncStates || []).find((s) => s.provider === provider);
+      const st = (syncStates || []).find((s) => s.connector_id === connectorId);
       setStatus((prev) => ({
         ...prev,
-        [provider]: {
+        [connectorId]: {
           connected: res.data?.connected === true,
           syncing: false,
           lastSync: st?.last_sync_at || null,
@@ -55,7 +57,7 @@ export default function EmailReceiptSync() {
       }));
       return res.data?.connected === true;
     } catch {
-      setStatus((prev) => ({ ...prev, [provider]: { connected: false, syncing: false } }));
+      setStatus((prev) => ({ ...prev, [connectorId]: { connected: false, syncing: false } }));
       return false;
     }
   };
@@ -64,17 +66,16 @@ export default function EmailReceiptSync() {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const connected = {};
+      const connectedMap = {};
       for (const c of CONNECTORS) {
-        connected[c.provider] = await probeProvider(c.provider, c.connectorId);
+        connectedMap[c.connectorId] = await probeProvider(c.connectorId);
       }
       if (cancelled) return;
-      // Auto-sync any connected provider that's stale or never synced.
       if (!autoSynced.current) {
         autoSynced.current = true;
         for (const c of CONNECTORS) {
-          if (connected[c.provider]) {
-            const st = (syncStates || []).find((s) => s.provider === c.provider);
+          if (connectedMap[c.connectorId]) {
+            const st = (syncStates || []).find((s) => s.connector_id === c.connectorId);
             const stale = !st?.last_sync_at || Date.now() - new Date(st.last_sync_at).getTime() > STALE_MS;
             if (stale) runSync(c.provider, c.connectorId, true);
           }
@@ -86,19 +87,17 @@ export default function EmailReceiptSync() {
   }, [user?.id]);
 
   const runSync = async (provider, connectorId, auto = false) => {
-    setStatus((prev) => ({ ...prev, [provider]: { ...(prev[provider] || {}), syncing: true } }));
+    setStatus((prev) => ({ ...prev, [connectorId]: { ...(prev[connectorId] || {}), syncing: true } }));
     try {
       const res = await base44.functions.invoke("syncReceiptsFromEmail", { provider, connectorId });
       const d = res.data || {};
+      const label = CONNECTORS.find((x) => x.connectorId === connectorId)?.name || provider;
       if (auto) {
-        // silent refresh — still note imports in console
-        if (d.imported > 0) {
-          toast({ title: `📧 ${provider === "gmail" ? "Gmail" : "Outlook"}: ${d.imported} receipt(s) imported`, });
-        }
+        if (d.imported > 0) toast({ title: `📧 ${label}: ${d.imported} receipt(s) imported` });
       } else {
         toast({
           title: d.imported > 0
-            ? `Imported ${d.imported} receipt(s) from ${d.provider}`
+            ? `Imported ${d.imported} receipt(s) from ${label}`
             : `No new receipts found (scanned ${d.scanned || 0})`,
         });
       }
@@ -109,7 +108,7 @@ export default function EmailReceiptSync() {
     } catch (e) {
       if (!auto) toast({ title: "Sync failed", description: e.message, variant: "destructive" });
     } finally {
-      await probeProvider(provider, connectorId);
+      await probeProvider(connectorId);
     }
   };
 
@@ -120,7 +119,7 @@ export default function EmailReceiptSync() {
       const timer = setInterval(() => {
         if (!popup || popup.closed) {
           clearInterval(timer);
-          probeProvider(provider, connectorId);
+          probeProvider(connectorId);
         }
       }, 600);
     } catch (e) {
@@ -131,8 +130,9 @@ export default function EmailReceiptSync() {
   const handleDisconnect = async (provider, connectorId) => {
     try {
       await base44.connectors.disconnectAppUser(connectorId);
-      setStatus((prev) => ({ ...prev, [provider]: { connected: false, syncing: false } }));
-      toast({ title: `Disconnected ${provider === "gmail" ? "Gmail" : "Outlook"}` });
+      setStatus((prev) => ({ ...prev, [connectorId]: { connected: false, syncing: false } }));
+      const label = CONNECTORS.find((x) => x.connectorId === connectorId)?.name || provider;
+      toast({ title: `Disconnected ${label}` });
     } catch (e) {
       toast({ title: "Disconnect failed", description: e.message, variant: "destructive" });
     }
@@ -165,36 +165,34 @@ export default function EmailReceiptSync() {
             </div>
             <div>
               <h3 className="font-semibold text-stone-900">Auto-import receipts from email</h3>
-              <p className="text-sm text-stone-500">Connect your inbox — incoming purchase receipts become inventory &amp; purchases automatically.</p>
+              <p className="text-sm text-stone-500">Connect up to 3 Gmail inboxes + Outlook — incoming purchase receipts become inventory &amp; purchases automatically.</p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {CONNECTORS.map((c) => {
-            const st = status[c.provider] || {};
+            const st = status[c.connectorId] || {};
             return (
-              <div key={c.provider} className="border border-stone-200 rounded-xl p-4 bg-white">
+              <div key={c.connectorId} className="border border-stone-200 rounded-xl p-4 bg-white">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-stone-800">{c.name}</span>
-                    {st.connected ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                        <CheckCircle2 className="w-3 h-3" /> Connected
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-stone-500 bg-stone-100 border border-stone-200 rounded-full px-2 py-0.5">
-                        <XCircle className="w-3 h-3" /> Not connected
-                      </span>
-                    )}
-                  </div>
+                  <span className="font-medium text-stone-800">{c.name}</span>
+                  {st.connected ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                      <CheckCircle2 className="w-3 h-3" /> On
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-stone-500 bg-stone-100 border border-stone-200 rounded-full px-2 py-0.5">
+                      <XCircle className="w-3 h-3" /> Off
+                    </span>
+                  )}
                 </div>
                 {st.lastSync && (
                   <p className="text-xs text-stone-400 mb-2">
-                    Last sync {new Date(st.lastSync).toLocaleString()} · {st.lastCount} imported
+                    {new Date(st.lastSync).toLocaleString()} · {st.lastCount} in
                   </p>
                 )}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {st.connected ? (
                     <>
                       <Button
@@ -204,17 +202,17 @@ export default function EmailReceiptSync() {
                         className="bg-emerald-600 hover:bg-emerald-700"
                       >
                         {st.syncing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
-                        Sync now
+                        Sync
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleDisconnect(c.provider, c.connectorId)}>
                         <Link2Off className="w-4 h-4 mr-1.5" />
-                        Disconnect
+                        Off
                       </Button>
                     </>
                   ) : (
                     <Button size="sm" variant="outline" onClick={() => handleConnect(c.provider, c.connectorId)}>
                       <Link2 className="w-4 h-4 mr-1.5" />
-                      Connect {c.name}
+                      Connect
                     </Button>
                   )}
                 </div>
@@ -223,7 +221,6 @@ export default function EmailReceiptSync() {
           })}
         </div>
 
-        {/* Supplier allow-list */}
         <div className="mt-4">
           <button
             onClick={() => setShowSuppliers((v) => !v)}
