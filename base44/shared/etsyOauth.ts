@@ -46,7 +46,7 @@ function extractUserId(accessToken) {
   } catch {
     // not a JWT — fall through
   }
-  return null;
+ return parts[0] || null;
 }
 
 // Resolve the seller's shop_id + shop_name from an access token.
