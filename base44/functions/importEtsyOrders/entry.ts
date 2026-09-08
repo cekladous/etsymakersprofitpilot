@@ -183,19 +183,28 @@ export default async function (req) {
     let payload = {};
     try { payload = await req.json(); } catch { payload = {}; }
 
-    // Determine scope: an explicit owner_user_id (Sync now) or auth context runs
-    // for that user only; otherwise (scheduled automation) iterate all active connections.
+    // Determine scope: single-user only when explicitly requested (Sync now passes
+    // owner_user_id, or scope === "user"). Scheduled automation runs send neither,
+    // so they default to broadcast across all active connections.
     let userId = null;
-    try {
-      const u = await base44.auth.me();
-      if (u) userId = u.id;
-    } catch { /* scheduled: no user */ }
-    if (payload.owner_user_id) userId = payload.owner_user_id;
+    if (payload.owner_user_id) {
+      userId = payload.owner_user_id;
+    } else if (payload.scope === "user") {
+      try {
+        const u = await base44.auth.me();
+        if (u) userId = u.id;
+      } catch { /* not authenticated */ }
+    }
 
     const results = [];
     if (userId) {
       const conn = await getUserEtsyConnection(base44, userId);
-      if (!conn) return Response.json({ error: "Etsy not connected" }, { status: 400 });
+      if (!conn) {
+        return Response.json(
+          { syncs: [{ user_id: userId, skipped: "etsy_not_connected" }] },
+          { status: 200 }
+        );
+      }
       try {
         const r = await importForConnection(base44, conn, keystring);
         results.push({ user_id: userId, ...r });
@@ -205,6 +214,12 @@ export default async function (req) {
       }
     } else {
       const conns = await getAllActiveEtsyConnections(base44);
+      if (!conns || conns.length === 0) {
+        return Response.json(
+          { syncs: [], skipped: "no_active_connections" },
+          { status: 200 }
+        );
+      }
       for (const conn of conns) {
         try {
           const r = await importForConnection(base44, conn, keystring);
