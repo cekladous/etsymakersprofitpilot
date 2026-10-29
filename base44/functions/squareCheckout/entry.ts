@@ -11,8 +11,11 @@ Deno.serve(async (req) => {
 
     // SECURITY: Accept an invoiceId — never a client-supplied amount.
     // The charge amount is fetched from the Invoice record server-side
-    // to prevent price manipulation.
-    const { invoiceId, currency = 'USD' } = await req.json();
+    // to prevent price manipulation. The body is read once (a second req.json()
+    // throws) and the currency is never taken from the caller: charging the same
+    // balance in another currency would collect a different real amount than the
+    // invoice records.
+    const { invoiceId, sourceId } = await req.json();
 
     if (!invoiceId) {
       return Response.json({ error: 'Invoice ID is required' }, { status: 400 });
@@ -58,8 +61,6 @@ Deno.serve(async (req) => {
 
     // Create Square payment - requires a valid card nonce from Square Payment Form
     // The source_id must be a tokenized card nonce from Square's Web Payment SDK
-    const { sourceId } = await req.json();
-
     if (!sourceId || sourceId.startsWith('cnp:')) {
       return Response.json({ error: 'Valid payment token required' }, { status: 400 });
     }
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
         source_id: sourceId,
         amount_money: {
           amount: Math.round(amount * 100),
-          currency: currency
+          currency: 'USD'
         },
         location_id: squareLocationId,
         reference_id: `invoice_${invoiceId}`,

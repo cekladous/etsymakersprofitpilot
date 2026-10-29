@@ -1,6 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { getKeystring, getUserEtsyConnection, getAllActiveEtsyConnections, getEtsyShop, ETSY_OPEN_API } from "../../shared/etsyOauth.ts";
 import { estimateOrderFees } from "../../shared/etsyFees.ts";
+import { getEntitlements } from "../../shared/subscriptionGuard.ts";
 
 function round(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -29,6 +30,52 @@ async function loadSettings(base44, userId) {
   const rows = await base44.asServiceRole.entities.Settings.filter({ owner_user_id: userId });
   // Prefer the main settings record (any; the app keeps a single config record).
   return (rows && rows[0]) || {};
+}
+
+// Resolve the shop owner's identity for entitlement checks. The stored role is
+// used when available; otherwise the least-privileged identity is assumed.
+async function resolveOwner(base44, userId) {
+  try {
+    const u = await base44.asServiceRole.entities.User.get(userId);
+    if (u?.id) return { id: u.id, role: u.role || "user" };
+  } catch {
+    // fall through to the least-privileged identity
+  }
+  return { id: userId, role: "user" };
+}
+
+// SECURITY: paid import volume is enforced here, on the server. The browser
+// gate in useFeatureAccess is UX only; a direct call to this function must not
+// get unlimited Etsy imports on a Free plan.
+function withinImportAllowance(entitlements) {
+  if (entitlements.features.monthly_imports === -1) return true;
+  const used = Number(entitlements.subscription?.imports_used_this_month || 0);
+  return used < entitlements.features.monthly_imports;
+}
+
+// Consume one monthly import — only after an import actually produced new
+// orders, so a no-op sync never burns the plan's quota.
+async function consumeImportUse(base44, entitlements, userId, imported) {
+  if (!imported || imported <= 0) return;
+  try {
+    if (entitlements.subscription?.id) {
+      await base44.asServiceRole.entities.Subscription.updateMany(
+        { id: entitlements.subscription.id },
+        { $inc: { imports_used_this_month: 1 } }
+      );
+    } else if (entitlements.plan === "free") {
+      // Free user with no Subscription row yet: start tracking so the limit
+      // applies to them from now on.
+      await base44.asServiceRole.entities.Subscription.create({
+        owner_user_id: userId,
+        plan_id: "free",
+        status: "active",
+        imports_used_this_month: 1,
+      });
+    }
+  } catch (err) {
+    console.error("Failed to record Etsy import usage:", err.message);
+  }
 }
 
 // Import new orders for one Etsy connection. Returns counts.
@@ -207,8 +254,20 @@ export default async function (req) {
           { status: 200 }
         );
       }
+      const entitlements = await getEntitlements(base44, user);
+      if (!withinImportAllowance(entitlements)) {
+        return Response.json(
+          {
+            error: "Your plan's monthly Etsy import limit is used up. Upgrade your plan to keep syncing.",
+            code: "import_limit_reached",
+          },
+          { status: 403 }
+        );
+      }
+
       try {
         const r = await importForConnection(base44, conn, keystring);
+        await consumeImportUse(base44, entitlements, userId, r.imported);
         results.push({ user_id: userId, ...r });
       } catch (err) {
         await base44.asServiceRole.entities.EtsyConnection.update(conn.id, { last_error: err.message });
@@ -224,7 +283,16 @@ export default async function (req) {
       }
       for (const conn of conns) {
         try {
+          // SECURITY: the scheduled broadcast imports on behalf of each shop
+          // owner, so their own plan limit applies to them here too.
+          const owner = await resolveOwner(base44, conn.owner_user_id);
+          const entitlements = await getEntitlements(base44, owner);
+          if (!withinImportAllowance(entitlements)) {
+            results.push({ user_id: conn.owner_user_id, skipped: "import_limit_reached" });
+            continue;
+          }
           const r = await importForConnection(base44, conn, keystring);
+          await consumeImportUse(base44, entitlements, conn.owner_user_id, r.imported);
           results.push({ user_id: conn.owner_user_id, ...r });
         } catch (err) {
           await base44.asServiceRole.entities.EtsyConnection.update(conn.id, { last_error: err.message });
