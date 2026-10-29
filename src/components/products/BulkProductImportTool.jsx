@@ -53,7 +53,7 @@ export default function BulkProductImportTool() {
 
   // Read CSV/Excel with xlsx (handles quoted fields, newlines, two header rows)
   const readRows = async (file) => {
-    const xlsxModule = await import("xlsx");
+    const xlsxModule = await import("@e965/xlsx");
     const XLSX = xlsxModule.default || xlsxModule;
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, { type: "array" });

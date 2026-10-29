@@ -207,7 +207,7 @@ export default function BudgetTab({ viewMode, dateRange, financialData }) {
   };
 
   const handleExport = async (fileType) => {
-    const XLSX = (await import("xlsx")).default;
+    const XLSX = (await import("@e965/xlsx")).default;
     const data = [];
     
     // Header row

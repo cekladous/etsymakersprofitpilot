@@ -5,13 +5,6 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
-  resolve: {
-    alias: {
-      // SheetJS publishes patched builds under @e965/xlsx (npm's `xlsx` stopped at 0.18.5).
-      // Aliasing keeps every existing `import ... from "xlsx"` working unchanged.
-      xlsx: '@e965/xlsx',
-    },
-  },
   // Force these to share ONE pre-bundled React instance so context-based
   // libraries (next-themes, react-router, etc.) don't end up with a null
   // React from a stale/second optimized-deps chunk.

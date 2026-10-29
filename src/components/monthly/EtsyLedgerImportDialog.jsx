@@ -250,7 +250,7 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const XLSX = (await import("xlsx")).default;
+        const XLSX = (await import("@e965/xlsx")).default;
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -366,7 +366,7 @@ export default function EtsyLedgerImportDialog({ open, onOpenChange }) {
   };
 
   const downloadSkippedReport = async () => {
-    const xlsxModule = await import("xlsx");
+    const xlsxModule = await import("@e965/xlsx");
     const XLSX = xlsxModule.default || xlsxModule;
     const data = skippedRows.map(s => ({
       "Row": s.rowIndex,

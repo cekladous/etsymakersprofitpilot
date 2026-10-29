@@ -125,7 +125,7 @@ export default function EtsyPaymentDepositsImport({ open, onOpenChange, embedded
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const XLSX = await import("xlsx");
+        const XLSX = await import("@e965/xlsx");
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];

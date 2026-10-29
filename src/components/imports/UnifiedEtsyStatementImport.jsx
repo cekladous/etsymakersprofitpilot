@@ -856,7 +856,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
     reader.onload = async (e) => {
       try {
          console.log("File loaded, parsing...");
-         const XLSX = await import("xlsx");
+         const XLSX = await import("@e965/xlsx");
          const data = new Uint8Array(e.target.result);
          
          // Validate file content

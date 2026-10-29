@@ -230,7 +230,7 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const xlsxModule = await import("xlsx");
+        const xlsxModule = await import("@e965/xlsx");
         const XLSX = xlsxModule.default || xlsxModule;
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
@@ -385,7 +385,7 @@ export default function UnifiedEtsyImportDialog({ open, onOpenChange }) {
   };
 
   const downloadSkippedReport = async () => {
-    const xlsxModule = await import("xlsx");
+    const xlsxModule = await import("@e965/xlsx");
     const XLSX = xlsxModule.default || xlsxModule;
     const report = skippedRows.map(s => ({
       "Row": s.rowIndex,

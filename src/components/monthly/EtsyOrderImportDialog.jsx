@@ -154,7 +154,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const xlsxModule = await import("xlsx");
+        const xlsxModule = await import("@e965/xlsx");
         const XLSX = xlsxModule.default || xlsxModule;
         window.XLSX = XLSX; // Make XLSX available globally for date parsing
         const data = new Uint8Array(e.target.result);
@@ -257,7 +257,7 @@ export default function EtsyOrderImportDialog({ open, onOpenChange }) {
   };
 
   const downloadSkippedReport = async () => {
-    const xlsxModule = await import("xlsx");
+    const xlsxModule = await import("@e965/xlsx");
     const XLSX = xlsxModule.default || xlsxModule;
     const report = skippedRows.map(s => ({
       "Row": s.rowIndex,

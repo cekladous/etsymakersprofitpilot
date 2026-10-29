@@ -1,7 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import * as XLSX from "xlsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -88,8 +87,10 @@ export default function MaterialsLibraryTool() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const xlsxModule = await import("@e965/xlsx");
+        const XLSX = xlsxModule.default || xlsxModule;
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -124,7 +125,9 @@ export default function MaterialsLibraryTool() {
     event.target.value = "";
   };
 
-  const handleExport = (format = "xlsx") => {
+  const handleExport = async (format = "xlsx") => {
+    const xlsxModule = await import("@e965/xlsx");
+    const XLSX = xlsxModule.default || xlsxModule;
     const exportData = allSettings.map((setting) => ({
       "Brand": setting.brand,
       "Model": setting.model,
