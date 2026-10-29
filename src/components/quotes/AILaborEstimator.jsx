@@ -20,6 +20,7 @@ export default function AILaborEstimator({
   const [sizeUnit, setSizeUnit] = useState('inches');
   const [aiEstimate, setAiEstimate] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [error, setError] = useState("");
 
   const qty = parseFloat(quantity) || 1;
 
@@ -27,68 +28,22 @@ export default function AILaborEstimator({
     setIsLoading(true);
     setAiEstimate(null);
     try {
-      const materialsText = Array.isArray(materials)
-        ? materials.map(m => `${m.quantity || 1}x ${m.name || m.material_type || 'material'}`).join(', ')
-        : materials || 'None specified';
-
-      const machinesText = Array.isArray(machineDetails) && machineDetails.length > 0
-        ? machineDetails.map(m => {
-            const parts = [m.name || m.model || 'machine'];
-            if (m.brand || m.model) parts.push(`(${[m.brand, m.model].filter(Boolean).join(' ')})`);
-            if (m.wattage) parts.push(`${m.wattage}W`);
-            if (m.type) parts.push(m.type);
-            return parts.join(' ');
-          }).join(', ')
-        : Array.isArray(machines) && machines.length > 0
-          ? machines.map(m => m.name || 'machine').join(', ')
-          : 'Standard laser/CNC equipment';
-
-      const sizeText = size ? `Size/Dimensions: ${size} ${sizeUnit}` : 'Size not specified';
-      const qtyText = `Batch quantity: ${qty} unit${qty === 1 ? '' : 's'}`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an expert Etsy seller and maker estimating realistic production time for custom handmade products.
-
-Project: ${projectName || 'Custom handmade item'}
-Materials: ${materialsText}
-Machines: ${machinesText}
-${sizeText}
-${qtyText}
-
-Based on 2026 Etsy market standards and professional maker experience, estimate realistic time for a SINGLE unit of this item (except design time, which is a one-time cost for the whole batch):
-1. Design/planning time (digital design, layout, test cuts) - ONE-TIME for the whole batch, not per unit
-2. Manual labor time PER UNIT (assembly, finishing, packaging, quality check)
-3. Engrave time PER UNIT - time the selected machine spends engraving/marking one unit, based on the machine's wattage/type if provided
-4. Cut time PER UNIT - time the selected machine spends cutting out one unit, based on the machine's wattage/type if provided
-
-Guidelines:
-- Small items (under 4 inches): design 10-20min, labor 5-15min/unit, engrave 1-3min/unit, cut 0.5-2min/unit
-- Medium items (4-12 inches): design 15-30min, labor 10-25min/unit, engrave 2-6min/unit, cut 1-4min/unit
-- Large/complex items (12+ inches): design 30-60min, labor 20-60min/unit, engrave 5-15min/unit, cut 2-10min/unit
-- Personalized/custom text adds 1-3min/unit to engrave time
-- Packaging and quality check: add 2-5min/unit to labor
-- Higher wattage machines cut/engrave faster than lower wattage machines
-- Larger batch quantities typically have slightly lower per-unit labor time due to production efficiency
-
-Respond with ONLY a JSON object, no explanation:`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            design_hours: { type: "number" },
-            design_minutes: { type: "number" },
-            labor_hours: { type: "number" },
-            labor_minutes: { type: "number" },
-            engrave_minutes_per_unit: { type: "number" },
-            cut_minutes_per_unit: { type: "number" },
-            reasoning: { type: "string" }
-          },
-          required: ["design_hours", "design_minutes", "labor_hours", "labor_minutes", "engrave_minutes_per_unit", "cut_minutes_per_unit"]
-        }
+      setError("");
+      const { data: response } = await base44.functions.invoke("makerAI", {
+        action: "labor_estimate",
+        projectName,
+        materials,
+        machines,
+        machineDetails,
+        quantity: qty,
+        size,
+        sizeUnit
       });
 
       setAiEstimate(response);
     } catch (error) {
       console.error("Error getting labor estimate:", error);
+      setError(error?.response?.data?.error || "Could not get an estimate. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -173,6 +128,10 @@ Respond with ONLY a JSON object, no explanation:`,
               </>
             )}
           </Button>
+
+          {error && (
+            <p className="text-xs text-red-600">{error}</p>
+          )}
 
           {/* AI Results — shown inline, user reviews before applying */}
           {aiEstimate && (

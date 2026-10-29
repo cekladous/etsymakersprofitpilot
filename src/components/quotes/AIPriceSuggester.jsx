@@ -12,46 +12,17 @@ export default function AIPriceSuggester({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState(null);
+  const [error, setError] = useState("");
 
   const generatePriceSuggestion = async () => {
     setIsLoading(true);
     try {
-      const materialsDesc = materials.map(m => `${m.name || m.type}`).join(", ") || "Custom item";
-      
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a pricing expert for handmade Etsy products.
-
-Project Details:
-- Product: ${projectName}
-- Materials used: ${materialsDesc}
-- Material Cost: $${materialsTotal.toFixed(2)}
-
-Search Etsy marketplace for similar products:
-1. Find items with matching or similar materials (e.g., acrylic, wood, leather signs)
-2. Look at current average pricing for these items on Etsy
-3. Consider what successful sellers charge for comparable handmade/custom work
-4. Account for Etsy's fees when pricing
-
-Suggest a price that:
-- Reflects current average Etsy market rates for similar items
-- Covers costs + reasonable profit margin
-- Is competitive but not undercut
-- Is realistic for handmade work on Etsy
-
-Return a JSON with:
-- suggested_price: the recommended price based on Etsy averages
-- reasoning: what similar Etsy items cost
-
-Use real Etsy marketplace pricing data.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            suggested_price: { type: "number" },
-            reasoning: { type: "string" }
-          },
-          required: ["suggested_price", "reasoning"]
-        },
-        add_context_from_internet: true
+      setError("");
+      const { data: response } = await base44.functions.invoke("makerAI", {
+        action: "price_suggestion",
+        projectName,
+        materialsTotal,
+        materials
       });
 
       setSuggestion({
@@ -60,6 +31,7 @@ Use real Etsy marketplace pricing data.`,
       });
     } catch (error) {
       console.error("Error generating price suggestion:", error);
+      setError(error?.response?.data?.error || "Could not generate a price suggestion. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +79,10 @@ Use real Etsy marketplace pricing data.`,
                 Use This Price
               </Button>
             </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-600">{error}</p>
           )}
 
           {!suggestion && !isLoading && (

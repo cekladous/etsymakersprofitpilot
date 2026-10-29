@@ -16,9 +16,9 @@ Deno.serve(async (req) => {
     }
 
     // SECURITY: This endpoint is validation-only — it does NOT increment
-    // current_uses. Usage counters are incremented inside the server-side
-    // payment flow (createSquareSubscription) to prevent authenticated users
-    // from exhausting promo codes via direct calls to this endpoint.
+    // current_uses. A use is consumed only once a payment for the code is
+    // confirmed, never when a checkout link is merely created, so an
+    // authenticated user cannot exhaust a limited code without paying.
     const promoCodes = await base44.asServiceRole.entities.PromoCode.filter({
       code: code.toUpperCase()
     });

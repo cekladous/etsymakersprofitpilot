@@ -143,31 +143,14 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
         };
         toast({ title: "Generating product image…" });
         try {
-          let visualDescription = "";
-          if (saved.reorder_url && /^https?:\/\//i.test(saved.reorder_url)) {
-            try {
-              const descRes = await base44.integrations.Core.InvokeLLM({
-                prompt: `Visit this product page URL: ${saved.reorder_url}\nThe product is a crafting/laser material called "${saved.name}". In one or two sentences, describe only its visible appearance for a product photo: color, texture, finish (matte/gloss), thickness look, and sheet form. Do not invent details; if the page is unavailable, return an empty description.`,
-                add_context_from_internet: true,
-                model: "gemini_3_flash",
-                response_json_schema: {
-                  type: "object",
-                  properties: { description: { type: "string" } },
-                },
-              });
-              visualDescription = (descRes?.description || "").trim();
-            } catch (_e) {
-              visualDescription = "";
-            }
-          }
-
-          const categoryDesc = saved.category || "crafting";
-          const supplierDesc = saved.supplier ? ` from ${saved.supplier}` : "";
-          const appearance = visualDescription ? ` It looks like: ${visualDescription}.` : "";
-          const prompt = `A clean, professional product photograph of a single sheet of ${saved.name}${supplierDesc}, a ${categoryDesc} material used for laser cutting and engraving.${appearance} Studio lighting, plain light background, top-down view, realistic texture and accurate color, no text, no watermark, no people.`;
-
-          const imgRes = await base44.integrations.Core.GenerateImage({ prompt });
-          const image_url = imgRes?.url || imgRes?.file_url;
+          const { data: imageData } = await base44.functions.invoke("makerAI", {
+            action: "material_image",
+            name: saved.name,
+            supplier: saved.supplier,
+            category: saved.category,
+            reorder_url: saved.reorder_url,
+          });
+          const image_url = imageData?.image_url;
           if (!image_url) {
             toast({
               variant: "destructive",
@@ -198,32 +181,13 @@ export default function MaterialTypeDialog({ open, onOpenChange, materialType, o
 
     setAiLoading(true);
     try {
-      const hasUrl = reorder_url && /^https?:\/\//i.test(reorder_url);
-      const prompt = hasUrl
-        ? `Visit this product/material page URL and extract the details for inventory tracking: ${reorder_url}. ${
-            name ? `The material is listed as "${name}" if visible. ` : ""
-          }Return the material name, category (one of: wood, acrylic, leather, paper, fabric, other), thickness (e.g. "1/8"), sheet width and height in inches, cost per sheet in USD, and the supplier/vendor name. If a field isn't found, return null for it.`
-        : `A maker is adding a material to inventory named "${name}". Based on the name, determine the best category (one of: wood, acrylic, leather, paper, fabric, other), a likely thickness (e.g. "1/8", "3mm"), typical sheet width and height in inches, and an estimated cost per sheet in USD. Return only what you can reasonably infer; null for anything uncertain.`;
-
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt,
-        add_context_from_internet: hasUrl,
-        model: "gemini_3_flash",
-        response_json_schema: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            category: { type: "string", enum: ["wood", "acrylic", "leather", "paper", "fabric", "other"] },
-            thickness: { type: "string" },
-            default_width: { type: "number" },
-            default_height: { type: "number" },
-            cost_per_sheet: { type: "number" },
-            supplier: { type: "string" },
-          },
-        },
+      const { data } = await base44.functions.invoke("makerAI", {
+        action: "material_details",
+        name,
+        reorder_url,
       });
 
-      const extracted = res || {};
+      const extracted = data || {};
       setFormData((prev) => ({
         ...prev,
         name: extracted.name || prev.name,

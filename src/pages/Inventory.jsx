@@ -157,40 +157,12 @@ export default function Inventory() {
         total: Math.round(g.total * 100) / 100,
         line_count: g.purchase_ids.length,
       }));
-      const prompt = `You are reconciling a maker's business credit card charges against material purchase receipts.
-Each "receipt" groups line items from the same vendor on the same date; its "total" is the sum of those line items and should equal the matching charge.
-The charge's real merchant is in the "merchant" field (card bank name plus the store), so match it to the receipt vendor when they refer to the same store (e.g. "SP HOUSTON ACRYLIC ..." matches vendor "Houston Acrylic").
-Match each charge to at most one receipt, and each receipt to at most one charge.
-Match when the merchant refers to the receipt vendor AND the charge date is within 7 days of the receipt date. Totals may differ (shipping/tax), so do not require an exact total — but mention the dollar difference in the note.
-If no receipt vendor matches the charge merchant, exclude the charge.
-
-CREDIT CARD CHARGES:
-${JSON.stringify(expenses)}
-
-RECEIPTS (grouped by vendor + date):
-${JSON.stringify(receipts)}
-
-Return JSON with a "matches" array. Each match has expense_id, receipt_key, and a short note.`;
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            matches: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  expense_id: { type: "string" },
-                  receipt_key: { type: "string" },
-                  note: { type: "string" },
-                },
-              },
-            },
-          },
-        },
+      const { data: aiResult } = await base44.functions.invoke("makerAI", {
+        action: "expense_match",
+        expenses,
+        receipts,
       });
-      const aiMatches = Array.isArray(res?.matches) ? res.matches : [];
+      const aiMatches = Array.isArray(aiResult?.matches) ? aiResult.matches : [];
       const map = { ...deterministicMatch() };
       aiMatches.forEach((m) => {
         if (m.expense_id && m.receipt_key && !map[m.expense_id]) {

@@ -25,10 +25,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
-    // SECURITY: Validate and increment promo code usage here — inside the
-    // server-side payment flow — rather than via a standalone client-triggerable
-    // endpoint. This prevents authenticated users from exhausting promo codes
-    // without going through the checkout process.
+    // SECURITY: A promo code is only VALIDATED here, never consumed. A checkout
+    // link can be created and abandoned, so counting a use at this point let any
+    // caller burn a limited code without paying. The validated code is carried on
+    // the Square order (reference_id) below as a PENDING redemption, so a use can
+    // be counted only once a payment for that order is confirmed — never before.
+    let promoCodeForOrder = "";
+
     if (promoCode) {
       const promoCodes = await base44.asServiceRole.entities.PromoCode.filter({
         code: String(promoCode).toUpperCase(),
@@ -56,10 +59,8 @@ Deno.serve(async (req) => {
         return Response.json({ error: `Promo code is for ${promo.plan_id}, not ${planId}` }, { status: 400 });
       }
 
-      // Atomically increment usage as part of the checkout flow
-      await base44.asServiceRole.entities.PromoCode.update(promo.id, {
-        current_uses: (promo.current_uses || 0) + 1
-      });
+      // Pending only. current_uses is deliberately not modified here.
+      promoCodeForOrder = promo.code;
     }
 
     // Get user's Square location ID from settings
@@ -107,6 +108,9 @@ Deno.serve(async (req) => {
         idempotency_key: `${user.id}_${planId}_${Date.now()}`,
         order: {
           location_id: squareLocationId,
+          // Pending promo redemption travels with the order so the payment
+          // confirmation handler can consume exactly one use on success.
+          ...(promoCodeForOrder ? { reference_id: `sub_promo:${promoCodeForOrder}` } : {}),
           line_items: [{
             name: `${planId === 'maker_plus' ? 'Maker Plus' : 'Maker Pro'} Subscription`,
             quantity: '1',

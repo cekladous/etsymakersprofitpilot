@@ -65,28 +65,12 @@ export default function ChasePDFImport({ open, onOpenChange }) {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file: pdfFile });
 
-      const schema = {
-        type: 'object',
-        properties: {
-          transactions: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                date: { type: 'string', description: 'Transaction date in YYYY-MM-DD format (e.g., 2025-07-15). Always include the full 4-digit year.' },
-                description: { type: 'string', description: 'Transaction description or merchant name' },
-                amount: { type: 'number', description: 'Transaction amount as a numeric value (positive for debits/charges, negative for credits/refunds)' },
-              },
-              required: ['date', 'description', 'amount'],
-            },
-          },
-        },
-      };
-
-      const extractPromise = base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
-        json_schema: schema
-      });
+      // The extraction schema lives in the makerAI backend function; the caller
+      // only supplies the uploaded file reference.
+      const extractPromise = base44.functions.invoke("makerAI", {
+        action: "chase_statement",
+        file_url
+      }).then((response) => response.data);
 
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('PDF analysis timed out after 90 seconds. The file may be too large or image-based. Try using CSV import instead.')), 90000)
