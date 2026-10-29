@@ -431,7 +431,7 @@ Deno.serve(async (req) => {
     const financialData = await computeFinancialData(base44, user.id, start, end);
 
     if (exportFormat === 'pdf') {
-      const { jsPDF } = await import('npm:jspdf@4.0.0');
+      const { jsPDF } = await import('npm:jspdf@4.2.1');
       const doc = new jsPDF();
       
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -587,7 +587,7 @@ Deno.serve(async (req) => {
         }
       });
     } else if (exportFormat === 'xlsx') {
-      const { utils, write } = await import('npm:xlsx@0.18.5');
+      const { utils, write } = await import('npm:@e965/xlsx@0.20.3');
 
       const sheets = {};
 

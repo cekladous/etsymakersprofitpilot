@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 
 export function exportQuoteToPDF(quote, businessName = "Your Business") {
   const doc = new jsPDF();
