@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { getEntitlements, reportRangeStart } from '../../shared/subscriptionGuard.ts';
 
 // ==================== SERVER-SIDE FINANCIAL COMPUTATION ====================
 // SECURITY: All financial figures are computed from the database — never trusted
@@ -401,6 +402,23 @@ Deno.serve(async (req) => {
     const end = parseDate(periodEnd);
     if (!start || !end) {
       return Response.json({ error: 'Invalid date format for periodStart or periodEnd' }, { status: 400 });
+    }
+
+    // SECURITY: enforce the plan's report limits server-side — client checks alone
+    // are bypassable by calling this function directly.
+    const { features } = await getEntitlements(base44, user);
+    const earliest = reportRangeStart(features);
+    if (earliest && start < earliest) {
+      return Response.json({
+        error: `Your plan includes the last ${features.reportMonths} months of reports. Upgrade to export older periods.`,
+        code: 'report_range_limit',
+      }, { status: 403 });
+    }
+    if ((exportFormat === 'csv' || exportFormat === 'xlsx') && !features.reportCsvExport) {
+      return Response.json({
+        error: 'CSV/Excel export requires the Maker Pro plan.',
+        code: 'csv_export_not_entitled',
+      }, { status: 403 });
     }
 
     // Fetch settings from the database (prevents business_name spoofing)

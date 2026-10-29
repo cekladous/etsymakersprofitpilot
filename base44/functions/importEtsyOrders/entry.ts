@@ -177,24 +177,26 @@ async function importForConnection(base44, conn, keystring) {
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
+
+    // SECURITY: this handler performs outbound Etsy API calls and writes financial
+    // records with service-role privileges, so the caller must be authenticated.
+    // Scheduled workflow runs arrive as the workflow owner (an app admin).
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
     const keystring = getKeystring();
     if (!keystring) return Response.json({ error: "Etsy API key not configured" }, { status: 500 });
 
     let payload = {};
     try { payload = await req.json(); } catch { payload = {}; }
 
-    // Determine scope: single-user only when explicitly requested (Sync now passes
-    // owner_user_id, or scope === "user"). Scheduled automation runs send neither,
-    // so they default to broadcast across all active connections.
-    let userId = null;
-    if (payload.owner_user_id) {
-      userId = payload.owner_user_id;
-    } else if (payload.scope === "user") {
-      try {
-        const u = await base44.auth.me();
-        if (u) userId = u.id;
-      } catch { /* not authenticated */ }
-    }
+    // Determine scope from the authenticated caller only — a client-supplied
+    // owner_user_id is never trusted. The manual "Sync now" button requests the
+    // caller's own scope; only an admin may run the all-connections broadcast
+    // (which is how the scheduled automation runs).
+    const isAdmin = user.role === "admin";
+    const wantsUserScope = payload.scope === "user" || payload.owner_user_id;
+    const userId = (wantsUserScope || !isAdmin) ? user.id : null;
 
     const results = [];
     if (userId) {

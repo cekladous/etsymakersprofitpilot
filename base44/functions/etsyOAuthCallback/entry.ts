@@ -24,9 +24,12 @@ export default async function (req) {
     if (errorParam) return Response.json({ error: errorParam }, { status: 400 });
     if (!code || !state) return Response.json({ error: "missing_params" }, { status: 400 });
 
+    // SECURITY: the pending connection must belong to the authenticated caller,
+    // otherwise a leaked state value could bind a token to another user's record.
     const pending = await base44.asServiceRole.entities.EtsyConnection.filter({
       oauth_state: state,
       status: "pending",
+      owner_user_id: user.id,
     });
     if (!pending || pending.length === 0) {
       return Response.json({ error: "invalid_state" }, { status: 400 });
