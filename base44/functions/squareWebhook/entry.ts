@@ -1,6 +1,29 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 import { squareFetch, getConnectionByMerchant } from "../../shared/squareOauth.ts";
 
+function decodeBase64(value) {
+  try {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
+// Compares every byte of both inputs regardless of where they differ (and of
+// their lengths), so response timing reveals nothing about the expected HMAC.
+function timingSafeEqual(a, b) {
+  if (!a || !b) return false;
+  const length = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < length; i++) {
+    diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  }
+  return diff === 0;
+}
+
 export default async function (req) {
   try {
     if (req.method !== "POST") {
@@ -28,10 +51,11 @@ export default async function (req) {
     );
     const bodyData = encoder.encode(body);
     const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, bodyData);
-    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
-    const computedSignature = btoa(String.fromCharCode.apply(null, signatureArray));
-
-    if (computedSignature !== signature) {
+    // SECURITY: compare the HMACs in constant time — plain string equality
+    // short-circuits on the first differing character, which leaks how many
+    // leading characters of a forged signature are correct.
+    const providedSignature = signature ? decodeBase64(signature) : null;
+    if (!timingSafeEqual(new Uint8Array(signatureBuffer), providedSignature)) {
       console.warn("Invalid webhook signature");
       return Response.json({ error: "Invalid signature" }, { status: 401 });
     }
