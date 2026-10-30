@@ -33,7 +33,7 @@
     },
     "customer_phone": {
       "type": "string",
-      "description": "Customer phone number"
+      "description": "Customer phone"
     },
     "customer_state": {
       "type": "string",
@@ -270,7 +270,9 @@
   ],
   "rls": {
     "create": {
-      "data.owner_user_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "data.owner_user_id": "{{user.id}}"
