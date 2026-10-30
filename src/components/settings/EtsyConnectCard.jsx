@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingBag, CheckCircle2, Link2, Loader2, ShieldCheck, RefreshCw, Unlink } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import EtsyTrademarkNotice from "@/components/EtsyTrademarkNotice";
 
 export default function EtsyConnectCard() {
   const { user } = useAuth();
@@ -183,6 +184,7 @@ export default function EtsyConnectCard() {
                 <><Link2 className="w-4 h-4 mr-2" /> Connect Etsy</>
               )}
             </Button>
+            <EtsyTrademarkNotice className="text-stone-500 text-center" />
           </>
         )}
       </CardContent>

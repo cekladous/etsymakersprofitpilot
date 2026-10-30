@@ -126,7 +126,7 @@ export default function Layout({ children, currentPageName }) {
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0 gap-2">
           <Link to={createPageUrl("Welcome")} className="font-bold text-lg text-stone-900 dark:text-stone-100 tracking-tight hover:text-emerald-600 transition-colors flex-1 min-w-0">
-            Etsy Maker's Profit Pilot
+            Maker's Profit Pilot
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}

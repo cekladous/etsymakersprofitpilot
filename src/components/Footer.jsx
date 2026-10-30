@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import EtsyTrademarkNotice from "@/components/EtsyTrademarkNotice";
 
 export default function Footer() {
   const [openModal, setOpenModal] = useState(null);
@@ -10,15 +11,15 @@ export default function Footer() {
       <section>
         <h4 className="font-semibold text-stone-900 mb-2">Overview</h4>
         <p>
-          When you use Etsy Maker's Profit Pilot products or services, you are agreeing to these Terms of Service ("Terms"). Violation of these terms may, at our discretion, result in us terminating your account.
+          When you use Maker's Profit Pilot products or services, you are agreeing to these Terms of Service ("Terms"). Violation of these terms may, at our discretion, result in us terminating your account.
         </p>
       </section>
 
       <section>
         <h4 className="font-semibold text-stone-900 mb-2">Definitions</h4>
         <ul className="list-disc pl-6 space-y-1">
-          <li>"Company", "we", "our", or "us" refers to Etsy Maker's Profit Pilot.</li>
-          <li>"Services" refers to our websites and any product created and maintained by Etsy Maker's Profit Pilot.</li>
+          <li>"Company", "we", "our", or "us" refers to Maker's Profit Pilot.</li>
+          <li>"Services" refers to our websites and any product created and maintained by Maker's Profit Pilot.</li>
           <li>"You" or "your" refers to the people or organizations that own an account with one or more of our Services.</li>
         </ul>
       </section>
@@ -83,7 +84,7 @@ export default function Footer() {
       <section>
         <h4 className="font-semibold text-stone-900 mb-2">Overview</h4>
         <p>
-          Etsy Maker's Profit Pilot is dedicated to collecting only what we need. This policy explains what data we collect, why we collect it, and how we handle it.
+          Maker's Profit Pilot is dedicated to collecting only what we need. This policy explains what data we collect, why we collect it, and how we handle it.
         </p>
       </section>
 
@@ -157,7 +158,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div>
-              <p className="font-semibold text-stone-200 mb-2 pr-12">Built by Etsy Maker's Profit Pilot</p>
+              <p className="font-semibold text-stone-200 mb-2 pr-12">Built by Maker's Profit Pilot</p>
             </div>
             <div className="flex flex-wrap gap-4 md:justify-end">
               <button
@@ -181,8 +182,9 @@ export default function Footer() {
               </a>
             </div>
           </div>
-          <div className="border-t border-stone-800 pt-4 text-xs text-center">
-            <p>&copy; 2026 Etsy Maker's Profit Pilot. All rights reserved.</p>
+          <div className="border-t border-stone-800 pt-4 text-xs text-center space-y-2">
+            <EtsyTrademarkNotice className="text-stone-500" />
+            <p>&copy; 2026 Maker's Profit Pilot. All rights reserved.</p>
           </div>
         </div>
       </footer>
