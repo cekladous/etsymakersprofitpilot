@@ -156,9 +156,11 @@ export function buildFees(order, settings, actualPaymentFee = 0) {
   };
 }
 
-/** Net = order total − sales tax Etsy remits − every Etsy fee. */
+/** Net = order total − refunds − sales tax Etsy remits − every Etsy fee. */
 export function netForOrder(order, fees) {
-  return round(num(order.order_total) - num(order.sales_tax) - num(fees.total_fees));
+  return round(
+    num(order.order_total) - num(order.refund_amount) - num(order.sales_tax) - num(fees.total_fees)
+  );
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

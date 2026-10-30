@@ -138,7 +138,7 @@ export default async function (req) {
     }
 
     const transfers = await withRateLimitRetry(() =>
-      applyDailyDeposits(base44, targetUserId, dailyNet)
+      recomputeDailyDeposits(base44, targetUserId)
     );
 
     // Report any order that still carries a zero total after the repair.

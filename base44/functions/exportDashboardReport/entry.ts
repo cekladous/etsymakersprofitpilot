@@ -32,6 +32,16 @@ const isSquareInPerson = (order) => {
          pt.includes('square') || pt.includes('inperson');
 };
 
+// Cancelled or fully refunded orders stay on record but are not revenue.
+const isExcludedEtsyOrder = (order) => {
+  const status = String(order?.status || '').toLowerCase();
+  if (status === 'cancelled' || status === 'canceled') return true;
+  const total = toNum(order?.order_total);
+  const tax = toNum(order?.sales_tax);
+  const refund = toNum(order?.refund_amount);
+  return refund > 0 && refund >= total - tax - 0.01;
+};
+
 const filterByDate = (items, dateField, start, end) => {
   return (items || []).filter(item => {
     const d = parseDate(item[dateField]);
@@ -130,8 +140,10 @@ async function computeFinancialData(base44, userId, start, end) {
   const periodLedgerEntries = filterByDate(etsyLedgerEntries, 'entry_date', start, end);
 
   // ==================== CHANNEL SPLIT ====================
-  const etsyOnlineOrders = periodEtsyOrders.filter(o => !isSquareInPerson(o));
-  const squareInPersonOrders = periodEtsyOrders.filter(o => isSquareInPerson(o));
+  // Cancelled and fully refunded orders stay on record but are not revenue.
+  const revenueEtsyOrders = periodEtsyOrders.filter(o => !isExcludedEtsyOrder(o));
+  const etsyOnlineOrders = revenueEtsyOrders.filter(o => !isSquareInPerson(o));
+  const squareInPersonOrders = revenueEtsyOrders.filter(o => isSquareInPerson(o));
 
   // ==================== REVENUE ====================
   // Etsy online sales: order_total - sales_tax - CO retail delivery fee

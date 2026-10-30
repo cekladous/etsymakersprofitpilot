@@ -15,6 +15,20 @@ const toNumber = (v) => {
   return Number.isFinite(num) ? num : 0;
 };
 
+/**
+ * Orders Etsy cancelled, or refunded in full, stay in the database (and show as
+ * cancelled/refunded in the Sales tab) but are not revenue. Partially refunded
+ * orders remain revenue and are netted against their refund when summed.
+ */
+export function isExcludedEtsyOrder(order) {
+  const status = String(order?.status || "").toLowerCase();
+  if (status === "cancelled" || status === "canceled") return true;
+  const total = Number(order?.order_total) || 0;
+  const tax = Number(order?.sales_tax) || 0;
+  const refund = Number(order?.refund_amount) || 0;
+  return refund > 0 && refund >= total - tax - 0.01;
+}
+
 export function aggregateFinancials(data, dateRange) {
   const { start, end } = dateRange || {};
   
@@ -132,7 +146,8 @@ export function aggregateFinancials(data, dateRange) {
   const deduplicationWarnings = [];
   // CSV/statement rows replaced by an API sync stay in the database for history
   // but must not be counted a second time.
-  const dedupedEtsyOrders = periodEtsyOrders.filter(o => !o.superseded);
+  // Cancelled / fully refunded orders are kept on record but never count as revenue.
+  const dedupedEtsyOrders = periodEtsyOrders.filter(o => !o.superseded && !isExcludedEtsyOrder(o));
 
   // Split: Etsy online orders vs Square in-person orders.
   // Etsy's Activity Summary never includes Square sales — keep them separate so

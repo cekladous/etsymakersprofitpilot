@@ -48,6 +48,7 @@ import LineItemDrillDown from "@/components/monthly/LineItemDrillDown";
 import { calculateNetEarnings, calculateTotalNetEarnings, findOrderFee } from "@/components/shared/netEarnings";
 import ChannelBadge from "@/components/orders/ChannelBadge";
 import { isSquareInPersonOrder } from "@/components/shared/channelUtils";
+import { isExcludedEtsyOrder } from "@/components/shared/financialAggregator";
 import OrdersFilterPanel from "@/components/orders/OrdersFilterPanel";
 import { useSearchParams } from "react-router-dom";
 
@@ -373,9 +374,13 @@ export default function Orders() {
     [filteredOrders]
   );
 
+  // Cancelled / fully refunded orders stay in the table but never count as revenue.
+  const revenueEtsyOrders = etsyOnlyOrders.filter(o => !isExcludedEtsyOrder(o));
+  const revenueBusinessOrders = filteredOrders.filter(o => !isExcludedEtsyOrder(o));
+
   // Revenue (excl. tax) = Net Sales, matching Etsy's statement Sales figure.
   // Net Sales = (order_total - refunds) - sales_tax - CO Retail Delivery Fee
-  const totalRevenue = etsyOnlyOrders.reduce((sum, o) => {
+  const totalRevenue = revenueEtsyOrders.reduce((sum, o) => {
     const gross = (o.order_total || 0) - (o.refund_amount || 0);
     const tax = (o.sales_tax || 0);
     const expected = (o.order_value || 0) + (o.shipping_charged || 0) + tax - (o.discount_amount || 0);
@@ -384,13 +389,13 @@ export default function Orders() {
   }, 0);
 
   // Shipping revenue (kept by seller)
-  const totalShipping = etsyOnlyOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
+  const totalShipping = revenueEtsyOrders.reduce((sum, o) => sum + (o.shipping_charged || 0), 0);
   // Discounts and refunds (used in internal profit view, matching Reconciliation tab)
-  const totalDiscounts = etsyOnlyOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0);
-  const totalRefunds = etsyOnlyOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
-  const totalSalesTax = etsyOnlyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
+  const totalDiscounts = revenueEtsyOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0);
+  const totalRefunds = revenueEtsyOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
+  const totalSalesTax = revenueEtsyOrders.reduce((sum, o) => sum + (o.sales_tax || 0), 0);
   // Item revenue (order_value only, used in internal profit view formula)
-  const totalItemRevenue = etsyOnlyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
+  const totalItemRevenue = revenueEtsyOrders.reduce((sum, o) => sum + (o.order_value || 0), 0);
 
   // Unified fees: merge EtsyStatementLine fee records (authoritative source from
   // imports) with Fee entity records (secondary derivative). Dedup by composite key.
@@ -514,7 +519,7 @@ export default function Orders() {
 
   // Sum of per-order profits (Order Profit column) — each order's net after
   // transaction + processing fees + Share & Save credit, but before shop-level costs.
-  const sumOfOrderProfits = etsyOnlyOrders.reduce((sum, o) => {
+  const sumOfOrderProfits = revenueEtsyOrders.reduce((sum, o) => {
     const fees = findOrderFee(orderFees, o.order_id);
     return sum + calculateNetEarnings(o, fees);
   }, 0);
@@ -523,7 +528,7 @@ export default function Orders() {
   const shopLevelCosts = sumOfOrderProfits - totalNetEarningsCorrected;
 
   // Total Business view: all orders including Square/in-person
-  const totalBusinessRevenue = filteredOrders.reduce((sum, o) => {
+  const totalBusinessRevenue = revenueBusinessOrders.reduce((sum, o) => {
     const gross = (o.order_total || 0) - (o.refund_amount || 0);
     const tax = (o.sales_tax || 0);
     const expected = (o.order_value || 0) + (o.shipping_charged || 0) + tax - (o.discount_amount || 0);
