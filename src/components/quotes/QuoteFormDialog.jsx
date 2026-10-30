@@ -467,14 +467,24 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
       const persisted = await ensureCustomerPersisted(data);
       if (quote) {
         return base44.entities.Quote.update(quote.id, persisted);
-      } else {
-        return base44.entities.Quote.create({ ...persisted, owner_user_id: user.id });
       }
+      // Creation runs server-side so the plan's monthly quote quota is enforced.
+      const response = await base44.functions.invoke("createQuote", {
+        quote: { ...persisted, owner_user_id: user.id },
+      });
+      return response.data.quote;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       onOpenChange(false);
+    },
+    onError: (error) => {
+      if (error?.response?.data?.error === "quote_limit_reached") {
+        alert("You have reached the Free plan limit of 5 quotes this month. Please upgrade to Maker or Pro in Settings > Subscription for unlimited quotes.");
+        return;
+      }
+      alert(`Could not save quote: ${error?.response?.data?.error || error?.message || "unknown error"}`);
     },
   });
 

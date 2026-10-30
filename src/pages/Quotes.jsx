@@ -65,10 +65,21 @@ const deleteMutation = useMutation({ mutationFn: async (quote) => { const qid = 
         status: "Draft",
         created_date: new Date().toISOString(),
       };
-      return base44.entities.Quote.create(newQuote);
+      const response = await base44.functions.invoke("createQuote", { quote: newQuote });
+      return response.data.quote;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    },
+    onError: (error) => {
+      const limited = error?.response?.data?.error === "quote_limit_reached";
+      toast({
+        title: limited ? "Quote limit reached" : "Could not duplicate quote",
+        description: limited
+          ? "You have reached the Free plan limit of 5 quotes this month. Upgrade in Settings > Subscription for unlimited quotes."
+          : error?.response?.data?.error || error?.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 

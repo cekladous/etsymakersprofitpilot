@@ -110,7 +110,9 @@ export default function CalculatorTool() {
     const grandTotal = results.profit + results.total_fees + totalCosts;
     
     const quoteNumber = `Q-${Date.now()}`;
-    await base44.entities.Quote.create({
+    try {
+      await base44.functions.invoke("createQuote", {
+      quote: {
       quote_number: quoteNumber,
       project_name: "New Quote from Calculator",
       customer_name: "",
@@ -126,8 +128,16 @@ export default function CalculatorTool() {
       labor_hours: inputs.labor_hours,
       labor_rate: inputs.labor_rate,
       notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
-    });
-    
+      },
+      });
+    } catch (error) {
+      if (error?.response?.data?.error === "quote_limit_reached") {
+        alert("You have reached the Free plan limit of 5 quotes this month. Please upgrade in Settings > Subscription for unlimited quotes.");
+        return;
+      }
+      throw error;
+    }
+
     queryClient.invalidateQueries({ queryKey: ["quotes"] });
     navigate(createPageUrl("Quotes"));
   };
