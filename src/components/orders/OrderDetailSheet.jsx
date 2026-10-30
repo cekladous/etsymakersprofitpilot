@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Sheet,
   SheetContent,
@@ -7,12 +9,46 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { Link2, Unlink, Loader2, Square } from "lucide-react";
 import { format } from "date-fns";
 import { calculateNetEarnings, perOrderFees } from "@/components/shared/netEarnings";
 import ChannelBadge from "@/components/orders/ChannelBadge";
 import { isSquareInPersonOrder, SQUARE_FEE_PERCENT, SQUARE_FEE_FIXED } from "@/components/shared/channelUtils";
 
 export default function OrderDetailSheet({ order, orderFees, open, onOpenChange }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [paymentIdInput, setPaymentIdInput] = useState("");
+  const [squareBusy, setSquareBusy] = useState(false);
+
+  const runSquareLink = async (payload) => {
+    if (!order) return;
+    setSquareBusy(true);
+    try {
+      const res = await base44.functions.invoke("squarePaymentLink", { ...payload, etsy_order_id: order.id });
+      const data = res.data || res;
+      if (data.error) throw new Error(data.error);
+      ["etsy-orders", "custom-sales", "business-expenses", "square-connection"].forEach((key) =>
+        queryClient.invalidateQueries({ queryKey: [key] })
+      );
+      setPaymentIdInput("");
+      toast({
+        title: payload.action === "link" ? "Square payment linked" : "Square payment unlinked",
+        description:
+          payload.action === "link"
+            ? `Linked $${Number(data.square_amount || 0).toFixed(2)}${data.adjustment ? ` · $${Number(data.adjustment).toFixed(2)} adjustment recorded` : ""}`
+            : "That payment now counts as its own Square sale.",
+      });
+    } catch (err) {
+      toast({ title: "Could not update link", description: err?.message || String(err), variant: "destructive" });
+    } finally {
+      setSquareBusy(false);
+    }
+  };
+
   if (!order) return null;
 
   const formatCurrency = (amount) => {
@@ -98,6 +134,66 @@ export default function OrderDetailSheet({ order, orderFees, open, onOpenChange 
                   <p className="text-xs text-stone-500 mb-1">Payment Method</p>
                   <p className="font-medium text-stone-900">{order.payment_method}</p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Square payment link */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Square className="w-4 h-4 text-blue-600" /> Square payment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {order.square_payment_id ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge className="bg-blue-100 text-blue-800">Linked</Badge>
+                    <span className="font-mono text-xs text-stone-600 break-all">{order.square_payment_id}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-stone-500">Square collected</p>
+                      <p className="font-medium text-stone-900">{formatCurrency(order.square_payment_amount || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-stone-500">Adjustment recorded</p>
+                      <p className="font-medium text-stone-900">{formatCurrency(order.square_adjustment_amount || 0)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={squareBusy}
+                    onClick={() => runSquareLink({ action: "unlink" })}
+                  >
+                    {squareBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}
+                    Unlink Square payment
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-stone-600">
+                    Not linked to a Square payment. Paste the Square payment ID to link it — the payment then stops
+                    counting as separate Square revenue.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={paymentIdInput}
+                      onChange={(e) => setPaymentIdInput(e.target.value)}
+                      placeholder="Square payment ID"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={squareBusy || !paymentIdInput.trim()}
+                      onClick={() => runSquareLink({ action: "link", square_payment_id: paymentIdInput.trim() })}
+                    >
+                      {squareBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

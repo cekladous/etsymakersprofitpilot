@@ -925,12 +925,22 @@ export default function Orders() {
       header: "Order #",
       sortValue: (row) => row.order_id || "",
       render: (row) => (
-        <button
-          onClick={() => openOrderDetail(row.id)}
-          className="font-medium text-blue-600 hover:underline"
-        >
-          #{row.order_id}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => openOrderDetail(row.id)}
+            className="font-medium text-blue-600 hover:underline"
+          >
+            #{row.order_id}
+          </button>
+          {row.square_payment_id && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+              title={`Square payment ${row.square_payment_id}${row.square_adjustment_amount ? ` · $${Number(row.square_adjustment_amount).toFixed(2)} Square adjustment` : ""}`}
+            >
+              SQ
+            </span>
+          )}
+        </div>
       ),
     },
     {

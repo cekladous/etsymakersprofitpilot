@@ -1,5 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 import { squareFetch, getConnectionByMerchant } from "../../shared/squareOauth.ts";
+import { syncSquarePayments } from "../../shared/squareSync.ts";
 
 function decodeBase64(value) {
   try {
@@ -65,6 +66,38 @@ export default async function (req) {
     const merchantId = payload.merchant_id || "";
 
     const base44 = createClientFromRequest(req);
+
+    // ---- Payment / refund / invoice events → sync that seller's Square payments ----
+    // Each event runs an incremental sync so the payment, its Square fee and any
+    // refund land in the books within seconds. Upserts on the Square payment id,
+    // so replays and overlapping events can never duplicate a sale.
+    if (
+      eventType.startsWith("payment.") ||
+      eventType.startsWith("refund.") ||
+      eventType.startsWith("invoice.")
+    ) {
+      try {
+        const conn = await getConnectionByMerchant(base44, merchantId);
+        if (conn) {
+          const endDate = new Date().toISOString().slice(0, 10);
+          const beginDate = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+          const stats = await syncSquarePayments(base44, {
+            ownerUserId: conn.owner_user_id,
+            conn,
+            beginDate,
+            endDate,
+          });
+          await base44.asServiceRole.entities.SquareConnection.update(conn.id, {
+            last_sync_at: new Date().toISOString(),
+            last_imported_count: stats.linked_to_etsy + stats.new_custom_sales + stats.adjustments_created,
+            last_error: stats.errors.length ? stats.errors.slice(0, 3).join(" | ") : "",
+          });
+        }
+      } catch (error) {
+        // Never fail the webhook ack over a sync problem — the hourly job retries.
+        console.error("Square payment sync from webhook failed:", error.message);
+      }
+    }
 
     // ---- Invoice payment sync (routed per-merchant to the seller who owns it) ----
     // When Square marks an invoice PAID, reflect it in the app: mark the linked

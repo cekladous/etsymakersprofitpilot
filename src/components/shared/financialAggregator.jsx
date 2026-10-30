@@ -281,7 +281,11 @@ export function aggregateFinancials(data, dateRange) {
   const customRevenueBySource = {};
   SOURCE_KEYS.forEach(key => { customRevenueBySource[key] = 0; });
   periodCustomSales.forEach(s => {
-    const source = SOURCE_KEYS.includes(s.sales_source) ? s.sales_source : "Other";
+    // `payment_source` is what every writer sets (Square sync, CSV imports, dialogs);
+    // `sales_source` only exists on older rows — read it as a fallback so nothing
+    // falls into "Other" just because of the field name.
+    const sourceKey = s.payment_source || s.sales_source;
+    const source = SOURCE_KEYS.includes(sourceKey) ? sourceKey : "Other";
     customRevenueBySource[source] += toNumber(s.pre_tax_amount || s.gross_sale);
   });
   const revenueBySource = {

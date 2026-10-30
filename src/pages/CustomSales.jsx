@@ -399,7 +399,21 @@ export default function CustomSalesPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-stone-900 font-medium">{sale.vendor || "—"}</td>
-                      <td className="px-6 py-4 text-stone-600">{sale.description || "—"}</td>
+                      <td className="px-6 py-4 text-stone-600">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{sale.description || "—"}</span>
+                          {sale.linked_etsy_order_id && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                              Linked to Etsy order #{sale.linked_etsy_order_id}
+                            </span>
+                          )}
+                          {sale.is_square_adjustment && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                              Square adjustment
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-stone-600">{sale.payment_source || "—"}</td>
                       <td className="px-6 py-4 text-right text-stone-900">
                         ${(sale.pre_tax_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

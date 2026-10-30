@@ -1,0 +1,48 @@
+{
+  "description": "Hourly backup sync of Square payments for every connected seller: links Etsy in-person sales, imports Square-only sales, records Square processing fees.",
+  "name": "Square Hourly Payment Sync",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 * * * *",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "square_hourly_payment_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync_square_payments": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "squareSync",
+            "args": {
+              "all_users": true,
+              "days": 3
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Sync Square payments",
+            "description": "All connected sellers, last 3 days"
+          }
+        }
+      }
+    ]
+  }
+}
