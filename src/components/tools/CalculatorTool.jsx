@@ -112,23 +112,23 @@ export default function CalculatorTool() {
     const quoteNumber = `Q-${Date.now()}`;
     try {
       await base44.functions.invoke("createQuote", {
-      quote: {
-      quote_number: quoteNumber,
-      project_name: "New Quote from Calculator",
-      customer_name: "",
-      status: "Draft",
-      materials: [{
-        name: "Materials & Supplies",
-        cost: inputs.cost_of_goods
-      }, {
-        name: "Labor",
-        cost: laborCost
-      }],
-      machines: [],
-      labor_hours: inputs.labor_hours,
-      labor_rate: inputs.labor_rate,
-      notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
-      },
+        quote: {
+          quote_number: quoteNumber,
+          project_name: "New Quote from Calculator",
+          customer_name: "",
+          status: "Draft",
+          materials: [{
+            name: "Materials & Supplies",
+            cost: inputs.cost_of_goods
+          }, {
+            name: "Labor",
+            cost: laborCost
+          }],
+          machines: [],
+          labor_hours: inputs.labor_hours,
+          labor_rate: inputs.labor_rate,
+          notes: `Sales Price: $${inputs.sales_price}\nShipping: $${inputs.shipping_charged}\nEstimated Fees: $${results.total_fees.toFixed(2)}\nEstimated Profit: $${results.profit.toFixed(2)} (${results.profit_margin != null ? `${results.profit_margin.toFixed(1)}%` : 'N/A'})\n\nPayment Method: ${inputs.payment_method}`,
+        },
       });
     } catch (error) {
       if (error?.response?.data?.error === "quote_limit_reached") {
