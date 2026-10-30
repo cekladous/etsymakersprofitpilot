@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
-import { getKeystring, getUserEtsyConnection, getAllActiveEtsyConnections, getEtsyShop, ETSY_OPEN_API } from "../../shared/etsyOauth.ts";
+import { getKeystring, getSharedSecret, getUserEtsyConnection, getAllActiveEtsyConnections, resolveEtsyShop, etsyJson } from "../../shared/etsyOauth.ts";
 import { estimateOrderFees } from "../../shared/etsyFees.ts";
 import { getEntitlements } from "../../shared/subscriptionGuard.ts";
 
@@ -12,17 +12,10 @@ function dateStr(epochSeconds) {
   return new Date(epochSeconds * 1000).toISOString().slice(0, 10);
 }
 
+// Every Etsy call goes through the shared client so it carries the required
+// x-api-key: <keystring>:<shared_secret> header.
 async function etsyFetch(token, keystring, path) {
-  const res = await fetch(`${ETSY_OPEN_API}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, "x-api-key": keystring },
-  });
-  const text = await res.text();
-  let body = null;
-  try { body = text ? JSON.parse(text) : null; } catch { body = { raw: text }; }
-  if (!res.ok) {
-    throw new Error(`Etsy API ${res.status}: ${body?.error || text || "request failed"}`);
-  }
-  return body;
+  return etsyJson(token, path);
 }
 
 // Load the seller's fee Settings (one record per user keyed by setting_key).
@@ -86,13 +79,17 @@ async function importForConnection(base44, conn, keystring) {
   // Resolve shop_id if it wasn't captured at connect time.
   let shopId = conn.shop_id;
   if (!shopId) {
-    const shop = await getEtsyShop(conn.access_token, keystring);
+    const shop = await resolveEtsyShop(conn.access_token);
     shopId = shop.shop_id;
     if (shopId) {
       await base44.asServiceRole.entities.EtsyConnection.update(conn.id, { shop_id: shopId, shop_name: shop.shop_name });
+    } else {
+      const failure = (shop.steps || []).find((s) => !s.ok);
+      throw new Error(
+        `Could not resolve Etsy shop_id (${failure ? `${failure.step} → ${failure.status} ${failure.error || ""}`.trim() : "no shop returned"})`
+      );
     }
   }
-  if (!shopId) throw new Error("Could not resolve Etsy shop_id");
 
   // Pull receipts created since the last sync (default: last 90 days).
   const minCreated = conn.last_sync_at
@@ -233,6 +230,9 @@ export default async function (req) {
 
     const keystring = getKeystring();
     if (!keystring) return Response.json({ error: "Etsy API key not configured" }, { status: 500 });
+    if (!getSharedSecret()) {
+      return Response.json({ error: "Etsy shared secret not configured" }, { status: 500 });
+    }
 
     let payload = {};
     try { payload = await req.json(); } catch { payload = {}; }

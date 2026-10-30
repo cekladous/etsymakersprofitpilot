@@ -32,9 +32,9 @@ Deno.serve(async (req) => {
     }
 
     // Fetch shop ID
-    const shopResponse = await fetch('https://openapi.etsy.com/v3/application/shops', {
+    const shopResponse = await fetch('https://api.etsy.com/v3/application/users/me', {
       headers: {
-        'x-api-key': etsyApiKey,
+        'x-api-key': `${etsyApiKey}:${etsySharedSecret}`,
         'Authorization': `Bearer ${etsy_oauth_token}`
       }
     });
@@ -48,10 +48,10 @@ Deno.serve(async (req) => {
 
     // Fetch active listings
     const ordersResponse = await fetch(
-      `https://openapi.etsy.com/v3/application/shops/${shopId}/orders`,
+      `https://api.etsy.com/v3/application/shops/${shopId}/receipts`,
       {
         headers: {
-          'x-api-key': etsyApiKey,
+          'x-api-key': `${etsyApiKey}:${etsySharedSecret}`,
           'Authorization': `Bearer ${etsy_oauth_token}`
         }
       }
