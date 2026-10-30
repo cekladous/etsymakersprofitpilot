@@ -122,11 +122,30 @@ async function customersByIds(token, customerIds) {
   if (!customerIds.length) return map;
   for (let i = 0; i < customerIds.length; i += 100) {
     const chunk = customerIds.slice(i, i + 100);
-    const body = await squareFetch(token, "/v2/customers/bulk-retrieve", {
-      method: "POST",
-      body: JSON.stringify({ customer_ids: chunk }),
-    });
-    (body?.responses || []).forEach((r) => { if (r?.customer) map[r.customer.id] = r.customer; });
+    try {
+      const body = await squareFetch(token, "/v2/customers/bulk-retrieve", {
+        method: "POST",
+        body: JSON.stringify({ customer_ids: chunk }),
+      });
+      // Square returns bulk customers either as an array or as { id: { customer } }.
+      const responses = body?.responses;
+      if (Array.isArray(responses)) {
+        responses.forEach((r) => { if (r?.customer) map[r.customer.id] = r.customer; });
+      } else if (responses && typeof responses === "object") {
+        Object.values(responses).forEach((r) => { if (r?.customer) map[r.customer.id] = r.customer; });
+      }
+    } catch {
+      // fall through to the individual lookups below
+    }
+    for (const id of chunk) {
+      if (map[id]) continue;
+      try {
+        const one = await squareFetch(token, `/v2/customers/${id}`);
+        if (one?.customer) map[id] = one.customer;
+      } catch {
+        // customer names are nice-to-have, never fatal
+      }
+    }
   }
   return map;
 }
@@ -322,7 +341,12 @@ async function upsertAdjustment(base44, { ownerUserId, payment, amount, order, i
     return { created: false, adjustment: 0 };
   }
   if (existing) {
-    if (round2(existing.gross_sale) !== adjustment || existing.date !== date) {
+    const changed =
+      round2(existing.gross_sale) !== adjustment ||
+      existing.date !== date ||
+      (existing.vendor || "") !== payload.vendor ||
+      (existing.description || "") !== payload.description;
+    if (changed) {
       await base44.asServiceRole.entities.CustomSale.update(existing.id, payload);
     }
     return { created: false, adjustment };
@@ -461,7 +485,14 @@ export async function syncSquarePayments(base44, { ownerUserId, conn, beginDate,
       const payload = customSalePayload({ ownerUserId, payment, amount, invoiceNo, buyerName, date, lineItems });
 
       if (existingSale) {
-        if (round2(existingSale.gross_sale) !== amount || existingSale.date !== date) {
+        const changed =
+          round2(existingSale.gross_sale) !== amount ||
+          existingSale.date !== date ||
+          (existingSale.vendor || "") !== payload.vendor ||
+          (existingSale.description || "") !== payload.description ||
+          (existingSale.square_invoice_number || "") !== (payload.square_invoice_number || "") ||
+          (existingSale.square_payment_method || "") !== (payload.square_payment_method || "");
+        if (changed) {
           await base44.asServiceRole.entities.CustomSale.update(existingSale.id, payload);
           stats.updated_custom_sales += 1;
         }

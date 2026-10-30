@@ -106,7 +106,22 @@ export default async function (req) {
       oauth_state: "",
     });
 
-    return Response.json({ connected: true, merchant_name: merchantName });
+    // Reconnecting creates a fresh grant — retire any older active connection for
+    // this seller so only one token (and one sync) is ever in play.
+    const others = await base44.asServiceRole.entities.SquareConnection.filter({
+      owner_user_id: user.id,
+      status: "active",
+    });
+    for (const other of others || []) {
+      if (other.id === conn.id) continue;
+      await base44.asServiceRole.entities.SquareConnection.update(other.id, {
+        status: "disconnected",
+        access_token: "",
+        refresh_token: "",
+      });
+    }
+
+    return Response.json({ connected: true, merchant_name: merchantName, scopes: tok.scope || "" });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
