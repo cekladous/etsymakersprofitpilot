@@ -16,9 +16,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, FileText, Loader2, Upload } from "lucide-react";
 
-// Generate stable line_uid from transaction data
-const generateLineUID = (date, type, amount, description, orderId, month) => {
-  const str = `${date}|${type}|${amount}|${description}|${orderId || ''}|${month}`;
+// Generate stable line_uid from transaction data.
+// The row index is part of the key: Etsy statements contain genuinely repeated
+// rows (e.g. eleven identical "Credit for listing fee" $0.20 lines on one day),
+// and without it those distinct rows collapsed onto the same key.
+const generateLineUID = (date, type, amount, description, orderId, month, rowIndex = 0) => {
+  const str = `${date}|${type}|${amount}|${description}|${orderId || ''}|${month}|${rowIndex}`;
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -1131,7 +1134,7 @@ export default function UnifiedEtsyStatementImport({ open, onOpenChange, embedde
         ? (feesTaxes || net)
         : amount;
 
-      const lineUID = generateLineUID(transactionDate, type, effectiveAmount, title, classification.order_id || "", statementMonth);
+      const lineUID = generateLineUID(transactionDate, type, effectiveAmount, title, classification.order_id || "", statementMonth, idx);
 
       // Create raw line for this transaction
       const rawLine = {

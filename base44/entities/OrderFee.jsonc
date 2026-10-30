@@ -59,6 +59,18 @@
       "type": "number",
       "default": 0,
       "description": "Total of all fees"
+    },
+    "fee_source": {
+      "type": "string",
+      "enum": [
+        "etsy_payment_actual",
+        "estimated"
+      ],
+      "description": "Where the fee amounts came from: Etsy's real payment record, or rate-based estimate"
+    },
+    "estimated_parts": {
+      "type": "string",
+      "description": "Comma-separated fee parts that are estimated rather than read from Etsy"
     }
   },
   "required": [

@@ -26,6 +26,15 @@
     "notes": {
       "type": "string",
       "description": "Transfer notes"
+    },
+    "voided": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this row was not a real deposit (e.g. order total did not cover Etsy fees). Kept for history, excluded from totals."
+    },
+    "void_reason": {
+      "type": "string",
+      "description": "Why this transfer was voided"
     }
   },
   "required": [

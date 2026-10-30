@@ -130,7 +130,9 @@ export function aggregateFinancials(data, dateRange) {
   // source of truth for order-level revenue (matches the Etsy Sales tab exactly).
   // Statement lines are only used for fees and for unlinked sales (no matching order).
   const deduplicationWarnings = [];
-  const dedupedEtsyOrders = periodEtsyOrders;
+  // CSV/statement rows replaced by an API sync stay in the database for history
+  // but must not be counted a second time.
+  const dedupedEtsyOrders = periodEtsyOrders.filter(o => !o.superseded);
 
   // Split: Etsy online orders vs Square in-person orders.
   // Etsy's Activity Summary never includes Square sales — keep them separate so

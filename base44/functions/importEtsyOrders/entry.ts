@@ -1,27 +1,20 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { getKeystring, getSharedSecret, getUserEtsyConnection, getAllActiveEtsyConnections, resolveEtsyShop, etsyJson } from "../../shared/etsyOauth.ts";
-import { estimateOrderFees } from "../../shared/etsyFees.ts";
+import {
+  buildOrder,
+  buildFees,
+  netForOrder,
+  fetchReceiptExtras,
+  buildOrderIndex,
+  buildFeeIndex,
+  upsertReceipt,
+  recomputeDailyDeposits,
+} from "../../shared/etsyReceiptSync.ts";
 import { getEntitlements } from "../../shared/subscriptionGuard.ts";
-
-function round(n) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function dateStr(epochSeconds) {
-  if (!epochSeconds) return new Date().toISOString().slice(0, 10);
-  return new Date(epochSeconds * 1000).toISOString().slice(0, 10);
-}
-
-// Every Etsy call goes through the shared client so it carries the required
-// x-api-key: <keystring>:<shared_secret> header.
-async function etsyFetch(token, keystring, path) {
-  return etsyJson(token, path);
-}
 
 // Load the seller's fee Settings (one record per user keyed by setting_key).
 async function loadSettings(base44, userId) {
   const rows = await base44.asServiceRole.entities.Settings.filter({ owner_user_id: userId });
-  // Prefer the main settings record (any; the app keeps a single config record).
   return (rows && rows[0]) || {};
 }
 
@@ -57,8 +50,6 @@ async function consumeImportUse(base44, entitlements, userId, imported) {
         { $inc: { imports_used_this_month: 1 } }
       );
     } else if (entitlements.plan === "free") {
-      // Free user with no Subscription row yet: start tracking so the limit
-      // applies to them from now on.
       await base44.asServiceRole.entities.Subscription.create({
         owner_user_id: userId,
         plan_id: "free",
@@ -96,119 +87,64 @@ async function importForConnection(base44, conn, keystring) {
     ? Math.floor(new Date(conn.last_sync_at).getTime() / 1000)
     : Math.floor((Date.now() - 90 * 24 * 60 * 60 * 1000) / 1000);
 
-  let offset = 0;
+  // Index every existing order + fee for this seller so a re-sync updates in
+  // place instead of inserting a second copy of the same receipt.
+  const orderIndex = buildOrderIndex(
+    await base44.asServiceRole.entities.EtsyOrder.filter({ owner_user_id: userId })
+  );
+  const feeIndex = buildFeeIndex(
+    await base44.asServiceRole.entities.OrderFee.filter({ owner_user_id: userId })
+  );
+
   const limit = 100;
-  let hasMore = true;
+  let offset = 0;
   let imported = 0;
-  const dailyNet = {}; // YYYY-MM-DD -> net deposit sum
 
-  // Collect existing etsy_api order_ids since the min date to dedupe.
-  const existingIds = new Set();
-  const existing = await base44.asServiceRole.entities.EtsyOrder.filter({
-    owner_user_id: userId,
-    source: "etsy_api",
-  });
-  for (const o of existing || []) {
-    if (o.order_id) existingIds.add(o.order_id);
-  }
-
-  while (hasMore) {
-    const body = await etsyFetch(
+  while (true) {
+    const body = await etsyJson(
       conn.access_token,
-      keystring,
       `/v3/application/shops/${shopId}/receipts?min_created=${minCreated}&limit=${limit}&offset=${offset}`
     );
     const receipts = body.results || [];
-    for (const r of receipts) {
-      const orderId = String(r.order_id || r.receipt_id);
-      if (existingIds.has(orderId)) continue;
 
-      // Fetch line-item transactions for item count / product / sku.
-      let transactions = [];
-      try {
-        const tBody = await etsyFetch(
-          conn.access_token,
-          keystring,
-          `/v3/application/shops/${shopId}/receipts/${r.receipt_id}/transactions`
-        );
-        transactions = tBody.results || [];
-      } catch {
-        transactions = [];
+    // Batches of 5 receipts (each needs two extra calls) to stay inside the
+    // worker's connection budget.
+    for (let i = 0; i < receipts.length; i += 5) {
+      const chunk = receipts.slice(i, i + 5);
+      const prepared = await Promise.all(
+        chunk.map(async (r) => {
+          const key = String(r.receipt_id || r.order_id || "");
+          if (!key) return null;
+          const already = orderIndex.get(`r:${key}`) || orderIndex.get(`o:${key}`);
+          if (already && already.source === "etsy_api") return null; // already imported
+          const extras = await fetchReceiptExtras(conn.access_token, shopId, r.receipt_id);
+          const order = buildOrder(r, extras.transactions, extras.payments, userId);
+          const fees = buildFees(order, settings, extras.actualFee);
+          order.order_net = netForOrder(order, fees);
+          return { order, fees };
+        })
+      );
+
+      for (const item of prepared) {
+        if (!item) continue;
+        const res = await upsertReceipt(base44, {
+          userId,
+          order: item.order,
+          fees: item.fees,
+          orderIndex,
+          feeIndex,
+        });
+        if (res.action === "skipped") continue;
+        imported += 1;
       }
-      const itemCount = transactions.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0) || (Number(r.quantity) || 1);
-      const productNames = transactions.map((t) => t.title).filter(Boolean).join("; ");
-      const skus = transactions.map((t) => t.sku).filter(Boolean).join("; ");
-
-      const orderValue = Number(r.subtotal) || Number(r.total_price) || 0;
-      const shipping = Number(r.total_shipping_cost) || 0;
-      const tax = Number(r.total_tax_cost) || 0;
-      const discount = Number(r.discount_amount) || 0;
-      const grandTotal = Number(r.grand_total) || (orderValue + shipping + tax - discount);
-
-      const order = {
-        owner_user_id: userId,
-        sale_date: dateStr(r.create_date || r.created_timestamp),
-        order_id: orderId,
-        buyer_username: r.buyer_user_id ? String(r.buyer_user_id) : "",
-        buyer_full_name: r.ship_name || r.name || "",
-        first_name: r.first_name || "",
-        last_name: r.last_name || "",
-        number_of_items: itemCount,
-        payment_method: r.payment_method || "etsy",
-        sku: skus,
-        product_name: productNames,
-        order_value: round(orderValue),
-        discount_amount: round(discount),
-        shipping_charged: round(shipping),
-        sales_tax: round(tax),
-        order_total: round(grandTotal),
-        currency: r.currency_code || "USD",
-        status: r.was_shipped ? "shipped" : r.was_paid ? "paid" : "open",
-        source: "etsy_api",
-        statement_line_uid: `etsy_receipt_${r.receipt_id}`,
-      };
-      const fees = estimateOrderFees(order, settings);
-
-      await base44.asServiceRole.entities.EtsyOrder.create(order);
-      await base44.asServiceRole.entities.OrderFee.create({
-        owner_user_id: userId,
-        order_id: orderId,
-        ...fees,
-      });
-
-      // Accumulate the expected daily deposit (order total minus tax & fees).
-      const net = grandTotal - tax - fees.total_fees;
-      const day = order.sale_date;
-      dailyNet[day] = round((dailyNet[day] || 0) + net);
-      imported += 1;
-      existingIds.add(orderId);
     }
 
     const count = body.count || receipts.length;
-    hasMore = offset + limit < count && receipts.length === limit;
+    if (!(offset + limit < count && receipts.length === limit)) break;
     offset += limit;
   }
 
-  // Upsert derived daily Etsy deposit Transfer records.
-  for (const [day, net] of Object.entries(dailyNet)) {
-    const note = `etsy_api_deposit_${day}`;
-    const existingT = await base44.asServiceRole.entities.Transfer.filter({
-      owner_user_id: userId,
-      type: "etsy_deposit",
-      notes: note,
-    });
-    if (existingT && existingT.length > 0) {
-      await base44.asServiceRole.entities.Transfer.update(existingT[0].id, { amount: net, date: day });
-    } else {
-      await base44.asServiceRole.entities.Transfer.create({
-        owner_user_id: userId,
-        date: day,
-        type: "etsy_deposit",
-        amount: net,
-        notes: note,
-      });
-    }
-  }
+  await recomputeDailyDeposits(base44, userId);
 
   await base44.asServiceRole.entities.EtsyConnection.update(conn.id, {
     last_sync_at: new Date().toISOString(),

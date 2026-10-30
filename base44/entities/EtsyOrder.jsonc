@@ -6,6 +6,10 @@
       "type": "string",
       "description": "User ID that owns this record"
     },
+    "receipt_id": {
+      "type": "string",
+      "description": "Etsy receipt id \u2014 the canonical upsert key for API-synced orders"
+    },
     "sale_date": {
       "type": "string",
       "format": "date",
@@ -13,7 +17,7 @@
     },
     "order_id": {
       "type": "string",
-      "description": "Etsy order ID"
+      "description": "Etsy order ID (equals the receipt id for orders)"
     },
     "buyer_username": {
       "type": "string",
@@ -146,12 +150,21 @@
     },
     "source": {
       "type": "string",
-      "description": "Import source of the order (e.g., 'etsy_statement', 'square_csv')"
+      "description": "Import source of the order (e.g., 'etsy_api', 'square_csv')"
     },
     "possible_duplicate": {
       "type": "boolean",
       "default": false,
       "description": "Flag for potential duplicate orders"
+    },
+    "superseded": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when an API sync replaced this CSV/statement record for the same Etsy receipt (kept for history, excluded from totals)"
+    },
+    "superseded_by": {
+      "type": "string",
+      "description": "ID of the EtsyOrder record that replaced this one"
     }
   },
   "required": [
