@@ -63,13 +63,22 @@ export default function ChasePDFImport({ open, onOpenChange }) {
     setTransactions([]);
 
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: pdfFile });
+      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file: pdfFile });
+
+      // Register the upload against this user. The backend reads the document back
+      // with their own permissions, so it can never extract someone else's file.
+      const document = await base44.entities.UploadedDocument.create({
+        owner_user_id: user.id,
+        kind: "chase_statement",
+        file_uri,
+        file_name: pdfFile.name || "",
+      });
 
       // The extraction schema lives in the makerAI backend function; the caller
-      // only supplies the uploaded file reference.
+      // only supplies the document reference.
       const extractPromise = base44.functions.invoke("makerAI", {
         action: "chase_statement",
-        file_url
+        document_id: document.id
       }).then((response) => response.data);
 
       const timeoutPromise = new Promise((_, reject) =>

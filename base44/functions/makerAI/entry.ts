@@ -297,12 +297,36 @@ export default async function (req) {
     }
 
     if (action === "chase_statement") {
-      const fileUrl = text(body.file_url, 1000);
-      if (!fileUrl) return Response.json({ error: "file_url is required" }, { status: 400 });
+      const documentId = text(body.document_id, 100);
+      if (!documentId) return Response.json({ error: "document_id is required" }, { status: 400 });
+
+      // The caller never supplies a file URL. The document record is read with the
+      // USER-scoped client, so RLS only returns documents this user uploaded —
+      // any other user's document simply is not found here.
+      let document = null;
+      try {
+        document = await base44.entities.UploadedDocument.get(documentId);
+      } catch (_e) {
+        document = null;
+      }
+      if (!document || document.owner_user_id !== user.id) {
+        return Response.json({ error: "Document not found" }, { status: 403 });
+      }
+
+      // The document lives in private storage; the short-lived signed URL is created
+      // here, server-side, and never leaves this function.
+      const signed = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({
+        file_uri: document.file_uri,
+        expires_in: 300,
+      });
+      if (!signed?.signed_url) {
+        return Response.json({ status: "error", details: "Could not open the uploaded file" }, { status: 500 });
+      }
+
       // Schema is fixed here, not caller-supplied, so this cannot be used to pull
       // arbitrary structured data out of an arbitrary file.
       const extracted = await base44.asServiceRole.integrations.Core.ExtractDataFromUploadedFile({
-        file_url: fileUrl,
+        file_url: signed.signed_url,
         json_schema: CHASE_SCHEMA,
       });
       return Response.json(extracted || { status: "error", details: "No data returned" });

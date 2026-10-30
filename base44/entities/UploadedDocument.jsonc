@@ -1,0 +1,40 @@
+{
+  "name": "UploadedDocument",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "User who uploaded this document"
+    },
+    "kind": {
+      "type": "string",
+      "description": "What the document is used for (e.g. chase_statement)"
+    },
+    "file_uri": {
+      "type": "string",
+      "description": "Private storage URI of the uploaded file"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original file name, for display"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "file_uri"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_user_id": "{{user.id}}"
+    }
+  }
+}
