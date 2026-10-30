@@ -87,6 +87,10 @@
         "Annually"
       ],
       "description": "How often the recurring expense occurs"
+    },
+    "square_payment_id": {
+      "type": "string",
+      "description": "Square payment ID this fee came from (upsert key)"
     }
   },
   "required": [

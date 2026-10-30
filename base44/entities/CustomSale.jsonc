@@ -21,7 +21,7 @@
     },
     "payment_source": {
       "type": "string",
-      "description": "Payment method (Cash, Check, Zelle, Venmo, Square, PayPal, Etsy, Other)"
+      "description": "Revenue source (Cash, Check, Zelle, Venmo, Square, PayPal, Etsy, Squarespace, Other)"
     },
     "pre_tax_amount": {
       "type": "number",
@@ -43,6 +43,31 @@
     },
     "notes": {
       "type": "string"
+    },
+    "square_payment_id": {
+      "type": "string",
+      "description": "Square payment ID this sale was imported from (upsert key). Adjustment rows use <payment id>#adj."
+    },
+    "square_order_id": {
+      "type": "string",
+      "description": "Square order ID behind this payment"
+    },
+    "square_invoice_number": {
+      "type": "string",
+      "description": "Square invoice number, when the payment came from an invoice"
+    },
+    "square_payment_method": {
+      "type": "string",
+      "description": "How Square collected the money: card, cash or external"
+    },
+    "linked_etsy_order_id": {
+      "type": "string",
+      "description": "Etsy order this Square record is linked to (set on adjustment rows)"
+    },
+    "is_square_adjustment": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this row only records the amount Square collected above the linked Etsy order total"
     }
   },
   "required": [

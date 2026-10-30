@@ -18,15 +18,21 @@ export default async function (req) {
       );
     }
 
+    // A "Reconnect Square" request re-runs consent even when a connection exists
+    // (needed when the stored grant is missing payment/webhook scopes).
+    const body = await req.json().catch(() => ({}));
+    const force = body.force === true;
+
     // If the user already has an active connection, no need to start again.
     const existing = await base44.asServiceRole.entities.SquareConnection.filter({
       owner_user_id: user.id,
       status: "active",
     });
-    if (existing && existing.length > 0) {
+    if (existing && existing.length > 0 && !force) {
       return Response.json({
         already_connected: true,
         merchant_id: existing[0].merchant_id,
+        scopes: existing[0].scopes || "",
       });
     }
 
@@ -46,8 +52,23 @@ export default async function (req) {
       oauth_state: state,
     });
 
-    const scope =
-      "ORDERS_WRITE+ORDERS_READ+INVOICES_WRITE+INVOICES_READ+PAYMENTS_READ+PAYMENTS_WRITE+CUSTOMERS_READ+CUSTOMERS_WRITE+MERCHANT_PROFILE_READ";
+    // Payment sync needs the read scopes for payments/orders/invoices/customers;
+    // the webhook subscription scopes let the app register and verify its webhook.
+    const scope = [
+      "PAYMENTS_READ",
+      "PAYMENTS_WRITE",
+      "ORDERS_READ",
+      "ORDERS_WRITE",
+      "INVOICES_READ",
+      "INVOICES_WRITE",
+      "CUSTOMERS_READ",
+      "CUSTOMERS_WRITE",
+      "MERCHANT_PROFILE_READ",
+      "ITEMS_READ",
+      "INVENTORY_READ",
+      "DEVELOPER_APPLICATION_WEBHOOKS_READ",
+      "DEVELOPER_APPLICATION_WEBHOOKS_WRITE",
+    ].join("+");
     // OAuth redirects back to a frontend page (not the function endpoint
     // directly), because Base44 function URLs reject unauthenticated browser
     // GET redirects. The page invokes squareOAuthCallback via the SDK.

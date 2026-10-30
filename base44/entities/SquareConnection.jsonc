@@ -29,7 +29,7 @@
     },
     "scopes": {
       "type": "string",
-      "description": "Comma-separated authorized scopes"
+      "description": "Space-separated authorized scopes returned by Square at connect time"
     },
     "status": {
       "type": "string",
@@ -49,6 +49,20 @@
       "type": "string",
       "format": "date-time",
       "description": "When the connection was activated"
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful payment sync timestamp"
+    },
+    "last_imported_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Square payments linked or imported on the last sync"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Last sync error message (empty when successful)"
     }
   },
   "required": [

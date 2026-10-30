@@ -68,6 +68,11 @@ async function refreshIfNeeded(base44, conn) {
   return { ...conn, ...update };
 }
 
+// Refresh a connection's token when it is expired or about to expire.
+export async function ensureFreshToken(base44, conn) {
+  return await refreshIfNeeded(base44, conn);
+}
+
 // Get the current user's active Square connection (with a valid token).
 export async function getUserSquareConnection(base44, userId) {
   if (!userId) return null;

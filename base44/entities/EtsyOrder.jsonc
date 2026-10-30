@@ -165,6 +165,32 @@
     "superseded_by": {
       "type": "string",
       "description": "ID of the EtsyOrder record that replaced this one"
+    },
+    "square_payment_id": {
+      "type": "string",
+      "description": "Square payment ID linked to this order (set by the Square sync or manually)"
+    },
+    "square_payment_amount": {
+      "type": "number",
+      "description": "Amount Square actually collected for this order"
+    },
+    "square_adjustment_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount Square collected above the Etsy order total (recorded as its own CustomSale)"
+    },
+    "square_link_type": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "manual"
+      ],
+      "description": "How the Square payment was linked to this order"
+    },
+    "square_linked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Square payment was linked"
     }
   },
   "required": [
