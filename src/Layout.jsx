@@ -74,7 +74,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+      <div className="min-h-screen bg-[hsl(var(--theme-background-background-1))] dark:bg-[hsl(var(--theme-foreground-background-1))]">
         <style>{`
           :root {
             --color-primary: #1a1a1a;
@@ -86,11 +86,11 @@ export default function Layout({ children, currentPageName }) {
         `}</style>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 z-50 flex items-center px-3 safe-area-pt" style={{ paddingBottom: "0.5rem" }}>
+      <header className="lg:hidden fixed top-0 left-0 right-0 bg-[hsl(var(--theme-background-background-2))] dark:bg-[hsl(var(--theme-foreground-background-2))] border-b border-[hsl(var(--theme-muted-border-1))] dark:border-[hsl(var(--theme-foreground-border-1))] z-50 flex items-center px-3 safe-area-pt" style={{ paddingBottom: "0.5rem" }}>
         {isSubRoute ? (
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center min-h-[44px] px-2 py-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors text-stone-700 dark:text-stone-200"
+            className="inline-flex items-center justify-center min-h-[44px] px-2 py-2 hover:bg-[hsl(var(--theme-muted-background-2))] dark:hover:bg-[hsl(var(--theme-foreground-background-3))] rounded-lg transition-colors text-[hsl(var(--theme-muted-foreground-text-1))] dark:text-[hsl(var(--theme-muted-text-1))]"
             aria-label="Back"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -99,13 +99,13 @@ export default function Layout({ children, currentPageName }) {
         ) : (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="inline-flex items-center justify-center min-h-[44px] w-11 p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
+            className="inline-flex items-center justify-center min-h-[44px] w-11 p-2 hover:bg-[hsl(var(--theme-muted-background-2))] dark:hover:bg-[hsl(var(--theme-foreground-background-3))] rounded-lg transition-colors"
             aria-label="Menu"
           >
-            <Menu className="w-6 h-6 text-stone-700 dark:text-stone-200" />
+            <Menu className="w-6 h-6 text-[hsl(var(--theme-muted-foreground-text-1))] dark:text-[hsl(var(--theme-muted-text-1))]" />
           </button>
         )}
-        <span className="ml-2 font-semibold text-stone-900 dark:text-stone-100 text-lg truncate">
+        <span className="ml-2 font-semibold text-[hsl(var(--theme-foreground-text-1))] dark:text-[hsl(var(--theme-muted-text-2))] text-lg truncate">
           {pageTitle}
         </span>
       </header>
@@ -113,7 +113,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/30 z-50"
+          className="lg:hidden fixed inset-0 bg-[color-mix(in_srgb,hsl(var(--theme-foreground-background-4))_30%,transparent)] z-50"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -124,15 +124,15 @@ export default function Layout({ children, currentPageName }) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0 gap-2">
-          <Link to={createPageUrl("Welcome")} className="font-bold text-lg text-stone-900 dark:text-stone-100 tracking-tight hover:text-emerald-600 transition-colors flex-1 min-w-0">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-[hsl(var(--theme-muted-border-2))] dark:border-[hsl(var(--theme-foreground-border-1))] flex-shrink-0 gap-2">
+          <Link to={createPageUrl("Welcome")} className="font-bold text-lg text-[hsl(var(--theme-foreground-text-1))] dark:text-[hsl(var(--theme-muted-text-2))] tracking-tight hover:text-[hsl(var(--theme-primary-text-1))] transition-colors flex-1 min-w-0">
             Maker's Profit Pilot
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg"
+            className="lg:hidden p-1 hover:bg-[hsl(var(--theme-muted-background-2))] dark:hover:bg-[hsl(var(--theme-foreground-background-3))] rounded-lg"
           >
-            <X className="w-5 h-5 text-stone-500 dark:text-stone-400" />
+            <X className="w-5 h-5 text-[hsl(var(--theme-muted-foreground-text-2))] dark:text-[hsl(var(--theme-muted-foreground-text-3))]" />
           </button>
         </div>
 
@@ -157,7 +157,7 @@ export default function Layout({ children, currentPageName }) {
                 />
                 {item.name}
                 {isActive && (
-                  <ChevronRight className="w-4 h-4 ml-auto text-emerald-500" />
+                  <ChevronRight className="w-4 h-4 ml-auto text-[hsl(var(--theme-primary-text-2))]" />
                 )}
               </Link>
             );
@@ -173,7 +173,7 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 z-40 safe-area-pb">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[hsl(var(--theme-background-background-2))] dark:bg-[hsl(var(--theme-foreground-background-2))] border-t border-[hsl(var(--theme-muted-border-1))] dark:border-[hsl(var(--theme-foreground-border-1))] z-40 safe-area-pb">
         <div className="flex items-stretch justify-around">
           {bottomTabs.map((tab) => {
             const isActive = currentPageName === tab.page;
