@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { syncLinkedJobPrice } from "@/components/shared/jobPriceSync";
 import {
   Dialog,
   DialogContent,
@@ -100,14 +101,20 @@ export default function InvoiceFormDialog({ open, onOpenChange, invoice }) {
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
-      if (invoice) {
-        return base44.entities.Invoice.update(invoice.id, data);
-      } else {
-        return base44.entities.Invoice.create({ ...data, owner_user_id: user.id });
-      }
+      const saved = invoice
+        ? await base44.entities.Invoice.update(invoice.id, data)
+        : await base44.entities.Invoice.create({ ...data, owner_user_id: user.id });
+      // Keep the production job's price in step with what the customer is billed.
+      await syncLinkedJobPrice({
+        quoteId: saved?.quote_id || data.quote_id,
+        total: parseFloat(saved?.total ?? data.total) || 0,
+        ownerUserId: user.id,
+      }).catch(() => {});
+      return saved;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
       onOpenChange(false);
     },
   });

@@ -1,6 +1,10 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 import { squareFetch, getConnectionByMerchant } from "../../shared/squareOauth.ts";
-import { syncSquarePayments, squareInvoiceTotalCents } from "../../shared/squareSync.ts";
+import {
+  syncSquarePayments,
+  squareInvoiceTotalCents,
+  syncLinkedJobPrice,
+} from "../../shared/squareSync.ts";
 
 function decodeBase64(value) {
   try {
@@ -143,6 +147,7 @@ export default async function (req) {
       if (inv.status !== "PAID") {
         if (totalChanged) {
           await base44.asServiceRole.entities.Invoice.update(appInv.id, totalUpdate);
+          await syncLinkedJobPrice(base44, appInv.owner_user_id, { ...appInv, total: squareTotal });
           console.log(
             `Invoice ${appInv.id} total synced from Square: ${appInv.total} -> ${squareTotal}`
           );

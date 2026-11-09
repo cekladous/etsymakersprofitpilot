@@ -642,6 +642,41 @@ export async function squareInvoiceTotalCents(token, invoice) {
 }
 
 /**
+ * The production job behind an invoice quotes the invoice total, so production
+ * and billing never disagree. Matching is by the quote's converted order, then
+ * by the "JOB-<quote number>" label for jobs created before an order existed.
+ */
+export async function syncLinkedJobPrice(base44, ownerUserId, invoice) {
+  const quoteId = invoice?.quote_id;
+  const total = toNumber(invoice?.total);
+  if (!quoteId || !Number.isFinite(total)) return;
+
+  try {
+    const quotes = await base44.asServiceRole.entities.Quote.filter({
+      id: quoteId,
+      owner_user_id: ownerUserId,
+    });
+    const quote = (quotes || [])[0];
+    if (!quote) return;
+
+    const jobs = await base44.asServiceRole.entities.Job.filter({ owner_user_id: ownerUserId });
+    const orderId = quote.converted_to_order_id;
+    const matches = (jobs || []).filter(
+      (job) =>
+        (orderId && Array.isArray(job.order_ids) && job.order_ids.includes(orderId)) ||
+        job.job_number === `JOB-${quote.quote_number}`
+    );
+
+    for (const job of matches) {
+      if (Math.abs(toNumber(job.quoted_total_cost) - total) <= 0.005) continue;
+      await base44.asServiceRole.entities.Job.update(job.id, { quoted_total_cost: total });
+    }
+  } catch (error) {
+    console.error("Job price sync failed:", error.message);
+  }
+}
+
+/**
  * Pulls the Square-side amount back onto invoices that were pushed to Square but
  * are not paid yet, so a re-price done in Square lands here. Paid and cancelled
  * invoices are left alone (the invoice webhook owns the paid transition).
@@ -676,6 +711,7 @@ export async function syncSquareInvoiceTotals(base44, { ownerUserId, conn, limit
         total,
         balance_due: Math.max(0, round2(total - toNumber(appInv.amount_paid))),
       });
+      await syncLinkedJobPrice(base44, ownerUserId, { ...appInv, total });
       stats.updated += 1;
     } catch (error) {
       stats.errors.push(`invoice ${appInv.invoice_number || appInv.id}: ${error.message}`);
