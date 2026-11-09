@@ -1,6 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 import { squareFetch, getConnectionByMerchant } from "../../shared/squareOauth.ts";
-import { syncSquarePayments } from "../../shared/squareSync.ts";
+import { syncSquarePayments, squareInvoiceTotalCents } from "../../shared/squareSync.ts";
 
 function decodeBase64(value) {
   try {
@@ -115,7 +115,7 @@ export default async function (req) {
 
       const fresh = await squareFetch(conn.access_token, `/v2/invoices/${squareInvoiceId}`);
       const inv = fresh && fresh.invoice;
-      if (!inv || inv.status !== "PAID") return Response.json({ success: true });
+      if (!inv) return Response.json({ success: true });
 
       const matches = await base44.asServiceRole.entities.Invoice.filter({
         square_invoice_id: squareInvoiceId,
@@ -123,11 +123,39 @@ export default async function (req) {
       if (!matches || matches.length === 0) return Response.json({ success: true });
       const appInv = matches[0];
 
+      // An amount edited in Square (or repriced by Square) is written back so
+      // both sides show the same total.
+      const squareCents = await squareInvoiceTotalCents(conn.access_token, inv);
+      const squareTotal = typeof squareCents === "number" ? Math.round(squareCents) / 100 : null;
+      const totalChanged =
+        squareTotal !== null && Math.abs(squareTotal - Number(appInv.total || 0)) > 0.005;
+      const totalUpdate = totalChanged
+        ? {
+            total: squareTotal,
+            balance_due: Math.max(
+              0,
+              Math.round((squareTotal - Number(appInv.amount_paid || 0)) * 100) / 100
+            ),
+          }
+        : {};
+
+      // Not paid yet — this event is just an amount edit made in Square.
+      if (inv.status !== "PAID") {
+        if (totalChanged) {
+          await base44.asServiceRole.entities.Invoice.update(appInv.id, totalUpdate);
+          console.log(
+            `Invoice ${appInv.id} total synced from Square: ${appInv.total} -> ${squareTotal}`
+          );
+        }
+        return Response.json({ success: true });
+      }
+
       if (appInv.status === "Paid") return Response.json({ success: true });
 
       const update = {
+        ...totalUpdate,
         status: "Paid",
-        amount_paid: Number(appInv.total || 0),
+        amount_paid: squareTotal ?? Number(appInv.total || 0),
         balance_due: 0,
       };
 
@@ -141,7 +169,7 @@ export default async function (req) {
           payment_source: appInv.payment_method || "Square",
           pre_tax_amount: Number(appInv.subtotal || 0),
           sales_tax_collected: Number(appInv.tax_amount || 0),
-          gross_sale: Number(appInv.total || 0),
+          gross_sale: squareTotal ?? Number(appInv.total || 0),
           shipping_or_postage_cost: Number(appInv.shipping_cost || 0),
           notes: `Auto-created from Square-paid invoice ${appInv.invoice_number || ""}`,
         });

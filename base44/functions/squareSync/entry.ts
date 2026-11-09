@@ -1,6 +1,11 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
 import { ensureFreshToken } from "../../shared/squareOauth.ts";
-import { syncSquarePayments, todayISO, addDays } from "../../shared/squareSync.ts";
+import {
+  syncSquarePayments,
+  syncSquareInvoiceTotals,
+  todayISO,
+  addDays,
+} from "../../shared/squareSync.ts";
 
 /**
  * Square payment sync.
@@ -59,6 +64,12 @@ export default async function (req) {
         });
         summary.ok = stats.errors.length === 0;
         summary.stats = stats;
+        // Safety net for invoice amounts edited in Square: the webhook normally
+        // pushes them over immediately, this catches the gaps.
+        summary.invoice_totals = await syncSquareInvoiceTotals(base44, {
+          ownerUserId: conn.owner_user_id,
+          conn,
+        });
         await base44.asServiceRole.entities.SquareConnection.update(conn.id, {
           last_sync_at: new Date().toISOString(),
           last_imported_count: stats.linked_to_etsy + stats.new_custom_sales + stats.adjustments_created,

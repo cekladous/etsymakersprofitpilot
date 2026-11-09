@@ -624,3 +624,63 @@ export async function unlinkSquarePaymentFromOrder(base44, { ownerUserId, orderI
 
   return { unlinked: true, order_id: order.order_id, recreated };
 }
+
+/**
+ * The amount Square currently asks the customer to pay, in cents: the invoice's
+ * computed request amount, or the Square order total (which includes tax and
+ * shipping) while the invoice has not been priced yet.
+ */
+export async function squareInvoiceTotalCents(token, invoice) {
+  const request = (invoice?.payment_requests || [])[0];
+  const requested =
+    request?.computed_amount_money?.amount ?? request?.fixed_amount_requested_money?.amount;
+  if (typeof requested === "number" && requested > 0) return requested;
+  if (!invoice?.order_id) return null;
+  const orderRes = await squareFetch(token, `/v2/orders/${invoice.order_id}`);
+  const total = orderRes?.order?.total_money?.amount;
+  return typeof total === "number" ? total : null;
+}
+
+/**
+ * Pulls the Square-side amount back onto invoices that were pushed to Square but
+ * are not paid yet, so a re-price done in Square lands here. Paid and cancelled
+ * invoices are left alone (the invoice webhook owns the paid transition).
+ */
+export async function syncSquareInvoiceTotals(base44, { ownerUserId, conn, limit = 25 }) {
+  const stats = { checked: 0, updated: 0, errors: [] };
+
+  let invoices = [];
+  try {
+    invoices = await base44.asServiceRole.entities.Invoice.filter({ owner_user_id: ownerUserId });
+  } catch (error) {
+    stats.errors.push(error.message);
+    return stats;
+  }
+
+  const pending = (invoices || [])
+    .filter((inv) => inv.square_invoice_id && inv.status !== "Paid" && inv.status !== "Cancelled")
+    .sort((a, b) => String(b.updated_date || "").localeCompare(String(a.updated_date || "")))
+    .slice(0, limit);
+
+  for (const appInv of pending) {
+    try {
+      const fresh = await squareFetch(conn.access_token, `/v2/invoices/${appInv.square_invoice_id}`);
+      const sqInv = fresh?.invoice;
+      if (!sqInv || sqInv.status === "PAID" || sqInv.status === "CANCELED") continue;
+      const cents = await squareInvoiceTotalCents(conn.access_token, sqInv);
+      if (typeof cents !== "number") continue;
+      stats.checked += 1;
+      const total = round2(cents / 100);
+      if (Math.abs(total - toNumber(appInv.total)) <= 0.005) continue;
+      await base44.asServiceRole.entities.Invoice.update(appInv.id, {
+        total,
+        balance_due: Math.max(0, round2(total - toNumber(appInv.amount_paid))),
+      });
+      stats.updated += 1;
+    } catch (error) {
+      stats.errors.push(`invoice ${appInv.invoice_number || appInv.id}: ${error.message}`);
+    }
+  }
+
+  return stats;
+}
