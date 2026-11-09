@@ -386,7 +386,7 @@ const { quotesPerMonth, quotesUsedThisMonth, aiEstimator } = useFeatureAccess();
         if (product.area_per_unit && materialType.default_width && materialType.default_height && materialType.cost_per_sheet) {
           const sheetArea = materialType.default_width * materialType.default_height;
           const costPerSqInch = materialType.cost_per_sheet / sheetArea;
-          cost = Math.round((product.area_per_unit * costPerSqInch) * 100) / 100;
+          cost = Math.round((product.area_per_unit * costPerSqInch) * 10000) / 10000;
         }
         newMaterials.push({ type: materialType.name, name: materialType.name, quantity: formData.quantity || 1, cost });
       }
@@ -804,8 +804,8 @@ if (!quote && quotesPerMonth !== -1 && quotesUsedThisMonth >= quotesPerMonth) { 
                         type="number"
                         value={material.cost}
                         onChange={(e) => updateMaterial(index, "cost", e.target.value)}
-                        placeholder="0.00"
-                        step="0.01"
+                        placeholder="0.000"
+                        step="any"
                         min="0"
                         className="mt-1"
                       />

@@ -31,10 +31,12 @@ export default function SheetYieldPopover({
   // Guard against divide-by-zero and zero pieces per sheet
   const canCompute = piecesPerSheet > 0 && effective > 0;
   const costPerPiece = canCompute ? sheetCost / effective : 0;
+  // Keep sub-cent precision so a per-piece cost like 1.118 is not rounded to cents
+  const costPerPieceRounded = Math.round(costPerPiece * 10000) / 10000;
 
   const handleApply = () => {
     if (!canCompute) return;
-    onApply(Math.round(costPerPiece * 100) / 100);
+    onApply(costPerPieceRounded);
     setOpen(false);
   };
 
@@ -161,7 +163,7 @@ export default function SheetYieldPopover({
             <div className="flex justify-between">
               <span className="text-stone-500">Cost per piece</span>
               <span className="font-semibold text-emerald-700">
-                {canCompute ? `${currencySymbol}${costPerPiece.toFixed(2)}` : "—"}
+                {canCompute ? `${currencySymbol}${Number(costPerPiece.toFixed(4))}` : "—"}
               </span>
             </div>
             {!canCompute && (
