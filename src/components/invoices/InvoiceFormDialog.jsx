@@ -112,6 +112,17 @@ export default function InvoiceFormDialog({ open, onOpenChange, invoice }) {
     },
   });
 
+  // Total can be typed in by hand (credits, rounded quotes, custom terms).
+  // Balance due follows it so the invoice stays internally consistent.
+  const handleTotalChange = (value) => {
+    const total = parseFloat(value) || 0;
+    setFormData({
+      ...formData,
+      total: value === "" ? "" : total,
+      balance_due: total - (parseFloat(formData.amount_paid) || 0),
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     saveMutation.mutate(formData);
@@ -332,10 +343,22 @@ export default function InvoiceFormDialog({ open, onOpenChange, invoice }) {
                 <span>${(formData.tax_amount || 0).toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between items-center pt-2 border-t border-stone-600">
+            <div className="flex justify-between items-center pt-2 border-t border-stone-600 gap-3">
               <span className="text-2xl font-bold">Total</span>
-              <span className="text-3xl font-bold">${(formData.total || 0).toFixed(2)}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xl font-bold">$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.total ?? ""}
+                  onChange={(e) => handleTotalChange(e.target.value)}
+                  placeholder="0.00"
+                  className="w-32 h-11 text-right text-xl font-bold bg-stone-700 border-stone-500 text-white placeholder:text-stone-400"
+                />
+              </div>
             </div>
+            <p className="text-[11px] text-stone-400 mt-1">Type the total to set it manually — it updates the balance due.</p>
             <div className="flex justify-between items-center mt-2 text-stone-300">
               <span>Amount Paid</span>
               <span>${(formData.amount_paid || 0).toFixed(2)}</span>
