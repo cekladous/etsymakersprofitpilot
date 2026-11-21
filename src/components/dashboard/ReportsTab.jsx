@@ -5,6 +5,7 @@ import { aggregateFinancials } from "@/components/shared/financialAggregator";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Download } from "lucide-react";
 import DonutChart from "@/components/reports/DonutChart";
+import AccountantExportCard from "@/components/dashboard/AccountantExportCard";
 import { useFeatureAccess } from "@/components/shared/useFeatureAccess";
 
 const formatCurrency = (amount) =>
@@ -125,6 +126,8 @@ export default function ReportsTab({ financialData, sharedData, dateRange, perio
           Showing last {reportMonthLimit} months. Upgrade to Maker or Pro for more history.
         </div>
       )}
+
+      <AccountantExportCard />
 
       {/* Donut Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -395,6 +395,17 @@ async function computeFinancialData(base44, userId, start, end) {
   };
 }
 
+// Encode a generated file for JSON delivery to the app (browser downloads
+// through functions.invoke, which cannot carry a raw binary body).
+const toBase64 = (bytes) => {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -404,7 +415,8 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     // SECURITY: Only accept the date range and format from the client.
     // All financial figures are computed server-side from the database.
-    const { format: exportFormat = 'pdf', periodStart, periodEnd, periodLabel } = payload;
+    const { format: exportFormat = 'pdf', periodStart, periodEnd, periodLabel, encoding } = payload;
+    const asJson = encoding === 'base64';
 
     if (!periodStart || !periodEnd) {
       return Response.json({ error: 'Missing required date range (periodStart, periodEnd)' }, { status: 400 });
@@ -591,11 +603,19 @@ Deno.serve(async (req) => {
       addText('Profit Margin', `${profitMargin.toFixed(1)}%`);
 
       const pdfBytes = doc.output('arraybuffer');
+      const pdfName = `report_${periodLabel.replace(/\s+/g, '_')}.pdf`;
+      if (asJson) {
+        return Response.json({
+          filename: pdfName,
+          mime: 'application/pdf',
+          base64: toBase64(new Uint8Array(pdfBytes)),
+        });
+      }
       return new Response(pdfBytes, {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="report_${periodLabel.replace(/\s+/g, '_')}.pdf"`
+          'Content-Disposition': `attachment; filename="${pdfName}"`
         }
       });
     } else if (exportFormat === 'xlsx') {
@@ -687,12 +707,22 @@ Deno.serve(async (req) => {
 
       const workbook = { Sheets: sheets, SheetNames: ['Summary', 'Revenue', 'Expenses'] };
       const buffer = write(workbook, { bookType: 'xlsx', type: 'array' });
+      const xlsxName = `report_${periodLabel.replace(/\s+/g, '_')}.xlsx`;
+      const xlsxMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      if (asJson) {
+        return Response.json({
+          filename: xlsxName,
+          mime: xlsxMime,
+          base64: toBase64(new Uint8Array(buffer)),
+        });
+      }
 
       return new Response(buffer, {
         status: 200,
         headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="report_${periodLabel.replace(/\s+/g, '_')}.xlsx"`
+          'Content-Type': xlsxMime,
+          'Content-Disposition': `attachment; filename="${xlsxName}"`
         }
       });
     }
